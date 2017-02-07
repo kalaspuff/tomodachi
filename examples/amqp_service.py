@@ -8,10 +8,9 @@ class ExampleAmqpService(object):
     name = 'example_amqp_service'
     log_level = 'INFO'
     discovery = [Registry]
+    message_protocol = JsonBase
     options = {
         'amqp': {
-            'exchange_name': 'example_exchange',
-            'message_protocol': JsonBase,
             'queue_ttl': 60
         }
     }
@@ -19,17 +18,22 @@ class ExampleAmqpService(object):
 
     @amqp('example.route1', ('data',))
     async def route1a(self, data):
-        self.logger.info('Received data on example.route1a "{}"'.format(data))
+        self.logger.info('Received data (function: route1a) - "{}"'.format(data))
         pass
 
     @amqp('example.route1', ('data',))
     async def route1b(self, data):
-        self.logger.info('Received data on example.route1b "{}"'.format(data))
+        self.logger.info('Received data (function: route1b) - "{}"'.format(data))
         pass
 
     @amqp('example.route2', ('data',))
     async def route2(self, data):
-        self.logger.info('Received data on example.route2 "{}"'.format(data))
+        self.logger.info('Received data (function: route2) - "{}"'.format(data))
+        pass
+
+    @amqp('example.#', ('metadata', 'data'))
+    async def wildcard_route(self, metadata, data):
+        self.logger.info('Received data (function: wildcard_route, topic: {}) - "{}"'.format(metadata.get('topic', ''), data))
         pass
 
     async def _started_service(self):

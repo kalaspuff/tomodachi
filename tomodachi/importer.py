@@ -7,7 +7,8 @@ import importlib.util
 class ServiceImporter(object):
     @classmethod
     def import_service_file(cls, file_name):
-        file_path = '{}/{}.py'.format(os.path.dirname(os.path.realpath(sys.argv[0])), file_name.replace('.', '/'))
+        cwd = os.getcwd()
+        file_path = '{}/{}.py'.format(os.path.realpath(cwd), file_name)
         try:
             spec = importlib.util.spec_from_file_location(file_name, file_path)
             service_import = importlib.util.module_from_spec(spec)

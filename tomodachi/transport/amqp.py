@@ -1,6 +1,10 @@
 import logging
 import aioamqp
 import types
+import time
+import hashlib
+import re
+import binascii
 from tomodachi.invoker import Invoker
 
 
@@ -30,69 +34,131 @@ class AmqpChannelClosed(AmqpException):
 
 class AmqpTransport(Invoker):
     channel = None
+    protocol = None
+    transport = None
 
     @classmethod
     async def publish(cls, service, data, routing_key='', exchange_name=''):
         if not cls.channel:
-            instance = cls()
-            await cls.connect(cls, instance, service.context)
+            await cls.connect(cls, service, service.context)
         channel = cls.channel
         exchange_name = exchange_name or cls.exchange_name
+        if not exchange_name:
+            exchange_name = 'amq.topic'
 
         message_protocol = None
         try:
-            message_protocol = service.options.get('amqp', {}).get('message_protocol')
+            message_protocol = service.message_protocol
         except AttributeError as e:
             pass
 
         payload = data
         if message_protocol:
             try:
-                payload = await message_protocol.build_message(service, data)
+                payload = await message_protocol.build_message(service, routing_key, data)
             except AttributeError as e:
                 pass
 
         success = False
         while not success:
             try:
-                await channel.basic_publish(str.encode(payload), exchange_name, routing_key)
+                await channel.basic_publish(str.encode(payload), exchange_name, cls.encode_routing_key(cls.get_routing_key(routing_key, service.context)))
                 success = True
             except AssertionError as e:
-                instance = cls()
-                await cls.connect(cls, instance, service.context)
+                await cls.connect(cls, service, service.context)
                 channel = cls.channel
 
-    async def subscribe_handler(cls, obj, context, func, routing_key, callback_kwargs=None, exchange_name=''):
-        async def handler(payload):
+    @classmethod
+    def get_routing_key(cls, routing_key, context):
+        if context.get('options', {}).get('amqp', {}).get('routing_key_prefix'):
+            return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('routing_key_prefix'), routing_key)
+        return routing_key
+
+    @classmethod
+    def decode_routing_key(cls, encoded_routing_key):
+        def decode(match):
+            return binascii.unhexlify(match.group(1).encode('utf-8')).decode('utf-8')
+
+        return re.sub(r'___([a-f0-9]{2}|[a-f0-9]{4}|[a-f0-9]{6}|[a-f0-9]{8})_', decode, encoded_routing_key)
+
+    @classmethod
+    def encode_routing_key(cls, routing_key):
+        def encode(match):
+            return '___' + binascii.hexlify(match.group(1).encode('utf-8')).decode('utf-8') + '_'
+
+        return re.sub(r'([^a-zA-Z0-9_*#,;.:<>!"%&/\(\)\[\]\{\}\\=?\'^`~+|@$ -])', encode, routing_key)
+
+    @classmethod
+    def get_queue_name(cls, routing_key, func_name, _uuid, competing_consumer, context):
+        if not competing_consumer:
+            queue_name = hashlib.sha256('{}{}{}'.format(routing_key, func_name, _uuid).encode('utf-8')).hexdigest()
+        else:
+            queue_name = hashlib.sha256(routing_key.encode('utf-8')).hexdigest()
+
+        if context.get('options', {}).get('amqp', {}).get('queue_name_prefix'):
+            return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('queue_name_prefix'), queue_name)
+        return queue_name
+
+    async def subscribe_handler(cls, obj, context, func, routing_key, callback_kwargs=None, exchange_name='', competing=False):
+        async def handler(payload, delivery_tag):
             if callback_kwargs:
                 kwargs = {k: None for k in callback_kwargs}
-            message_protocol = context.get('options', {}).get('amqp', {}).get('message_protocol')
+            message_protocol = context.get('message_protocol')
             message = payload
+            message_uuid = None
             if message_protocol:
                 try:
-                    message = await message_protocol.parse_message(payload)
+                    message, message_uuid, timestamp = await message_protocol.parse_message(payload)
+                    if message_uuid:
+                        if not context.get('_amqp_received_messages'):
+                            context['_amqp_received_messages'] = {}
+                        message_key = '{}:{}'.format(message_uuid, func.__name__)
+                        if context['_amqp_received_messages'].get(message_key):
+                            return
+                        context['_amqp_received_messages'][message_key] = time.time()
+                        if len(context.get('_amqp_received_messages')) > 100000:
+                            context['_amqp_received_messages'] = {k: v for k, v in context['_amqp_received_messages'].items() if v > time.time() - 60}
+
                     if callback_kwargs:
                         for k, v in message.items():
                             if k in callback_kwargs:
                                 kwargs[k] = v
                 except Exception as e:
+                    # log message protocol exception
+                    if message is not False and not message_uuid:
+                        await cls.channel.basic_client_ack(delivery_tag)
+                    elif message is False and message_uuid:
+                        pass  # incompatible protocol, should probably ack if old message
+                    elif message is False:
+                        await cls.channel.basic_client_ack(delivery_tag)
                     return
 
-            if callback_kwargs:
-                routine = func(*(obj,), **kwargs)
-            else:
-                routine = func(*(obj, message), **{})
+            try:
+                if callback_kwargs:
+                    routine = func(*(obj,), **kwargs)
+                else:
+                    routine = func(*(obj, message), **{})
+            except Exception as e:
+                await cls.channel.basic_client_ack(delivery_tag)
+                raise e
 
             if isinstance(routine, types.GeneratorType) or isinstance(routine, types.CoroutineType):
-                return_value = await routine
+                try:
+                    return_value = await routine
+                except Exception as e:
+                    await cls.channel.basic_client_ack(delivery_tag)
+                    raise e
             else:
                 return_value = routine
+
+            await cls.channel.basic_client_ack(delivery_tag)
+
             return return_value
 
-        exchange_name = exchange_name or context.get('options', {}).get('amqp', {}).get('exchange_name', '')
+        exchange_name = exchange_name or context.get('options', {}).get('amqp', {}).get('exchange_name', 'amq.topic')
 
         context['_amqp_subscribers'] = context.get('_amqp_subscribers', [])
-        context['_amqp_subscribers'].append((routing_key, exchange_name, func, handler))
+        context['_amqp_subscribers'].append((routing_key, exchange_name, competing, func, handler))
 
         return await cls.subscribe(cls, obj, context)
 
@@ -107,6 +173,8 @@ class AmqpTransport(Invoker):
 
         try:
             transport, protocol = await aioamqp.connect(host=host, port=port, login=login, password=password)
+            cls.protocol = protocol
+            cls.transport = transport
         except ConnectionRefusedError as e:
             error_message = 'connection refused'
             logging.getLogger('transport.amqp').warn('Unable to connect [amqp] to {}:{} ({})'.format(host, port, error_message))
@@ -121,40 +189,42 @@ class AmqpTransport(Invoker):
             raise AmqpConnectionException(str(e), log_level=context.get('log_level')) from e
 
         channel = await protocol.channel()
+        if not cls.channel:
+            try:
+                stop_method = getattr(obj, '_stop_service')
+            except AttributeError as e:
+                stop_method = None
+            async def stop_service(*args, **kwargs):
+                if stop_method:
+                    await stop_method(*args, **kwargs)
+                logging.getLogger('aioamqp.protocol').setLevel(logging.FATAL)
+                await cls.protocol.close()
+                cls.transport.close()
+                cls.channel = None
+                cls.transport = None
+                cls.protocol = None
+
+            setattr(obj, '_stop_service', stop_service)
+
         cls.channel = channel
-        cls.exchange_name = context.get('options', {}).get('amqp', {}).get('exchange_name', '')
-
-        try:
-            stop_method = getattr(obj, '_stop_service')
-        except AttributeError as e:
-            stop_method = None
-        async def stop_service(*args, **kwargs):
-            if stop_method:
-                await stop_method(*args, **kwargs)
-            logging.getLogger('aioamqp.protocol').setLevel(logging.FATAL)
-            await protocol.close()
-            transport.close()
-
-        setattr(obj, '_stop_service', stop_service)
+        cls.exchange_name = context.get('options', {}).get('amqp', {}).get('exchange_name', 'amq.topic')
 
         return channel
 
     async def subscribe(cls, obj, context):
-        if context.get('_amqp_connected'):
+        if context.get('_amqp_subscribed'):
             return None
-        context['_amqp_connected'] = True
+        context['_amqp_subscribed'] = True
 
-        if not cls.channel:
-            channel = await cls.connect(cls, obj, context)
-        else:
-            channel = cls.channel
+        cls.channel = None
+        channel = await cls.connect(cls, obj, context)
 
         async def _subscribe():
-            async def declare_queue(routing_key, func, exchange_name='', exchange_type='direct', queue_name=None,
+            async def declare_queue(routing_key, func, exchange_name='', exchange_type='topic', queue_name=None,
                                     passive=False, durable=True, exclusive=False, auto_delete=False,
                                     competing_consumer=False):
                 try:
-                    if exchange_name:
+                    if exchange_name and exchange_name != 'amq.topic':
                         await channel.exchange_declare(exchange_name=exchange_name, type_name=exchange_type, passive=False, durable=True, auto_delete=False)
                 except aioamqp.exceptions.ChannelClosed as e:
                     error_message = e.args[1]
@@ -171,7 +241,7 @@ class AmqpTransport(Invoker):
                 _uuid = obj.uuid
                 max_consumers = 1 if not competing_consumer else None
                 if queue_name is None:
-                    queue_name = '{}.{}.{}'.format(routing_key, func.__name__, _uuid) if not competing_consumer else routing_key
+                    queue_name = cls.get_queue_name(cls.encode_routing_key(routing_key), func.__name__, _uuid, competing_consumer, context)
 
                 amqp_arguments = {}
                 ttl = context.get('options', {}).get('amqp', {}).get('queue_ttl', 86400)
@@ -188,20 +258,18 @@ class AmqpTransport(Invoker):
                         raise AmqpExclusiveQueueLockedException(str(e)) from e
                     raise AmqpException(str(e)) from e
 
-                if exchange_name:
-                    await channel.queue_bind(queue_name, exchange_name, routing_key)
+                await channel.queue_bind(queue_name, exchange_name or 'amq.topic', cls.encode_routing_key(cls.get_routing_key(routing_key, context)))
+
                 return queue_name
 
             def callback(routing_key, handler):
                 async def _callback(self, body, envelope, properties):
                     # await channel.basic_reject(delivery_tag, requeue=True)
-                    if envelope.routing_key == routing_key:
-                        await handler(body.decode())
-                    await channel.basic_client_ack(envelope.delivery_tag)
+                    await handler(body.decode(), envelope.delivery_tag)
                 return _callback
 
-            for routing_key, exchange_name, func, handler in context.get('_amqp_subscribers', []):
-                queue_name = await declare_queue(routing_key, func, exchange_name=exchange_name)
+            for routing_key, exchange_name, competing, func, handler in context.get('_amqp_subscribers', []):
+                queue_name = await declare_queue(routing_key, func, exchange_name=exchange_name, competing_consumer=competing)
                 await channel.basic_consume(callback(routing_key, handler), queue_name=queue_name)
 
         return _subscribe

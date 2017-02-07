@@ -6,12 +6,18 @@ import re
 import traceback
 import uuid
 from tomodachi.invoker import FUNCTION_ATTRIBUTE
+from tomodachi.config import merge_dicts
 
 
 class ServiceContainer(object):
-    def __init__(self, module_import):
+    def __init__(self, module_import, configuration):
         self.module_import = module_import
-        self.module_name = module_import.__name__
+        try:
+            self.module_name = module_import.__name__.rsplit('/', 1)[1]
+        except IndexError:
+            self.module_name = module_import.__name__
+
+        self.configuration = configuration
 
         self.logger = logging.getLogger('services.{}'.format(self.module_name))
         self._close_waiter = asyncio.Future()
@@ -24,6 +30,24 @@ class ServiceContainer(object):
     def stop_service(self):
         if not self._close_waiter.done():
             self._close_waiter.set_result(None)
+
+    def setup_configuration(self, instance):
+        if not self.configuration:
+            return
+        for k, v in self.configuration.items():
+            try:
+                instance_value = getattr(instance, k)
+            except AttributeError:
+                instance_value = None
+            if not instance_value:
+                setattr(instance, k, v)
+
+            if isinstance(instance_value, list) and isinstance(v, list):
+                setattr(instance, k, instance_value + v)
+            elif isinstance(instance_value, dict) and isinstance(v, dict):
+                setattr(instance, k, merge_dicts(instance_value, v))
+            else:
+                setattr(instance, k, v)
 
     async def wait_stopped(self):
         await self._close_waiter
@@ -38,24 +62,27 @@ class ServiceContainer(object):
         for _, cls in inspect.getmembers(self.module_import):
             if inspect.isclass(cls):
                 instance = cls()
-                instance.uuid = str(uuid.uuid1())
+                self.setup_configuration(instance)
 
-                # todo: fix function to get data from instance / class
                 try:
-                    service_name = cls.name
+                    if not instance.uuid:
+                        instance.uuid = str(uuid.uuid4())
                 except AttributeError:
-                    _instance = cls()
+                    instance.uuid = str(uuid.uuid4())
+
+                try:
+                    service_name = instance.name
+                except AttributeError:
                     try:
-                        service_name = _instance.name
+                        service_name = cls.name
                     except AttributeError:
                         continue
 
                 try:
-                    log_level = cls.log_level
+                    log_level = instance.log_level
                 except AttributeError:
-                    _instance = cls()
                     try:
-                        log_level = _instance.log_level
+                        log_level = cls.log_level
                     except AttributeError:
                         log_level = 'INFO'
 
@@ -78,7 +105,7 @@ class ServiceContainer(object):
                     pass
 
                 try:
-                    started_futures.add(getattr(instance, '_started_service'))
+                    getattr(instance, '_started_service')
                     services_started.add((service_name, instance, log_level))
                 except AttributeError:
                     pass
@@ -105,6 +132,11 @@ class ServiceContainer(object):
                                     await registry._register_service(instance)
                             except AttributeError:
                                 pass
+                    except AttributeError:
+                        pass
+
+                    try:
+                        started_futures.add(getattr(instance, '_started_service'))
                     except AttributeError:
                         pass
 

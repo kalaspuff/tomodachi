@@ -8,13 +8,10 @@ class ExampleHttpService(object):
     name = 'example_http_service'
     log_level = 'INFO'
     discovery = [Registry]
+    message_protocol = JsonBase
     options = {
         'http': {
             'port': 4711
-        },
-        'amqp': {
-            'exchange_name': 'example_exchange',
-            'message_protocol': JsonBase
         }
     }
 

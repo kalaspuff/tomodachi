@@ -57,7 +57,10 @@ class RequestHandler(web_server.RequestHandler):
                 except:
                     pass
 
-            body = ''.encode('utf-8')
+            if status == 400:
+                body = 'Your client has issued a malformed or illegal request'.encode('utf-8')
+            else:
+                body = 'Invalid request'.encode('utf-8')
 
             response = Response(self.writer, status, close=True, server_header=self._server_header)
             if len(body) != 0:
@@ -174,7 +177,7 @@ class HttpTransport(Invoker):
             return None
         context['_http_server_started'] = True
 
-        server_header = context.get('options', {}).get('http', {}).get('server_header', 'tomodachi.io')
+        server_header = context.get('options', {}).get('http', {}).get('server_header', 'tomodachi')
 
         async def _start_server():
             loop = asyncio.get_event_loop()
@@ -217,6 +220,19 @@ class HttpTransport(Invoker):
 
             port = server.sockets[0].getsockname()[1]
             context['_http_port'] = port
+
+            try:
+                stop_method = getattr(obj, '_stop_service')
+            except AttributeError as e:
+                stop_method = None
+            async def stop_service(*args, **kwargs):
+                if stop_method:
+                    await stop_method(*args, **kwargs)
+                server.close()
+                await app.shutdown()
+                await app.cleanup()
+
+            setattr(obj, '_stop_service', stop_service)
 
             for method, pattern, handler in context.get('_http_routes', []):
                 try:
