@@ -147,6 +147,8 @@ class HttpTransport(Invoker):
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
+        default_content_type = context.get('options', {}).get('http', {}).get('content_type')
+
         async def handler(request):
             result = compiled_pattern.match(request.path)
             routine = func(*(obj, request,), **(result.groupdict() if result else {}))
@@ -157,7 +159,7 @@ class HttpTransport(Invoker):
 
             status = 200
             headers = {
-                hdrs.CONTENT_TYPE: 'text/plain; charset=utf-8',
+                hdrs.CONTENT_TYPE: default_content_type or 'text/plain; charset=utf-8'
             }
 
             if isinstance(return_value, dict):
@@ -165,12 +167,12 @@ class HttpTransport(Invoker):
                 if return_value.get('status'):
                     status = int(return_value.get('status'))
                 if return_value.get('headers'):
-                    headers = return_value.get('headers')
+                    headers.update(return_value.get('headers'))
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
                 status = return_value[0]
                 body = return_value[1]
                 if len(return_value) > 2:
-                    headers = return_value[2]
+                    headers.update(return_value[2])
             else:
                 body = return_value
 
@@ -182,6 +184,8 @@ class HttpTransport(Invoker):
         return await cls.start_server(obj, context)
 
     async def error_handler(cls, obj, context, func, status_code):
+        default_content_type = context.get('options', {}).get('http', {}).get('content_type')
+
         async def handler(request):
             routine = func(*(obj, request,), **{})
             if isinstance(routine, types.GeneratorType) or isinstance(routine, types.CoroutineType):
@@ -191,7 +195,7 @@ class HttpTransport(Invoker):
 
             status = int(status_code)
             headers = {
-                hdrs.CONTENT_TYPE: 'text/plain; charset=utf-8',
+                hdrs.CONTENT_TYPE: default_content_type or 'text/plain; charset=utf-8'
             }
 
             if isinstance(return_value, dict):
