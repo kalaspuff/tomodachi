@@ -42,6 +42,9 @@ class ServiceLauncher(object):
         def sigtermHandler(*args):
             logging.getLogger('system').warn('Received termination signal [SIGTERM]')
 
+        if not isinstance(service_files, list) and not isinstance(service_files, set):
+            service_files = [service_files]
+
         loop = asyncio.get_event_loop()
 
         for signame in ('SIGINT', 'SIGTERM'):

@@ -11,7 +11,8 @@ class ExampleHttpService(object):
     message_protocol = JsonBase
     options = {
         'http': {
-            'port': 4711
+            'port': 4711,
+            'access_log': True
         }
     }
 
@@ -24,6 +25,6 @@ class ExampleHttpService(object):
     async def example_with_id(self, request, id):
         return '友達 (id: {})'.format(id)
 
-    @http_error(status_code=403)
+    @http_error(status_code=404)
     async def error_404(self, request):
         return 'error 404'

@@ -3,6 +3,7 @@ import asyncio
 import types
 import logging
 import traceback
+import time
 import http.server
 from html import escape as html_escape
 from aiohttp import web, web_server, web_urldispatcher, hdrs, protocol
@@ -23,6 +24,7 @@ class HttpException(Exception):
 class RequestHandler(web_server.RequestHandler):
     def __init__(self, *args, **kwargs):
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
+        self._access_log = kwargs.pop('access_log', None) if kwargs else None
         super().__init__(*args, **kwargs)
 
     def handle_error(self, status=500, message=None,
@@ -35,6 +37,8 @@ class RequestHandler(web_server.RequestHandler):
         try:
             if self.transport is None:
                 # client has been disconnected during writing.
+                if self._access_log is True:
+                    logging.getLogger('transport.http').info('[http] [499] "DISCONNECT" - - -')
                 return ()
 
             if status == 500:
@@ -77,6 +81,13 @@ class RequestHandler(web_server.RequestHandler):
             drain = response.write_eof()
 
             self.log_access(message, None, response, self._loop.time() - now)
+
+            if self._access_log is True:
+                logging.getLogger('transport.http').info('[http] [{}] "INVALID" {} - -'.format(
+                    status,
+                    len(body)
+                ))
+
             return drain
         finally:
             self.keep_alive(False)
@@ -85,11 +96,12 @@ class RequestHandler(web_server.RequestHandler):
 class Server(web_server.Server):
     def __init__(self, *args, **kwargs):
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
+        self._access_log = kwargs.pop('access_log', None) if kwargs else None
         super().__init__(*args, **kwargs)
 
     def __call__(self):
         return RequestHandler(
-            self, loop=self._loop, server_header=self._server_header,
+            self, loop=self._loop, server_header=self._server_header, access_log=self._access_log,
             **self._kwargs)
 
 
@@ -143,11 +155,26 @@ class HttpTransport(Invoker):
             else:
                 return_value = routine
 
+            status = 200
             headers = {
                 hdrs.CONTENT_TYPE: 'text/plain; charset=utf-8',
-                hdrs.SERVER: 'data'
             }
-            return web.Response(body=return_value.encode('utf-8'), headers=headers)
+
+            if isinstance(return_value, dict):
+                body = return_value.get('body')
+                if return_value.get('status'):
+                    status = int(return_value.get('status'))
+                if return_value.get('headers'):
+                    headers = return_value.get('headers')
+            elif isinstance(return_value, list) or isinstance(return_value, tuple):
+                status = return_value[0]
+                body = return_value[1]
+                if len(return_value) > 2:
+                    headers = return_value[2]
+            else:
+                body = return_value
+
+            return web.Response(body=body.encode('utf-8'), status=status, headers=headers)
 
         context['_http_routes'] = context.get('_http_routes', [])
         context['_http_routes'].append((method.upper(), pattern, handler))
@@ -162,10 +189,26 @@ class HttpTransport(Invoker):
             else:
                 return_value = routine
 
+            status = int(status_code)
             headers = {
-                hdrs.CONTENT_TYPE: 'text/plain; charset=utf-8'
+                hdrs.CONTENT_TYPE: 'text/plain; charset=utf-8',
             }
-            return web.Response(body=return_value.encode('utf-8'), headers=headers)
+
+            if isinstance(return_value, dict):
+                body = return_value.get('body')
+                if return_value.get('status'):
+                    status = int(return_value.get('status'))
+                if return_value.get('headers'):
+                    headers = return_value.get('headers')
+            elif isinstance(return_value, list) or isinstance(return_value, tuple):
+                status = return_value[0]
+                body = return_value[1]
+                if len(return_value) > 2:
+                    headers = return_value[2]
+            else:
+                body = return_value
+
+            return web.Response(body=body.encode('utf-8'), status=status, headers=headers)
 
         context['_http_error_handler'] = context.get('_http_error_handler', {})
         context['_http_error_handler'][int(status_code)] = handler
@@ -178,27 +221,42 @@ class HttpTransport(Invoker):
         context['_http_server_started'] = True
 
         server_header = context.get('options', {}).get('http', {}).get('server_header', 'tomodachi')
+        access_log = context.get('options', {}).get('http', {}).get('access_log')
 
         async def _start_server():
             loop = asyncio.get_event_loop()
+
             logging.getLogger('aiohttp.access').setLevel(logging.WARN)
 
             async def middleware(app, handler):
                 async def middleware_handler(request):
+                    if access_log:
+                        timer = time.time()
                     try:
                         response = await handler(request)
                         response.headers[hdrs.SERVER] = server_header or ''
-                        return response
                     except web.HTTPException as e:
                         error_handler = context.get('_http_error_handler', {}).get(e.status, None)
                         if error_handler:
                             response = await error_handler(request)
                             response.headers[hdrs.SERVER] = server_header or ''
-                            return response
+                        else:
+                            response = e
+                            response.headers[hdrs.SERVER] = server_header or ''
+                            response.body = str(e).encode('utf-8')
+                    finally:
+                        if access_log is True:
+                            request_time = time.time() - timer
+                            logging.getLogger('transport.http').info('[http] [{}] "{} {}{}" {} {} {}'.format(
+                                response.status,
+                                request.method,
+                                request.path,
+                                '?{}'.format(request.query_string) if request.query_string else '',
+                                response.content_length if response.content_length is not None else '-',
+                                request.content_length if request.content_length is not None else '-',
+                                '{0:.5f}s'.format(round(request_time, 5))
+                            ))
 
-                        response = e
-                        response.headers[hdrs.SERVER] = server_header or ''
-                        response.body = str(e).encode('utf-8')
                         return response
 
                 return middleware_handler
@@ -212,7 +270,7 @@ class HttpTransport(Invoker):
 
             try:
                 app.freeze()
-                server = await loop.create_server(Server(app._handle, server_header=server_header or ''), host, port)
+                server = await loop.create_server(Server(app._handle, server_header=server_header or '', access_log=access_log), host, port)
             except OSError as e:
                 error_message = re.sub('.*: ', '', e.strerror)
                 logging.getLogger('transport.http').warn('Unable to bind service [http] to http://{}:{}/ ({})'.format('127.0.0.1' if host == '0.0.0.0' else host, port, error_message))

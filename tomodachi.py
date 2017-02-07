@@ -59,9 +59,8 @@ class TomodachiCLI:
                 watcher = None
             else:
                 watcher = Watcher()
-#            services = set([ServiceContainer(ServiceImporter.import_service_file(arg), configuration) for arg in set(args)])
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
-        sys.exit(2)
+        sys.exit(0)
 
     def main(self, argv):
         try:
