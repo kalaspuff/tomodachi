@@ -5,6 +5,7 @@ import time
 import hashlib
 import re
 import binascii
+import asyncio
 from tomodachi.invoker import Invoker
 
 
@@ -38,10 +39,9 @@ class AmqpTransport(Invoker):
     transport = None
 
     @classmethod
-    async def publish(cls, service, data, routing_key='', exchange_name=''):
+    async def publish(cls, service, data, routing_key='', exchange_name='', wait=True):
         if not cls.channel:
             await cls.connect(cls, service, service.context)
-        channel = cls.channel
         exchange_name = exchange_name or cls.exchange_name
         if not exchange_name:
             exchange_name = 'amq.topic'
@@ -59,14 +59,20 @@ class AmqpTransport(Invoker):
             except AttributeError as e:
                 pass
 
-        success = False
-        while not success:
-            try:
-                await channel.basic_publish(str.encode(payload), exchange_name, cls.encode_routing_key(cls.get_routing_key(routing_key, service.context)))
-                success = True
-            except AssertionError as e:
-                await cls.connect(cls, service, service.context)
-                channel = cls.channel
+        async def _publish_message():
+            success = False
+            while not success:
+                try:
+                    await cls.channel.basic_publish(str.encode(payload), exchange_name, cls.encode_routing_key(cls.get_routing_key(routing_key, service.context)))
+                    success = True
+                except AssertionError as e:
+                    await cls.connect(cls, service, service.context)
+
+        if wait:
+            await _publish_message()
+        else:
+            loop = asyncio.get_event_loop()
+            loop.create_task(_publish_message())
 
     @classmethod
     def get_routing_key(cls, routing_key, context):

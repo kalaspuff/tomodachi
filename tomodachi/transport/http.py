@@ -251,11 +251,15 @@ class HttpTransport(Invoker):
                     finally:
                         if access_log is True:
                             request_time = time.time() - timer
-                            logging.getLogger('transport.http').info('[http] [{}] "{} {}{}" {} {} {}'.format(
+                            version_string = None
+                            if isinstance(request.version, protocol.HttpVersion):
+                                version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
+                            logging.getLogger('transport.http').info('[http] [{}] "{} {}{}{}" {} {} {}'.format(
                                 response.status,
                                 request.method,
                                 request.path,
                                 '?{}'.format(request.query_string) if request.query_string else '',
+                                ' {}'.format(version_string) if version_string else '',
                                 response.content_length if response.content_length is not None else '-',
                                 request.content_length if request.content_length is not None else '-',
                                 '{0:.5f}s'.format(round(request_time, 5))
@@ -269,7 +273,7 @@ class HttpTransport(Invoker):
             for method, pattern, handler in context.get('_http_routes', []):
                 app.router.add_pattern_route(method.upper(), pattern, handler)
 
-            port = context.get('options', {}).get('http', {}).get('port')
+            port = context.get('options', {}).get('http', {}).get('port', 9700)
             host = context.get('options', {}).get('http', {}).get('host', '0.0.0.0')
 
             try:

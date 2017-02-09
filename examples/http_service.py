@@ -1,5 +1,6 @@
 import asyncio
 from tomodachi.discovery.registry import Registry
+from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.http import http, http_error
 
 
@@ -7,6 +8,7 @@ class ExampleHttpService(object):
     name = 'example_http_service'
     log_level = 'INFO'
     discovery = [Registry]
+    message_protocol = JsonBase
     options = {
         'http': {
             'port': 4711,

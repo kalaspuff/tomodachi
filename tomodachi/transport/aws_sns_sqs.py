@@ -12,6 +12,8 @@ import ujson
 import uuid
 from tomodachi.invoker import Invoker
 
+DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'
+
 
 class AWSSNSSQSException(Exception):
     def __init__(self, *args, **kwargs):
@@ -31,7 +33,7 @@ class AWSSNSSQSTransport(Invoker):
     close_waiter = None
 
     @classmethod
-    async def publish(cls, service, data, topic, wait=False):
+    async def publish(cls, service, data, topic, wait=True):
         message_protocol = None
         try:
             message_protocol = service.message_protocol
@@ -89,6 +91,9 @@ class AWSSNSSQSTransport(Invoker):
 
     async def subscribe_handler(cls, obj, context, func, topic, callback_kwargs=None, competing=False):
         async def handler(payload, receipt_handle=None, queue_url=None):
+            if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
+                await cls.delete_message(cls, receipt_handle, queue_url, context)
+                return
             if callback_kwargs:
                 kwargs = {k: None for k in callback_kwargs}
             message_protocol = context.get('message_protocol')
@@ -244,8 +249,7 @@ class AWSSNSSQSTransport(Invoker):
                 error_message = str(e)
                 logging.getLogger('transport.aws_sns_sqs').warn('Unable to delete message [sqs] on AWS ({})'.format(error_message))
 
-        loop = asyncio.get_event_loop()
-        loop.create_task(_delete_message())
+        await _delete_message()
 
     async def create_queue(cls, queue_name, context):
         if not cls.clients or not cls.clients.get('sqs'):
@@ -363,6 +367,7 @@ class AWSSNSSQSTransport(Invoker):
 
         if topic_arn_list:
             queue_policy = cls.generate_queue_policy(queue_arn, topic_arn_list, context)
+            cls.topics[topic] = topic_arn_list[0]
             return await cls.subscribe_topics(cls, topic_arn_list, queue_arn, queue_url, context, queue_policy=queue_policy)
 
         return None
@@ -441,7 +446,6 @@ class AWSSNSSQSTransport(Invoker):
                         receipt_handle = message.get('ReceiptHandle')
                         message_body = ujson.loads(message.get('Body'))
                         payload = message_body.get('Message')
-
                         futures.append(callback(payload, receipt_handle, queue_url))
                     if futures:
                         await asyncio.wait([asyncio.ensure_future(func()) for func in futures if func])
@@ -457,13 +461,29 @@ class AWSSNSSQSTransport(Invoker):
             stop_method = None
         async def stop_service(*args, **kwargs):
             if not cls.close_waiter.done():
-                logging.getLogger('transport.aws_sns_sqs').warn('Draining message pool - may take up to 20 seconds')
                 cls.close_waiter.set_result(None)
-            if not start_waiter.done():
-                start_waiter.set_result(None)
-            await stop_waiter
-            if stop_method:
-                await stop_method(*args, **kwargs)
+                logging.getLogger('transport.aws_sns_sqs').warn('Draining message pool - may take up to 20 seconds')
+
+                for _ in range(0, 100):
+                    if stop_waiter.done():
+                        break
+                    for topic, topic_arn in cls.topics.items():
+                        await cls.publish_message(cls, topic_arn, DRAIN_MESSAGE_PAYLOAD, context)
+                    if not stop_waiter.done():
+                        await asyncio.sleep(0.2)
+
+                if not start_waiter.done():
+                    start_waiter.set_result(None)
+                await stop_waiter
+                if stop_method:
+                    await stop_method(*args, **kwargs)
+                for _, client in cls.clients.items():
+                    await client.close()
+                cls.clients = None
+            else:
+                await stop_waiter
+                if stop_method:
+                    await stop_method(*args, **kwargs)
 
         setattr(obj, '_stop_service', stop_service)
 
