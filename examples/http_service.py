@@ -1,5 +1,6 @@
 import asyncio
-from tomodachi.discovery.registry import Registry
+import os
+from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.http import http, http_error
 
@@ -7,7 +8,7 @@ from tomodachi.transport.http import http, http_error
 class ExampleHttpService(object):
     name = 'example_http_service'
     log_level = 'INFO'
-    discovery = [Registry]
+    discovery = [DummyRegistry]
     message_protocol = JsonBase
     options = {
         'http': {
@@ -16,6 +17,7 @@ class ExampleHttpService(object):
             'access_log': True
         }
     }
+    uuid = os.environ.get('SERVICE_UUID')
 
     @http('GET', r'/example/?')
     async def example(self, request):

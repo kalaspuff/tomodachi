@@ -1,5 +1,6 @@
 import logging
-from tomodachi.discovery.registry import Registry
+import os
+from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
 
@@ -7,7 +8,7 @@ from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
 class ExampleAWSSNSSQSService(object):
     name = 'example_aws_sns_sqs_service'
     log_level = 'INFO'
-    discovery = [Registry]
+    discovery = [AWSSNSRegistration]
     message_protocol = JsonBase
     options = {
         'aws_sns_sqs': {
@@ -17,26 +18,23 @@ class ExampleAWSSNSSQSService(object):
         }
     }
     logger = logging.getLogger('log.{}'.format(name))
+    uuid = os.environ.get('SERVICE_UUID')
 
     @aws_sns_sqs('example.route1', ('data',))
     async def route1a(self, data):
         self.logger.info('Received data (function: route1a) - "{}"'.format(data))
-        pass
 
     @aws_sns_sqs('example.route1', ('data',))
     async def route1b(self, data):
         self.logger.info('Received data (function: route1b) - "{}"'.format(data))
-        pass
 
     @aws_sns_sqs('example.route2', ('data',))
     async def route2(self, data):
         self.logger.info('Received data (function: route2) - "{}"'.format(data))
-        pass
 
     @aws_sns_sqs('example.#', ('metadata', 'data'))
     async def wildcard_route(self, metadata, data):
         self.logger.info('Received data (function: wildcard_route, topic: {}) - "{}"'.format(metadata.get('topic', ''), data))
-        pass
 
     async def _started_service(self):
         async def publish(data, topic):

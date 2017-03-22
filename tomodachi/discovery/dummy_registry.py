@@ -1,7 +1,7 @@
 import logging
 
 
-class Registry(object):
+class DummyRegistry(object):
     http_endpoints = {}
 
     @classmethod
@@ -11,12 +11,12 @@ class Registry(object):
 
     @classmethod
     async def _register_service(cls, service):
-        logging.getLogger('discovery.registry').info('Registering service "{}" [id: {}]'.format(service.name, service.uuid))
+        logging.getLogger('discovery.dummy_registry').info('Registering service "{}" [id: {}]'.format(service.name, service.uuid))
         for host, port, method, pattern in cls.http_endpoints.get(service, []):
             pass
 
     @classmethod
     async def _deregister_service(cls, service):
-        logging.getLogger('discovery.registry').info('Deregistering service "{}" [id: {}]'.format(service.name, service.uuid))
+        logging.getLogger('discovery.dummy_registry').info('Deregistering service "{}" [id: {}]'.format(service.name, service.uuid))
         for host, port, method, pattern in cls.http_endpoints.pop(service, []):
             pass

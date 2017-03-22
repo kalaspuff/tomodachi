@@ -5,6 +5,7 @@ import importlib
 import logging
 import functools
 import datetime
+import uvloop
 import tomodachi.container
 import tomodachi.importer
 import tomodachi.invoker
@@ -45,6 +46,7 @@ class ServiceLauncher(object):
         if not isinstance(service_files, list) and not isinstance(service_files, set):
             service_files = [service_files]
 
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_event_loop()
 
         for signame in ('SIGINT', 'SIGTERM'):
