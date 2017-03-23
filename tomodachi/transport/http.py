@@ -4,14 +4,10 @@ import types
 import logging
 import traceback
 import time
-import http.server
 from html import escape as html_escape
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
 from aiohttp.http import HttpVersion
 from tomodachi.invoker import Invoker
-
-
-RESPONSES = http.server.BaseHTTPRequestHandler.responses
 
 
 class HttpException(Exception):
