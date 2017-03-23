@@ -1,5 +1,6 @@
-import asyncio
+import logging
 import os
+import asyncio
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.http import http, http_error
@@ -17,6 +18,7 @@ class ExampleHttpService(object):
             'access_log': True
         }
     }
+    logger = logging.getLogger('log.{}'.format(name))
     uuid = os.environ.get('SERVICE_UUID')
 
     @http('GET', r'/example/?')

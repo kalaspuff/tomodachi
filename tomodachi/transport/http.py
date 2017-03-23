@@ -6,7 +6,8 @@ import traceback
 import time
 import http.server
 from html import escape as html_escape
-from aiohttp import web, web_server, web_urldispatcher, hdrs, protocol
+from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
+from aiohttp.http import HttpVersion
 from tomodachi.invoker import Invoker
 
 
@@ -21,76 +22,72 @@ class HttpException(Exception):
             self._log_level = 'INFO'
 
 
-class RequestHandler(web_server.RequestHandler):
+class RequestHandler(web_protocol.RequestHandler):
     def __init__(self, *args, **kwargs):
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
         super().__init__(*args, **kwargs)
 
-    def handle_error(self, status=500, message=None,
-                     payload=None, exc=None, headers=None, reason=None):
+    def handle_error(self, request, status=500, exc=None, message=None):
         """Handle errors.
 
         Returns HTTP response with specific status code. Logs additional
         information. It always closes current connection."""
-        now = self._loop.time()
-        try:
-            if self.transport is None:
-                # client has been disconnected during writing.
-                if self._access_log is True:
-                    logging.getLogger('transport.http').info('[http] [499] "DISCONNECT" - - -')
-                return ()
+        if self.transport is None:
+            # client has been disconnected during writing.
+            if self._access_log is True:
+                version_string = None
+                if isinstance(request.version, HttpVersion):
+                    version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
+                logging.getLogger('transport.http').info('[http] [499] {} "{} {}{}{}" - {} -'.format(
+                    request.request_ip,
+                    request.method,
+                    request.path,
+                    '?{}'.format(request.query_string) if request.query_string else '',
+                    ' {}'.format(version_string) if version_string else '',
+                    request.content_length if request.content_length is not None else '-',
+                ))
 
-            if status == 500:
-                self.log_exception("Error handling request")
+        self.log_exception("Error handling request", exc_info=exc)
 
-            try:
-                if reason is None or reason == '':
-                    reason, msg = RESPONSES[status]
-                else:
-                    msg = reason
-            except KeyError:
-                status = 500
-                reason, msg = '???', ''
+        headers = {}
+        headers[hdrs.CONTENT_TYPE] = 'text/plain; charset=utf-8'
 
-            if self.debug and exc is not None:
+        if status == 500:
+            if self.debug:
                 try:
                     tb = traceback.format_exc()
                     tb = html_escape(tb)
-                    msg += '<br><h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
-                except:
+                    msg = "<h1>500 Internal Server Error</h1>"
+                    msg += '<br><h2>Traceback:</h2>\n<pre>'
+                    msg += tb
+                    msg += '</pre>'
+
+                    headers[hdrs.CONTENT_TYPE] = 'text/html; charset=utf-8'
+                except:  # pragma: no cover
                     pass
-
-            if status == 400:
-                body = 'Your client has issued a malformed or illegal request'.encode('utf-8')
             else:
-                body = 'Invalid request'.encode('utf-8')
+                msg = ''
+        else:
+            msg = message
 
-            response = Response(self.writer, status, close=True, server_header=self._server_header)
-            if len(body) != 0:
-                response.add_header(hdrs.CONTENT_TYPE, 'text/plain; charset=utf-8')
-            response.add_header(hdrs.CONTENT_LENGTH, str(len(body)))
-            if headers is not None:
-                for name, value in headers:
-                    response.add_header(name, value)
-            response.send_headers()
+        headers[hdrs.CONTENT_LENGTH] = str(len(msg))
+        headers[hdrs.SERVER] = self._server_header or ''
+        resp = web.Response(status=status, text=msg, headers=headers)
+        resp.force_close()
 
-            response.write(body)
-            # disable CORK, enable NODELAY if needed
-            self.writer.set_tcp_nodelay(True)
-            drain = response.write_eof()
-
-            self.log_access(message, None, response, self._loop.time() - now)
-
+        # some data already got sent, connection is broken
+        if request.writer.output_size > 0 or self.transport is None:
+            self.force_close()
+        elif self.transport is not None:
             if self._access_log is True:
-                logging.getLogger('transport.http').info('[http] [{}] "INVALID" {} - -'.format(
+                logging.getLogger('transport.http').info('[http] [{}] {} "INVALID" {} - -'.format(
                     status,
-                    len(body)
+                    request.request_ip,
+                    len(msg)
                 ))
 
-            return drain
-        finally:
-            self.keep_alive(False)
+        return resp
 
 
 class Server(web_server.Server):
@@ -121,25 +118,10 @@ class UrlDispatcher(web_urldispatcher.UrlDispatcher):
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
         formatter = ''
         resource = DynamicResource(compiled_pattern, formatter, name=name)
-        self._reg_resource(resource)
+        self.register_resource(resource)
         if method == 'GET':
             resource.add_route('HEAD', handler, expect_handler=expect_handler)
         return resource.add_route(method, handler, expect_handler=expect_handler)
-
-
-class Response(protocol.Response):
-    def __init__(self, *args, **kwargs):
-        self._server_header = kwargs.pop('server_header', None) if kwargs else None
-        super().__init__(*args, **kwargs)
-
-    def _add_default_headers(self):
-        if self._server_header is not None:
-            self.headers.setdefault(hdrs.SERVER, self._server_header)
-
-        super()._add_default_headers()
-
-        if self._server_header is None:
-            self.headers.pop(hdrs.SERVER, None)
 
 
 class HttpTransport(Invoker):
@@ -234,38 +216,54 @@ class HttpTransport(Invoker):
 
             async def middleware(app, handler):
                 async def middleware_handler(request):
-                    if access_log:
-                        timer = time.time()
-                    try:
-                        response = await handler(request)
-                        response.headers[hdrs.SERVER] = server_header or ''
-                    except web.HTTPException as e:
-                        error_handler = context.get('_http_error_handler', {}).get(e.status, None)
-                        if error_handler:
-                            response = await error_handler(request)
-                            response.headers[hdrs.SERVER] = server_header or ''
-                        else:
-                            response = e
-                            response.headers[hdrs.SERVER] = server_header or ''
-                            response.body = str(e).encode('utf-8')
-                    finally:
-                        if access_log is True:
-                            request_time = time.time() - timer
-                            version_string = None
-                            if isinstance(request.version, protocol.HttpVersion):
-                                version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
-                            logging.getLogger('transport.http').info('[http] [{}] "{} {}{}{}" {} {} {}'.format(
-                                response.status,
-                                request.method,
-                                request.path,
-                                '?{}'.format(request.query_string) if request.query_string else '',
-                                ' {}'.format(version_string) if version_string else '',
-                                response.content_length if response.content_length is not None else '-',
-                                request.content_length if request.content_length is not None else '-',
-                                '{0:.5f}s'.format(round(request_time, 5))
-                            ))
+                    async def func():
+                        if request.transport:
+                            peername = request.transport.get_extra_info('peername')
+                            request_ip = None
+                            if peername:
+                                request_ip, _ = peername
+                            request.request_ip = request_ip
 
-                        return response
+                        if access_log:
+                            timer = time.time()
+                        response = None
+                        try:
+                            response = await handler(request)
+                            response.headers[hdrs.SERVER] = server_header or ''
+                        except web.HTTPException as e:
+                            error_handler = context.get('_http_error_handler', {}).get(e.status, None)
+                            if error_handler:
+                                response = await error_handler(request)
+                                response.headers[hdrs.SERVER] = server_header or ''
+                            else:
+                                response = e
+                                response.headers[hdrs.SERVER] = server_header or ''
+                                response.body = str(e).encode('utf-8')
+                        finally:
+                            if not request.transport:
+                                response = web.Response(status=499)
+                                response._eof_sent = True
+
+                            if access_log is True:
+                                request_time = time.time() - timer
+                                version_string = None
+                                if isinstance(request.version, HttpVersion):
+                                    version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
+                                logging.getLogger('transport.http').info('[http] [{}] {} "{} {}{}{}" {} {} {}'.format(
+                                    response.status,
+                                    request.request_ip,
+                                    request.method,
+                                    request.path,
+                                    '?{}'.format(request.query_string) if request.query_string else '',
+                                    ' {}'.format(version_string) if version_string else '',
+                                    response.content_length if response.content_length is not None else '-',
+                                    request.content_length if request.content_length is not None else '-',
+                                    '{0:.5f}s'.format(round(request_time, 5))
+                                ))
+
+                            return response
+
+                    return await asyncio.shield(func())
 
                 return middleware_handler
 
