@@ -213,6 +213,8 @@ class HttpTransport(Invoker):
             async def middleware(app, handler):
                 async def middleware_handler(request):
                     async def func():
+                        request._client_max_size = (1024 ** 2) * 100  # default request client size = 1 MB
+
                         if request.transport:
                             peername = request.transport.get_extra_info('peername')
                             request_ip = None
