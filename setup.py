@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+import os
 from setuptools import setup, find_packages
 import tomodachi.__version__
 
@@ -15,6 +16,10 @@ PY_VER = sys.version_info
 
 if not PY_VER >= (3, 5):
     raise RuntimeError("tomodachi doesn't support Python earlier than 3.5")
+
+
+def read(f):
+    return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
 classifiers = [
     'Intended Audience :: Developers',
@@ -33,6 +38,7 @@ setup(name='tomodachi',
       version=tomodachi.__version__,
       description=('Python 3 microservice framework using asyncio with HTTP, '
                    'AMQP and AWS SNS+SQS support.'),
+      long_description='\n\n'.join((read('README.rst'),)),
       classifiers=classifiers,
       author='Carl Oscar Aaro',
       author_email='hello@carloscar.com',
