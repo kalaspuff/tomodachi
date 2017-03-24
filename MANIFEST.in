@@ -1,3 +1,7 @@
 include LICENSE
+include MANIFEST.in
+include README.rst
 graft tomodachi
-global-exclude *.pyc *.swp
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude *.swp
