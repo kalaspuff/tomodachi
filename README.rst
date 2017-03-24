@@ -33,18 +33,19 @@ Basic HTTP based service
         # Request paths are specified as regex for full flexibility
         @http('GET', r'/resource/(?P<id>[^/]+?)/?')
         async def resource(self, request, id):
-            # Return can also be a tuple / dict for more complex responses
-            # String return value = 200 OK
+            # Returning a string value normally means 200 OK
             return 'id = {}'.format(id)
 
         @http('GET', r'/health')
         async def health_check(self, request):
+            # Return can also be a tuple / dict for more complex responses
+            # For example if you need to set your own status code or headers
             return {
                 'body': 'Healthy',
                 'status': 200
             }
 
-        # Specify custom 404 response
+        # Specify custom 404 catch-all response
         @http_error(status_code=404)
         async def error_404(self, request):
             return 'error 404'
