@@ -9,8 +9,8 @@ HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
 AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
 use of any type of transport layer available.
 
-Tomodachi (友達) means friends, since microservices wouldn't make sense on
-their own and need to have a friend to communicate. 😍 👬 👭 👫
+Tomodachi (友達) means friends - microservices wouldn't make sense on their own
+and need to have a friend to communicate. 😍 👬 👭 👫
 
 
 Installation via pip
