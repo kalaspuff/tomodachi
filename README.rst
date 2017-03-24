@@ -7,9 +7,10 @@ RabbitMQ / AMQP and AWS SNS+SQS support for event bus based communication.
 Tomodachi is a tiny framework designed to build fast microservices listening on
 HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
 AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
-use of any type of transport layer available. Tomodachi means friend or friends
-since microservices wouldn't make sense on their own, they need to have a
-friend to communicate with for great potential. 👬 👭 👫 😍
+use of any type of transport layer available.
+
+Tomodachi (友達) means friends, since microservices wouldn't make sense on
+their own and need to have a friend to communicate. 😍 👬 👭 👫
 
 
 Installation via pip
