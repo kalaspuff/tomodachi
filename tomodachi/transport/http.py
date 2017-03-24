@@ -203,7 +203,7 @@ class HttpTransport(Invoker):
         context['_http_server_started'] = True
 
         server_header = context.get('options', {}).get('http', {}).get('server_header', 'tomodachi')
-        access_log = context.get('options', {}).get('http', {}).get('access_log')
+        access_log = context.get('options', {}).get('http', {}).get('access_log', True)
 
         async def _start_server():
             loop = asyncio.get_event_loop()
