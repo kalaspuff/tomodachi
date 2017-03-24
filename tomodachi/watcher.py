@@ -13,19 +13,21 @@ class Watcher(object):
             directory = os.path.realpath(sys.argv[0].rsplit('/', 1)[0])
             if os.path.isfile(directory):
                 directory = os.path.dirname(directory)
-            self.root = directory
-
+            self.root = [directory]
+        else:
+            self.root = root
         self.update_watched_files()
 
     def update_watched_files(self):
         watched_files = {}
-        for root, dirs, files in os.walk(self.root):
-            for file in files:
-                if file.endswith(".py") and '/.' not in os.path.join(root, file):
-                    watched_files[(os.path.join(root, file))] = os.path.getmtime(os.path.join(root, file))
-            for _dir in dirs:
-                if '__pycache__' not in os.path.join(root, _dir) and '/.' not in os.path.join(root, _dir):
-                    watched_files[(os.path.join(root, _dir))] = os.path.getmtime(os.path.join(root, _dir))
+        for r in self.root:
+            for root, dirs, files in os.walk(r):
+                for file in files:
+                    if file.endswith(".py") and '/.' not in os.path.join(root, file):
+                        watched_files[(os.path.join(root, file))] = os.path.getmtime(os.path.join(root, file))
+                for _dir in dirs:
+                    if '__pycache__' not in os.path.join(root, _dir) and '/.' not in os.path.join(root, _dir):
+                        watched_files[(os.path.join(root, _dir))] = os.path.getmtime(os.path.join(root, _dir))
 
         if self.watched_files and self.watched_files != watched_files:
             added = [k[(len(self.root) + 1):] for k in watched_files.keys() if k not in self.watched_files.keys()]

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import sys
 import getopt
 import logging
@@ -54,7 +55,11 @@ class CLI:
                 args.pop(index)
                 watcher = None
             else:
-                watcher = Watcher()
+                cwd = os.getcwd()
+                root_directories = [os.getcwd()]
+                for arg in set(args):
+                    root_directories.append(os.path.dirname('{}/{}'.format(os.path.realpath(cwd), arg)))
+                watcher = Watcher(root=root_directories)
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(0)
 
