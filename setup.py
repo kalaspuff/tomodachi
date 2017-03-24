@@ -4,11 +4,11 @@ from setuptools import setup, find_packages
 import tomodachi.__version__
 
 install_requires = [
-    'aiohttp==1.3.5',
+    'aiohttp==2.0.2',
     'aioamqp==0.8.2',
-    'aiobotocore==0.2.3',
     'ujson>=1.35',
-    'uvloop>=0.8.0'
+    'uvloop>=0.8.0',
+    # 'aiobotocore==0.2.3'
 ]
 
 PY_VER = sys.version_info
