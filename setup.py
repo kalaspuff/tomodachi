@@ -48,5 +48,6 @@ setup(name='tomodachi',
                 'aws, sns, sqs, amqp, rabbitmq, http, easy, fast, python 3'),
       zip_safe=False,
       packages=find_packages(),
+      platforms='any',
       include_package_data=True
       )

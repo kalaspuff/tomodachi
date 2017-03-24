@@ -1,18 +1,26 @@
 tomodachi
-===========
+=========
 
-Python 3 microservice framework using asyncio with HTTP, RabbitMQ / AMQP and AWS SNS+SQS support for event bus based communication.
+Python 3 microservice framework using asyncio (async / await) with HTTP,
+RabbitMQ / AMQP and AWS SNS+SQS support for event bus based communication.
+
+Tomodachi is a tiny framework designed to build fast microservices listening on
+HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
+AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
+use of any type of transport layer available. Tomodachi means friend or friends
+since microservices wouldn't make sense on their own, they need to have a
+friend to communicate with for great potential. 👬 👭 👫 😍
 
 
-Install
--------
+Installation via pip
+--------------------
 ::
 
     $ pip install tomodachi
 
 
 Basic HTTP based service
--------------
+------------------------
 .. code:: python
 
     from tomodachi.transport.http import http, http_error
@@ -28,18 +36,25 @@ Basic HTTP based service
             # String return value = 200 OK
             return 'id = {}'.format(id)
 
+        @http('GET', r'/health')
+        async def health_check(self, request):
+            return {
+                'body': 'Healthy',
+                'status': 200
+            }
+
         # Specify custom 404 response
         @http_error(status_code=404)
         async def error_404(self, request):
             return 'error 404'
 
 
-Run Service
+Run service
 -----------
 ::
 
     $ tomodachi run service.py
-    # service will spin up
+
 
 Requirements
 ------------
