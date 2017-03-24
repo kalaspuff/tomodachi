@@ -263,7 +263,7 @@ class HttpTransport(Invoker):
 
                 return middleware_handler
 
-            app = web.Application(loop=loop, router=UrlDispatcher(), middlewares=[middleware])
+            app = web.Application(loop=loop, router=UrlDispatcher(), middlewares=[middleware], client_max_size=(1024 ** 2) * 100)
             for method, pattern, handler in context.get('_http_routes', []):
                 app.router.add_pattern_route(method.upper(), pattern, handler)
 
