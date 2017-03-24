@@ -12,4 +12,4 @@ six==1.10.0
 ujson==1.35
 uvloop==0.8.0
 yarl==0.10.0
-pytest==3.0.7
+pytest-cov==2.4.0
