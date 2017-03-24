@@ -157,7 +157,11 @@ class HttpTransport(Invoker):
             return web.Response(body=body.encode('utf-8'), status=status, headers=headers)
 
         context['_http_routes'] = context.get('_http_routes', [])
-        context['_http_routes'].append((method.upper(), pattern, handler))
+        if isinstance(method, list) or isinstance(method, tuple):
+            for m in method:
+                context['_http_routes'].append((m.upper(), pattern, handler))
+        else:
+            context['_http_routes'].append((method.upper(), pattern, handler))
 
         return await cls.start_server(obj, context)
 
