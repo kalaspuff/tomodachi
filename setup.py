@@ -40,7 +40,7 @@ setup(name='tomodachi',
       license='MIT',
       entry_points={
           'console_scripts': [
-              'tomodachi = tomodachi:cli_entrypoint'
+              'tomodachi = tomodachi.cli:cli_entrypoint'
           ]
       },
       install_requires=install_requires,

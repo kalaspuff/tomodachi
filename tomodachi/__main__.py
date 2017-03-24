@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import tomodachi
+import tomodachi.cli
 
 if __name__ == "__main__":
-    tomodachi.cli_entrypoint()
+    tomodachi.cli.cli_entrypoint()

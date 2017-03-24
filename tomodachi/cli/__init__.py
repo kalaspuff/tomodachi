@@ -70,3 +70,9 @@ class CLI:
             if args[0] == 'run':
                 self.run_command(args[1:])
         self.help_command()
+
+
+def cli_entrypoint(argv=None):
+    if argv is None:
+        argv = sys.argv
+    return CLI().main(sys.argv[1:])

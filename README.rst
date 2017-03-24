@@ -15,7 +15,6 @@ Basic HTTP based service
 -------------
 .. code:: python
 
-    import asyncio
     from tomodachi.transport.http import http, http_error
 
 
