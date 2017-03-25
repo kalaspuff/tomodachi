@@ -10,10 +10,10 @@ class Watcher(object):
 
     def __init__(self, root=None):
         if not root:
-            directory = os.path.realpath(sys.argv[0].rsplit('/', 1)[0])
-            if os.path.isfile(directory):
+           directory = os.path.realpath(sys.argv[0].rsplit('/', 1)[0])
+           if os.path.isfile(directory):
                 directory = os.path.dirname(directory)
-            self.root = [directory]
+           self.root = [directory]
         else:
             self.root = root
         self.update_watched_files()
