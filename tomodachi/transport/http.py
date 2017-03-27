@@ -217,8 +217,6 @@ class HttpTransport(Invoker):
             async def middleware(app, handler):
                 async def middleware_handler(request):
                     async def func():
-                        request._client_max_size = (1024 ** 2) * 100  # default request client size = 1 MB
-
                         if request.transport:
                             peername = request.transport.get_extra_info('peername')
                             request_ip = None
@@ -278,7 +276,7 @@ class HttpTransport(Invoker):
 
             try:
                 app.freeze()
-                server = await loop.create_server(Server(app._handle, server_header=server_header or '', access_log=access_log), host, port)
+                server = await loop.create_server(Server(app._handle, request_factory=app._make_request, server_header=server_header or '', access_log=access_log), host, port)
             except OSError as e:
                 error_message = re.sub('.*: ', '', e.strerror)
                 logging.getLogger('transport.http').warn('Unable to bind service [http] to http://{}:{}/ ({})'.format('127.0.0.1' if host == '0.0.0.0' else host, port, error_message))
