@@ -6,7 +6,7 @@ import tomodachi.__version__
 
 install_requires = [
     'aiohttp>=2.0.0',
-    'aioamqp==0.8.2',
+    'aioamqp>=0.9.0',
     'ujson>=1.35',
     'uvloop>=0.8.0',
     # 'aiobotocore=>0.2.4'
