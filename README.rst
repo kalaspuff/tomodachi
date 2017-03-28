@@ -80,3 +80,13 @@ Requirements
 .. _aiohttp: https://github.com/aio-libs/aiohttp
 .. _ujson: https://github.com/esnme/ultrajson
 .. _uvloop: https://github.com/MagicStack/uvloop
+
+
+License
+-------
+Offered under the `MIT license <https://github.com/kalaspuff/tomodachi/blob/master/LICENSE>`_
+
+
+Source code
+-----------
+The latest developer version of tomodachi is available at the GitHub repo https://github.com/kalaspuff/tomodachi
