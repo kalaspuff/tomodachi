@@ -2,6 +2,9 @@
     :target: https://travis-ci.org/kalaspuff/tomodachi
 .. image:: https://img.shields.io/pypi/v/tomodachi.svg
     :target: https://pypi.python.org/pypi/tomodachi
+.. image:: https://img.shields.io/pypi/pyversions/tomodachi.svg
+    :target: https://pypi.python.org/pypi/tomodachi
+
 
 tomodachi
 =========
