@@ -1,0 +1,9 @@
+{
+    "options": {
+        "http": {
+            "port": 4711,
+            "access_log": true
+        }
+    },
+    "uuid": "21a24416-1427-4603-c7c9-0ff8ab1f1c20"
+}

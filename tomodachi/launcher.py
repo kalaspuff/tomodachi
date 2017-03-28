@@ -63,7 +63,7 @@ class ServiceLauncher(object):
                 logging.getLogger('watcher.restart').warn('Restarting services')
                 stop_services(loop)
 
-            loop.run_until_complete(watcher.watch(loop=loop, callback_func=_watcher_restart))
+            watcher_future = loop.run_until_complete(watcher.watch(loop=loop, callback_func=_watcher_restart))
 
         cls.restart_services = True
         init_modules = [m for m in sys.modules.keys()]
@@ -100,3 +100,8 @@ class ServiceLauncher(object):
             importlib.reload(tomodachi.invoker)
             importlib.reload(tomodachi.invoker.base)
             importlib.reload(tomodachi.importer)
+
+        if watcher:
+            if not watcher_future.done():
+                watcher_future.set_result(None)
+                loop.run_until_complete(watcher_future)

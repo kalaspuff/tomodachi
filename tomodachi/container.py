@@ -10,7 +10,7 @@ from tomodachi.config import merge_dicts
 
 
 class ServiceContainer(object):
-    def __init__(self, module_import, configuration):
+    def __init__(self, module_import, configuration=None):
         self.module_import = module_import
         try:
             self.module_name = module_import.__name__.rsplit('/', 1)[1]
@@ -21,6 +21,8 @@ class ServiceContainer(object):
 
         self.logger = logging.getLogger('services.{}'.format(self.module_name))
         self._close_waiter = asyncio.Future()
+
+        self.started_waiter = asyncio.Future()
 
         def catch_uncaught_exceptions(exc_cls, exc, tb):
             raise exc
@@ -161,6 +163,9 @@ class ServiceContainer(object):
         else:
             self.logger.warn('No transports defined in service file')
             self.stop_service()
+
+        self.services_started = services_started
+        self.started_waiter.set_result(services_started)
 
         await self.wait_stopped()
         for name, instance, log_level in services_started:

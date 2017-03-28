@@ -9,25 +9,32 @@ from tomodachi.config import parse_config_files
 
 
 class CLI:
+    def help_command_usage(self):
+        return ('Usage: tomodachi.py subcommand [options] [args]\n'
+                '\n'
+                'Options:\n'
+                '  -h, --help            show this help message and exit\n'
+                '\n'
+                'Available subcommands:\n'
+                '  run <service ...> [-c <config-file ...>] [--production]\n'
+                '  -c, --config          use json configuration files\n'
+                '  --production          disable restart on file changes\n'
+                '\n'
+                )
+
     def help_command(self):
-        print('Usage: tomodachi.py subcommand [options] [args]')
-        print()
-        print('Options:')
-        print('  -h, --help            show this help message and exit')
-        print()
-        print('Available subcommands:')
-        print('  run <service ...> [-c <config-file ...>] [--production]')
-        print('  -c, --config          use json configuration files')
-        print('  --production          disable restart on file changes')
-        print()
+        print(self.help_command_usage())
         sys.exit(2)
+
+    def run_command_usage(self):
+        return 'Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--production]'
 
     def run_command(self, args):
         logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=logging.INFO)
         logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')
 
         if len(args) == 0:
-            print('Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--production]')
+            print(self.run_command_usage())
         else:
             configuration = None
             if '-c' in args or '--config' in args:
@@ -80,4 +87,4 @@ class CLI:
 def cli_entrypoint(argv=None):
     if argv is None:
         argv = sys.argv
-    return CLI().main(sys.argv[1:])
+    return CLI().main(argv[1:])
