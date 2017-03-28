@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 import tomodachi.__version__
 
 install_requires = [
-    'aiohttp==2.0.2',
+    'aiohttp>=2.0.0',
     'aioamqp==0.8.2',
     'ujson>=1.35',
     'uvloop>=0.8.0',
