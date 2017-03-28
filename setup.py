@@ -9,7 +9,7 @@ install_requires = [
     'aioamqp==0.8.2',
     'ujson>=1.35',
     'uvloop>=0.8.0',
-    # 'aiobotocore==0.2.3'
+    # 'aiobotocore=>0.2.4'
 ]
 
 PY_VER = sys.version_info
