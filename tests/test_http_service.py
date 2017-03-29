@@ -1,5 +1,7 @@
 import aiohttp
 import asyncio
+import pytest
+from multidict import CIMultiDictProxy
 from run_test_service_helper import start_service
 
 
@@ -37,6 +39,18 @@ def test_request_http_service(monkeypatch, capsys):
             response = await client.head('http://127.0.0.1:{}/test'.format(port))
             assert response.status == 200
 
+            response = await client.get('http://127.0.0.1:{}/dict'.format(port))
+            assert response.status == 200
+            assert await response.text() == 'test dict'
+            assert isinstance(response.headers, CIMultiDictProxy)
+            assert response.headers.get('X-Dict') == 'test'
+
+            response = await client.get('http://127.0.0.1:{}/tuple'.format(port))
+            assert response.status == 200
+            assert await response.text() == 'test tuple'
+            assert isinstance(response.headers, CIMultiDictProxy)
+            assert response.headers.get('X-Tuple') == 'test'
+
             _id = '123456789'
             response = await client.get('http://127.0.0.1:{}/test/{}'.format(port, _id))
             assert response.status == 200
@@ -45,6 +59,19 @@ def test_request_http_service(monkeypatch, capsys):
             response = await client.get('http://127.0.0.1:{}/non-existant-url'.format(port))
             assert response.status == 404
             assert await response.text() == 'test 404'
+
+            assert instance.slow_request is False
+            response = None
+            with pytest.raises(asyncio.TimeoutError):
+                response = await asyncio.shield(client.get('http://127.0.0.1:{}/slow'.format(port), timeout=0.1))
+            assert response is None
+            assert instance.slow_request is False
+
+            await asyncio.sleep(2.0)
+            assert instance.slow_request is True
+
+            response = await client.get('http://127.0.0.1:{}/slow'.format(port), timeout=3.0)
+            assert response is not None
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(_async(loop))

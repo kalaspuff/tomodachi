@@ -15,6 +15,7 @@ class HttpService(object):
     }
     uuid = None
     closer = asyncio.Future()
+    slow_request = False
 
     @http('GET', r'/test/?')
     async def test(self, request):
@@ -23,6 +24,28 @@ class HttpService(object):
     @http('GET', r'/test/(?P<id>[^/]+?)/?')
     async def test_with_id(self, request, id):
         return 'test {}'.format(id)
+
+    @http('GET', r'/slow/?')
+    async def test_slow(self, request):
+        await asyncio.sleep(2.0)
+        self.slow_request = True
+        return 'test'
+
+    @http(['GET'], r'/dict/?')
+    async def test_dict(self, request):
+        return {
+            'status': 200,
+            'body': 'test dict',
+            'headers': {
+                'X-Dict': 'test'
+            }
+        }
+
+    @http('GET', r'/tuple/?')
+    async def test_tuple(self, request):
+        return (200, 'test tuple', {
+            'X-Tuple': 'test'
+        })
 
     @http_error(status_code=404)
     async def test_404(self, request):
