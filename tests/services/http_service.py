@@ -47,6 +47,15 @@ class HttpService(object):
             'X-Tuple': 'test'
         })
 
+    @http('GET', r'/exception/?')
+    async def test_exception(self, request):
+        raise Exception('test')
+
+    @http('GET', r'/slow-exception/?')
+    async def test_slow_exception(self, request):
+        await asyncio.sleep(2.0)
+        raise Exception('test')
+
     @http_error(status_code=404)
     async def test_404(self, request):
         return 'test 404'

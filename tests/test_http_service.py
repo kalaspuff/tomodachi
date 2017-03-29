@@ -32,6 +32,7 @@ def test_request_http_service(monkeypatch, capsys):
             response = await client.get('http://127.0.0.1:{}/test'.format(port))
             assert response.status == 200
             assert await response.text() == 'test'
+            assert response.headers.get('Server') == 'tomodachi'
 
             response = await client.post('http://127.0.0.1:{}/test'.format(port))
             assert response.status == 405
@@ -59,6 +60,17 @@ def test_request_http_service(monkeypatch, capsys):
             response = await client.get('http://127.0.0.1:{}/non-existant-url'.format(port))
             assert response.status == 404
             assert await response.text() == 'test 404'
+
+            response = await client.get('http://127.0.0.1:{}/exception'.format(port))
+            assert response is not None
+            assert response.status == 500
+            assert isinstance(response.headers, CIMultiDictProxy)
+            assert response.headers.get('Server') == 'tomodachi'
+
+            response = None
+            with pytest.raises(asyncio.TimeoutError):
+                response = await asyncio.shield(client.get('http://127.0.0.1:{}/slow-exception'.format(port), timeout=0.1))
+            assert response is None
 
             assert instance.slow_request is False
             response = None
