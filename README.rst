@@ -8,8 +8,8 @@
     :target: https://codecov.io/gh/kalaspuff/tomodachi
 
 
-tomodachi
-=========
+tomodachi - a lightweight microservices framework with asyncio
+==============================================================
 
 Python 3 microservice framework using asyncio (async / await) with HTTP,
 RabbitMQ / AMQP and AWS SNS+SQS support for event bus based communication.
@@ -19,19 +19,22 @@ HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
 AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
 use of any type of transport layer available.
 
-Tomodachi (友達) means friends - microservices wouldn't make sense on their own
-and need to have a friend to communicate. 😍 👬 👭 👫
+*Tomodachi* (**友達**) *means friends – and since microservices wouldn't make 
+sense on their own I think they need to be friends with each other.* 😍 👬 👭 👫
 
 
-Installation via pip
---------------------
+How do I use this?
+==================
+
+Installation via pip 🌮
+----------------------
 ::
 
     $ pip install tomodachi
 
 
-Basic HTTP based service
-------------------------
+Basic HTTP based service 🌟
+--------------------------
 .. code:: python
 
     from tomodachi.transport.http import http, http_error
@@ -61,14 +64,14 @@ Basic HTTP based service
             return 'error 404'
 
 
-Run service
------------
+Run service 😎
+-------------
 ::
 
     $ tomodachi run service.py
 
 
-Requirements
+Requirements 👍
 ------------
 * Python_ 3.5+
 * aiohttp_
@@ -84,11 +87,23 @@ Requirements
 .. _uvloop: https://github.com/MagicStack/uvloop
 
 
-License
--------
+License 🙋
+---------
 Offered under the `MIT license <https://github.com/kalaspuff/tomodachi/blob/master/LICENSE>`_
 
 
-Source code
------------
+Source code 🦄
+-------------
 The latest developer version of tomodachi is available at the GitHub repo https://github.com/kalaspuff/tomodachi
+
+
+Questions? 🙈
+------------
+What is the best way to run a tomodachi service?
+  There is no way to tell you how to orchestrate your infrastructure. Some people may run it containerized in a Docker environment, deployed via Terraform and some may run several services on the same environment, on the same machine. There are no standards and we're not here to tell you about your best practices.
+
+Are there any more example services?
+  There are a few examples in the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples>`_ folder, including examples to publish events/messages to an AWS SNS topic and subscribe to an AWS SQS queue. There's also a similar example of how to work with pub-sub for RabbitMQ via AMQP transport protocol.
+
+Why should I use this?
+  I'm not saying you should, but I'm not saying you shouldn't. ``tomodachi`` is a perfect place to start when experimenting with your architecture or trying out a concept for a new service. It may not have all the features you desire and it may never do.
