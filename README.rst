@@ -97,8 +97,8 @@ Source code 🦄
 The latest developer version of tomodachi is available at the GitHub repo https://github.com/kalaspuff/tomodachi
 
 
-Questions? 🙈
-------------
+Any questions?
+==============
 What is the best way to run a tomodachi service?
   There is no way to tell you how to orchestrate your infrastructure. Some people may run it containerized in a Docker environment, deployed via Terraform and some may run several services on the same environment, on the same machine. There are no standards and we're not here to tell you about your best practices.
 
