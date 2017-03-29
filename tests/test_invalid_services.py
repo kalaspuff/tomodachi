@@ -16,3 +16,11 @@ def test_invalid_service(monkeypatch, capsys):
 
     out, err = capsys.readouterr()
     assert 'Unable to load service file' in err
+
+
+def test_import_error(monkeypatch, capsys):
+    with pytest.raises(ImportError):
+        services, future = start_service('tests/services/import_error_service.py', monkeypatch)
+
+    out, err = capsys.readouterr()
+    assert 'Invalid service, unable to load service file' in err
