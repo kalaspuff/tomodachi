@@ -5,11 +5,11 @@ from setuptools import setup, find_packages
 import tomodachi.__version__
 
 install_requires = [
-    'aiohttp>=2.0.0',
+    'aiohttp>=2.0.5',
     'aioamqp>=0.9.0',
     'ujson>=1.35',
     'uvloop>=0.8.0',
-    # 'aiobotocore=>0.2.4'
+    'aiobotocore>=0.2.4'
 ]
 
 PY_VER = sys.version_info
@@ -43,6 +43,7 @@ setup(name='tomodachi',
       author='Carl Oscar Aaro',
       author_email='hello@carloscar.com',
       url='https://github.com/kalaspuff/tomodachi',
+      download_url='https://pypi.python.org/pypi/tomodachi',
       license='MIT',
       entry_points={
           'console_scripts': [

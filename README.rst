@@ -1,15 +1,13 @@
+tomodachi - a lightweight microservices framework with asyncio
+==============================================================
 .. image:: https://travis-ci.org/kalaspuff/tomodachi.svg?branch=master
     :target: https://travis-ci.org/kalaspuff/tomodachi
 .. image:: https://img.shields.io/pypi/v/tomodachi.svg
     :target: https://pypi.python.org/pypi/tomodachi
-.. image:: https://img.shields.io/pypi/pyversions/tomodachi.svg
-    :target: https://pypi.python.org/pypi/tomodachi
 .. image:: https://codecov.io/gh/kalaspuff/tomodachi/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/kalaspuff/tomodachi
-
-
-tomodachi - a lightweight microservices framework with asyncio
-==============================================================
+.. image:: https://img.shields.io/pypi/pyversions/tomodachi.svg
+    :target: https://pypi.python.org/pypi/tomodachi
 
 Python 3 microservice framework using asyncio (async / await) with HTTP,
 RabbitMQ / AMQP and AWS SNS+SQS support for event bus based communication.
@@ -27,14 +25,14 @@ How do I use this?
 ==================
 
 Installation via pip 🌮
-----------------------
+-----------------------
 ::
 
     $ pip install tomodachi
 
 
 Basic HTTP based service 🌟
---------------------------
+---------------------------
 .. code:: python
 
     from tomodachi.transport.http import http, http_error
@@ -65,14 +63,14 @@ Basic HTTP based service 🌟
 
 
 Run service 😎
--------------
+--------------
 ::
 
     $ tomodachi run service.py
 
 
 Requirements 👍
-------------
+---------------
 * Python_ 3.5+
 * aiohttp_
 * aiobotocore_
@@ -88,12 +86,12 @@ Requirements 👍
 
 
 License 🙋
----------
+----------
 Offered under the `MIT license <https://github.com/kalaspuff/tomodachi/blob/master/LICENSE>`_
 
 
 Source code 🦄
--------------
+--------------
 The latest developer version of tomodachi is available at the GitHub repo https://github.com/kalaspuff/tomodachi
 
 
