@@ -112,4 +112,4 @@ Should I run this in production?
   It's all still highly experimental and it depends on other experimental projects, so you have to be in charge here and decide for yourself. Let me know if you do however!
 
 Who built this and why?
-  My name is Carl Oscar Aaro and I'm a coder from Sweden. I simply wanted to learn more about asyncio and needed a constructive off-work project to experiment with, and here we are. 🎉
+  My name is **Carl Oscar Aaro** and I'm a coder from Sweden. I simply wanted to learn more about asyncio and needed a constructive off-work project to experiment with – and here we are. 🎉
