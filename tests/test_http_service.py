@@ -4,7 +4,7 @@ from run_test_service_helper import start_service
 
 
 def test_start_http_service(monkeypatch, capsys):
-    services, future = start_service('tests/http_service.py', monkeypatch)
+    services, future = start_service('tests/services/http_service.py', monkeypatch)
 
     assert services is not None
     assert len(services) == 1
@@ -14,13 +14,14 @@ def test_start_http_service(monkeypatch, capsys):
     port = instance.context.get('_http_port')
     assert port is not None
     assert port != 0
+    assert instance.uuid is not None
     instance.stop_service()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(future)
 
 
 def test_request_http_service(monkeypatch, capsys):
-    services, future = start_service('tests/http_service.py', monkeypatch)
+    services, future = start_service('tests/services/http_service.py', monkeypatch)
     instance = services.get('dummy_http')
     port = instance.context.get('_http_port')
 

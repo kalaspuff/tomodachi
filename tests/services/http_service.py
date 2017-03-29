@@ -13,6 +13,7 @@ class HttpService(object):
             'port': None,
         }
     }
+    uuid = None
     closer = asyncio.Future()
 
     @http('GET', r'/test/?')

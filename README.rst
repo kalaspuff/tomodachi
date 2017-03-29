@@ -4,6 +4,8 @@
     :target: https://pypi.python.org/pypi/tomodachi
 .. image:: https://img.shields.io/pypi/pyversions/tomodachi.svg
     :target: https://pypi.python.org/pypi/tomodachi
+.. image:: https://codecov.io/gh/kalaspuff/tomodachi/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/kalaspuff/tomodachi
 
 
 tomodachi

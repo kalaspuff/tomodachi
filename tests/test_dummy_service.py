@@ -3,7 +3,7 @@ from run_test_service_helper import start_service
 
 
 def test_dummy_service(monkeypatch, capsys):
-    services, future = start_service('tests/dummy_service.py', monkeypatch)
+    services, future = start_service('tests/services/dummy_service.py', monkeypatch)
 
     assert services is not None
     assert len(services) == 1
@@ -18,7 +18,7 @@ def test_dummy_service(monkeypatch, capsys):
 
 
 def test_dummy_service_without_py_ending(monkeypatch, capsys):
-    services, future = start_service('tests/dummy_service', monkeypatch)
+    services, future = start_service('tests/services/dummy_service', monkeypatch)
 
     assert services is not None
     assert len(services) == 1

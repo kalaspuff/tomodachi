@@ -8,14 +8,16 @@ def test_merge_dicts():
         'string': 'string',
         'dict': {
             'value_in_dict': True
-        }
+        },
+        'replace_value': 100
     }
 
     dict2 = {
         'number_list': [2, 10],
         'dict': {
             'another_value_in_dict': Decimal(10.0)
-        }
+        },
+        'replace_value': 200
     }
 
     result = merge_dicts(dict1, dict2)
@@ -25,13 +27,14 @@ def test_merge_dicts():
         'dict': {
             'value_in_dict': True,
             'another_value_in_dict': Decimal(10.0)
-        }
+        },
+        'replace_value': 200
     }
     assert result == expected_result
 
 
 def test_parse_config_file():
-    result = parse_config_files('tests/config_file.json')
+    result = parse_config_files('tests/configs/config_file.json')
     expected_result = {
         'options': {
             'http': {
@@ -42,3 +45,8 @@ def test_parse_config_file():
         'uuid': '21a24416-1427-4603-c7c9-0ff8ab1f1c20'
     }
     assert result == expected_result
+
+
+def test_parse_no_config_file():
+    result = parse_config_files([])
+    assert result is None

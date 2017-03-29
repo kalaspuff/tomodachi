@@ -26,7 +26,7 @@ def testcli_start_service(monkeypatch, capsys):
     monkeypatch.setattr(logging.root, 'handlers', [])
 
     with pytest.raises(SystemExit):
-        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/dummy_service.py'])
+        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/dummy_service.py'])
 
     out, err = capsys.readouterr()
     assert err != ''
@@ -38,7 +38,7 @@ def testcli_start_service_production_mode(monkeypatch, capsys):
     monkeypatch.setattr(logging.root, 'handlers', [])
 
     with pytest.raises(SystemExit):
-        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/dummy_service.py', '--production'])
+        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/dummy_service.py', '--production'])
 
     out, err = capsys.readouterr()
     assert err != ''
@@ -49,7 +49,7 @@ def testcli_start_service_with_config(monkeypatch, capsys):
     monkeypatch.setattr(logging.root, 'handlers', [])
 
     with pytest.raises(SystemExit):
-        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/dummy_service.py', '-c', 'tests/config_file.json'])
+        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/dummy_service.py', '-c', 'tests/configs/config_file.json'])
 
     out, err = capsys.readouterr()
     assert 'Starting services' in out
@@ -60,7 +60,7 @@ def testcli_start_service_with_non_existing_config(monkeypatch, capsys):
     monkeypatch.setattr(logging.root, 'handlers', [])
 
     with pytest.raises(SystemExit):
-        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/dummy_service.py', '-c', 'tests/without_config_file.json'])
+        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/dummy_service.py', '-c', 'tests/configs/without_config_file.json'])
 
     out, err = capsys.readouterr()
     assert 'Starting services' not in out
