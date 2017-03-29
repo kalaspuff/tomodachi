@@ -10,7 +10,7 @@ def test_start_http_service(monkeypatch, capsys):
 
     assert services is not None
     assert len(services) == 1
-    instance = services.get('dummy_http')
+    instance = services.get('test_http')
     assert instance is not None
 
     port = instance.context.get('_http_port')
@@ -24,7 +24,7 @@ def test_start_http_service(monkeypatch, capsys):
 
 def test_request_http_service(monkeypatch, capsys):
     services, future = start_service('tests/services/http_service.py', monkeypatch)
-    instance = services.get('dummy_http')
+    instance = services.get('test_http')
     port = instance.context.get('_http_port')
 
     async def _async(loop):

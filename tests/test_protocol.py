@@ -8,7 +8,7 @@ from run_test_service_helper import start_service
 def test_json_base(monkeypatch, capsys):
     services, future = start_service('tests/services/dummy_service.py', monkeypatch)
 
-    instance = services.get('dummy')
+    instance = services.get('test_dummy')
 
     async def _async():
         data = {'key': 'value'}

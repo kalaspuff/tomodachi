@@ -1,4 +1,4 @@
-__version__ = '0.1.6'
+__version__ = '0.1.10'
 
 if __name__ == "__main__":
-    print(__version__)  # codecov ignore
+    print(__version__)

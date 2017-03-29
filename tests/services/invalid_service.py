@@ -1,6 +1,6 @@
 # flake8: noqa
 class InvalidService(object):
-    name = 'invalid'
+    name = 'test_invalid'
 
     def syntax_error{}:  # noqa: E901
         pass

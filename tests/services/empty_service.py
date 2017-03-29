@@ -1,2 +1,2 @@
 class EmptyService(object):
-    name = 'empty'
+    name = 'test_empty'

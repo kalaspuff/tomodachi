@@ -1,5 +1,5 @@
 class ExceptionService(object):
-    name = 'exception'
+    name = 'test_exception'
     log_level = 'DEBUG'
 
     async def _start_service(self):

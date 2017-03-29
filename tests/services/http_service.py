@@ -6,7 +6,7 @@ from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
 class HttpService(object):
-    name = 'dummy_http'
+    name = 'test_http'
     discovery = [DummyRegistry]
     options = {
         'http': {
