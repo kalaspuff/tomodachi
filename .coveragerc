@@ -1,2 +1,2 @@
 [run]
-omit = setup.py,tomodachi.py,tests/*,tomodachi/__main__.py,tomodachi/__version__.py,tomodachi/cli/__init__.py
+omit = setup.py,tomodachi.py,tests/*,tomodachi/__main__.py

@@ -20,7 +20,6 @@ class ServiceImporter(object):
                 return cls.import_service_file(file_name[:-3])
             logging.getLogger('import').warn('Invalid service, unable to load service file "{}"'.format(file_name))
             raise e
-            sys.exit(2)
         except OSError:
             if file_name.endswith('.py'):
                 return cls.import_service_file(file_name[:-3])
@@ -30,5 +29,4 @@ class ServiceImporter(object):
             logging.getLogger('import').warn('Unable to load service file "{}"'.format(file_name))
             logging.getLogger('import').warn('Error: {}'.format(e))
             raise e
-            sys.exit(2)
         return service_import
