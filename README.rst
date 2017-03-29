@@ -19,7 +19,7 @@ HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
 AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
 use of any type of transport layer available.
 
-*Tomodachi* (**友達**) *means friends – and since microservices wouldn't make 
+*Tomodachi* (**友達**) *means friends – and since microservices wouldn't make
 sense on their own I think they need to be friends with each other.* 😍 👬 👭 👫
 
 
@@ -107,3 +107,9 @@ Are there any more example services?
 
 Why should I use this?
   I'm not saying you should, but I'm not saying you shouldn't. ``tomodachi`` is a perfect place to start when experimenting with your architecture or trying out a concept for a new service. It may not have all the features you desire and it may never do.
+
+Should I run this in production?
+  It's all still highly experimental and it depends on other experimental projects, so you have to be in charge here and decide for yourself. Let me know if you do however!
+
+Who built this and why?
+  My name is Carl Oscar Aaro and I'm a coder from Sweden. I simply wanted to learn more about asyncio and needed a constructive off-work project to experiment with, and here we are. 🎉
