@@ -4,6 +4,7 @@ import sys
 import logging
 import re
 import traceback
+import types
 import uuid
 from tomodachi import CLASS_ATTRIBUTE
 from tomodachi.invoker import FUNCTION_ATTRIBUTE
@@ -68,6 +69,9 @@ class ServiceContainer(object):
                     continue
 
                 instance = cls()
+                if not getattr(instance, 'context', None):
+                    setattr(instance, 'context', {i: getattr(instance, i) for i in dir(instance) if not callable(i) and not i.startswith("__") and not isinstance(getattr(instance, i), types.MethodType)})
+
                 self.setup_configuration(instance)
 
                 try:
@@ -123,7 +127,7 @@ class ServiceContainer(object):
 
                 if invoker_tasks:
                     task_results = await asyncio.wait([asyncio.ensure_future(func()) for func in (await asyncio.gather(*invoker_tasks)) if func])
-                    exception = [list(v)[0].exception() for v in [value for value in task_results if value] if list(v)[0].exception()]
+                    exception = [v.exception() for v in [value for value in task_results if value][0] if v.exception()]
                     if exception:
                         raise exception[0]
                 if start_futures:

@@ -15,9 +15,9 @@ class AWSSNSSQSService(object):
     message_protocol = JsonBase
     options = {
         'aws_sns_sqs': {
-            'region_name': 'eu-west-1',  # specify AWS region (example: eu-west-1)
-            'aws_access_key_id': 'XXXXXXXXX',  # specify AWS access key (example: AKIAXNTIENCJIY2STOCI)
-            'aws_secret_access_key': 'XXXXXXXXX'  # specify AWS secret key (example: f7sha92hNotarealsecretkeyn29ShnSYQi3nzgA)
+            'region_name': 'eu-west-1',
+            'aws_access_key_id': 'XXXXXXXXX',
+            'aws_secret_access_key': 'XXXXXXXXX' 
         }
     }
     closer = asyncio.Future()

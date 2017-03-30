@@ -8,6 +8,13 @@ class DummyService(object):
     name = 'test_dummy'
     discovery = [DummyRegistry]
     message_protocol = JsonBase
+    options = {
+        'aws_sns_sqs': {
+            'region_name': 'eu-west-1',
+            'aws_access_key_id': 'XXXXXXXXX',
+            'aws_secret_access_key': 'XXXXXXXXX'
+        }
+    }
 
     start = False
     started = False

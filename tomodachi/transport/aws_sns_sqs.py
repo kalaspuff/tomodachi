@@ -196,7 +196,7 @@ class AWSSNSSQSTransport(Invoker):
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warn('Unable to create topic [sns] on AWS ({})'.format(error_message))
             raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
-        except aiohttp.errors.ClientOSError as e:
+        except aiohttp.client_exceptions.ClientOSError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warn('Unable to connect [sns] to AWS ({})'.format(error_message))
             raise AWSSNSSQSConnectionException(str(e), log_level=context.get('log_level')) from e

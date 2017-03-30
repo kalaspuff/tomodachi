@@ -31,7 +31,6 @@ def test_conflicting_port_http_service(monkeypatch, capsys):
     assert instance is not None
 
     port1 = instance.context.get('_http_port')
-
     assert instance.uuid is not None
 
     instance = services.get('test_http2')
