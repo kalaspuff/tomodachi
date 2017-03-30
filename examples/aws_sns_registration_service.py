@@ -1,9 +1,11 @@
 import logging
 import os
+import tomodachi
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs
 
 
+@tomodachi.service
 class AWSSNSRegistrationService(object):
     name = 'example_aws_sns_registration_service'
     log_level = 'INFO'

@@ -35,9 +35,11 @@ Basic HTTP based service 🌟
 ---------------------------
 .. code:: python
 
+    import tomodachi
     from tomodachi.transport.http import http, http_error
 
 
+    @tomodachi.service
     class HttpService(object):
         name = 'http_service'
 

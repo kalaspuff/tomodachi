@@ -104,4 +104,5 @@ class ServiceLauncher(object):
         if watcher:
             if not watcher_future.done():
                 watcher_future.set_result(None)
-                loop.run_until_complete(watcher_future)
+                if not watcher_future.done():
+                    loop.run_until_complete(watcher_future)

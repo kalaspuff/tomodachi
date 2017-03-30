@@ -1,10 +1,12 @@
 import asyncio
 import os
 import signal
+import tomodachi
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.amqp import amqp
 
 
+@tomodachi.service
 class AWSSNSSQSService(object):
     name = 'test_amqp'
     log_level = 'INFO'

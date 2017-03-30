@@ -1,10 +1,12 @@
 import asyncio
 import os
 import signal
+import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
 
 
+@tomodachi.service
 class AutoClosingService(object):
     name = 'test_auto_closing'
     discovery = [DummyRegistry]

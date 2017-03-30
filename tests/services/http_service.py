@@ -1,10 +1,12 @@
 import asyncio
 import os
 import signal
+import tomodachi
 from tomodachi.transport.http import http, http_error
 from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
+@tomodachi.service
 class HttpService(object):
     name = 'test_http'
     discovery = [DummyRegistry]

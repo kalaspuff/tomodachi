@@ -22,6 +22,33 @@ def test_start_http_service(monkeypatch, capsys):
     loop.run_until_complete(future)
 
 
+def test_conflicting_port_http_service(monkeypatch, capsys):
+    services, future = start_service('tests/services/http_service_same_port.py', monkeypatch)
+
+    assert services is not None
+    assert len(services) == 2
+    instance = services.get('test_http1')
+    assert instance is not None
+
+    port1 = instance.context.get('_http_port')
+
+    assert instance.uuid is not None
+
+    instance = services.get('test_http2')
+    assert instance is not None
+
+    port2 = instance.context.get('_http_port')
+    assert instance.uuid is not None
+
+    assert bool(port1 and port2) is False
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(future)
+
+    out, err = capsys.readouterr()
+    assert 'address already in use' in err
+
+
 def test_request_http_service(monkeypatch, capsys):
     services, future = start_service('tests/services/http_service.py', monkeypatch)
     instance = services.get('test_http')

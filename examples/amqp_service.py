@@ -1,10 +1,12 @@
 import logging
 import os
+import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.amqp import amqp, amqp_publish
 
 
+@tomodachi.service
 class ExampleAmqpService(object):
     name = 'example_amqp_service'
     log_level = 'INFO'

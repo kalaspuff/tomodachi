@@ -1,11 +1,13 @@
 import logging
 import os
 import asyncio
+import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.http import http, http_error
 
 
+@tomodachi.service
 class ExampleHttpService(object):
     name = 'example_http_service'
     log_level = 'INFO'

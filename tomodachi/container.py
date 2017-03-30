@@ -5,6 +5,7 @@ import logging
 import re
 import traceback
 import uuid
+from tomodachi import CLASS_ATTRIBUTE
 from tomodachi.invoker import FUNCTION_ATTRIBUTE
 from tomodachi.config import merge_dicts
 
@@ -63,6 +64,12 @@ class ServiceContainer(object):
         registered_services = set()
         for _, cls in inspect.getmembers(self.module_import):
             if inspect.isclass(cls):
+                try:
+                    if not getattr(cls, CLASS_ATTRIBUTE, None):
+                        continue
+                except AttributeError:
+                    continue
+
                 instance = cls()
                 self.setup_configuration(instance)
 

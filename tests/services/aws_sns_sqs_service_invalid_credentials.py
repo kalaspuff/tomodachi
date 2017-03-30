@@ -1,11 +1,13 @@
 import asyncio
 import os
 import signal
+import tomodachi
 from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs
 
 
+@tomodachi.service
 class AWSSNSSQSService(object):
     name = 'test_aws_sns_sqs'
     log_level = 'INFO'

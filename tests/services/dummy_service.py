@@ -1,7 +1,9 @@
+import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
 
 
+@tomodachi.service
 class DummyService(object):
     name = 'test_dummy'
     discovery = [DummyRegistry]
