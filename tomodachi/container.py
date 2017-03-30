@@ -64,10 +64,7 @@ class ServiceContainer(object):
         registered_services = set()
         for _, cls in inspect.getmembers(self.module_import):
             if inspect.isclass(cls):
-                try:
-                    if not getattr(cls, CLASS_ATTRIBUTE, None):
-                        continue
-                except AttributeError:
+                if not getattr(cls, CLASS_ATTRIBUTE, None):
                     continue
 
                 instance = cls()
