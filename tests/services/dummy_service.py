@@ -13,6 +13,11 @@ class DummyService(object):
             'region_name': 'eu-west-1',
             'aws_access_key_id': 'XXXXXXXXX',
             'aws_secret_access_key': 'XXXXXXXXX'
+        },
+        'amqp': {
+            'port': 54321,
+            'login': 'invalid',
+            'password': 'invalid'
         }
     }
 
