@@ -23,8 +23,6 @@ class ServiceLauncher(object):
     @classmethod
     def run_until_complete(cls, service_files, configuration=None, watcher=None):
         def stop_services(loop=None):
-            if not loop:
-                loop = asyncio.get_event_loop()
             asyncio.wait([asyncio.ensure_future(_stop_services())])
 
         async def _stop_services():
