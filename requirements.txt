@@ -2,7 +2,7 @@ aioamqp==0.9.0
 aiobotocore==0.2.4
 aiohttp==2.0.5
 async-timeout==1.2.0
-botocore==1.5.31
+botocore==1.5.32
 chardet==2.3.0
 docutils==0.13.1
 jmespath==0.9.2
