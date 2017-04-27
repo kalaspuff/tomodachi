@@ -7,6 +7,8 @@ import logging
 class Watcher(object):
     watched_files = None
     root = None
+    ignored_dirs = ['__pycache__', '.git', '.svn']
+    watched_file_endings = ['.py', '.json', '.yml', '.html', '.phtml']
 
     def __init__(self, root=None):
         if not root:
@@ -23,11 +25,9 @@ class Watcher(object):
         for r in self.root:
             for root, dirs, files in os.walk(r):
                 for file in files:
-                    if file.endswith(".py") and '/.' not in os.path.join(root, file):
+                    _dir = os.path.dirname(os.path.join(root, file))
+                    if _dir not in self.ignored_dirs and not any(['/{}/'.format(ignored_dir) in os.path.join(root, _dir) for ignored_dir in self.ignored_dirs]) and any([file.endswith(ending) for ending in self.watched_file_endings]) and '/.' not in os.path.join(root, file):
                         watched_files[(os.path.join(root, file))] = os.path.getmtime(os.path.join(root, file))
-                for _dir in dirs:
-                    if '__pycache__' not in os.path.join(root, _dir) and '/.' not in os.path.join(root, _dir):
-                        watched_files[(os.path.join(root, _dir))] = os.path.getmtime(os.path.join(root, _dir))
 
         if self.watched_files and self.watched_files != watched_files:
             added = [k[(len(self.root) + 1):] for k in watched_files.keys() if k not in self.watched_files.keys()]
