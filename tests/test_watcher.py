@@ -22,14 +22,14 @@ def test_watcher_callback():
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
     assert isinstance(watcher.watched_files, dict)
-    assert len(watcher.watched_files) == 2
+    assert len(watcher.watched_files) == 1
 
     result = watcher.update_watched_files()
     assert result is False
 
     watcher.watched_files = {'_test': 0}
     result = watcher.update_watched_files()
-    assert len(result.get('added')) == 2
+    assert len(result.get('added')) == 1
     assert len(result.get('removed')) == 1
     assert len(result.get('updated')) == 0
 
