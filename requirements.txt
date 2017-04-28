@@ -14,4 +14,4 @@ uvloop==0.8.0
 yarl==0.10.0
 pytest-cov==2.4.0
 pytest-pep8==1.0.6
-codecov==2.0.8
+codecov==2.0.9
