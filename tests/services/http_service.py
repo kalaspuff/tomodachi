@@ -2,6 +2,7 @@ import asyncio
 import os
 import signal
 import tomodachi
+from aiohttp.web import Response
 from tomodachi.transport.http import http, http_error
 from tomodachi.discovery.dummy_registry import DummyRegistry
 
@@ -47,6 +48,12 @@ class HttpService(object):
     async def test_tuple(self, request):
         return (200, 'test tuple', {
             'X-Tuple': 'test'
+        })
+
+    @http('GET', r'/aiohttp/?')
+    async def test_aiohttp(self, request):
+        return Response(body='test aiohttp', status=200, headers={
+            'X-Aiohttp': 'test'
         })
 
     @http('GET', r'/exception/?')

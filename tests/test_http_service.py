@@ -78,6 +78,12 @@ def test_request_http_service(monkeypatch, capsys):
             assert isinstance(response.headers, CIMultiDictProxy)
             assert response.headers.get('X-Tuple') == 'test'
 
+            response = await client.get('http://127.0.0.1:{}/aiohttp'.format(port))
+            assert response.status == 200
+            assert await response.text() == 'test aiohttp'
+            assert isinstance(response.headers, CIMultiDictProxy)
+            assert response.headers.get('X-Aiohttp') == 'test'
+
             _id = '123456789'
             response = await client.get('http://127.0.0.1:{}/test/{}'.format(port, _id))
             assert response.status == 200

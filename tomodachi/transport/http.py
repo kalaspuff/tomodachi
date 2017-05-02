@@ -4,6 +4,7 @@ import types
 import logging
 import traceback
 import time
+from multidict import CIMultiDict
 from html import escape as html_escape
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
 from aiohttp.http import HttpVersion
@@ -136,23 +137,29 @@ class HttpTransport(Invoker):
                 return_value = routine
 
             status = 200
-            headers = {
+            headers = CIMultiDict({
                 hdrs.CONTENT_TYPE: default_content_type or 'text/plain; charset=utf-8'
-            }
+            })
 
             if isinstance(return_value, dict):
                 body = return_value.get('body')
                 if return_value.get('status'):
                     status = int(return_value.get('status'))
                 if return_value.get('headers'):
-                    headers.update(return_value.get('headers'))
+                    headers.update(CIMultiDict(return_value.get('headers')))
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
-                status = return_value[0]
+                status = int(return_value[0])
                 body = return_value[1]
                 if len(return_value) > 2:
-                    headers.update(return_value[2])
+                    headers.update(CIMultiDict(return_value[2]))
+            elif isinstance(return_value, web.Response):
+                headers.update(return_value.headers)
+                return_value._headers = headers
+                return return_value
             else:
-                body = return_value
+                if return_value is None:
+                    return_value = ''
+                body = str(return_value)
 
             return web.Response(body=body.encode('utf-8'), status=status, headers=headers)
 
@@ -176,23 +183,29 @@ class HttpTransport(Invoker):
                 return_value = routine
 
             status = int(status_code)
-            headers = {
+            headers = CIMultiDict({
                 hdrs.CONTENT_TYPE: default_content_type or 'text/plain; charset=utf-8'
-            }
+            })
 
             if isinstance(return_value, dict):
                 body = return_value.get('body')
                 if return_value.get('status'):
                     status = int(return_value.get('status'))
                 if return_value.get('headers'):
-                    headers = return_value.get('headers')
+                    headers.update(CIMultiDict(return_value.get('headers')))
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
                 status = return_value[0]
                 body = return_value[1]
                 if len(return_value) > 2:
-                    headers = return_value[2]
+                    headers.update(CIMultiDict(return_value[2]))
+            elif isinstance(return_value, web.Response):
+                headers.update(return_value.headers)
+                return_value._headers = headers
+                return return_value
             else:
-                body = return_value
+                if return_value is None:
+                    return_value = ''
+                body = str(return_value)
 
             return web.Response(body=body.encode('utf-8'), status=status, headers=headers)
 

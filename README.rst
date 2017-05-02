@@ -51,8 +51,9 @@ Basic HTTP based service 🌟
 
         @http('GET', r'/health')
         async def health_check(self, request):
-            # Return can also be a tuple / dict for more complex responses
-            # For example if you need to set your own status code or headers
+            # Return can also be a tuple, dict or even an aiohttp.web.Response
+            # object for more complex responses - for example if you need to
+            # send byte data, set your own status code or define own headers
             return {
                 'body': 'Healthy',
                 'status': 200
