@@ -7,7 +7,7 @@ import logging
 class Watcher(object):
     watched_files = None
     root = None
-    ignored_dirs = ['__pycache__', '.git', '.svn']
+    ignored_dirs = ['__pycache__', '.git', '.svn', '__ignored__', '__temporary__', '__tmp__']
     watched_file_endings = ['.py', '.json', '.yml', '.html', '.phtml']
 
     def __init__(self, root=None):
