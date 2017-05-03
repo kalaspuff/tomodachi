@@ -126,7 +126,16 @@ class HttpTransport(Invoker):
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
-        default_content_type = context.get('options', {}).get('http', {}).get('content_type')
+        default_content_type = context.get('options', {}).get('http', {}).get('content_type', 'text/plain')
+        default_charset = context.get('options', {}).get('http', {}).get('charset', 'utf-8')
+
+        if default_content_type is not None and ";" in default_content_type:
+            # for backwards compability
+            try:
+                default_charset = str([v for v in default_content_type.split(';') if 'charset=' in v][0]).replace('charset=', '').strip()
+                default_content_type = str([v for v in default_content_type.split(';')][0]).strip()
+            except IndexError:
+                pass
 
         async def handler(request):
             result = compiled_pattern.match(request.path)
@@ -137,31 +146,40 @@ class HttpTransport(Invoker):
                 return_value = routine
 
             status = 200
-            headers = CIMultiDict({
-                hdrs.CONTENT_TYPE: default_content_type or 'text/plain; charset=utf-8'
-            })
+            headers = None
 
             if isinstance(return_value, dict):
                 body = return_value.get('body')
                 if return_value.get('status'):
                     status = int(return_value.get('status'))
                 if return_value.get('headers'):
-                    headers.update(CIMultiDict(return_value.get('headers')))
+                    headers = CIMultiDict(return_value.get('headers'))
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
                 status = int(return_value[0])
                 body = return_value[1]
                 if len(return_value) > 2:
-                    headers.update(CIMultiDict(return_value[2]))
+                    headers = CIMultiDict(return_value[2])
             elif isinstance(return_value, web.Response):
-                headers.update(return_value.headers)
-                return_value._headers = headers
                 return return_value
             else:
                 if return_value is None:
                     return_value = ''
-                body = str(return_value)
+                body = return_value
 
-            return web.Response(body=body.encode('utf-8'), status=status, headers=headers)
+            body_value = body
+            if default_charset:
+                try:
+                    body_value = body.encode(default_charset.lower())
+                except ValueError as e:
+                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                    raise web.HTTPInternalServerError() from e
+                except LookupError as e:
+                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                    raise web.HTTPInternalServerError() from e
+
+            return web.Response(body=body_value, status=status, headers=headers, content_type=default_content_type, charset=default_charset)
 
         context['_http_routes'] = context.get('_http_routes', [])
         if isinstance(method, list) or isinstance(method, tuple):
@@ -173,7 +191,16 @@ class HttpTransport(Invoker):
         return await cls.start_server(obj, context)
 
     async def error_handler(cls, obj, context, func, status_code):
-        default_content_type = context.get('options', {}).get('http', {}).get('content_type')
+        default_content_type = context.get('options', {}).get('http', {}).get('content_type', 'text/plain')
+        default_charset = context.get('options', {}).get('http', {}).get('charset', 'utf-8')
+
+        if default_content_type is not None and ";" in default_content_type:
+            # for backwards compability
+            try:
+                default_charset = str([v for v in default_content_type.split(';') if 'charset=' in v][0]).replace('charset=', '').strip()
+                default_content_type = str([v for v in default_content_type.split(';')][0]).strip()
+            except IndexError:
+                pass
 
         async def handler(request):
             routine = func(*(obj, request,), **{})
@@ -183,31 +210,40 @@ class HttpTransport(Invoker):
                 return_value = routine
 
             status = int(status_code)
-            headers = CIMultiDict({
-                hdrs.CONTENT_TYPE: default_content_type or 'text/plain; charset=utf-8'
-            })
+            headers = None
 
             if isinstance(return_value, dict):
                 body = return_value.get('body')
                 if return_value.get('status'):
                     status = int(return_value.get('status'))
                 if return_value.get('headers'):
-                    headers.update(CIMultiDict(return_value.get('headers')))
+                    headers = CIMultiDict(return_value.get('headers'))
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
-                status = return_value[0]
+                status = int(return_value[0])
                 body = return_value[1]
                 if len(return_value) > 2:
-                    headers.update(CIMultiDict(return_value[2]))
+                    headers = CIMultiDict(return_value[2])
             elif isinstance(return_value, web.Response):
-                headers.update(return_value.headers)
-                return_value._headers = headers
                 return return_value
             else:
                 if return_value is None:
                     return_value = ''
-                body = str(return_value)
+                body = return_value
 
-            return web.Response(body=body.encode('utf-8'), status=status, headers=headers)
+            body_value = body
+            if default_charset:
+                try:
+                    body_value = body.encode(default_charset.lower())
+                except ValueError as e:
+                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                    raise web.HTTPInternalServerError() from e
+                except LookupError as e:
+                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                    raise web.HTTPInternalServerError() from e
+
+            return web.Response(body=body_value, status=status, headers=headers, content_type=default_content_type, charset=default_charset)
 
         context['_http_error_handler'] = context.get('_http_error_handler', {})
         context['_http_error_handler'][int(status_code)] = handler
@@ -263,13 +299,13 @@ class HttpTransport(Invoker):
                                 if isinstance(request.version, HttpVersion):
                                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
                                 logging.getLogger('transport.http').info('[http] [{}] {} "{} {}{}{}" {} {} {}'.format(
-                                    response.status,
+                                    response.status if response else 500,
                                     request.request_ip,
                                     request.method,
                                     request.path,
                                     '?{}'.format(request.query_string) if request.query_string else '',
                                     ' {}'.format(version_string) if version_string else '',
-                                    response.content_length if response.content_length is not None else '-',
+                                    response.content_length if response and response.content_length is not None else '-',
                                     request.content_length if request.content_length is not None else '-',
                                     '{0:.5f}s'.format(round(request_time, 5))
                                 ))
