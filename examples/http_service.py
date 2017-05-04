@@ -2,10 +2,9 @@ import logging
 import os
 import asyncio
 import tomodachi
-from aiohttp.web import Response
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
-from tomodachi.transport.http import http, http_error
+from tomodachi.transport.http import http, http_error, Response
 
 
 @tomodachi.service
@@ -34,9 +33,9 @@ class ExampleHttpService(object):
     async def example_with_id(self, request, id):
         return '友達 (id: {})'.format(id)
 
-    @http('GET', r'/aiohttp/?')
-    async def aiohttp_response(self, request):
-        return Response(body='aiohttp response', status=200)
+    @http('GET', r'/response/?')
+    async def response_object(self, request):
+        return Response(body='{"data": true}', status=200, content_type='application/json')
 
     @http_error(status_code=404)
     async def error_404(self, request):

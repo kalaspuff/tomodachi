@@ -84,6 +84,12 @@ def test_request_http_service(monkeypatch, capsys):
             assert isinstance(response.headers, CIMultiDictProxy)
             assert response.headers.get('X-Aiohttp') == 'test'
 
+            response = await client.get('http://127.0.0.1:{}/response'.format(port))
+            assert response.status == 200
+            assert await response.text() == 'test tomodachi response'
+            assert isinstance(response.headers, CIMultiDictProxy)
+            assert response.headers.get('X-Tomodachi-Response') == 'test'
+
             _id = '123456789'
             response = await client.get('http://127.0.0.1:{}/test/{}'.format(port, _id))
             assert response.status == 200

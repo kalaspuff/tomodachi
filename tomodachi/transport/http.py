@@ -4,7 +4,7 @@ import types
 import logging
 import traceback
 import time
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from html import escape as html_escape
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
 from aiohttp.http import HttpVersion
@@ -121,6 +121,51 @@ class UrlDispatcher(web_urldispatcher.UrlDispatcher):
         return resource.add_route(method, handler, expect_handler=expect_handler)
 
 
+class Response(object):
+    def __init__(self, *, body=None, status=200, reason=None, headers=None, content_type=None, charset=None):
+        if headers is None:
+            headers = CIMultiDict()
+        elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
+            headers = CIMultiDict(headers)
+
+        self._body = body
+        self._status = status
+        self._reason = reason
+        self._headers = headers
+        self.content_type = content_type
+        self.charset = charset
+
+        self.missing_content_type = hdrs.CONTENT_TYPE not in headers and not content_type and not charset
+
+    def get_aiohttp_response(self, context, default_charset=None, default_content_type=None):
+        if self.missing_content_type:
+            self.charset = default_charset
+            self.content_type = default_content_type
+
+        charset = self.charset
+        if hdrs.CONTENT_TYPE in self._headers and ';' in self._headers[hdrs.CONTENT_TYPE]:
+            try:
+                charset = str([v for v in self._headers[hdrs.CONTENT_TYPE].split(';') if 'charset=' in v][0]).replace('charset=', '').strip()
+            except IndexError:
+                pass
+
+        body_value = self._body
+
+        if not isinstance(body_value, bytes) and charset:
+            try:
+                body_value = body_value.encode(charset.lower())
+            except ValueError as e:
+                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                raise web.HTTPInternalServerError() from e
+            except LookupError as e:
+                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                raise web.HTTPInternalServerError() from e
+
+        return web.Response(body=body_value, status=self._status, reason=self._reason, headers=self._headers, content_type=self.content_type, charset=self.charset)
+
+
 class HttpTransport(Invoker):
     async def request_handler(cls, obj, context, func, method, url):
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
@@ -145,6 +190,9 @@ class HttpTransport(Invoker):
             else:
                 return_value = routine
 
+            if isinstance(return_value, Response):
+                return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
+
             status = 200
             headers = None
 
@@ -166,20 +214,7 @@ class HttpTransport(Invoker):
                     return_value = ''
                 body = return_value
 
-            body_value = body
-            if default_charset:
-                try:
-                    body_value = body.encode(default_charset.lower())
-                except ValueError as e:
-                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                        traceback.print_exception(e.__class__, e, e.__traceback__)
-                    raise web.HTTPInternalServerError() from e
-                except LookupError as e:
-                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                        traceback.print_exception(e.__class__, e, e.__traceback__)
-                    raise web.HTTPInternalServerError() from e
-
-            return web.Response(body=body_value, status=status, headers=headers, content_type=default_content_type, charset=default_charset)
+            return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset).get_aiohttp_response(context)
 
         context['_http_routes'] = context.get('_http_routes', [])
         if isinstance(method, list) or isinstance(method, tuple):
@@ -209,6 +244,9 @@ class HttpTransport(Invoker):
             else:
                 return_value = routine
 
+            if isinstance(return_value, Response):
+                return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
+
             status = int(status_code)
             headers = None
 
@@ -230,20 +268,7 @@ class HttpTransport(Invoker):
                     return_value = ''
                 body = return_value
 
-            body_value = body
-            if default_charset:
-                try:
-                    body_value = body.encode(default_charset.lower())
-                except ValueError as e:
-                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                        traceback.print_exception(e.__class__, e, e.__traceback__)
-                    raise web.HTTPInternalServerError() from e
-                except LookupError as e:
-                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                        traceback.print_exception(e.__class__, e, e.__traceback__)
-                    raise web.HTTPInternalServerError() from e
-
-            return web.Response(body=body_value, status=status, headers=headers, content_type=default_content_type, charset=default_charset)
+            return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset).get_aiohttp_response(context)
 
         context['_http_error_handler'] = context.get('_http_error_handler', {})
         context['_http_error_handler'][int(status_code)] = handler
