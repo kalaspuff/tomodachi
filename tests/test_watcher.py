@@ -17,19 +17,40 @@ def test_watcher_empty_directory():
     assert len(watcher.watched_files) == 0
 
 
+def test_watcher_default_ignored_directory():
+    root_path = '{}/tests/watcher_root/__tmp__'.format(os.path.realpath(os.getcwd()))
+    watcher = Watcher(root=[root_path])
+    assert len(watcher.root) == 1
+    assert isinstance(watcher.watched_files, dict)
+    assert len(watcher.watched_files) == 0
+
+
+def test_watcher_configurable_ignored_directory():
+    root_path = '{}/tests/watcher_root/configurable_ignored'.format(os.path.realpath(os.getcwd()))
+    watcher = Watcher(root=[root_path])
+    assert len(watcher.root) == 1
+    assert isinstance(watcher.watched_files, dict)
+    assert len(watcher.watched_files) == 1
+
+    watcher = Watcher(root=[root_path], configuration={'options': {'watcher': {'ignored_dirs': ['configurable_ignored']}}})
+    assert len(watcher.root) == 1
+    assert isinstance(watcher.watched_files, dict)
+    assert len(watcher.watched_files) == 0
+
+
 def test_watcher_callback():
     root_path = '{}/tests/watcher_root'.format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
     assert isinstance(watcher.watched_files, dict)
-    assert len(watcher.watched_files) == 1
+    assert len(watcher.watched_files) == 2
 
     result = watcher.update_watched_files()
     assert result is False
 
     watcher.watched_files = {'_test': 0}
     result = watcher.update_watched_files()
-    assert len(result.get('added')) == 1
+    assert len(result.get('added')) == 2
     assert len(result.get('removed')) == 1
     assert len(result.get('updated')) == 0
 

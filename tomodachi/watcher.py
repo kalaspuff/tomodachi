@@ -5,12 +5,12 @@ import logging
 
 
 class Watcher(object):
-    watched_files = None
-    root = None
-    ignored_dirs = ['__pycache__', '.git', '.svn', '__ignored__', '__temporary__', '__tmp__']
-    watched_file_endings = ['.py', '.json', '.yml', '.html', '.phtml']
-
     def __init__(self, root=None, configuration=None):
+        self.watched_files = None
+        self.root = None
+        self.ignored_dirs = ['__pycache__', '.git', '.svn', '__ignored__', '__temporary__', '__tmp__']
+        self.watched_file_endings = ['.py', '.json', '.yml', '.html', '.phtml']
+
         if not root:
             directory = os.path.realpath(sys.argv[0].rsplit('/', 1)[0])
             if os.path.isfile(directory):
@@ -22,7 +22,7 @@ class Watcher(object):
         if configuration is not None:
             ignored_dirs_list = configuration.get('options', {}).get('watcher', {}).get('ignored_dirs', [])
             if ignored_dirs_list:
-                self.ignored_dirs.extend(ignored_dirs_list)
+                self.ignored_dirs = self.ignored_dirs + ignored_dirs_list
 
         self.update_watched_files()
 
