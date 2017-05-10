@@ -38,7 +38,7 @@ class CLI:
         else:
             configuration = None
             if '-c' in args or '--config' in args:
-                index = args.index('-c') or args.index('--config')
+                index = args.index('-c') if '-c' in args else args.index('--config')
                 args.pop(index)
 
                 config_files = []
