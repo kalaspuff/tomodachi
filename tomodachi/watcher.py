@@ -10,7 +10,7 @@ class Watcher(object):
     ignored_dirs = ['__pycache__', '.git', '.svn', '__ignored__', '__temporary__', '__tmp__']
     watched_file_endings = ['.py', '.json', '.yml', '.html', '.phtml']
 
-    def __init__(self, root=None):
+    def __init__(self, root=None, configuration=None):
         if not root:
             directory = os.path.realpath(sys.argv[0].rsplit('/', 1)[0])
             if os.path.isfile(directory):
@@ -18,6 +18,12 @@ class Watcher(object):
             self.root = [directory]
         else:
             self.root = root
+
+        if configuration is not None:
+            ignored_dirs_list = configuration.get('options', {}).get('watcher', {}).get('ignored_dirs', [])
+            if ignored_dirs_list:
+                self.ignored_dirs.extend(ignored_dirs_list)
+
         self.update_watched_files()
 
     def update_watched_files(self):
@@ -26,7 +32,7 @@ class Watcher(object):
             for root, dirs, files in os.walk(r):
                 for file in files:
                     _dir = os.path.dirname(os.path.join(root, file))
-                    if _dir not in self.ignored_dirs and not any(['/{}/'.format(ignored_dir) in os.path.join(root, _dir) for ignored_dir in self.ignored_dirs]) and any([file.endswith(ending) for ending in self.watched_file_endings]) and '/.' not in os.path.join(root, file):
+                    if _dir not in self.ignored_dirs and not any([os.path.join(root, _dir).endswith(ignored_dir) or '/{}/'.format(ignored_dir) in os.path.join(root, _dir) for ignored_dir in self.ignored_dirs]) and any([file.endswith(ending) for ending in self.watched_file_endings]) and '/.' not in os.path.join(root, file):
                         watched_files[(os.path.join(root, file))] = os.path.getmtime(os.path.join(root, file))
 
         if self.watched_files and self.watched_files != watched_files:

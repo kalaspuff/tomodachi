@@ -66,7 +66,7 @@ class CLI:
                 root_directories = [os.getcwd()]
                 for arg in set(args):
                     root_directories.append(os.path.dirname('{}/{}'.format(os.path.realpath(cwd), arg)))
-                watcher = Watcher(root=root_directories)
+                watcher = Watcher(root=root_directories, configuration=configuration)
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(0)
 
