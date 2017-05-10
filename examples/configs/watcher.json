@@ -1,0 +1,9 @@
+{
+    "options": {
+        "watcher": {
+            "ignored_dirs": [
+                "examples/configs"
+            ]
+        }
+    }
+}
