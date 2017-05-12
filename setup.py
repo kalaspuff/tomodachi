@@ -6,10 +6,10 @@ import tomodachi.__version__
 
 install_requires = [
     'aiohttp>=2.0.5',
-    'aioamqp>=0.9.0',
+    'aioamqp>=0.10.0',
     'ujson>=1.35',
     'uvloop>=0.8.0',
-    'aiobotocore>=0.3.0'
+    'aiobotocore>=0.3.1'
 ]
 
 PY_VER = sys.version_info
