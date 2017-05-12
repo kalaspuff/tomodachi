@@ -12,6 +12,6 @@ six==1.10.0
 ujson==1.35
 uvloop==0.8.0
 yarl==0.10.2
-pytest-cov==2.5.0
+pytest-cov==2.5.1
 pytest-pep8==1.0.6
 codecov==2.0.9
