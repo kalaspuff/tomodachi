@@ -22,7 +22,7 @@ class Watcher(object):
         if configuration is not None:
             ignored_dirs_list = configuration.get('options', {}).get('watcher', {}).get('ignored_dirs', [])
             if ignored_dirs_list:
-                self.ignored_dirs = self.ignored_dirs + ignored_dirs_list
+                self.ignored_dirs.extend(ignored_dirs_list)
 
         self.update_watched_files()
 
