@@ -36,9 +36,9 @@ class Watcher(object):
                         watched_files[(os.path.join(root, file))] = os.path.getmtime(os.path.join(root, file))
 
         if self.watched_files and self.watched_files != watched_files:
-            added = [k[(len(self.root) + 1):] for k in watched_files.keys() if k not in self.watched_files.keys()]
-            removed = [k[(len(self.root) + 1):] for k in self.watched_files.keys() if k not in watched_files.keys()]
-            updated = [k[(len(self.root) + 1):] for k in watched_files.keys() if k in self.watched_files.keys() and self.watched_files[k] != watched_files[k]]
+            added = [k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1):] for k in watched_files.keys() if k not in self.watched_files.keys()]
+            removed = [k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1):] for k in self.watched_files.keys() if k not in watched_files.keys()]
+            updated = [k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1):] for k in watched_files.keys() if k in self.watched_files.keys() and self.watched_files[k] != watched_files[k]]
             self.watched_files = watched_files
             return {'added': added, 'removed': removed, 'updated': updated}
         self.watched_files = watched_files
