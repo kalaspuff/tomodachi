@@ -4,8 +4,8 @@ python:
     - 3.6
     - 3.6-dev # 3.6 development branch
 install:
-    - pip install -Ur requirements.txt
     - pip install -e .
+    - pip install -Ur requirements.txt
     - pip freeze
 script:
     - pep8 --ignore=E501 .
