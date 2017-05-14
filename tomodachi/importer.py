@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import importlib
 import importlib.util
 
 
@@ -12,6 +13,11 @@ class ServiceImporter(object):
         try:
             spec = importlib.util.spec_from_file_location(file_name, file_path)
             service_import = importlib.util.module_from_spec(spec)
+            try:
+                importlib.reload(service_import)
+                service_import = importlib.util.module_from_spec(spec)
+            except ImportError:
+                pass
             sys.path.insert(0, cwd)
             sys.path.insert(0, os.path.dirname(file_path))
             spec.loader.exec_module(service_import)
