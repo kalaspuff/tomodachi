@@ -32,7 +32,7 @@ class Watcher(object):
             for root, dirs, files in os.walk(r):
                 for file in files:
                     _dir = os.path.dirname(os.path.join(root, file))
-                    if _dir not in self.ignored_dirs and not any([os.path.join(root, _dir).endswith(ignored_dir) or '/{}/'.format(ignored_dir) in os.path.join(root, _dir) for ignored_dir in self.ignored_dirs]) and any([file.endswith(ending) for ending in self.watched_file_endings]) and '/.' not in os.path.join(root, file):
+                    if _dir not in self.ignored_dirs and not any([os.path.join(root, _dir).endswith('/{}'.format(ignored_dir)) or '/{}/'.format(ignored_dir) in os.path.join(root, _dir) for ignored_dir in self.ignored_dirs]) and any([file.endswith(ending) for ending in self.watched_file_endings]) and '/.' not in os.path.join(root, file):
                         watched_files[(os.path.join(root, file))] = os.path.getmtime(os.path.join(root, file))
 
         if self.watched_files and self.watched_files != watched_files:
