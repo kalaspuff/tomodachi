@@ -60,56 +60,67 @@ def test_request_http_service(monkeypatch, capsys):
             assert await response.text() == 'test'
             assert response.headers.get('Server') == 'tomodachi'
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.post('http://127.0.0.1:{}/test'.format(port))
             assert response.status == 405
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.head('http://127.0.0.1:{}/test'.format(port))
             assert response.status == 200
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get('http://127.0.0.1:{}/dict'.format(port))
             assert response.status == 200
             assert await response.text() == 'test dict'
             assert isinstance(response.headers, CIMultiDictProxy)
             assert response.headers.get('X-Dict') == 'test'
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get('http://127.0.0.1:{}/tuple'.format(port))
             assert response.status == 200
             assert await response.text() == 'test tuple'
             assert isinstance(response.headers, CIMultiDictProxy)
             assert response.headers.get('X-Tuple') == 'test'
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get('http://127.0.0.1:{}/aiohttp'.format(port))
             assert response.status == 200
             assert await response.text() == 'test aiohttp'
             assert isinstance(response.headers, CIMultiDictProxy)
             assert response.headers.get('X-Aiohttp') == 'test'
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get('http://127.0.0.1:{}/response'.format(port))
             assert response.status == 200
             assert await response.text() == 'test tomodachi response'
             assert isinstance(response.headers, CIMultiDictProxy)
             assert response.headers.get('X-Tomodachi-Response') == 'test'
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             _id = '123456789'
             response = await client.get('http://127.0.0.1:{}/test/{}'.format(port, _id))
             assert response.status == 200
             assert await response.text() == 'test {}'.format(_id)
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get('http://127.0.0.1:{}/non-existant-url'.format(port))
             assert response.status == 404
             assert await response.text() == 'test 404'
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get('http://127.0.0.1:{}/exception'.format(port))
             assert response is not None
             assert response.status == 500
             assert isinstance(response.headers, CIMultiDictProxy)
             assert response.headers.get('Server') == 'tomodachi'
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = None
             with pytest.raises(asyncio.TimeoutError):
                 response = await asyncio.shield(client.get('http://127.0.0.1:{}/slow-exception'.format(port), timeout=0.1))
             assert response is None
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             assert instance.slow_request is False
             response = None
             with pytest.raises(asyncio.TimeoutError):
@@ -120,6 +131,7 @@ def test_request_http_service(monkeypatch, capsys):
             await asyncio.sleep(2.0)
             assert instance.slow_request is True
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get('http://127.0.0.1:{}/slow'.format(port), timeout=3.0)
             assert response is not None
 
