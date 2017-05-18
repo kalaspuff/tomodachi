@@ -444,7 +444,14 @@ class AWSSNSSQSTransport(Invoker):
 
                     for message in messages:
                         receipt_handle = message.get('ReceiptHandle')
-                        message_body = ujson.loads(message.get('Body'))
+                        try:
+                            message_body = ujson.loads(message.get('Body'))
+                        except ValueError:
+                            # Malformed SQS message, not in SNS format and should be discarded
+                            await cls.delete_message(cls, receipt_handle, queue_url, context)
+                            logging.getLogger('transport.aws_sns_sqs').warn('Discarded malformed message')
+                            continue
+
                         payload = message_body.get('Message')
                         futures.append(callback(payload, receipt_handle, queue_url))
                     if futures:
