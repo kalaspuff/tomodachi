@@ -94,8 +94,12 @@ class AWSSNSSQSTransport(Invoker):
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
                 return
-            if callback_kwargs:
-                kwargs = {k: None for k in callback_kwargs}
+
+            _callback_kwargs = callback_kwargs
+            if not _callback_kwargs:
+                _callback_kwargs = {k: None for k in func.__code__.co_varnames[1:]}
+            kwargs = {k: None for k in _callback_kwargs if k != 'self'}
+
             message_protocol = context.get('message_protocol')
             message = payload
             message_uuid = None
@@ -112,10 +116,12 @@ class AWSSNSSQSTransport(Invoker):
                         if len(context.get('_aws_sns_sqs_received_messages')) > 100000:
                             context['_aws_sns_sqs_received_messages'] = {k: v for k, v in context['_aws_sns_sqs_received_messages'].items() if v > time.time() - 60}
 
-                    if callback_kwargs:
+                    if _callback_kwargs:
                         for k, v in message.items():
-                            if k in callback_kwargs:
+                            if k in _callback_kwargs:
                                 kwargs[k] = v
+                        if 'message' in _callback_kwargs and 'message' not in kwargs:
+                            kwargs['message'] = message
                 except Exception as e:
                     # log message protocol exception
                     if message is not False and not message_uuid:
@@ -127,10 +133,13 @@ class AWSSNSSQSTransport(Invoker):
                     return
 
             try:
-                if callback_kwargs:
+                if len(kwargs):
                     routine = func(*(obj,), **kwargs)
-                else:
+                elif len(func.__code__.co_varnames[1:]):
                     routine = func(*(obj, message), **{})
+                else:
+                    routine = func(*(obj), **{})
+
             except Exception as e:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
                 raise e

@@ -22,19 +22,19 @@ class ExampleAWSSNSSQSService(object):
     logger = logging.getLogger('log.{}'.format(name))
     uuid = os.environ.get('SERVICE_UUID')
 
-    @aws_sns_sqs('example.route1', ('data',))
+    @aws_sns_sqs('example.route1')
     async def route1a(self, data):
         self.logger.info('Received data (function: route1a) - "{}"'.format(data))
 
-    @aws_sns_sqs('example.route1', ('data',))
+    @aws_sns_sqs('example.route1')
     async def route1b(self, data):
         self.logger.info('Received data (function: route1b) - "{}"'.format(data))
 
-    @aws_sns_sqs('example.route2', ('data',))
+    @aws_sns_sqs('example.route2')
     async def route2(self, data):
         self.logger.info('Received data (function: route2) - "{}"'.format(data))
 
-    @aws_sns_sqs('example.#', ('metadata', 'data'))
+    @aws_sns_sqs('example.#')
     async def wildcard_route(self, metadata, data):
         self.logger.info('Received data (function: wildcard_route, topic: {}) - "{}"'.format(metadata.get('topic', ''), data))
 
