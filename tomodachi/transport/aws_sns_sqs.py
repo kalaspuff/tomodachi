@@ -170,9 +170,12 @@ class AWSSNSSQSTransport(Invoker):
         loop = asyncio.get_event_loop()
         session = aiobotocore.get_session(loop=loop)
 
-        region_name = context.get('options', {}).get('aws_sns_sqs', {}).get('region_name')
-        aws_secret_access_key = context.get('options', {}).get('aws_sns_sqs', {}).get('aws_secret_access_key')
-        aws_access_key_id = context.get('options', {}).get('aws_sns_sqs', {}).get('aws_access_key_id')
+        config_base = context.get('options', {}).get('aws_sns_sqs', context.get('options', {}).get('aws', {}))
+        aws_config_base = context.get('options', {}).get('aws', {})
+
+        region_name = config_base.get('aws_region_name', config_base.get('region_name')) or aws_config_base.get('aws_region_name', config_base.get('region_name'))
+        aws_secret_access_key = config_base.get('aws_secret_access_key', config_base.get('secret_access_key')) or aws_config_base.get('aws_secret_access_key', config_base.get('secret_access_key'))
+        aws_access_key_id = config_base.get('aws_access_key_id', config_base.get('access_key_id')) or aws_config_base.get('aws_access_key_id', config_base.get('access_key_id'))
 
         try:
             cls.clients[name] = session.create_client(name, region_name=region_name, aws_secret_access_key=aws_secret_access_key, aws_access_key_id=aws_access_key_id)
