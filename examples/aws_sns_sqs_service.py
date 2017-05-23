@@ -10,7 +10,6 @@ from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
 class ExampleAWSSNSSQSService(object):
     name = 'example_aws_sns_sqs_service'
     log_level = 'INFO'
-    discovery = [AWSSNSRegistration]
     message_protocol = JsonBase
     options = {
         'aws_sns_sqs': {

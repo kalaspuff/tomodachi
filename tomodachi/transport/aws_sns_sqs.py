@@ -238,6 +238,10 @@ class AWSSNSSQSTransport(Invoker):
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
             raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+        except aiohttp.client_exceptions.ClientConnectorError as e:
+            error_message = str(e)
+            logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
+            raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
 
         message_id = response.get('MessageId')
         if not message_id:
@@ -443,7 +447,14 @@ class AWSSNSSQSTransport(Invoker):
             await start_waiter
             while not cls.close_waiter.done():
                 try:
-                    response = await client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10)
+                    try:
+                        result = [v for v in [value for value in await asyncio.wait([asyncio.ensure_future(client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10))], timeout=30)][0]][0]
+                    except IndexError:
+                        await asyncio.sleep(1)
+                        continue
+                    if result.exception():
+                        raise result.exception()
+                    response = result.result()
                 except botocore.exceptions.ClientError as e:
                     error_message = str(e)
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
@@ -481,13 +492,31 @@ class AWSSNSSQSTransport(Invoker):
         async def stop_service(*args, **kwargs):
             if not cls.close_waiter.done():
                 cls.close_waiter.set_result(None)
-                logging.getLogger('transport.aws_sns_sqs').warning('Draining message pool - may take up to 20 seconds')
+                logging.getLogger('transport.aws_sns_sqs').warning('Draining message pool - may take up to 30 seconds')
 
                 for _ in range(0, 100):
+                    tasks = []
+                    t = time.time()
                     if stop_waiter.done():
                         break
                     for topic, topic_arn in cls.topics.items():
-                        await cls.publish_message(cls, topic_arn, DRAIN_MESSAGE_PAYLOAD, context)
+                        tasks.append(asyncio.ensure_future(cls.publish_message(cls, topic_arn, DRAIN_MESSAGE_PAYLOAD, context)))
+                    if tasks:
+                        task_results = await asyncio.wait(tasks, timeout=30)
+                        exception = None
+                        for v in [value for value in task_results][0]:
+                            try:
+                                if (v.exception() or v.cancelled()) and not exception:
+                                    exception = True
+                                    sleep_timer = (t + 30.0) - time.time()
+                                    if sleep_timer > 0.0:
+                                        logging.getLogger('transport.aws_sns_sqs').warning('Draining failed - please wait')
+                                        await asyncio.sleep(sleep_timer)
+                            except Exception:
+                                pass
+                        if exception and not stop_waiter.done():
+                            stop_waiter.set_result(None)
+
                     if not stop_waiter.done():
                         await asyncio.sleep(0.2)
 
@@ -496,8 +525,7 @@ class AWSSNSSQSTransport(Invoker):
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
-                for _, client in cls.clients.items():
-                    await client.close()
+                await asyncio.wait([asyncio.ensure_future(client.close()) for _, client in cls.clients.items()], timeout=3)
                 cls.clients = None
             else:
                 await stop_waiter
