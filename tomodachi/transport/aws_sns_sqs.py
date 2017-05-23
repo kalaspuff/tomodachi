@@ -182,11 +182,11 @@ class AWSSNSSQSTransport(Invoker):
         except botocore.exceptions.PartialCredentialsError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Invalid credentials [{}] to AWS ({})'.format(name, error_message))
-            raise AWSSNSSQSConnectionException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
         except botocore.exceptions.NoRegionError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Invalid credentials [{}] to AWS ({})'.format(name, error_message))
-            raise AWSSNSSQSConnectionException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
 
     async def create_topic(cls, topic, context):
         if not cls.topics:
@@ -203,19 +203,19 @@ class AWSSNSSQSTransport(Invoker):
         except botocore.exceptions.NoCredentialsError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sns] to AWS ({})'.format(error_message))
-            raise AWSSNSSQSConnectionException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
         except botocore.exceptions.PartialCredentialsError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to create topic [sns] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
         except aiohttp.client_exceptions.ClientOSError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sns] to AWS ({})'.format(error_message))
-            raise AWSSNSSQSConnectionException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to create topic [sns] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
         topic_arn = response.get('TopicArn')
         if not topic_arn:
@@ -233,15 +233,19 @@ class AWSSNSSQSTransport(Invoker):
         client = cls.clients.get('sns')
 
         try:
-            response = await client.publish(TopicArn=topic_arn, Message=message)
+            response = await asyncio.wait_for(client.publish(TopicArn=topic_arn, Message=message), timeout=30)
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
         except aiohttp.client_exceptions.ClientConnectorError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
+        except asyncio.TimeoutError as e:
+            error_message = 'Network timeout'
+            logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
+            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
         message_id = response.get('MessageId')
         if not message_id:
@@ -277,19 +281,19 @@ class AWSSNSSQSTransport(Invoker):
         except botocore.exceptions.NoCredentialsError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sqs] to AWS ({})'.format(error_message))
-            raise AWSSNSSQSConnectionException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
         except botocore.exceptions.PartialCredentialsError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sqs] to AWS ({})'.format(error_message))
-            raise AWSSNSSQSConnectionException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
         except aiohttp.client_exceptions.ClientOSError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sqs] to AWS ({})'.format(error_message))
-            raise AWSSNSSQSConnectionException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to create queue [sqs] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
         queue_url = response.get('QueueUrl')
         if not queue_url:
@@ -302,7 +306,7 @@ class AWSSNSSQSTransport(Invoker):
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to get queue attributes [sqs] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
         queue_arn = response.get('Attributes', {}).get('QueueArn')
         if not queue_arn:
@@ -375,7 +379,7 @@ class AWSSNSSQSTransport(Invoker):
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
                 logging.getLogger('transport.aws_sns_sqs').warning('Unable to list topics [sns] on AWS ({})'.format(error_message))
-                raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+                raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
             next_token = response.get('NextToken')
             topics = response.get('Topics', [])
@@ -407,7 +411,7 @@ class AWSSNSSQSTransport(Invoker):
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to set queue attributes [sqs] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
         subscription_arn_list = []
         for topic_arn in topic_arn_list:
@@ -416,7 +420,7 @@ class AWSSNSSQSTransport(Invoker):
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
                 logging.getLogger('transport.aws_sns_sqs').warning('Unable to subscribe to topic [sns] on AWS ({})'.format(error_message))
-                raise AWSSNSSQSException(str(e), log_level=context.get('log_level')) from e
+                raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
             subscription_arn = response.get('SubscriptionArn')
             if not subscription_arn:
@@ -447,15 +451,18 @@ class AWSSNSSQSTransport(Invoker):
             await start_waiter
             while not cls.close_waiter.done():
                 try:
-                    try:
-                        result = [v for v in [value for value in await asyncio.wait([asyncio.ensure_future(client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10))], timeout=30)][0]][0]
-                    except IndexError:
-                        await asyncio.sleep(1)
-                        continue
-                    if result.exception():
-                        raise result.exception()
-                    response = result.result()
+                    response = await asyncio.wait_for(client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10), timeout=30)
                 except botocore.exceptions.ClientError as e:
+                    error_message = str(e)
+                    logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
+                    await asyncio.sleep(1)
+                    continue
+                except asyncio.TimeoutError as e:
+                    error_message = 'Network timeout'
+                    logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
+                    await asyncio.sleep(1)
+                    continue
+                except aiohttp.client_exceptions.ClientConnectorError as e:
                     error_message = str(e)
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
                     await asyncio.sleep(1)
@@ -502,7 +509,7 @@ class AWSSNSSQSTransport(Invoker):
                     for topic, topic_arn in cls.topics.items():
                         tasks.append(asyncio.ensure_future(cls.publish_message(cls, topic_arn, DRAIN_MESSAGE_PAYLOAD, context)))
                     if tasks:
-                        task_results = await asyncio.wait(tasks, timeout=30)
+                        task_results = await asyncio.wait(tasks, timeout=40)
                         exception = None
                         for v in [value for value in task_results][0]:
                             try:
