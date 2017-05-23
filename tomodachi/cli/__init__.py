@@ -56,6 +56,9 @@ class CLI:
                 except FileNotFoundError as e:
                     print('Invalid config file: {}'.format(str(e)))
                     sys.exit(2)
+                except ValueError as e:
+                    print('Invalid config file, invalid JSON format: {}'.format(str(e)))
+                    sys.exit(2)
 
             if '--production' in args:
                 index = args.index('--production')
