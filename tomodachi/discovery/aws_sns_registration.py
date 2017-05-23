@@ -27,4 +27,7 @@ class AWSSNSRegistration(object):
             'name': service.name,
             'uuid': service.uuid
         }
-        await aws_sns_sqs_publish(service, data, topic='services.registration.deregister')
+        try:
+            await aws_sns_sqs_publish(service, data, topic='services.registration.deregister')
+        except:
+            pass

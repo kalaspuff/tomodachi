@@ -199,7 +199,7 @@ class AWSSNSSQSTransport(Invoker):
         client = cls.clients.get('sns')
 
         try:
-            response = await client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context)))
+            response = await asyncio.wait_for(client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context))), timeout=30)
         except botocore.exceptions.NoCredentialsError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sns] to AWS ({})'.format(error_message))
@@ -214,6 +214,10 @@ class AWSSNSSQSTransport(Invoker):
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
+            logging.getLogger('transport.aws_sns_sqs').warning('Unable to create topic [sns] on AWS ({})'.format(error_message))
+            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
+        except asyncio.TimeoutError as e:
+            error_message = 'Network timeout'
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to create topic [sns] on AWS ({})'.format(error_message))
             raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
@@ -264,10 +268,14 @@ class AWSSNSSQSTransport(Invoker):
 
         async def _delete_message():
             try:
-                await client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url)
+                await asyncio.wait_for(client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30)
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
                 logging.getLogger('transport.aws_sns_sqs').warning('Unable to delete message [sqs] on AWS ({})'.format(error_message))
+            except asyncio.TimeoutError as e:
+                error_message = 'Network timeout'
+                logging.getLogger('transport.aws_sns_sqs').warning('Unable to delete message [sqs] on AWS ({})'.format(error_message))
+                raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
         await _delete_message()
 
