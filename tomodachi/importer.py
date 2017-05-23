@@ -24,15 +24,15 @@ class ServiceImporter(object):
         except ImportError as e:
             if file_name.endswith('.py'):
                 return cls.import_service_file(file_name[:-3])
-            logging.getLogger('import').warn('Invalid service, unable to load service file "{}"'.format(file_name))
+            logging.getLogger('import').warning('Invalid service, unable to load service file "{}"'.format(file_name))
             raise e
         except OSError:
             if file_name.endswith('.py'):
                 return cls.import_service_file(file_name[:-3])
-            logging.getLogger('import').warn('Invalid service, no such service file "{}"'.format(file_name))
+            logging.getLogger('import').warning('Invalid service, no such service file "{}"'.format(file_name))
             sys.exit(2)
         except Exception as e:
-            logging.getLogger('import').warn('Unable to load service file "{}"'.format(file_name))
-            logging.getLogger('import').warn('Error: {}'.format(e))
+            logging.getLogger('import').warning('Unable to load service file "{}"'.format(file_name))
+            logging.getLogger('import').warning('Error: {}'.format(e))
             raise e
         return service_import
