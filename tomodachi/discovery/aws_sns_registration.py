@@ -30,4 +30,4 @@ class AWSSNSRegistration(object):
         try:
             await aws_sns_sqs_publish(service, data, topic='services.registration.deregister')
         except:
-            pass
+            logging.getLogger('discovery.aws_sns_registration').info('Deregistering service "{}" failed [id: {}]'.format(service.name, service.uuid))
