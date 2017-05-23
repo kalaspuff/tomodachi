@@ -20,10 +20,10 @@ class AWSSNSRegistrationService(object):
     logger = logging.getLogger('log.{}'.format(name))
     uuid = os.environ.get('SERVICE_UUID')
 
-    @aws_sns_sqs('services.registration.register', ('data',), competing=True)
+    @aws_sns_sqs('services.registration.register', competing=True)
     async def register(self, data):
         self.logger.info('Register service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))
 
-    @aws_sns_sqs('services.registration.deregister', ('data',), competing=True)
+    @aws_sns_sqs('services.registration.deregister', competing=True)
     async def deregister(self, data):
         self.logger.info('Deregister service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))
