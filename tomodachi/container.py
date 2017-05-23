@@ -160,7 +160,7 @@ class ServiceContainer(object):
 
                     self.logger.info('Started service "{}" [id: {}]'.format(name, instance.uuid))
             except Exception as e:
-                self.logger.warn('Failed to start service')
+                self.logger.warning('Failed to start service')
                 started_futures = None
                 self.stop_service()
                 try:
@@ -172,7 +172,7 @@ class ServiceContainer(object):
             if started_futures:
                 await asyncio.wait([asyncio.ensure_future(func()) for func in started_futures if func])
         else:
-            self.logger.warn('No transports defined in service file')
+            self.logger.warning('No transports defined in service file')
             self.stop_service()
 
         self.services_started = services_started

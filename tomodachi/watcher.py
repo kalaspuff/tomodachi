@@ -58,15 +58,15 @@ class Watcher(object):
                     if removed:
                         if len(removed) > 2:
                             removed[2] = '...'
-                        logging.getLogger('watcher.files').warn('Removed files: {}'.format(', '.join([file for file in removed][0:3])))
+                        logging.getLogger('watcher.files').warning('Removed files: {}'.format(', '.join([file for file in removed][0:3])))
                     if added:
                         if len(added) > 2:
                             added[2] = '...'
-                        logging.getLogger('watcher.files').warn('New files: {}'.format(', '.join([file for file in added][0:3])))
+                        logging.getLogger('watcher.files').warning('New files: {}'.format(', '.join([file for file in added][0:3])))
                     if updated:
                         if len(updated) > 2:
                             updated[2] = '...'
-                        logging.getLogger('watcher.files').warn('Updated files: {}'.format(', '.join([file for file in updated][0:3])))
+                        logging.getLogger('watcher.files').warning('Updated files: {}'.format(', '.join([file for file in updated][0:3])))
 
                     if callback_func:
                         await callback_func()

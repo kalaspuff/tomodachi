@@ -169,8 +169,8 @@ class AmqpTransport(Invoker):
         return await cls.subscribe(cls, obj, context)
 
     async def connect(cls, obj, context):
-        logging.getLogger('aioamqp.protocol').setLevel(logging.WARN)
-        logging.getLogger('aioamqp.channel').setLevel(logging.WARN)
+        logging.getLogger('aioamqp.protocol').setLevel(logging.WARNING)
+        logging.getLogger('aioamqp.channel').setLevel(logging.WARNING)
 
         host = context.get('options', {}).get('amqp', {}).get('host', '127.0.0.1')
         port = context.get('options', {}).get('amqp', {}).get('port', 5672)
@@ -183,15 +183,15 @@ class AmqpTransport(Invoker):
             cls.transport = transport
         except ConnectionRefusedError as e:
             error_message = 'connection refused'
-            logging.getLogger('transport.amqp').warn('Unable to connect [amqp] to {}:{} ({})'.format(host, port, error_message))
+            logging.getLogger('transport.amqp').warning('Unable to connect [amqp] to {}:{} ({})'.format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get('log_level')) from e
         except aioamqp.exceptions.AmqpClosedConnection as e:
             error_message = e.__context__
-            logging.getLogger('transport.amqp').warn('Unable to connect [amqp] to {}:{} ({})'.format(host, port, error_message))
+            logging.getLogger('transport.amqp').warning('Unable to connect [amqp] to {}:{} ({})'.format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get('log_level')) from e
         except OSError as e:
             error_message = e.strerror
-            logging.getLogger('transport.amqp').warn('Unable to connect [amqp] to {}:{} ({})'.format(host, port, error_message))
+            logging.getLogger('transport.amqp').warning('Unable to connect [amqp] to {}:{} ({})'.format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get('log_level')) from e
 
         channel = await protocol.channel()
@@ -235,13 +235,13 @@ class AmqpTransport(Invoker):
                 except aioamqp.exceptions.ChannelClosed as e:
                     error_message = e.args[1]
                     if e.args[0] == 403 and exchange_name.startswith('amq.'):
-                        logging.getLogger('transport.amqp').warn('Unable to declare exchange [amqp] "{}", starts with reserved "amq." ({})'.format(exchange_name, error_message))
+                        logging.getLogger('transport.amqp').warning('Unable to declare exchange [amqp] "{}", starts with reserved "amq." ({})'.format(exchange_name, error_message))
                         raise
                     elif e.args[0] == 507 or e.args[0] == 406:
-                        logging.getLogger('transport.amqp').warn('Unable to change type of existing exchange [amqp] "{}" ({})'.format(exchange_name, error_message))
+                        logging.getLogger('transport.amqp').warning('Unable to change type of existing exchange [amqp] "{}" ({})'.format(exchange_name, error_message))
                         raise
                     else:
-                        logging.getLogger('transport.amqp').warn('Unable to declare exchange [amqp] "{}" ({})'.format(exchange_name, error_message))
+                        logging.getLogger('transport.amqp').warning('Unable to declare exchange [amqp] "{}" ({})'.format(exchange_name, error_message))
                         raise
 
                 _uuid = obj.uuid
@@ -257,7 +257,7 @@ class AmqpTransport(Invoker):
                 try:
                     data = await channel.queue_declare(queue_name, passive=passive, durable=durable, exclusive=exclusive, auto_delete=auto_delete, arguments=amqp_arguments)
                     if max_consumers is not None and data.get('consumer_count', 0) >= max_consumers:
-                        logging.getLogger('transport.amqp').warn('Max consumers ({}) for queue [amqp] "{}" has been reached'.format(max_consumers, queue_name))
+                        logging.getLogger('transport.amqp').warning('Max consumers ({}) for queue [amqp] "{}" has been reached'.format(max_consumers, queue_name))
                         raise AmqpTooManyConsumersException("Max consumers for this queue has been reached")
                 except aioamqp.exceptions.ChannelClosed as e:
                     if e.args[0] == 405:

@@ -36,10 +36,10 @@ class ServiceLauncher(object):
         def sigintHandler(*args):
             sys.stdout.write('\b\b\r')
             sys.stdout.flush()
-            logging.getLogger('system').warn('Received <ctrl+c> interrupt [SIGINT]')
+            logging.getLogger('system').warning('Received <ctrl+c> interrupt [SIGINT]')
 
         def sigtermHandler(*args):
-            logging.getLogger('system').warn('Received termination signal [SIGTERM]')
+            logging.getLogger('system').warning('Received termination signal [SIGTERM]')
 
         if not isinstance(service_files, list) and not isinstance(service_files, set):
             service_files = [service_files]
@@ -58,7 +58,7 @@ class ServiceLauncher(object):
         if watcher:
             async def _watcher_restart():
                 cls.restart_services = True
-                logging.getLogger('watcher.restart').warn('Restarting services')
+                logging.getLogger('watcher.restart').warning('Restarting services')
                 stop_services(loop)
 
             watcher_future = loop.run_until_complete(watcher.watch(loop=loop, callback_func=_watcher_restart))

@@ -286,7 +286,7 @@ class HttpTransport(Invoker):
         async def _start_server():
             loop = asyncio.get_event_loop()
 
-            logging.getLogger('aiohttp.access').setLevel(logging.WARN)
+            logging.getLogger('aiohttp.access').setLevel(logging.WARNING)
 
             async def middleware(app, handler):
                 async def middleware_handler(request):
@@ -353,7 +353,7 @@ class HttpTransport(Invoker):
                 server = await loop.create_server(Server(app._handle, request_factory=app._make_request, server_header=server_header or '', access_log=access_log, keepalive_timeout=0, tcp_keepalive=False), host, port)
             except OSError as e:
                 error_message = re.sub('.*: ', '', e.strerror)
-                logging.getLogger('transport.http').warn('Unable to bind service [http] to http://{}:{}/ ({})'.format('127.0.0.1' if host == '0.0.0.0' else host, port, error_message))
+                logging.getLogger('transport.http').warning('Unable to bind service [http] to http://{}:{}/ ({})'.format('127.0.0.1' if host == '0.0.0.0' else host, port, error_message))
                 raise HttpException(str(e), log_level=context.get('log_level')) from e
 
             port = server.sockets[0].getsockname()[1]
