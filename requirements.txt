@@ -21,7 +21,7 @@ pytest-cache==1.0
 pytest-cov==2.5.1
 pytest-pep8==1.0.6
 python-dateutil==2.6.0
-requests==2.16.4
+requests==2.16.5
 six==1.10.0
 ujson==1.35
 uvloop==0.8.0
