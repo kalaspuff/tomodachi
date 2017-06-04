@@ -14,7 +14,7 @@ jmespath==0.9.3
 multidict==2.1.6
 packaging==16.8
 pep8==1.7.0
-py==1.4.33
+py==1.4.34
 pyparsing==2.2.0
 pytest==3.1.1
 pytest-cache==1.0
