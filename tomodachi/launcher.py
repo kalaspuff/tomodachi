@@ -65,6 +65,7 @@ class ServiceLauncher(object):
 
         cls.restart_services = True
         init_modules = [m for m in sys.modules.keys()]
+        safe_modules = ['typing', 'importlib.util', 'time', 'logging', 're', 'traceback', 'types', 'inspect']
 
         while cls.restart_services:
             if watcher:
@@ -91,7 +92,7 @@ class ServiceLauncher(object):
 
             current_modules = [m for m in sys.modules.keys()]
             for m in current_modules:
-                if m not in init_modules:
+                if m not in init_modules and m not in safe_modules:
                     del(sys.modules[m])
 
             importlib.reload(tomodachi.container)
