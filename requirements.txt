@@ -11,10 +11,8 @@ coverage==4.4.1
 docutils==0.13.1
 execnet==1.4.1
 jmespath==0.9.3
-mock==2.0.0
 multidict==2.1.6
 packaging==16.8
-pbr==3.0.1
 pep8==1.7.0
 py==1.4.34
 pyparsing==2.2.0

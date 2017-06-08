@@ -2,6 +2,7 @@ import types
 import functools
 
 FUNCTION_ATTRIBUTE = 'TOMODACHI_INVOKER'
+START_ATTRIBUTE = 'TOMODACHI_INVOKER_START'
 
 
 class Invoker(object):
@@ -12,7 +13,11 @@ class Invoker(object):
         def _wrapper(*args, **kwargs):
             def wrapper(func):
                 @functools.wraps(func)
-                async def _decorator(obj):
+                async def _decorator(obj, *a, **kw):
+                    if not getattr(_decorator, START_ATTRIBUTE, None):
+                        return await func(obj, *a, **kw)
+
+                    setattr(_decorator, START_ATTRIBUTE, False)
                     if not cls.context.get(obj, None):
                         cls.context[obj] = {i: getattr(obj, i) for i in dir(obj) if not callable(i) and not i.startswith("__") and not isinstance(getattr(obj, i), types.MethodType)}
                     context = cls.context[obj]
