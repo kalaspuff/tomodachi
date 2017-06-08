@@ -7,7 +7,7 @@ import traceback
 import types
 import uuid
 from tomodachi import CLASS_ATTRIBUTE
-from tomodachi.invoker import FUNCTION_ATTRIBUTE
+from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
 from tomodachi.config import merge_dicts
 
 
@@ -102,7 +102,11 @@ class ServiceContainer(object):
                             return i
                     return -1
 
-                invoker_functions = [name for name, fn in inspect.getmembers(cls) if inspect.isfunction(fn) and getattr(fn, FUNCTION_ATTRIBUTE, None)]
+                invoker_functions = []
+                for name, fn in inspect.getmembers(cls):
+                    if inspect.isfunction(fn) and getattr(fn, FUNCTION_ATTRIBUTE, None):
+                        setattr(fn, START_ATTRIBUTE, True)
+                        invoker_functions.append(name)
                 invoker_functions.sort(key=invoker_function_sorter)
                 if invoker_functions:
                     invoker_tasks = invoker_tasks | set([asyncio.ensure_future(getattr(instance, name)()) for name in invoker_functions])
