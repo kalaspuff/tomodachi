@@ -1,4 +1,5 @@
 import types
+import functools
 
 FUNCTION_ATTRIBUTE = 'TOMODACHI_INVOKER'
 
@@ -10,6 +11,7 @@ class Invoker(object):
     def decorator(cls, cls_func):
         def _wrapper(*args, **kwargs):
             def wrapper(func):
+                @functools.wraps(func)
                 async def _decorator(obj):
                     if not cls.context.get(obj, None):
                         cls.context[obj] = {i: getattr(obj, i) for i in dir(obj) if not callable(i) and not i.startswith("__") and not isinstance(getattr(obj, i), types.MethodType)}
