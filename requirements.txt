@@ -25,4 +25,4 @@ requests==2.17.3
 six==1.10.0
 ujson==1.35
 uvloop==0.8.0
-yarl==0.10.2
+yarl==0.10.3
