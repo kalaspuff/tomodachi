@@ -107,8 +107,12 @@ class AmqpTransport(Invoker):
 
     async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Callable, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, exchange_name: str='', competing: bool=False) -> Callable:
         async def handler(payload: Any, delivery_tag: Any):
-            if callback_kwargs:
-                kwargs = {k: None for k in callback_kwargs}
+
+            _callback_kwargs = callback_kwargs  # type: Any
+            if not _callback_kwargs:
+                _callback_kwargs = {k: None for k in func.__code__.co_varnames[1:]}
+            kwargs = {k: None for k in _callback_kwargs if k != 'self'}
+
             message_protocol = context.get('message_protocol')
             message = payload
             message_uuid = None
@@ -125,10 +129,12 @@ class AmqpTransport(Invoker):
                         if len(context.get('_amqp_received_messages')) > 100000:
                             context['_amqp_received_messages'] = {k: v for k, v in context['_amqp_received_messages'].items() if v > time.time() - 60}
 
-                    if callback_kwargs:
+                    if _callback_kwargs:
                         for k, v in message.items():
-                            if k in callback_kwargs:
+                            if k in _callback_kwargs:
                                 kwargs[k] = v
+                        if 'message' in _callback_kwargs and 'message' not in kwargs:
+                            kwargs['message'] = message
                 except Exception as e:
                     # log message protocol exception
                     if message is not False and not message_uuid:
@@ -140,11 +146,14 @@ class AmqpTransport(Invoker):
                     return
 
             try:
-                if callback_kwargs:
+                if len(kwargs):
                     routine = func(*(obj,), **kwargs)
-                else:
+                elif len(func.__code__.co_varnames[1:]):
                     kwargs = {}
                     routine = func(*(obj, message), **kwargs)
+                else:
+                    kwargs = {}
+                    routine = func(*(obj), **kwargs)
             except Exception as e:
                 await cls.channel.basic_client_ack(delivery_tag)
                 raise e

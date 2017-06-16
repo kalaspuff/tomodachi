@@ -141,7 +141,6 @@ class AWSSNSSQSTransport(Invoker):
                 else:
                     kwargs = {}
                     routine = func(*(obj), **kwargs)
-
             except Exception as e:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
                 raise e

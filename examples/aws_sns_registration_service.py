@@ -1,6 +1,7 @@
 import logging
 import os
 import tomodachi
+from typing import Dict
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs
 
@@ -21,9 +22,9 @@ class AWSSNSRegistrationService(object):
     uuid = os.environ.get('SERVICE_UUID')
 
     @aws_sns_sqs('services.registration.register', competing=True)
-    async def register(self, data):
+    async def register(self, data: Dict) -> None:
         self.logger.info('Register service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))
 
     @aws_sns_sqs('services.registration.deregister', competing=True)
-    async def deregister(self, data):
+    async def deregister(self, data: Dict) -> None:
         self.logger.info('Deregister service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))

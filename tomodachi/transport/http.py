@@ -185,10 +185,7 @@ class HttpTransport(Invoker):
         async def handler(request: web.Request) -> web.Response:
             result = compiled_pattern.match(request.path)
             routine = func(*(obj, request,), **(result.groupdict() if result else {}))
-            if isinstance(routine, Awaitable):
-                return_value = await routine
-            else:
-                return_value = routine
+            return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, dict, list, tuple, bytes, web.Response, Response]
 
             if isinstance(return_value, Response):
                 return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
@@ -240,10 +237,7 @@ class HttpTransport(Invoker):
         async def handler(request: web.Request) -> web.Response:
             kwargs = {}  # type: Dict
             routine = func(*(obj, request,), **kwargs)
-            if isinstance(routine, Awaitable):
-                return_value = await routine
-            else:
-                return_value = routine
+            return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, dict, list, tuple, bytes, web.Response, Response]
 
             if isinstance(return_value, Response):
                 return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
