@@ -5,12 +5,12 @@ import hashlib
 import re
 import binascii
 import asyncio
-from typing import Any, Dict, Union, Optional, Callable, Awaitable
+from typing import Any, Dict, Union, Optional, Callable, Awaitable, Match
 from tomodachi.invoker import Invoker
 
 
 class AmqpException(Exception):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if kwargs and kwargs.get('log_level'):
             self._log_level = kwargs.get('log_level')
         else:
@@ -82,14 +82,14 @@ class AmqpTransport(Invoker):
 
     @classmethod
     def decode_routing_key(cls, encoded_routing_key: str) -> str:
-        def decode(match):
+        def decode(match: Match) -> str:
             return binascii.unhexlify(match.group(1).encode('utf-8')).decode('utf-8')
 
         return re.sub(r'___([a-f0-9]{2}|[a-f0-9]{4}|[a-f0-9]{6}|[a-f0-9]{8})_', decode, encoded_routing_key)
 
     @classmethod
     def encode_routing_key(cls, routing_key: str) -> str:
-        def encode(match):
+        def encode(match: Match) -> str:
             return '___' + binascii.hexlify(match.group(1).encode('utf-8')).decode('utf-8') + '_'
 
         return re.sub(r'([^a-zA-Z0-9_*#,;.:<>!"%&/\(\)\[\]\{\}\\=?\'^`~+|@$ -])', encode, routing_key)
@@ -105,9 +105,8 @@ class AmqpTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Callable, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, exchange_name: str='', competing: bool=False) -> Callable:
-        async def handler(payload: Any, delivery_tag: Any):
-
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Callable, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, exchange_name: str='', competing: bool=False) -> Any:
+        async def handler(payload: Any, delivery_tag: Any) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
             if not _callback_kwargs:
                 _callback_kwargs = {k: None for k in func.__code__.co_varnames[1:]}
@@ -126,7 +125,8 @@ class AmqpTransport(Invoker):
                         if context['_amqp_received_messages'].get(message_key):
                             return
                         context['_amqp_received_messages'][message_key] = time.time()
-                        if len(context.get('_amqp_received_messages')) > 100000:
+                        _received_messages = context['_amqp_received_messages']
+                        if _received_messages and isinstance(_received_messages, dict) and len(_received_messages) > 100000:
                             context['_amqp_received_messages'] = {k: v for k, v in context['_amqp_received_messages'].items() if v > time.time() - 60}
 
                     if _callback_kwargs:
@@ -176,7 +176,8 @@ class AmqpTransport(Invoker):
         context['_amqp_subscribers'] = context.get('_amqp_subscribers', [])
         context['_amqp_subscribers'].append((routing_key, exchange_name, competing, func, handler))
 
-        return await cls.subscribe(cls, obj, context)
+        start_func = cls.subscribe(cls, obj, context)
+        return (await start_func) if start_func else None
 
     async def connect(cls: Any, obj: Any, context: Dict) -> Any:
         logging.getLogger('aioamqp.protocol').setLevel(logging.WARNING)
@@ -210,7 +211,7 @@ class AmqpTransport(Invoker):
                 stop_method = getattr(obj, '_stop_service')
             except AttributeError as e:
                 stop_method = None
-            async def stop_service(*args, **kwargs) -> None:
+            async def stop_service(*args: Any, **kwargs: Any) -> None:
                 if stop_method:
                     await stop_method(*args, **kwargs)
                 logging.getLogger('aioamqp.protocol').setLevel(logging.ERROR)
@@ -227,7 +228,7 @@ class AmqpTransport(Invoker):
 
         return channel
 
-    async def subscribe(cls: Any, obj: Any, context: Dict) -> Callable:
+    async def subscribe(cls: Any, obj: Any, context: Dict) -> Optional[Callable]:
         if context.get('_amqp_subscribed'):
             return None
         context['_amqp_subscribed'] = True
@@ -238,7 +239,7 @@ class AmqpTransport(Invoker):
         async def _subscribe() -> None:
             async def declare_queue(routing_key: str, func: Callable, exchange_name: str='', exchange_type: str='topic', queue_name: Optional[str]=None,
                                     passive: bool=False, durable: bool=True, exclusive: bool=False, auto_delete: bool=False,
-                                    competing_consumer: bool=False) -> str:
+                                    competing_consumer: bool=False) -> Optional[str]:
                 try:
                     if exchange_name and exchange_name != 'amq.topic':
                         await channel.exchange_declare(exchange_name=exchange_name, type_name=exchange_type, passive=False, durable=True, auto_delete=False)
@@ -279,7 +280,7 @@ class AmqpTransport(Invoker):
                 return queue_name
 
             def callback(routing_key: str, handler: Callable) -> Callable:
-                async def _callback(self, body: bytes, envelope: Any, properties: Any) -> None:
+                async def _callback(self: Any, body: bytes, envelope: Any, properties: Any) -> None:
                     # await channel.basic_reject(delivery_tag, requeue=True)
                     await handler(body.decode(), envelope.delivery_tag)
                 return _callback

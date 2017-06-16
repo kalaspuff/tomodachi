@@ -30,7 +30,7 @@ class CLI:
     def run_command_usage(self) -> str:
         return 'Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--production]'
 
-    def run_command(self, args: Optional[List[str]]) -> None:
+    def run_command(self, args: List[str]) -> None:
         logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=logging.INFO)
         logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -74,7 +74,7 @@ class CLI:
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(0)
 
-    def main(self, argv: Optional[List[str]]) -> None:
+    def main(self, argv: List[str]) -> None:
         try:
             opts, args = getopt.getopt(argv, "h", ['help'])
         except getopt.GetoptError:

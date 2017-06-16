@@ -3,7 +3,7 @@ import asyncio
 import logging
 import traceback
 import time
-from typing import Any, Dict, Union, Optional, Callable, Awaitable
+from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable
 from multidict import CIMultiDict, CIMultiDictProxy
 from html import escape as html_escape
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
@@ -12,7 +12,7 @@ from tomodachi.invoker import Invoker
 
 
 class HttpException(Exception):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if kwargs and kwargs.get('log_level'):
             self._log_level = kwargs.get('log_level')
         else:
@@ -20,7 +20,7 @@ class HttpException(Exception):
 
 
 class RequestHandler(web_protocol.RequestHandler):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
         super().__init__(*args, **kwargs)
@@ -65,8 +65,10 @@ class RequestHandler(web_protocol.RequestHandler):
                     pass
             else:
                 msg = ''
-        else:
+        elif message:
             msg = message
+        else:
+            msg = ''
 
         headers[hdrs.CONTENT_LENGTH] = str(len(msg))
         headers[hdrs.SERVER] = self._server_header or ''
@@ -88,7 +90,7 @@ class RequestHandler(web_protocol.RequestHandler):
 
 
 class Server(web_server.Server):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
         super().__init__(*args, **kwargs)
@@ -149,11 +151,10 @@ class Response(object):
             except IndexError:
                 pass
 
-        body_value = self._body  # type: Union[str, bytes]
-
-        if not isinstance(body_value, bytes) and charset:
+        if self._body and not isinstance(self._body, bytes) and charset:
+            body = self._body
             try:
-                body_value = body_value.encode(charset.lower())
+                body_value = body.encode(charset.lower())
             except ValueError as e:
                 if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
                     traceback.print_exception(e.__class__, e, e.__traceback__)
@@ -162,12 +163,16 @@ class Response(object):
                 if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
                     traceback.print_exception(e.__class__, e, e.__traceback__)
                 raise web.HTTPInternalServerError() from e
+        elif self._body:
+            body_value = self._body.encode() if not isinstance(self._body, bytes) else self._body
+        else:
+            body_value = b''
 
         return web.Response(body=body_value, status=self._status, reason=self._reason, headers=self._headers, content_type=self.content_type, charset=self.charset)
 
 
 class HttpTransport(Invoker):
-    async def request_handler(cls: Any, obj: Any, context: Dict, func: Callable, method: str, url: str) -> Callable:
+    async def request_handler(cls: Any, obj: Any, context: Dict, func: Callable, method: str, url: str) -> Any:
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
@@ -185,7 +190,7 @@ class HttpTransport(Invoker):
         async def handler(request: web.Request) -> web.Response:
             result = compiled_pattern.match(request.path)
             routine = func(*(obj, request,), **(result.groupdict() if result else {}))
-            return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, dict, list, tuple, bytes, web.Response, Response]
+            return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
 
             if isinstance(return_value, Response):
                 return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
@@ -195,12 +200,15 @@ class HttpTransport(Invoker):
 
             if isinstance(return_value, dict):
                 body = return_value.get('body')
-                if return_value.get('status'):
-                    status = int(return_value.get('status'))
+                _status = return_value.get('status')
+                if _status and isinstance(_status, (int, str, bytes)):
+                    status = int(_status)
                 if return_value.get('headers'):
                     headers = CIMultiDict(return_value.get('headers'))
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
-                status = int(return_value[0])
+                _status = return_value[0]
+                if _status and isinstance(_status, (int, str, bytes)):
+                    status = int(_status)
                 body = return_value[1]
                 if len(return_value) > 2:
                     headers = CIMultiDict(return_value[2])
@@ -220,9 +228,10 @@ class HttpTransport(Invoker):
         else:
             context['_http_routes'].append((method.upper(), pattern, handler))
 
-        return await cls.start_server(obj, context)
+        start_func = cls.start_server(obj, context)
+        return (await start_func) if start_func else None
 
-    async def error_handler(cls: Any, obj: Any, context: Dict, func: Callable, status_code: int) -> Callable:
+    async def error_handler(cls: Any, obj: Any, context: Dict, func: Callable, status_code: int) -> Any:
         default_content_type = context.get('options', {}).get('http', {}).get('content_type', 'text/plain')
         default_charset = context.get('options', {}).get('http', {}).get('charset', 'utf-8')
 
@@ -237,7 +246,7 @@ class HttpTransport(Invoker):
         async def handler(request: web.Request) -> web.Response:
             kwargs = {}  # type: Dict
             routine = func(*(obj, request,), **kwargs)
-            return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, dict, list, tuple, bytes, web.Response, Response]
+            return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
 
             if isinstance(return_value, Response):
                 return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
@@ -247,12 +256,15 @@ class HttpTransport(Invoker):
 
             if isinstance(return_value, dict):
                 body = return_value.get('body')
-                if return_value.get('status'):
-                    status = int(return_value.get('status'))
+                _status = return_value.get('status')
+                if _status and isinstance(_status, (int, str, bytes)):
+                    status = int(_status)
                 if return_value.get('headers'):
                     headers = CIMultiDict(return_value.get('headers'))
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
-                status = int(return_value[0])
+                _status = return_value[0]
+                if _status and isinstance(_status, (int, str, bytes)):
+                    status = int(_status)
                 body = return_value[1]
                 if len(return_value) > 2:
                     headers = CIMultiDict(return_value[2])
@@ -268,9 +280,10 @@ class HttpTransport(Invoker):
         context['_http_error_handler'] = context.get('_http_error_handler', {})
         context['_http_error_handler'][int(status_code)] = handler
 
-        return await cls.start_server(obj, context)
+        start_func = cls.start_server(obj, context)
+        return (await start_func) if start_func else None
 
-    async def start_server(obj: Any, context: Dict) -> Callable:
+    async def start_server(obj: Any, context: Dict) -> Optional[Callable]:
         if context.get('_http_server_started'):
             return None
         context['_http_server_started'] = True
@@ -358,7 +371,7 @@ class HttpTransport(Invoker):
                 stop_method = getattr(obj, '_stop_service')
             except AttributeError as e:
                 stop_method = None
-            async def stop_service(*args, **kwargs) -> None:
+            async def stop_service(*args: Any, **kwargs: Any) -> None:
                 if stop_method:
                     await stop_method(*args, **kwargs)
                 server.close()

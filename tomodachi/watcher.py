@@ -45,9 +45,8 @@ class Watcher(object):
         self.watched_files = watched_files
         return {}
 
-    async def watch(self, loop: Any=None, callback_func: Optional[Callable]=None) -> asyncio.Task:
-        if not loop:
-            loop = asyncio.get_event_loop()
+    async def watch(self, loop: asyncio.AbstractEventLoop=None, callback_func: Optional[Callable]=None) -> Any:
+        _loop = asyncio.get_event_loop() if not loop else loop  # type: Any
 
         async def _watch_loop() -> None:
             while True:
@@ -73,4 +72,4 @@ class Watcher(object):
                         await callback_func()
                 await asyncio.sleep(0.5)
 
-        return loop.create_task(_watch_loop())
+        return _loop.create_task(_watch_loop())

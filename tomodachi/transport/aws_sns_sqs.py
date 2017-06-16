@@ -9,14 +9,14 @@ import re
 import binascii
 import ujson
 import uuid
-from typing import Any, Dict, Union, Optional, Callable, Awaitable, List, Tuple
+from typing import Any, Dict, Union, Optional, Callable, Awaitable, List, Tuple, Match
 from tomodachi.invoker import Invoker
 
 DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'
 
 
 class AWSSNSSQSException(Exception):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if kwargs and kwargs.get('log_level'):
             self._log_level = kwargs.get('log_level')
         else:
@@ -29,7 +29,7 @@ class AWSSNSSQSConnectionException(AWSSNSSQSException):
 
 class AWSSNSSQSTransport(Invoker):
     clients = None
-    topics = None
+    topics = {}  # type: Dict[str, str]
     close_waiter = None
 
     @classmethod
@@ -66,14 +66,14 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     def decode_topic(cls, encoded_topic: str) -> str:
-        def decode(match):
+        def decode(match: Match) -> str:
             return binascii.unhexlify(match.group(1).encode('utf-8')).decode('utf-8')
 
         return re.sub(r'___([a-f0-9]{2}|[a-f0-9]{4}|[a-f0-9]{6}|[a-f0-9]{8})_', decode, encoded_topic)
 
     @classmethod
     def encode_topic(cls, topic: str) -> str:
-        def encode(match):
+        def encode(match: Match) -> str:
             return '___' + binascii.hexlify(match.group(1).encode('utf-8')).decode('utf-8') + '_'
 
         return re.sub(r'([^a-zA-Z0-9_*#-])', encode, topic)
@@ -89,7 +89,7 @@ class AWSSNSSQSTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('aws_sns_sqs', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Callable, topic: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, competing: bool=False) -> Callable:
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Callable, topic: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, competing: bool=False) -> Any:
         async def handler(payload: Optional[str], receipt_handle: Optional[str]=None, queue_url: Optional[str]=None) -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
@@ -113,7 +113,8 @@ class AWSSNSSQSTransport(Invoker):
                         if context['_aws_sns_sqs_received_messages'].get(message_key):
                             return
                         context['_aws_sns_sqs_received_messages'][message_key] = time.time()
-                        if len(context.get('_aws_sns_sqs_received_messages')) > 100000:
+                        _received_messages = context['_aws_sns_sqs_received_messages']
+                        if _received_messages and isinstance(_received_messages, dict) and len(_received_messages) > 100000:
                             context['_aws_sns_sqs_received_messages'] = {k: v for k, v in context['_aws_sns_sqs_received_messages'].items() if v > time.time() - 60}
 
                     if _callback_kwargs:
@@ -161,7 +162,8 @@ class AWSSNSSQSTransport(Invoker):
         context['_aws_sns_sqs_subscribers'] = context.get('_aws_sns_sqs_subscribers', [])
         context['_aws_sns_sqs_subscribers'].append((topic, competing, func, handler))
 
-        return await cls.subscribe(cls, obj, context)
+        start_func = cls.subscribe(cls, obj, context)
+        return (await start_func) if start_func else None
 
     def create_client(cls: Any, name: str, context: Dict) -> None:
         logging.getLogger('botocore.vendored.requests.packages.urllib3.connectionpool').setLevel(logging.WARNING)
@@ -193,7 +195,9 @@ class AWSSNSSQSTransport(Invoker):
         if not cls.topics:
             cls.topics = {}
         if cls.topics.get(topic):
-            return cls.topics.get(topic)
+            topic_arn = cls.topics.get(topic)
+            if topic_arn and isinstance(topic_arn, str):
+                return topic_arn
 
         if not cls.clients or not cls.clients.get('sns'):
             cls.create_client(cls, 'sns', context)
@@ -223,7 +227,7 @@ class AWSSNSSQSTransport(Invoker):
             raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
         topic_arn = response.get('TopicArn')
-        if not topic_arn:
+        if not topic_arn or not isinstance(topic_arn, str):
             error_message = 'Missing ARN in response'
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to create topic [sns] on AWS ({})'.format(error_message))
             raise AWSSNSSQSException(error_message, log_level=context.get('log_level'))
@@ -253,7 +257,7 @@ class AWSSNSSQSTransport(Invoker):
             raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
         message_id = response.get('MessageId')
-        if not message_id:
+        if not message_id or not isinstance(message_id, str):
             error_message = 'Missing MessageId in response'
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
             raise AWSSNSSQSException(error_message, log_level=context.get('log_level'))
@@ -267,7 +271,7 @@ class AWSSNSSQSTransport(Invoker):
             cls.create_client(cls, 'sqs', context)
         client = cls.clients.get('sqs')
 
-        async def _delete_message():
+        async def _delete_message() -> None:
             try:
                 await asyncio.wait_for(client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30)
             except botocore.exceptions.ClientError as e:
@@ -402,7 +406,7 @@ class AWSSNSSQSTransport(Invoker):
 
         return None
 
-    async def subscribe_topics(cls: Any, topic_arn_list: List, queue_arn: str, queue_url: str, context: Dict, queue_policy=None) -> List:
+    async def subscribe_topics(cls: Any, topic_arn_list: List, queue_arn: str, queue_url: str, context: Dict, queue_policy: Optional[Dict]=None) -> List:
         if not cls.clients or not cls.clients.get('sns'):
             cls.create_client(cls, 'sns', context)
         client = cls.clients.get('sns')
@@ -506,7 +510,7 @@ class AWSSNSSQSTransport(Invoker):
             stop_method = getattr(obj, '_stop_service')
         except AttributeError as e:
             stop_method = None
-        async def stop_service(*args, **kwargs) -> None:
+        async def stop_service(*args: Any, **kwargs: Any) -> None:
             if not cls.close_waiter.done():
                 cls.close_waiter.set_result(None)
                 logging.getLogger('transport.aws_sns_sqs').warning('Draining message pool - may take up to 30 seconds')
@@ -555,7 +559,7 @@ class AWSSNSSQSTransport(Invoker):
             started_method = getattr(obj, '_started_service')
         except AttributeError as e:
             started_method = None
-        async def started_service(*args, **kwargs) -> None:
+        async def started_service(*args: Any, **kwargs: Any) -> None:
             if started_method:
                 await started_method(*args, **kwargs)
             if not start_waiter.done():
@@ -565,7 +569,7 @@ class AWSSNSSQSTransport(Invoker):
 
         loop.create_task(receive_messages())
 
-    async def subscribe(cls: Any, obj: Any, context: Dict) -> Callable:
+    async def subscribe(cls: Any, obj: Any, context: Dict) -> Optional[Callable]:
         if context.get('_aws_sns_sqs_subscribed'):
             return None
         context['_aws_sns_sqs_subscribed'] = True

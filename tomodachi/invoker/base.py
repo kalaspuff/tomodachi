@@ -11,10 +11,10 @@ class Invoker(object):
 
     @classmethod
     def decorator(cls, cls_func: Callable) -> Callable:
-        def _wrapper(*args, **kwargs) -> Callable:
+        def _wrapper(*args: Any, **kwargs: Any) -> Callable:
             def wrapper(func: Callable) -> Callable:
                 @functools.wraps(func)
-                async def _decorator(obj, *a, **kw) -> Any:
+                async def _decorator(obj: Any, *a: Any, **kw: Any) -> Any:
                     if not getattr(_decorator, START_ATTRIBUTE, None):
                         return await func(obj, *a, **kw)
 

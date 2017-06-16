@@ -5,7 +5,7 @@ import importlib
 import logging
 import datetime
 import uvloop
-from typing import Dict, Union, Optional
+from typing import Dict, Union, Optional, Any
 import tomodachi.container
 import tomodachi.importer
 import tomodachi.invoker
@@ -27,19 +27,21 @@ class ServiceLauncher(object):
             asyncio.wait([asyncio.ensure_future(_stop_services())])
 
         async def _stop_services() -> None:
-            if not cls._close_waiter.done():
+            if cls._close_waiter and not cls._close_waiter.done():
                 cls._close_waiter.set_result(None)
                 for service in cls.services:
                     service.stop_service()
-                cls._stopped_waiter.set_result(None)
-            await cls._stopped_waiter
+                if cls._stopped_waiter:
+                    cls._stopped_waiter.set_result(None)
+            if cls._stopped_waiter:
+                await cls._stopped_waiter
 
-        def sigintHandler(*args) -> None:
+        def sigintHandler(*args: Any) -> None:
             sys.stdout.write('\b\b\r')
             sys.stdout.flush()
             logging.getLogger('system').warning('Received <ctrl+c> interrupt [SIGINT]')
 
-        def sigtermHandler(*args) -> None:
+        def sigtermHandler(*args: Any) -> None:
             logging.getLogger('system').warning('Received termination signal [SIGTERM]')
 
         if not isinstance(service_files, list) and not isinstance(service_files, set):

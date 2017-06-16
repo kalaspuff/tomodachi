@@ -6,8 +6,8 @@ import re
 import traceback
 import types
 import uuid
-from types import ModuleType
-from typing import Dict, Optional, Any
+from types import ModuleType, TracebackType
+from typing import Dict, Optional, Any, Type
 from tomodachi import CLASS_ATTRIBUTE
 from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
 from tomodachi.config import merge_dicts
@@ -28,8 +28,8 @@ class ServiceContainer(object):
         self._close_waiter = asyncio.Future()  # type: asyncio.Future
         self.started_waiter = asyncio.Future()  # type: asyncio.Future
 
-        def catch_uncaught_exceptions(exc_cls, exc, tb):
-            raise exc
+        def catch_uncaught_exceptions(type_: Type[BaseException], value: BaseException, traceback: TracebackType) -> None:
+            raise value
 
         sys.excepthook = catch_uncaught_exceptions
 
@@ -167,7 +167,7 @@ class ServiceContainer(object):
                     self.logger.info('Started service "{}" [id: {}]'.format(name, instance.uuid))
             except Exception as e:
                 self.logger.warning('Failed to start service')
-                started_futures = None
+                started_futures = set()
                 self.stop_service()
                 try:
                     if not getattr(e, '_log_level') or getattr(e, '_log_level') in ['DEBUG']:

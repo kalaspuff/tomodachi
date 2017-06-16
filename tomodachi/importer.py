@@ -4,6 +4,7 @@ import logging
 import importlib
 import importlib.util
 from types import ModuleType
+from typing import Any  # noqa
 
 
 class ServiceImporter(object):
@@ -12,7 +13,7 @@ class ServiceImporter(object):
         cwd = os.getcwd()
         file_path = '{}/{}.py'.format(os.path.realpath(cwd), file_name)
         try:
-            spec = importlib.util.spec_from_file_location(file_name, file_path)
+            spec = importlib.util.spec_from_file_location(file_name, file_path)  # type: Any
             service_import = importlib.util.module_from_spec(spec)
             try:
                 importlib.reload(service_import)

@@ -19,7 +19,7 @@ if not PY_VER >= (3, 5):
 
 
 def read(f: str) -> str:
-    return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
+    return str(open(os.path.join(os.path.dirname(__file__), f)).read().strip())
 
 classifiers = [
     'Intended Audience :: Developers',
