@@ -6,13 +6,15 @@ import re
 import traceback
 import types
 import uuid
+from types import ModuleType
+from typing import Dict, Optional, Any
 from tomodachi import CLASS_ATTRIBUTE
 from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
 from tomodachi.config import merge_dicts
 
 
 class ServiceContainer(object):
-    def __init__(self, module_import, configuration=None):
+    def __init__(self, module_import: ModuleType, configuration: Optional[Dict]=None) -> None:
         self.module_import = module_import
         try:
             self.module_name = module_import.__name__.rsplit('/', 1)[1]
@@ -22,20 +24,20 @@ class ServiceContainer(object):
         self.configuration = configuration
 
         self.logger = logging.getLogger('services.{}'.format(self.module_name))
-        self._close_waiter = asyncio.Future()
 
-        self.started_waiter = asyncio.Future()
+        self._close_waiter = asyncio.Future()  # type: asyncio.Future
+        self.started_waiter = asyncio.Future()  # type: asyncio.Future
 
         def catch_uncaught_exceptions(exc_cls, exc, tb):
             raise exc
 
         sys.excepthook = catch_uncaught_exceptions
 
-    def stop_service(self):
+    def stop_service(self) -> None:
         if not self._close_waiter.done():
             self._close_waiter.set_result(None)
 
-    def setup_configuration(self, instance):
+    def setup_configuration(self, instance: Any) -> None:
         if not self.configuration:
             return
         for k, v in self.configuration.items():
@@ -53,16 +55,16 @@ class ServiceContainer(object):
             else:
                 setattr(instance, k, v)
 
-    async def wait_stopped(self):
+    async def wait_stopped(self) -> None:
         await self._close_waiter
 
-    async def run_until_complete(self):
-        services_started = set()
-        invoker_tasks = set()
-        start_futures = set()
-        stop_futures = set()
-        started_futures = set()
-        registered_services = set()
+    async def run_until_complete(self) -> None:
+        services_started = set()  # type: set
+        invoker_tasks = set()  # type: set
+        start_futures = set()  # type: set
+        stop_futures = set()  # type: set
+        started_futures = set()  # type: set
+        registered_services = set()  # type: set
         for _, cls in inspect.getmembers(self.module_import):
             if inspect.isclass(cls):
                 if not getattr(cls, CLASS_ATTRIBUTE, None):
@@ -96,7 +98,7 @@ class ServiceContainer(object):
                     except AttributeError:
                         log_level = 'INFO'
 
-                def invoker_function_sorter(m):
+                def invoker_function_sorter(m: str) -> int:
                     for i, line in enumerate(inspect.getsourcelines(self.module_import)[0]):
                         if re.match(r'^\s*(async)?\s+def\s+{}\s*([(].*$)?$'.format(m), line):
                             return i
@@ -168,7 +170,7 @@ class ServiceContainer(object):
                 started_futures = None
                 self.stop_service()
                 try:
-                    if not getattr(e, '_log_level') or e._log_level in ['DEBUG']:
+                    if not getattr(e, '_log_level') or getattr(e, '_log_level') in ['DEBUG']:
                         traceback.print_exception(e.__class__, e, e.__traceback__)
                 except AttributeError:
                     traceback.print_exception(e.__class__, e, e.__traceback__)

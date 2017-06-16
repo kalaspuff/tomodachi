@@ -3,11 +3,12 @@ import sys
 import logging
 import importlib
 import importlib.util
+from types import ModuleType
 
 
 class ServiceImporter(object):
     @classmethod
-    def import_service_file(cls, file_name):
+    def import_service_file(cls, file_name: str) -> ModuleType:
         cwd = os.getcwd()
         file_path = '{}/{}.py'.format(os.path.realpath(cwd), file_name)
         try:

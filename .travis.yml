@@ -11,5 +11,6 @@ script:
     - pep8 --ignore=E501 .
     - py.test --cov=./ tests/
     - tomodachi run tests/run_example_service.py
+    - mypy --ignore-missing-imports ./
 after_success:
     - codecov

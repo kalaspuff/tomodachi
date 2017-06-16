@@ -18,7 +18,7 @@ if not PY_VER >= (3, 5):
     raise RuntimeError("tomodachi doesn't support Python earlier than 3.5")
 
 
-def read(f):
+def read(f: str) -> str:
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
 classifiers = [

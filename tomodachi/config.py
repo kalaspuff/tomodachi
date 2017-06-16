@@ -1,7 +1,8 @@
 import ujson
+from typing import Dict, List, Optional
 
 
-def merge_dicts(dict1, dict2):
+def merge_dicts(dict1: Dict, dict2: Dict) -> Dict:
     context = dict(dict1)
     for k, v in dict2.items():
         if not context.get(k):
@@ -16,13 +17,13 @@ def merge_dicts(dict1, dict2):
     return context
 
 
-def parse_config_files(config_files):
+def parse_config_files(config_files: List[str]) -> Optional[Dict]:
     if not config_files:
         return None
     if isinstance(config_files, str):
         config_files = [config_files]
 
-    configuration = {}
+    configuration = {}  # type: Dict
 
     for config_file in config_files:
         with open(config_file) as f:
