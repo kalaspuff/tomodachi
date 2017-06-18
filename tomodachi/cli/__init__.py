@@ -3,13 +3,14 @@ import os
 import sys
 import getopt
 import logging
+from typing import List, Optional
 from tomodachi.launcher import ServiceLauncher
 from tomodachi.watcher import Watcher
 from tomodachi.config import parse_config_files
 
 
 class CLI:
-    def help_command_usage(self):
+    def help_command_usage(self) -> str:
         return ('Usage: tomodachi.py subcommand [options] [args]\n'
                 '\n'
                 'Options:\n'
@@ -22,14 +23,14 @@ class CLI:
                 '\n'
                 )
 
-    def help_command(self):
+    def help_command(self) -> None:
         print(self.help_command_usage())
         sys.exit(2)
 
-    def run_command_usage(self):
+    def run_command_usage(self) -> str:
         return 'Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--production]'
 
-    def run_command(self, args):
+    def run_command(self, args: List[str]) -> None:
         logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=logging.INFO)
         logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -41,7 +42,7 @@ class CLI:
                 index = args.index('-c') if '-c' in args else args.index('--config')
                 args.pop(index)
 
-                config_files = []
+                config_files = []  # type: List[str]
                 while len(args) > index and args[index][0] != '-':
                     value = args.pop(index)
                     if value not in config_files:
@@ -73,7 +74,7 @@ class CLI:
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(0)
 
-    def main(self, argv):
+    def main(self, argv: List[str]) -> None:
         try:
             opts, args = getopt.getopt(argv, "h", ['help'])
         except getopt.GetoptError:
@@ -87,7 +88,7 @@ class CLI:
         self.help_command()
 
 
-def cli_entrypoint(argv=None):
+def cli_entrypoint(argv: Optional[List[str]]=None) -> None:
     if argv is None:
         argv = sys.argv
-    return CLI().main(argv[1:])
+    CLI().main(argv[1:])

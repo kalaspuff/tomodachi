@@ -1,6 +1,7 @@
 import logging
 import os
 import tomodachi
+from typing import Any, Dict
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.amqp import amqp, amqp_publish
@@ -20,24 +21,24 @@ class ExampleAmqpService(object):
     logger = logging.getLogger('log.{}'.format(name))
     uuid = os.environ.get('SERVICE_UUID')
 
-    @amqp('example.route1', ('data',))
-    async def route1a(self, data):
+    @amqp('example.route1')
+    async def route1a(self, data: Any) -> None:
         self.logger.info('Received data (function: route1a) - "{}"'.format(data))
 
-    @amqp('example.route1', ('data',))
-    async def route1b(self, data):
+    @amqp('example.route1')
+    async def route1b(self, data: Any) -> None:
         self.logger.info('Received data (function: route1b) - "{}"'.format(data))
 
-    @amqp('example.route2', ('data',))
-    async def route2(self, data):
+    @amqp('example.route2')
+    async def route2(self, data: Any) -> None:
         self.logger.info('Received data (function: route2) - "{}"'.format(data))
 
-    @amqp('example.#', ('metadata', 'data'))
-    async def wildcard_route(self, metadata, data):
+    @amqp('example.#')
+    async def wildcard_route(self, metadata: Dict, data: Any) -> None:
         self.logger.info('Received data (function: wildcard_route, topic: {}) - "{}"'.format(metadata.get('topic', ''), data))
 
-    async def _started_service(self):
-        async def publish(data, routing_key):
+    async def _started_service(self) -> None:
+        async def publish(data: Any, routing_key: str) -> None:
             self.logger.info('Publish data "{}"'.format(data))
             await amqp_publish(self, data, routing_key=routing_key)
 

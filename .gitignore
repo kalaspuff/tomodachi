@@ -91,5 +91,8 @@ ENV/
 # .DS_Store
 .DS_Store
 
+# Mypy cache
+.mypy_cache
+
 # credentials
 examples/configs/*credentials.json

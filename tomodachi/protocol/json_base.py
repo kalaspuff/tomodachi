@@ -1,6 +1,7 @@
 import ujson
 import uuid
 import time
+from typing import Any, Dict, Tuple, Union
 
 PROTOCOL_VERSION = 'json_base-wip'
 COMPATIBLE_PROTOCOL_VERSIONS = ['json_base-wip']
@@ -8,7 +9,7 @@ COMPATIBLE_PROTOCOL_VERSIONS = ['json_base-wip']
 
 class JsonBase(object):
     @classmethod
-    async def build_message(cls, service, topic, data):
+    async def build_message(cls, service: Any, topic: str, data: Any) -> str:
         _uuid = str(uuid.uuid4())
         message = {
             'service': {
@@ -27,7 +28,7 @@ class JsonBase(object):
         return ujson.dumps(message)
 
     @classmethod
-    async def parse_message(cls, payload):
+    async def parse_message(cls, payload: str) -> Union[Dict, Tuple]:
         message = ujson.loads(payload)
 
         compatible_protocol_versions = message.get('metadata', {}).get('compatible_protocol_versions')

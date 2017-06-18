@@ -2,12 +2,13 @@ import asyncio
 import os
 import sys
 import logging
+from typing import Any, Dict, List, Optional, Callable
 
 
 class Watcher(object):
-    def __init__(self, root=None, configuration=None):
-        self.watched_files = None
-        self.root = None
+    def __init__(self, root: Optional[List]=None, configuration: Optional[Dict]=None) -> None:
+        self.watched_files = {}  # type: Dict[str, float]
+        self.root = []  # type: List[str]
         self.ignored_dirs = ['__pycache__', '.git', '.svn', '__ignored__', '__temporary__', '__tmp__']
         self.watched_file_endings = ['.py', '.json', '.yml', '.html', '.phtml']
 
@@ -26,7 +27,7 @@ class Watcher(object):
 
         self.update_watched_files()
 
-    def update_watched_files(self):
+    def update_watched_files(self) -> Dict:
         watched_files = {}
         for r in self.root:
             for root, dirs, files in os.walk(r):
@@ -42,13 +43,12 @@ class Watcher(object):
             self.watched_files = watched_files
             return {'added': added, 'removed': removed, 'updated': updated}
         self.watched_files = watched_files
-        return False
+        return {}
 
-    async def watch(self, loop=None, callback_func=None):
-        if not loop:
-            loop = asyncio.get_event_loop()
+    async def watch(self, loop: asyncio.AbstractEventLoop=None, callback_func: Optional[Callable]=None) -> Any:
+        _loop = asyncio.get_event_loop() if not loop else loop  # type: Any
 
-        async def _watch_loop():
+        async def _watch_loop() -> None:
             while True:
                 updated_files = self.update_watched_files()
                 if updated_files:
@@ -72,4 +72,4 @@ class Watcher(object):
                         await callback_func()
                 await asyncio.sleep(0.5)
 
-        return loop.create_task(_watch_loop())
+        return _loop.create_task(_watch_loop())

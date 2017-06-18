@@ -46,7 +46,7 @@ def test_watcher_callback():
     assert len(watcher.watched_files) == 2
 
     result = watcher.update_watched_files()
-    assert result is False
+    assert result == {}
 
     watcher.watched_files = {'_test': 0}
     result = watcher.update_watched_files()

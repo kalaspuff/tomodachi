@@ -1,28 +1,30 @@
 import ujson
+from typing import Dict, List, Optional
 
 
-def merge_dicts(dict1, dict2):
+def merge_dicts(dict1: Dict, dict2: Dict) -> Dict:
     context = dict(dict1)
-    for k, v in dict2.items():
+    for k, v2 in dict2.items():
+        v1 = context.get(k)
         if not context.get(k):
-            context[k] = v
-        elif isinstance(context.get(k), list) and isinstance(v, list):
-            context[k] = context.get(k) + v
-        elif isinstance(context.get(k), dict) and isinstance(v, dict):
-            context[k] = merge_dicts(context.get(k), v)
+            context[k] = v2
+        elif isinstance(v1, list) and isinstance(v2, list):
+            context[k] = v1 + v2
+        elif isinstance(v1, dict) and isinstance(v2, dict):
+            context[k] = merge_dicts(v1, v2)
         else:
-            context[k] = v
+            context[k] = v2
 
     return context
 
 
-def parse_config_files(config_files):
+def parse_config_files(config_files: List[str]) -> Optional[Dict]:
     if not config_files:
         return None
     if isinstance(config_files, str):
         config_files = [config_files]
 
-    configuration = {}
+    configuration = {}  # type: Dict
 
     for config_file in config_files:
         with open(config_file) as f:

@@ -3,42 +3,45 @@ import sys
 import signal
 import importlib
 import logging
-import functools
 import datetime
 import uvloop
+from typing import Dict, Union, Optional, Any
 import tomodachi.container
 import tomodachi.importer
 import tomodachi.invoker
 import tomodachi.__version__
+import tomodachi.watcher
 from tomodachi.container import ServiceContainer
 from tomodachi.importer import ServiceImporter
 
 
 class ServiceLauncher(object):
-    _close_waiter = None
-    _stopped_waiter = None
+    _close_waiter = None  # type: Union[None, asyncio.Future]
+    _stopped_waiter = None  # type: Union[None, asyncio.Future]
     restart_services = False
-    services = None
+    services = set()  # type: set
 
     @classmethod
-    def run_until_complete(cls, service_files, configuration=None, watcher=None):
-        def stop_services(loop=None):
+    def run_until_complete(cls, service_files: Union[list, set], configuration: Optional[Dict]=None, watcher: Optional[tomodachi.watcher.Watcher]=None) -> None:
+        def stop_services() -> None:
             asyncio.wait([asyncio.ensure_future(_stop_services())])
 
-        async def _stop_services():
-            if not cls._close_waiter.done():
+        async def _stop_services() -> None:
+            if cls._close_waiter and not cls._close_waiter.done():
                 cls._close_waiter.set_result(None)
                 for service in cls.services:
                     service.stop_service()
-                cls._stopped_waiter.set_result(None)
-            await cls._stopped_waiter
+                if cls._stopped_waiter:
+                    cls._stopped_waiter.set_result(None)
+            if cls._stopped_waiter:
+                await cls._stopped_waiter
 
-        def sigintHandler(*args):
+        def sigintHandler(*args: Any) -> None:
             sys.stdout.write('\b\b\r')
             sys.stdout.flush()
             logging.getLogger('system').warning('Received <ctrl+c> interrupt [SIGINT]')
 
-        def sigtermHandler(*args):
+        def sigtermHandler(*args: Any) -> None:
             logging.getLogger('system').warning('Received termination signal [SIGTERM]')
 
         if not isinstance(service_files, list) and not isinstance(service_files, set):
@@ -48,7 +51,7 @@ class ServiceLauncher(object):
         loop = asyncio.get_event_loop()
 
         for signame in ('SIGINT', 'SIGTERM'):
-            loop.add_signal_handler(getattr(signal, signame), functools.partial(stop_services, loop))
+            loop.add_signal_handler(getattr(signal, signame), stop_services)
 
         signal.siginterrupt(signal.SIGTERM, False)
         signal.siginterrupt(signal.SIGUSR1, False)
@@ -56,10 +59,10 @@ class ServiceLauncher(object):
         signal.signal(signal.SIGTERM, sigtermHandler)
 
         if watcher:
-            async def _watcher_restart():
+            async def _watcher_restart() -> None:
                 cls.restart_services = True
                 logging.getLogger('watcher.restart').warning('Restarting services')
-                stop_services(loop)
+                stop_services()
 
             watcher_future = loop.run_until_complete(watcher.watch(loop=loop, callback_func=_watcher_restart))
 
@@ -86,8 +89,7 @@ class ServiceLauncher(object):
             except:
                 for signame in ('SIGINT', 'SIGTERM'):
                     loop.remove_signal_handler(getattr(signal, signame))
-                loop = asyncio.get_event_loop()
-                stop_services(loop)
+                stop_services()
                 raise
 
             current_modules = [m for m in sys.modules.keys()]
