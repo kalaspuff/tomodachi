@@ -4,6 +4,7 @@ import sys
 import getopt
 import logging
 from typing import List, Optional
+import tomodachi
 from tomodachi.launcher import ServiceLauncher
 from tomodachi.watcher import Watcher
 from tomodachi.config import parse_config_files
@@ -15,17 +16,21 @@ class CLI:
                 '\n'
                 'Options:\n'
                 '  -h, --help            show this help message and exit\n'
+                '  -v, --version         print tomodachi version\n'
                 '\n'
                 'Available subcommands:\n'
                 '  run <service ...> [-c <config-file ...>] [--production]\n'
                 '  -c, --config          use json configuration files\n'
                 '  --production          disable restart on file changes\n'
-                '\n'
                 )
 
     def help_command(self) -> None:
         print(self.help_command_usage())
         sys.exit(2)
+
+    def version_command(self) -> None:
+        print('tomodachi/{}'.format(tomodachi.__version__))
+        sys.exit(0)
 
     def run_command_usage(self) -> str:
         return 'Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--production]'
@@ -76,12 +81,14 @@ class CLI:
 
     def main(self, argv: List[str]) -> None:
         try:
-            opts, args = getopt.getopt(argv, "h", ['help'])
+            opts, args = getopt.getopt(argv, "hvV", ['help', 'version', 'version'])
         except getopt.GetoptError:
             self.help_command()
         for opt, arg in opts:
             if opt in ['-h', '--help']:
                 self.help_command()
+            if opt in ['-v', '-V', '--version']:
+                self.version_command()
         if len(args):
             if args[0] == 'run':
                 self.run_command(args[1:])
