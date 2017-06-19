@@ -1,15 +1,16 @@
 import os
 import asyncio
 import sys
+from typing import Any, Dict  # noqa
 from tomodachi.watcher import Watcher
 
 
-def test_watcher_auto_root():
+def test_watcher_auto_root() -> None:
     watcher = Watcher()
     assert watcher.root == [os.path.realpath(sys.argv[0].rsplit('/', 1)[0])]
 
 
-def test_watcher_empty_directory():
+def test_watcher_empty_directory() -> None:
     root_path = '{}/tests/watcher_root/empty'.format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
@@ -17,7 +18,7 @@ def test_watcher_empty_directory():
     assert len(watcher.watched_files) == 0
 
 
-def test_watcher_default_ignored_directory():
+def test_watcher_default_ignored_directory() -> None:
     root_path = '{}/tests/watcher_root/__tmp__'.format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
@@ -25,7 +26,7 @@ def test_watcher_default_ignored_directory():
     assert len(watcher.watched_files) == 0
 
 
-def test_watcher_configurable_ignored_directory():
+def test_watcher_configurable_ignored_directory() -> None:
     root_path = '{}/tests/watcher_root/configurable_ignored'.format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
@@ -38,7 +39,7 @@ def test_watcher_configurable_ignored_directory():
     assert len(watcher.watched_files) == 0
 
 
-def test_watcher_callback():
+def test_watcher_callback() -> None:
     root_path = '{}/tests/watcher_root'.format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
@@ -55,15 +56,15 @@ def test_watcher_callback():
     assert len(result.get('updated')) == 0
 
     class Test():
-        callbacks_run = {}
+        callbacks_run = {}  # type: Dict[int, bool]
 
         @classmethod
-        async def _async(cls):
+        async def _async(cls) -> None:
 
-            async def cb1():
+            async def cb1() -> None:
                 cls.callbacks_run[1] = True
 
-            async def cb2():
+            async def cb2() -> None:
                 cls.callbacks_run[2] = True
 
             task = await watcher.watch(callback_func=cb1)
@@ -78,5 +79,5 @@ def test_watcher_callback():
             assert cls.callbacks_run.get(1) is None
             assert cls.callbacks_run.get(2) is True
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_event_loop()  # type: Any
     loop.run_until_complete(Test._async())

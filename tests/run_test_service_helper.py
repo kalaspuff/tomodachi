@@ -2,23 +2,24 @@ import logging
 import signal
 import functools
 import asyncio
+from typing import Any, Tuple
 from tomodachi.container import ServiceContainer
 from tomodachi.importer import ServiceImporter
 
 
-def start_service(filename, monkeypatch=None):
+def start_service(filename: str, monkeypatch: Any=None) -> Tuple:
     if monkeypatch:
         monkeypatch.setattr(logging.root, 'handlers', [])
 
-    loop = asyncio.get_event_loop()
-    service = None
+    loop = asyncio.get_event_loop()  # type: Any
+    service = None  # type: Any
 
-    def stop_services(loop=None):
+    def stop_services(loop: Any=None) -> None:
         if not loop:
             loop = asyncio.get_event_loop()
         asyncio.wait([asyncio.ensure_future(_stop_services())])
 
-    async def _stop_services():
+    async def _stop_services() -> None:
         service.stop_service()
 
     for signame in ('SIGINT', 'SIGTERM'):
@@ -27,8 +28,8 @@ def start_service(filename, monkeypatch=None):
     try:
         service = ServiceContainer(ServiceImporter.import_service_file(filename))
         assert service is not None
-        async def _async():
-            loop = asyncio.get_event_loop()
+        async def _async() -> None:
+            loop = asyncio.get_event_loop()  # type: Any
             try:
                 await service.run_until_complete()
             except:

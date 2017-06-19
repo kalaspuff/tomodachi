@@ -16,13 +16,13 @@ class AutoClosingService(object):
     started = False
     stop = False
 
-    async def _start_service(self):
+    async def _start_service(self) -> None:
         self.start = True
 
-    async def _started_service(self):
+    async def _started_service(self) -> None:
         self.started = True
         await asyncio.sleep(0.1)
         os.kill(os.getpid(), signal.SIGTERM)
 
-    async def _stop_service(self):
+    async def _stop_service(self) -> None:
         self.stop = True

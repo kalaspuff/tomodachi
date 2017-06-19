@@ -25,11 +25,11 @@ class DummyService(object):
     started = False
     stop = False
 
-    async def _start_service(self):
+    async def _start_service(self) -> None:
         self.start = True
 
-    async def _started_service(self):
+    async def _started_service(self) -> None:
         self.started = True
 
-    async def _stop_service(self):
+    async def _stop_service(self) -> None:
         self.stop = True

@@ -2,6 +2,7 @@ import asyncio
 import os
 import signal
 import tomodachi
+from typing import Any
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.amqp import amqp
 
@@ -18,19 +19,19 @@ class AWSSNSSQSService(object):
             'password': 'invalid'
         }
     }
-    closer = asyncio.Future()
+    closer = asyncio.Future()  # type: Any
 
     @amqp('test.topic', ('data',))
-    async def test(self, data):
+    async def test(self, data: Any) -> None:
         pass
 
     @amqp('test.#', ('metadata', 'data'))
-    async def wildcard_topic(self, metadata, data):
+    async def wildcard_topic(self, metadata: Any, data: Any) -> None:
         pass
 
-    async def _started_service(self):
-        async def _async():
-            async def sleep_and_kill():
+    async def _started_service(self) -> None:
+        async def _async() -> None:
+            async def sleep_and_kill() -> None:
                 await asyncio.sleep(10.0)
                 if not self.closer.done():
                     self.closer.set_result(None)
@@ -40,6 +41,6 @@ class AWSSNSSQSService(object):
             os.kill(os.getpid(), signal.SIGINT)
         asyncio.ensure_future(_async())
 
-    def stop_service(self):
+    def stop_service(self) -> None:
         if not self.closer.done():
             self.closer.set_result(None)

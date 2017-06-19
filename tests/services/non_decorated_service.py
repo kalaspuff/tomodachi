@@ -6,6 +6,6 @@ import signal
 class NonDecoratedService(object):
     name = 'test_non_decorated'
 
-    async def _started_service(self):
+    async def _started_service(self) -> None:
         await asyncio.sleep(0.1)
         os.kill(os.getpid(), signal.SIGTERM)

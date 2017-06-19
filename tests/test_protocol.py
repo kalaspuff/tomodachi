@@ -2,15 +2,16 @@ import asyncio
 import os
 import signal
 import time
+from typing import Any
 from run_test_service_helper import start_service
 
 
-def test_json_base(monkeypatch, capsys):
+def test_json_base(monkeypatch: Any, capsys: Any) -> None:
     services, future = start_service('tests/services/dummy_service.py', monkeypatch)
 
     instance = services.get('test_dummy')
 
-    async def _async():
+    async def _async() -> None:
         data = {'key': 'value'}
         t1 = time.time()
         json_message = await instance.message_protocol.build_message(instance, 'topic', data)

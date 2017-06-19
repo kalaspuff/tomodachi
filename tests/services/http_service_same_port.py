@@ -1,3 +1,4 @@
+from aiohttp import web
 import tomodachi
 from tomodachi.transport.http import http
 
@@ -12,8 +13,8 @@ class HttpServiceOne(object):
     }
 
     @http('GET', r'/test/?')
-    async def test(self, request):
-        return 'test'  # tomodachi
+    async def test(self, request: web.Request) -> str:
+        return 'test'
 
 
 @tomodachi.service
@@ -26,5 +27,5 @@ class HttpServiceTwo(object):
     }
 
     @http('GET', r'/test/?')
-    async def test(self, request):
-        return 'test'  # tomodachi
+    async def test(self, request: web.Request) -> str:
+        return 'test'

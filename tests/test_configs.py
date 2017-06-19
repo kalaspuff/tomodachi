@@ -2,7 +2,7 @@ from decimal import Decimal
 from tomodachi.config import merge_dicts, parse_config_files
 
 
-def test_merge_dicts():
+def test_merge_dicts() -> None:
     dict1 = {
         'number_list': [1, 3, 5],
         'string': 'string',
@@ -33,7 +33,7 @@ def test_merge_dicts():
     assert result == expected_result
 
 
-def test_parse_config_file():
+def test_parse_config_file() -> None:
     result = parse_config_files('tests/configs/config_file.json')
     expected_result = {
         'options': {
@@ -47,6 +47,6 @@ def test_parse_config_file():
     assert result == expected_result
 
 
-def test_parse_no_config_file():
+def test_parse_no_config_file() -> None:
     result = parse_config_files([])
     assert result is None

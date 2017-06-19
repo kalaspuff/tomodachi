@@ -6,5 +6,5 @@ import tomodachi
 class InvalidService(object):
     name = 'test_invalid'
 
-    def syntax_error{}:  # noqa: E901
+    def syntax_error(self) -> error:  # type: ignore
         pass
