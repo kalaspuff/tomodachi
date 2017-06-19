@@ -80,6 +80,18 @@ def test_cli_entrypoint_invalid_arguments_show_help(monkeypatch: Any, capsys: An
     assert out == cli.help_command_usage() + "\n"
 
 
+def test_cli_entrypoint_invalid_subcommand_show_help(monkeypatch: Any, capsys: Any) -> None:
+    cli = tomodachi.cli.CLI()
+    monkeypatch.setattr(logging.root, 'handlers', [])
+
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(['tomodachi', 'invalidsubcommand'])
+
+    out, err = capsys.readouterr()
+    assert err == ''
+    assert out == cli.help_command_usage() + "\n"
+
+
 def test_cli_start_service(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(logging.root, 'handlers', [])
 
@@ -112,18 +124,6 @@ def test_cli_start_service_with_config(monkeypatch: Any, capsys: Any) -> None:
     out, err = capsys.readouterr()
     assert 'Starting services' in out
     assert 'tomodachi/{}'.format(tomodachi.__version__) in out
-
-
-def test_cli_start_service_with_non_existing_config(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, 'handlers', [])
-
-    with pytest.raises(SystemExit):
-        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/auto_closing_service.py', '-c', 'tests/configs/without_config_file.json'])
-
-    out, err = capsys.readouterr()
-    assert 'Starting services' not in out
-    assert 'tomodachi/{}'.format(tomodachi.__version__) not in out
-    assert 'Invalid config file' in out
 
 
 def test_cli_start_service_with_non_existing_config(monkeypatch: Any, capsys: Any) -> None:

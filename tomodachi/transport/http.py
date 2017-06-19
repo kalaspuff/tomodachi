@@ -3,7 +3,7 @@ import asyncio
 import logging
 import traceback
 import time
-from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable
+from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
 from html import escape as html_escape
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs

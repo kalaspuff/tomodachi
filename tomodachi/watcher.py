@@ -14,9 +14,7 @@ class Watcher(object):
 
         if not root:
             directory = os.path.realpath(sys.argv[0].rsplit('/', 1)[0])
-            if os.path.isfile(directory):
-                directory = os.path.dirname(directory)
-            self.root = [directory]
+            self.root = [os.path.dirname(directory) if os.path.isfile(directory) else directory]
         else:
             self.root = root
 

@@ -2,6 +2,7 @@ import asyncio
 import os
 import signal
 import time
+import ujson
 from typing import Any
 from run_test_service_helper import start_service
 
@@ -19,6 +20,15 @@ def test_json_base(monkeypatch: Any, capsys: Any) -> None:
         result, message_uuid, timestamp = await instance.message_protocol.parse_message(json_message)
         assert result.get('data') == data
         assert len(message_uuid) == 73
+        assert message_uuid[0:36] == instance.uuid
+        assert timestamp >= t1
+        assert timestamp <= t2
+
+        tmp_message = ujson.loads(json_message)
+        tmp_message['metadata']['compatible_protocol_versions'] = 'non-compatible'
+        json_message = ujson.dumps(tmp_message)
+        result, message_uuid, timestamp = await instance.message_protocol.parse_message(json_message)
+        assert result is False
         assert message_uuid[0:36] == instance.uuid
         assert timestamp >= t1
         assert timestamp <= t2
