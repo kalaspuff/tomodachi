@@ -77,13 +77,15 @@ Requirements 👍
 * Python_ 3.5+
 * aiohttp_
 * aiobotocore_
+* aioamqp_
 * ujson_
 * uvloop_
 
 .. _Python: https://www.python.org
 .. _asyncio: http://docs.python.org/3.5/library/asyncio.html
-.. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _aiohttp: https://github.com/aio-libs/aiohttp
+.. _aiobotocore: https://github.com/aio-libs/aiobotocore
+.. _aioamqp: https://github.com/Polyconseil/aioamqp
 .. _ujson: https://github.com/esnme/ultrajson
 .. _uvloop: https://github.com/MagicStack/uvloop
 
