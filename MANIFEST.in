@@ -1,6 +1,7 @@
 include LICENSE
 include MANIFEST.in
 include README.rst
+include CHANGES.rst
 graft tomodachi
 global-exclude __pycache__
 global-exclude *.py[co]
