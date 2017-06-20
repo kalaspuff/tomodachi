@@ -7,7 +7,7 @@ Changes
 - Type hinted examples and test cases.
 
 - Shielded function calls for AMQP and SNS+SQS transports to avoid unexpected
-  executing stop.
+  execution stop.
 
 - Added version output to tomodachi CLI tool.
 
