@@ -282,7 +282,7 @@ class AmqpTransport(Invoker):
             def callback(routing_key: str, handler: Callable) -> Callable:
                 async def _callback(self: Any, body: bytes, envelope: Any, properties: Any) -> None:
                     # await channel.basic_reject(delivery_tag, requeue=True)
-                    await handler(body.decode(), envelope.delivery_tag)
+                    await asyncio.shield(handler(body.decode(), envelope.delivery_tag))
                 return _callback
 
             for routing_key, exchange_name, competing, func, handler in context.get('_amqp_subscribers', []):
