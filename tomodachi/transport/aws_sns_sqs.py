@@ -499,7 +499,7 @@ class AWSSNSSQSTransport(Invoker):
                         payload = message_body.get('Message')
                         futures.append(callback(payload, receipt_handle, queue_url))
                     if futures:
-                        await asyncio.wait([asyncio.ensure_future(func()) for func in futures if func])
+                        await asyncio.wait([asyncio.ensure_future(asyncio.shield(func())) for func in futures if func])
 
             if not stop_waiter.done():
                 stop_waiter.set_result(None)
