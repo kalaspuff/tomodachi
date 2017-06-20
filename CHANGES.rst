@@ -1,6 +1,19 @@
 Changes
 =======
 
+0.2.13 (2017-06-20)
+-------------------
+
+- Type hinted examples and test cases.
+
+- Shielded function calls for AMQP and SNS+SQS transports to avoid unexpected
+  executing stop.
+
+- Added version output to tomodachi CLI tool.
+
+- Additional test cases.
+
+
 0.2.12 (2017-06-18)
 -------------------
 
