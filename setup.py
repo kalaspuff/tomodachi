@@ -36,9 +36,9 @@ classifiers = [
 
 setup(name='tomodachi',
       version=tomodachi.__version__,
-      description=('Python 3 microservice framework using asyncio with HTTP, '
+      description=('Python 3 microservice library / framework using asyncio with HTTP, '
                    'AMQP and AWS SNS+SQS support.'),
-      long_description='\n\n'.join((read('README.rst'),)),
+      long_description='\n\n'.join((read('README.rst'), read('CHANGES.rst'))),
       classifiers=classifiers,
       author='Carl Oscar Aaro',
       author_email='hello@carloscar.com',
@@ -51,7 +51,7 @@ setup(name='tomodachi',
           ]
       },
       install_requires=install_requires,
-      keywords=('tomodachi, microservice, microservices, framework, asyncio, '
+      keywords=('tomodachi, microservice, microservices, framework, library, asyncio, '
                 'aws, sns, sqs, amqp, rabbitmq, http, easy, fast, python 3'),
       zip_safe=False,
       packages=find_packages(),
