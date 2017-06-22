@@ -40,8 +40,8 @@ Basic HTTP based service 🌟
 
 
     @tomodachi.service
-    class HttpService(object):
-        name = 'http_service'
+    class Service(object):
+        name = 'example_service'
 
         # Request paths are specified as regex for full flexibility
         @http('GET', r'/resource/(?P<id>[^/]+?)/?')
