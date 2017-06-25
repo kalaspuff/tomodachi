@@ -11,7 +11,7 @@ coverage==4.4.1
 docutils==0.13.1
 execnet==1.4.1
 jmespath==0.9.3
-multidict==3.0.0
+multidict==3.1.0
 mypy==0.511
 packaging==16.8
 pep8==1.7.0
