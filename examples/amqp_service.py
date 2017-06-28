@@ -22,7 +22,7 @@ class ExampleAmqpService(object):
     uuid = os.environ.get('SERVICE_UUID')
 
     @amqp('example.route1')
-    async def route1a(self, data: Any) -> None:
+    async def route1a(self, data: Any, test: Any='tjo') -> None:
         self.logger.info('Received data (function: route1a) - "{}"'.format(data))
 
     @amqp('example.route1')

@@ -89,7 +89,7 @@ class AWSSNSSQSTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('aws_sns_sqs', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Callable, topic: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, competing: bool=False) -> Any:
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, competing: bool=False) -> Any:
         async def handler(payload: Optional[str], receipt_handle: Optional[str]=None, queue_url: Optional[str]=None) -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
@@ -97,8 +97,10 @@ class AWSSNSSQSTransport(Invoker):
 
             _callback_kwargs = callback_kwargs  # type: Any
             if not _callback_kwargs:
-                _callback_kwargs = {k: None for k in func.__code__.co_varnames[1:]}
-            kwargs = {k: None for k in _callback_kwargs if k != 'self'}
+                _callback_kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:])}
+            else:
+                _callback_kwargs = {k: None for k in _callback_kwargs if k != 'self'}
+            kwargs = {k: v for k, v in _callback_kwargs.items()}
 
             message_protocol = context.get('message_protocol')
             message = payload
@@ -546,7 +548,13 @@ class AWSSNSSQSTransport(Invoker):
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
-                await asyncio.wait([asyncio.ensure_future(client.close()) for _, client in cls.clients.items()], timeout=3)
+                tasks = []
+                for _, client in cls.clients.items():
+                    task = client.close()
+                    if getattr(task, '_coro', None):
+                        task = task._coro
+                    tasks.append(asyncio.ensure_future(task))
+                await asyncio.wait(tasks, timeout=3)
                 cls.clients = None
             else:
                 await stop_waiter

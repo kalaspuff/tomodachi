@@ -8,10 +8,9 @@ from tomodachi.invoker import Invoker
 class Scheduler(Invoker):
     close_waiter = None
 
-    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[Union[str, List[Union[str, datetime.datetime]], datetime.datetime]]=None, timezone: Optional[str]=None) -> Callable:
+    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]]=None, timestamp: Optional[Union[str, List[Union[str, datetime.datetime]], datetime.datetime]]=None, timezone: Optional[str]=None) -> Callable:
         async def handler() -> None:
-            kwargs = {k: None for k in func.__code__.co_varnames[1:] if k != 'self'}  # type: Any
-
+            kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:])}  # type: Dict
             routine = func(*(obj,), **kwargs)
             try:
                 if isinstance(routine, Awaitable):
