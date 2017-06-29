@@ -58,5 +58,12 @@ def test_advanced_parsing() -> None:
 def test_impossible_dates() -> None:
     t = datetime.datetime(2017, 6, 15, 10, 16, 50)
     assert get_next_datetime('0 0 1 jan/2 * 2011-2013', t) is None
+
+    with pytest.raises(Exception):
+        get_next_datetime('* * 29 2 * 2017-2019', t)
+
+    with pytest.raises(Exception):
+        get_next_datetime('70 * * *', t)
+
     with pytest.raises(Exception):
         get_next_datetime('* * 30 2 *', t)
