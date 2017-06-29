@@ -1,6 +1,20 @@
 Changes
 =======
 
+0.2.14 (2017-06-30)
+-------------------
+
+- New "transport" invoker for service functions: ``schedule``. It works like
+  cron type scheduling where specific functions will be run on the specified
+  interval. For example a function can be specified to run once per day at a
+  specific time or every second minute, or the last Tuesday of the January and
+  March at 05:30 AM.
+
+- Values for keyword arguments invoked by transport decorators were earlier
+  always set to ``None``, despite having other default values. This is now
+  corrected.
+
+
 0.2.13 (2017-06-20)
 -------------------
 
