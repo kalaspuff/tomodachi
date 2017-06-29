@@ -167,4 +167,7 @@ def get_next_datetime(crontab_notation: str, now_date: Optional[datetime.datetim
     except ValueError:
         pass
 
-    return min([calculate_date(d, last_day, last_weekday) for d in dates])
+    calculated_dates = [calculate_date(d, last_day, last_weekday) for d in dates]
+    if not any(calculated_dates):
+        return None
+    return min([d for d in calculated_dates if d])

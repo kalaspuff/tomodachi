@@ -17,6 +17,10 @@ class SchedulerService(object):
     async def every_second(self) -> None:
         self.seconds_triggered += 1
 
+    @schedule(timestamp='00:00')
+    async def midnight(self) -> None:
+        pass
+
     async def _started_service(self) -> None:
         async def _async() -> None:
             async def sleep_and_kill() -> None:

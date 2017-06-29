@@ -1,4 +1,5 @@
 import datetime
+import pytest
 from tomodachi.helpers.crontab import get_next_datetime
 
 
@@ -47,5 +48,15 @@ def test_advanced_parsing() -> None:
     assert get_next_datetime('* * 4-15 feb-jun wed-fri', t) == datetime.datetime(2017, 6, 15, 10, 17)
     assert get_next_datetime('3-20/2 5 4-15 feb-may wed-fri', t) == datetime.datetime(2018, 2, 7, 5, 3)
 
+    assert get_next_datetime('* * 29 2 *', t) == datetime.datetime(2020, 2, 29, 0, 0)
+    assert get_next_datetime('* * 29 2 0', t) == datetime.datetime(2032, 2, 29, 0, 0)
+
     t = datetime.datetime(2011, 1, 10, 23, 59, 30)
     assert get_next_datetime('0 0 1 jan/2 * 2011-2013', t) == datetime.datetime(2011, 3, 1)
+
+
+def test_impossible_dates() -> None:
+    t = datetime.datetime(2017, 6, 15, 10, 16, 50)
+    assert get_next_datetime('0 0 1 jan/2 * 2011-2013', t) is None
+    with pytest.raises(Exception):
+        get_next_datetime('* * 30 2 *', t)
