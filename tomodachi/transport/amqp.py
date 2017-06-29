@@ -105,12 +105,14 @@ class AmqpTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Callable, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, exchange_name: str='', competing: bool=False) -> Any:
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, exchange_name: str='', competing: bool=False) -> Any:
         async def handler(payload: Any, delivery_tag: Any) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
             if not _callback_kwargs:
-                _callback_kwargs = {k: None for k in func.__code__.co_varnames[1:]}
-            kwargs = {k: None for k in _callback_kwargs if k != 'self'}
+                _callback_kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:])}
+            else:
+                _callback_kwargs = {k: None for k in _callback_kwargs if k != 'self'}
+            kwargs = {k: v for k, v in _callback_kwargs.items()}
 
             message_protocol = context.get('message_protocol')
             message = payload

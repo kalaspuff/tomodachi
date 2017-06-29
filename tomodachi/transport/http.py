@@ -172,7 +172,7 @@ class Response(object):
 
 
 class HttpTransport(Invoker):
-    async def request_handler(cls: Any, obj: Any, context: Dict, func: Callable, method: str, url: str) -> Any:
+    async def request_handler(cls: Any, obj: Any, context: Dict, func: Any, method: str, url: str) -> Any:
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
@@ -189,7 +189,11 @@ class HttpTransport(Invoker):
 
         async def handler(request: web.Request) -> web.Response:
             result = compiled_pattern.match(request.path)
-            routine = func(*(obj, request,), **(result.groupdict() if result else {}))
+            kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:]) if i >= 1}  # type: Dict
+            if result:
+                for k, v in result.groupdict().items():
+                    kwargs[k] = v
+            routine = func(*(obj, request,), **kwargs)
             return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
 
             if isinstance(return_value, Response):
@@ -231,7 +235,7 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
-    async def error_handler(cls: Any, obj: Any, context: Dict, func: Callable, status_code: int) -> Any:
+    async def error_handler(cls: Any, obj: Any, context: Dict, func: Any, status_code: int) -> Any:
         default_content_type = context.get('options', {}).get('http', {}).get('content_type', 'text/plain')
         default_charset = context.get('options', {}).get('http', {}).get('charset', 'utf-8')
 
@@ -244,7 +248,7 @@ class HttpTransport(Invoker):
                 pass
 
         async def handler(request: web.Request) -> web.Response:
-            kwargs = {}  # type: Dict
+            kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:]) if i >= 1}  # type: Dict
             routine = func(*(obj, request,), **kwargs)
             return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
 
