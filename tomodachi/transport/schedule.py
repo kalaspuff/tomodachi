@@ -124,6 +124,9 @@ class Scheduler(Invoker):
         return int(current_time + 60 * 60 * 24 * 365 * 100)
 
     async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> None:
+        if timezone:
+            raise Exception("Timezone support not yet implemented")
+
         if not cls.close_waiter:
             cls.close_waiter = asyncio.Future()
         stop_waiter = asyncio.Future()  # type: asyncio.Future
