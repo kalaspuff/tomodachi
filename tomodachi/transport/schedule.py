@@ -1,7 +1,7 @@
 import datetime
 import asyncio
 import time
-from typing import Any, Dict, List, Union, Optional, Callable, Awaitable
+from typing import Any, Dict, List, Union, Optional, Callable, Awaitable  # noqa
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.crontab import get_next_datetime
 
@@ -9,7 +9,7 @@ from tomodachi.helpers.crontab import get_next_datetime
 class Scheduler(Invoker):
     close_waiter = None
 
-    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]]=None, timestamp: Optional[Union[str, List[Union[str, datetime.datetime]], datetime.datetime]]=None, timezone: Optional[str]=None) -> Any:
+    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> Any:
         async def handler() -> None:
             kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:])}  # type: Dict
             routine = func(*(obj,), **kwargs)
@@ -123,7 +123,7 @@ class Scheduler(Invoker):
 
         return int(current_time + 60 * 60 * 24 * 365 * 100)
 
-    async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[Union[str, List[Union[str, datetime.datetime]], datetime.datetime]]=None, timezone: Optional[str]=None) -> None:
+    async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> None:
         if not cls.close_waiter:
             cls.close_waiter = asyncio.Future()
         stop_waiter = asyncio.Future()  # type: asyncio.Future
