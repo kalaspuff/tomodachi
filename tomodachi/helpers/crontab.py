@@ -44,7 +44,7 @@ def get_next_datetime(crontab_notation: str, now_date: Optional[datetime.datetim
                     last = True
                     a = str(a)[1:]
                 a = int(aliases.get(str(a), a))
-                b = int(aliases.get(str(a), b))
+                b = int(aliases.get(str(b), b))
                 possible_values = [x for x in possible_values if x >= min(a, b) and x <= max(a, b)]
 
             if '/' in part:
