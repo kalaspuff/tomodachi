@@ -85,9 +85,9 @@ class Scheduler(Invoker):
             if interval in ('every second', '1s', '1 s', '1second', '1 second', 'second', 'secondly', 'once per second'):
                 return int(current_time + 1)
             if interval in ('every minute', '1m', '1 m', '1minute', '1 minute', 'minute', 'minutely', 'once per minute'):
-                return int(current_time + 60 - (int(current_time + 60) % 60))
+                interval = '@minutely'
             if interval in ('every hour', '1h', '1 h', '1hour', '1 hour', 'hour', 'hourly', 'once per hour'):
-                return int(current_time + 3600 - (int(current_time + 3600) % 3600))
+                interval = '@hourly'
             if interval in ('every day', '1d', '1 d', '1day', '1 day', 'day', 'daily', 'once per day', 'nightly'):
                 interval = '@daily'
             if interval in ('every month', '1month', '1 month', 'month', 'monthly', 'once per month'):
@@ -132,6 +132,7 @@ class Scheduler(Invoker):
         async def schedule_loop() -> None:
             await start_waiter
             next_call_at = None
+            prev_call_at = None
             tasks = []  # type: List
             current_time = time.time()
             while not cls.close_waiter.done():
@@ -140,6 +141,9 @@ class Scheduler(Invoker):
                 current_time = last_time + 1 if int(last_time + 1) < int(actual_time) else actual_time
                 if next_call_at is None:
                     next_call_at = cls.next_call_at(current_time, interval, timestamp, timezone)
+                    if prev_call_at and prev_call_at == next_call_at:
+                        next_call_at = None
+                        continue
                 sleep_diff = int(current_time + 1) - actual_time + 0.001
                 if sleep_diff > 0:
                     await asyncio.sleep(sleep_diff)
@@ -147,6 +151,7 @@ class Scheduler(Invoker):
                     continue
                 if cls.close_waiter.done():
                     continue
+                prev_call_at = next_call_at
                 next_call_at = None
                 tasks = [task for task in tasks if not task.done()]
                 tasks.append(asyncio.ensure_future(asyncio.shield(handler())))

@@ -28,5 +28,5 @@ class SchedulerService(object):
         self.logger.info('Heartbeat (every second minute)')
 
     @schedule(timestamp='22:15:30')  # as a date timestamp
-    async def trigger_as_timestamp(self) -> None:
+    async def as_timestamp(self) -> None:
         self.logger.info('Heartbeat (22:15:30)')
