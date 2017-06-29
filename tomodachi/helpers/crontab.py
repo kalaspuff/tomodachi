@@ -51,11 +51,16 @@ def get_next_datetime(crontab_notation: str, now_date: Optional[datetime.datetim
                 a, b = part.split('/')
                 try:
                     a = int(aliases.get(a, a))
-                    possible_values = [x for x in possible_values if x == a]
+                    b = int(b)
+                    possible_values = [x for x in possible_values if x % b == (a % b)]
                 except ValueError:
-                    pass
-                b = int(b)
-                possible_values = [x for x in possible_values if x % b == 0]
+                    b = int(b)
+                    if a in ['*', '?']:
+                        possible_values = [x for x in possible_values if x % b == 0]
+                    else:
+                        a, _ = part.split('-')
+                        a = int(aliases.get(str(a), a))
+                        possible_values = [x for x in possible_values if x % b == (a % b)]
 
             try:
                 if 'l' == part[0]:
