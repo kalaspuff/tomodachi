@@ -3,12 +3,13 @@ import asyncio
 import time
 from typing import Any, Dict, List, Union, Optional, Callable, Awaitable
 from tomodachi.invoker import Invoker
+from tomodachi.helpers.crontab import get_next_datetime
 
 
 class Scheduler(Invoker):
     close_waiter = None
 
-    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]]=None, timestamp: Optional[Union[str, List[Union[str, datetime.datetime]], datetime.datetime]]=None, timezone: Optional[str]=None) -> Callable:
+    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]]=None, timestamp: Optional[Union[str, List[Union[str, datetime.datetime]], datetime.datetime]]=None, timezone: Optional[str]=None) -> Any:
         async def handler() -> None:
             kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:])}  # type: Dict
             routine = func(*(obj,), **kwargs)
@@ -25,17 +26,102 @@ class Scheduler(Invoker):
         return (await start_func) if start_func else None
 
     @classmethod
-    def next_call_at(cls, current_time: float, interval: Optional[Union[str, int]]=None, timestamp: Optional[Union[str, List[Union[str, datetime.datetime]], datetime.datetime]]=None, timezone: Optional[str]=None) -> int:
+    def next_call_at(cls, current_time: float, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> int:
+        if interval is None and timestamp is not None:
+            if isinstance(timestamp, str):
+                try:
+                    datetime_object = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+                    interval = '{} {} {} {} * {}'.format(datetime_object.minute, datetime_object.hour, datetime_object.day, datetime_object.month, datetime_object.year)
+                    second_modifier = 1
+                    if datetime_object > datetime.datetime.fromtimestamp(current_time):
+                        second_modifier = -60
+                    next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + second_modifier))
+                    if not next_at:
+                        return int(current_time + 60 * 60 * 24 * 365 * 100)
+                    return int(next_at.timestamp() + datetime_object.second)
+                except ValueError:
+                    pass
+
+                try:
+                    datetime_object = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M')
+                    interval = '{} {} {} {} * {}'.format(datetime_object.minute, datetime_object.hour, datetime_object.day, datetime_object.month, datetime_object.year)
+                    next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + 1))
+                    if not next_at:
+                        return int(current_time + 60 * 60 * 24 * 365 * 100)
+                    return int(next_at.timestamp())
+                except ValueError:
+                    pass
+
+                try:
+                    datetime_object = datetime.datetime.strptime(timestamp, '%H:%M:%S')
+                    datetime_object = datetime.datetime(datetime.datetime.fromtimestamp(current_time).year, datetime.datetime.fromtimestamp(current_time).month, datetime.datetime.fromtimestamp(current_time).day, datetime_object.hour, datetime_object.minute, datetime_object.second)
+                    interval = '{} {} * * *'.format(datetime_object.minute, datetime_object.hour)
+                    second_modifier = 1
+                    if datetime_object > datetime.datetime.fromtimestamp(current_time):
+                        second_modifier = -60
+                    next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + second_modifier))
+                    if not next_at:
+                        return int(current_time + 60 * 60 * 24 * 365 * 100)
+                    return int(next_at.timestamp() + datetime_object.second)
+                except ValueError:
+                    pass
+
+                try:
+                    datetime_object = datetime.datetime.strptime(timestamp, '%H:%M')
+                    interval = '{} {} * * *'.format(datetime_object.minute, datetime_object.hour)
+                    next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + 1))
+                    if not next_at:
+                        return int(current_time + 60 * 60 * 24 * 365 * 100)
+                    return int(next_at.timestamp())
+                except ValueError:
+                    pass
+
+                raise Exception('Invalid timestamp')
+
         if interval is not None:
             if isinstance(interval, int):
                 return int(current_time + interval)
+            interval = interval.lower()
             if interval in ('every second', '1s', '1 s', '1second', '1 second', 'second', 'secondly', 'once per second'):
                 return int(current_time + 1)
             if interval in ('every minute', '1m', '1 m', '1minute', '1 minute', 'minute', 'minutely', 'once per minute'):
                 return int(current_time + 60 - (int(current_time + 60) % 60))
             if interval in ('every hour', '1h', '1 h', '1hour', '1 hour', 'hour', 'hourly', 'once per hour'):
                 return int(current_time + 3600 - (int(current_time + 3600) % 3600))
-        return int(current_time + 3600)
+            if interval in ('every day', '1d', '1 d', '1day', '1 day', 'day', 'daily', 'once per day', 'nightly'):
+                interval = '@daily'
+            if interval in ('every month', '1month', '1 month', 'month', 'monthly', 'once per month'):
+                interval = '@monthly'
+            if interval in ('every year', '1y', '1 y', '1year', '1 year', 'year', 'yearly', 'once per year'):
+                interval = '@yearly'
+            if interval in ('monday', 'mon', 'every monday', 'once per monday', 'weekly', 'once per week', 'week', 'every week'):
+                interval = '0 0 * * 1'
+            if interval in ('tuesday', 'tue', 'every tuesday', 'once per tuesday'):
+                interval = '0 0 * * 2'
+            if interval in ('wednesday', 'wed', 'every wednesday', 'once per wednesday'):
+                interval = '0 0 * * 3'
+            if interval in ('thursday', 'thu', 'every thursday', 'once per thursday'):
+                interval = '0 0 * * 4'
+            if interval in ('friday', 'fri', 'every friday', 'once per friday'):
+                interval = '0 0 * * 5'
+            if interval in ('saturday', 'sat', 'every saturday', 'once per saturday'):
+                interval = '0 0 * * 6'
+            if interval in ('sunday', 'sun', 'every sunday', 'once per sunday'):
+                interval = '0 0 * * 0'
+            if interval in ('weekday', 'weekdays', 'every weekday'):
+                interval = '0 0 * * 1-5'
+            if interval in ('weekend', 'weekends', 'every weekend'):
+                interval = '0 0 * * 0,6'
+
+            try:
+                next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + 1))
+                if not next_at:
+                    return int(current_time + 60 * 60 * 24 * 365 * 100)
+                return int(next_at.timestamp())
+            except:
+                raise Exception('Invalid interval')
+
+        return int(current_time + 60 * 60 * 24 * 365 * 100)
 
     async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[Union[str, List[Union[str, datetime.datetime]], datetime.datetime]]=None, timezone: Optional[str]=None) -> None:
         if not cls.close_waiter:
