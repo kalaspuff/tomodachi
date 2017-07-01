@@ -1,10 +1,12 @@
 Changes
 =======
 
-0.2.15 (2017-07-XX)
+0.2.15 (2017-07-02)
 -------------------
 
 - Corrected issue with configuration values for AWS and AWS SNS+SQS settings.
+
+- Improved testing suite and more code coverage for integration tests.
 
 
 0.2.14 (2017-06-30)
