@@ -92,21 +92,21 @@ class Scheduler(Invoker):
                 interval = '@daily'
             if interval in ('every month', '1month', '1 month', 'month', 'monthly', 'once per month'):
                 interval = '@monthly'
-            if interval in ('every year', '1y', '1 y', '1year', '1 year', 'year', 'yearly', 'once per year'):
+            if interval in ('every year', '1y', '1 y', '1year', '1 year', 'year', 'yearly', 'once per year', 'annually'):
                 interval = '@yearly'
-            if interval in ('monday', 'mon', 'every monday', 'once per monday', 'weekly', 'once per week', 'week', 'every week'):
+            if interval in ('monday', 'mondays', 'mon', 'every monday', 'once per monday', 'weekly', 'once per week', 'week', 'every week'):
                 interval = '0 0 * * 1'
-            if interval in ('tuesday', 'tue', 'every tuesday', 'once per tuesday'):
+            if interval in ('tuesday', 'tuesdays', 'tue', 'every tuesday', 'once per tuesday'):
                 interval = '0 0 * * 2'
-            if interval in ('wednesday', 'wed', 'every wednesday', 'once per wednesday'):
+            if interval in ('wednesday', 'wednesdays', 'wed', 'every wednesday', 'once per wednesday'):
                 interval = '0 0 * * 3'
-            if interval in ('thursday', 'thu', 'every thursday', 'once per thursday'):
+            if interval in ('thursday', 'thursdays', 'thu', 'every thursday', 'once per thursday'):
                 interval = '0 0 * * 4'
-            if interval in ('friday', 'fri', 'every friday', 'once per friday'):
+            if interval in ('friday', 'fridays', 'fri', 'every friday', 'once per friday'):
                 interval = '0 0 * * 5'
-            if interval in ('saturday', 'sat', 'every saturday', 'once per saturday'):
+            if interval in ('saturday', 'saturdays', 'sat', 'every saturday', 'once per saturday'):
                 interval = '0 0 * * 6'
-            if interval in ('sunday', 'sun', 'every sunday', 'once per sunday'):
+            if interval in ('sunday', 'sundays', 'sun', 'every sunday', 'once per sunday'):
                 interval = '0 0 * * 0'
             if interval in ('weekday', 'weekdays', 'every weekday'):
                 interval = '0 0 * * 1-5'
