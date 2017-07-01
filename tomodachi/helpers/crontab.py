@@ -21,7 +21,7 @@ crontab_aliases = {
 }  # type: Dict[str, str]
 
 
-def get_next_datetime(crontab_notation: str, now_date: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
+def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Optional[datetime.datetime]:
     crontab_notation = crontab_aliases.get(crontab_notation, crontab_notation)
     cron_parts = [c for c in crontab_notation.split() if c.strip()]
     cron_parts += ['*' for _ in range(len(cron_attributes) - len(cron_parts))]
@@ -95,8 +95,6 @@ def get_next_datetime(crontab_notation: str, now_date: Optional[datetime.datetim
                 if attr[0] == 'isoweekday':
                     continue
                 value = getattr(next_date, attr[0])
-                if type(value) != int:
-                    value = value()
                 possible_values = [v for v in values[i] if v >= value]
                 if not possible_values:
                     if attr[0] == 'year':
@@ -137,37 +135,14 @@ def get_next_datetime(crontab_notation: str, now_date: Optional[datetime.datetim
 
         return next_date
 
-    if not now_date:
-        now_date = datetime.datetime.now()
-    dates = []
-    if now_date.second == 0:
-        dates.append(now_date)
-    try:
-        dates.append(datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour, now_date.minute + 1))
-    except ValueError:
-        pass
-
-    try:
-        dates.append(datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour + 1))
-    except ValueError:
-        pass
-
-    try:
-        dates.append(datetime.datetime(now_date.year, now_date.month, now_date.day + 1))
-    except ValueError:
-        pass
-
-    try:
-        dates.append(datetime.datetime(now_date.year, now_date.month + 1, 1))
-    except ValueError:
-        pass
-
-    try:
-        dates.append(datetime.datetime(now_date.year + 1, 1, 1))
-    except ValueError:
-        pass
-
-    calculated_dates = [calculate_date(d, last_day, last_weekday) for d in dates]
+    calculated_dates = [calculate_date(d, last_day, last_weekday) for d in [
+        now_date if now_date.second == 0 else None,
+        datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour, now_date.minute + 1) if now_date.minute < 60 - 1 else None,
+        datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour + 1) if now_date.hour < 24 - 1 else None,
+        datetime.datetime(now_date.year, now_date.month, now_date.day + 1) if now_date.day < monthrange(now_date.year, now_date.month)[1] - 1 else None,
+        datetime.datetime(now_date.year, now_date.month + 1, 1) if now_date.month < 12 - 1 else None,
+        datetime.datetime(now_date.year + 1, 1, 1)
+    ] if d]
     if not any(calculated_dates):
         return None
     return min([d for d in calculated_dates if d])
