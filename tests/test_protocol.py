@@ -1,4 +1,3 @@
-import asyncio
 import os
 import signal
 import time
@@ -7,7 +6,7 @@ from typing import Any
 from run_test_service_helper import start_service
 
 
-def test_json_base(monkeypatch: Any, capsys: Any) -> None:
+def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service('tests/services/dummy_service.py', monkeypatch)
 
     instance = services.get('test_dummy')
@@ -33,7 +32,6 @@ def test_json_base(monkeypatch: Any, capsys: Any) -> None:
         assert timestamp >= t1
         assert timestamp <= t2
 
-    loop = asyncio.get_event_loop()
     loop.run_until_complete(_async())
 
     os.kill(os.getpid(), signal.SIGINT)

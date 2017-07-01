@@ -36,7 +36,8 @@ class AWSSNSSQSService(object):
     async def test(self, data: Any, metadata: Any, service: Any) -> None:
         self.test_topic_data_received = True
         self.test_topic_metadata_topic = metadata.get('topic')
-        self.test_topic_service_uuid = service.get('uuid')
+        if service.get('uuid') == self.uuid:
+            self.test_topic_service_uuid = service.get('uuid')
 
     @aws_sns_sqs('test-topic#')
     async def faked_wildcard_topic(self, metadata: Any, data: Any) -> None:

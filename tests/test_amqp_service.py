@@ -1,9 +1,8 @@
-import asyncio
 from typing import Any
 from run_test_service_helper import start_service
 
 
-def test_start_amqp_service_invalid_credentials(monkeypatch: Any, capsys: Any) -> None:
+def test_start_amqp_service_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service('tests/services/amqp_service_invalid_credentials.py', monkeypatch)
 
     assert services is not None
@@ -13,7 +12,6 @@ def test_start_amqp_service_invalid_credentials(monkeypatch: Any, capsys: Any) -
 
     assert instance.uuid is not None
     instance.stop_service()
-    loop = asyncio.get_event_loop()
     loop.run_until_complete(future)
 
     out, err = capsys.readouterr()

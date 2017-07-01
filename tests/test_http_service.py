@@ -6,7 +6,7 @@ from multidict import CIMultiDictProxy
 from run_test_service_helper import start_service
 
 
-def test_start_http_service(monkeypatch: Any, capsys: Any) -> None:
+def test_start_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service('tests/services/http_service.py', monkeypatch)
 
     assert services is not None
@@ -19,11 +19,10 @@ def test_start_http_service(monkeypatch: Any, capsys: Any) -> None:
     assert port != 0
     assert instance.uuid is not None
     instance.stop_service()
-    loop = asyncio.get_event_loop()
     loop.run_until_complete(future)
 
 
-def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any) -> None:
+def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service('tests/services/http_service_same_port.py', monkeypatch)
 
     assert services is not None
@@ -42,14 +41,13 @@ def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any) -> None:
 
     assert bool(port1 and port2) is False
 
-    loop = asyncio.get_event_loop()
     loop.run_until_complete(future)
 
     out, err = capsys.readouterr()
     assert 'address already in use' in err
 
 
-def test_request_http_service(monkeypatch: Any, capsys: Any) -> None:
+def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service('tests/services/http_service.py', monkeypatch)
     instance = services.get('test_http')
     port = instance.context.get('_http_port')
@@ -136,7 +134,6 @@ def test_request_http_service(monkeypatch: Any, capsys: Any) -> None:
             response = await client.get('http://127.0.0.1:{}/slow'.format(port), timeout=3.0)
             assert response is not None
 
-    loop = asyncio.get_event_loop()  # type: Any
     loop.run_until_complete(_async(loop))
     instance.stop_service()
     loop.run_until_complete(future)

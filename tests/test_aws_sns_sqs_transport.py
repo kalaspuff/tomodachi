@@ -1,4 +1,3 @@
-import asyncio
 import os
 import signal
 import pytest
@@ -52,12 +51,10 @@ def test_queue_name(monkeypatch: Any) -> None:
     assert queue_name == 'prefix-c6fb053c1b70aabd10bfefd087166b532b7c79ed12d24f2d43a9999c724797fd'
 
 
-def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any) -> None:
+def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service('tests/services/dummy_service.py', monkeypatch)
 
     instance = services.get('test_dummy')
-
-    loop = asyncio.get_event_loop()
 
     with pytest.raises(AWSSNSSQSException):
         loop.run_until_complete(AWSSNSSQSTransport.publish(instance, 'data', 'test-topic', wait=True))

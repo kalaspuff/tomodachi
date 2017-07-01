@@ -39,7 +39,7 @@ def test_watcher_configurable_ignored_directory() -> None:
     assert len(watcher.watched_files) == 0
 
 
-def test_watcher_callback() -> None:
+def test_watcher_callback(loop: Any) -> None:
     root_path = '{}/tests/watcher_root'.format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
@@ -79,5 +79,4 @@ def test_watcher_callback() -> None:
             assert cls.callbacks_run.get(1) is None
             assert cls.callbacks_run.get(2) is True
 
-    loop = asyncio.get_event_loop()  # type: Any
     loop.run_until_complete(Test._async())
