@@ -2,6 +2,7 @@ import asyncio
 import os
 import signal
 import tomodachi
+import uuid
 from typing import Any
 from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
 from tomodachi.protocol.json_base import JsonBase
@@ -31,17 +32,19 @@ class AWSSNSSQSService(object):
     test_topic_metadata_topic = None
     test_topic_service_uuid = None
     wildcard_topic_data_received = False
+    data_uuid = None
 
     @aws_sns_sqs('test-topic')
     async def test(self, data: Any, metadata: Any, service: Any) -> None:
-        self.test_topic_data_received = True
-        self.test_topic_metadata_topic = metadata.get('topic')
-        if service.get('uuid') == self.uuid:
+        if data == self.data_uuid:
+            self.test_topic_data_received = True
+            self.test_topic_metadata_topic = metadata.get('topic')
             self.test_topic_service_uuid = service.get('uuid')
 
     @aws_sns_sqs('test-topic#')
     async def faked_wildcard_topic(self, metadata: Any, data: Any) -> None:
-        self.wildcard_topic_data_received = True
+        if data == self.data_uuid:
+            self.wildcard_topic_data_received = True
 
     async def _started_service(self) -> None:
         async def publish(data: Any, topic: str) -> None:
@@ -57,7 +60,13 @@ class AWSSNSSQSService(object):
             await self.closer
             os.kill(os.getpid(), signal.SIGINT)
         asyncio.ensure_future(_async())
-        await publish('data', 'test-topic')
+
+        self.data_uuid = str(uuid.uuid4())
+        for _ in range(30):
+            if self.test_topic_data_received:
+                break
+            await publish(self.data_uuid, 'test-topic')
+            await asyncio.sleep(0.1)
 
     def stop_service(self) -> None:
         if not self.closer.done():
