@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.2.15 (2017-07-XX)
+-------------------
+
+- Corrected issue with configuration values for AWS and AWS SNS+SQS settings.
+
+
 0.2.14 (2017-06-30)
 -------------------
 
