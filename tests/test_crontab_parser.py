@@ -51,6 +51,8 @@ def test_advanced_parsing() -> None:
     assert get_next_datetime('* * 29 2 *', t) == datetime.datetime(2020, 2, 29, 0, 0)
     assert get_next_datetime('* * 29 2 0', t) == datetime.datetime(2032, 2, 29, 0, 0)
 
+    assert get_next_datetime('30 5 * jan,mar Ltue', t) == datetime.datetime(2018, 1, 30, 5, 30)
+
     t = datetime.datetime(2011, 1, 10, 23, 59, 30)
     assert get_next_datetime('0 0 1 jan/2 * 2011-2013', t) == datetime.datetime(2011, 3, 1)
 

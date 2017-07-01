@@ -27,6 +27,10 @@ class SchedulerService(object):
     async def every_second_minute(self) -> None:
         self.logger.info('Heartbeat (every second minute)')
 
+    @schedule(interval='30 5 * jan,mar Ltue')  # advanced crontab notation: the last Tuesday of January and March at 05:30 AM
+    async def advanced_cron_notation_scheduling(self) -> None:
+        self.logger.info('Heartbeat (every second minute)')
+
     @schedule(timestamp='22:15:30')  # as a date timestamp
     async def as_timestamp(self) -> None:
         self.logger.info('Heartbeat (22:15:30)')
