@@ -21,6 +21,18 @@ class SchedulerService(object):
     async def midnight(self) -> None:
         pass
 
+    @schedule(timestamp='1:59:59')
+    async def soon_two_am(self) -> None:
+        pass
+
+    @schedule(timestamp='2017-08-01 00:00:00')
+    async def birthday_boy(self) -> None:
+        pass
+
+    @schedule(timestamp='2017-08-01 08:00')
+    async def birthday_boy_wakeup(self) -> None:
+        pass
+
     async def _started_service(self) -> None:
         async def _async() -> None:
             async def sleep_and_kill() -> None:
