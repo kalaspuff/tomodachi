@@ -42,9 +42,7 @@ class AmqpTransport(Invoker):
     async def publish(cls, service: Any, data: Any, routing_key: str='', exchange_name: str='', wait: bool=True) -> None:
         if not cls.channel:
             await cls.connect(cls, service, service.context)
-        exchange_name = exchange_name or cls.exchange_name
-        if not exchange_name:
-            exchange_name = 'amq.topic'
+        exchange_name = exchange_name or cls.exchange_name or 'amq.topic'
 
         message_protocol = None  # type: Any
         try:
