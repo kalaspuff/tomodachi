@@ -209,10 +209,7 @@ class AmqpTransport(Invoker):
 
         channel = await protocol.channel()
         if not cls.channel:
-            try:
-                stop_method = getattr(obj, '_stop_service')
-            except AttributeError as e:
-                stop_method = None
+            stop_method = getattr(obj, '_stop_service', None)
             async def stop_service(*args: Any, **kwargs: Any) -> None:
                 if stop_method:
                     await stop_method(*args, **kwargs)

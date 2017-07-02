@@ -508,10 +508,7 @@ class AWSSNSSQSTransport(Invoker):
 
         loop = asyncio.get_event_loop()  # type: Any
 
-        try:
-            stop_method = getattr(obj, '_stop_service')
-        except AttributeError as e:
-            stop_method = None
+        stop_method = getattr(obj, '_stop_service', None)
         async def stop_service(*args: Any, **kwargs: Any) -> None:
             if not cls.close_waiter.done():
                 cls.close_waiter.set_result(None)
@@ -563,10 +560,7 @@ class AWSSNSSQSTransport(Invoker):
 
         setattr(obj, '_stop_service', stop_service)
 
-        try:
-            started_method = getattr(obj, '_started_service')
-        except AttributeError as e:
-            started_method = None
+        started_method = getattr(obj, '_started_service', None)
         async def started_service(*args: Any, **kwargs: Any) -> None:
             if started_method:
                 await started_method(*args, **kwargs)
