@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.2.16 (2017-07-02)
+-------------------
+
+- Solved issues with aiobotocore / aiohttp dependencies.
+
+- Refactored loader functions.
+
+
 0.2.15 (2017-07-02)
 -------------------
 
