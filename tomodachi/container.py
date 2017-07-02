@@ -16,13 +16,8 @@ from tomodachi.config import merge_dicts
 class ServiceContainer(object):
     def __init__(self, module_import: ModuleType, configuration: Optional[Dict]=None) -> None:
         self.module_import = module_import
-        try:
-            self.module_name = module_import.__name__.rsplit('/', 1)[1]
-        except IndexError:
-            self.module_name = module_import.__name__
-
+        self.module_name = module_import.__name__.rsplit('/', 1)[1] if '/' in module_import.__name__ else module_import.__name__
         self.configuration = configuration
-
         self.logger = logging.getLogger('services.{}'.format(self.module_name))
 
         self._close_waiter = asyncio.Future()  # type: asyncio.Future
@@ -82,13 +77,9 @@ class ServiceContainer(object):
                 except AttributeError:
                     instance.uuid = str(uuid.uuid4())
 
-                try:
-                    service_name = instance.name
-                except AttributeError:
-                    try:
-                        service_name = cls.name
-                    except AttributeError:
-                        continue
+                service_name = getattr(instance, 'name', getattr(cls, 'name', None))
+                if not service_name:
+                    continue
 
                 try:
                     log_level = instance.log_level
@@ -146,23 +137,13 @@ class ServiceContainer(object):
                     try:
                         for registry in instance.discovery:
                             registered_services.add(instance)
-                            try:
-                                if getattr(registry, '_register_service'):
-                                    await registry._register_service(instance)
-                            except AttributeError:
-                                pass
+                            if getattr(registry, '_register_service', None):
+                                await registry._register_service(instance)
                     except AttributeError:
                         pass
 
-                    try:
-                        started_futures.add(getattr(instance, '_started_service'))
-                    except AttributeError:
-                        pass
-
-                    try:
-                        stop_futures.add(getattr(instance, '_stop_service'))
-                    except AttributeError:
-                        pass
+                    started_futures.add(getattr(instance, '_started_service', None))
+                    stop_futures.add(getattr(instance, '_stop_service', None))
 
                     self.logger.info('Started service "{}" [id: {}]'.format(name, instance.uuid))
             except Exception as e:
@@ -175,7 +156,7 @@ class ServiceContainer(object):
                 except AttributeError:
                     traceback.print_exception(e.__class__, e, e.__traceback__)
 
-            if started_futures:
+            if started_futures and any(started_futures):
                 await asyncio.wait([asyncio.ensure_future(func()) for func in started_futures if func])
         else:
             self.logger.warning('No transports defined in service file')
@@ -189,17 +170,11 @@ class ServiceContainer(object):
             self.logger.info('Stopping service "{}" [id: {}]'.format(name, instance.uuid))
 
         for instance in registered_services:
-            try:
-                for registry in instance.discovery:
-                    try:
-                        if getattr(registry, '_deregister_service'):
-                            await registry._deregister_service(instance)
-                    except AttributeError:
-                        pass
-            except AttributeError:
-                pass
+            for registry in getattr(instance, 'discovery', []):
+                if getattr(registry, '_deregister_service', None):
+                    await registry._deregister_service(instance)
 
-        if stop_futures:
+        if stop_futures and any(stop_futures):
             await asyncio.wait([asyncio.ensure_future(func()) for func in stop_futures if func])
         for name, instance, log_level in services_started:
             self.logger.info('Stopped service "{}" [id: {}]'.format(name, instance.uuid))
