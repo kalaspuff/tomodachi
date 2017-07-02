@@ -50,25 +50,7 @@ class RequestHandler(web_protocol.RequestHandler):
         headers = {}
         headers[hdrs.CONTENT_TYPE] = 'text/plain; charset=utf-8'
 
-        if status == 500:
-            if self.debug:
-                try:
-                    tb = traceback.format_exc()
-                    tb = html_escape(tb)
-                    msg = "<h1>500 Internal Server Error</h1>"
-                    msg += '<br><h2>Traceback:</h2>\n<pre>'
-                    msg += tb
-                    msg += '</pre>'
-
-                    headers[hdrs.CONTENT_TYPE] = 'text/html; charset=utf-8'
-                except:  # pragma: no cover
-                    pass
-            else:
-                msg = ''
-        elif message:
-            msg = message
-        else:
-            msg = ''
+        msg = '' if status == 500 or not message else message
 
         headers[hdrs.CONTENT_LENGTH] = str(len(msg))
         headers[hdrs.SERVER] = self._server_header or ''

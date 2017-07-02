@@ -73,6 +73,48 @@ class HttpService(object):
         await asyncio.sleep(2.0)
         raise Exception('test')
 
+    @http('GET', r'/test-weird-content-type/?')
+    async def test_weird_content_type(self, request: web.Request) -> Response:
+        return web.Response(body='test', status=200, headers={
+            'Content-Type': 'text/plain; '
+        })
+
+    @http('GET', r'/test-charset/?')
+    async def test_charset(self, request: web.Request) -> Response:
+        return web.Response(body='test', status=200, headers={
+            'Content-Type': 'text/plain; charset=utf-8'
+        })
+
+    @http('GET', r'/test-charset-encoding-correct/?')
+    async def test_charset_encoding_correct(self, request: web.Request) -> Response:
+        return Response(body='test \xe5\xe4\xf6', status=200, headers={
+            'Content-Type': 'text/plain; charset=iso-8859-1'
+        })
+
+    @http('GET', r'/test-charset-encoding-error/?')
+    async def test_charset_encoding_error(self, request: web.Request) -> Response:
+        return Response(body='test 友達', status=200, headers={
+            'Content-Type': 'text/plain; charset=iso-8859-1'
+        })
+
+    @http('GET', r'/test-charset-invalid/?')
+    async def test_charset_invalid(self, request: web.Request) -> Response:
+        return Response(body='test', status=200, headers={
+            'Content-Type': 'text/plain; charset=utf-9'
+        })
+
+    @http('GET', r'/empty-data/?')
+    async def empty_data(self, request: web.Request) -> str:
+        return ''
+
+    @http('GET', r'/byte-data/?')
+    async def byte_data(self, request: web.Request) -> bytes:
+        return b'test \xc3\xa5\xc3\xa4\xc3\xb6'
+
+    @http('GET', r'/none-data/?')
+    async def none_data(self, request: web.Request) -> None:
+        return None
+
     @http_error(status_code=404)
     async def test_404(self, request: web.Request) -> str:
         return 'test 404'

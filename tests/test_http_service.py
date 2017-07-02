@@ -134,6 +134,67 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
             response = await client.get('http://127.0.0.1:{}/slow'.format(port), timeout=3.0)
             assert response is not None
 
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/test-weird-content-type'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == 'test'
+            assert response.headers.get('Content-Type') == 'text/plain; '
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/test-charset'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == 'test'
+            assert response.headers.get('Content-Type') == 'text/plain; charset=utf-8'
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/test-charset'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == 'test'
+            assert response.headers.get('Content-Type') == 'text/plain; charset=utf-8'
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/test-charset-encoding-correct'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == 'test åäö'
+            assert response.headers.get('Content-Type') == 'text/plain; charset=iso-8859-1'
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/test-charset-encoding-error'.format(port))
+            assert response is not None
+            assert response.status == 500
+            assert response.headers.get('Content-Type') == 'text/plain; charset=utf-8'
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/test-charset-invalid'.format(port))
+            assert response is not None
+            assert response.status == 500
+            assert response.headers.get('Content-Type') == 'text/plain; charset=utf-8'
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/empty-data'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == ''
+            assert response.headers.get('Content-Type') == 'text/plain; charset=utf-8'
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/byte-data'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == 'test åäö'
+            assert response.headers.get('Content-Type') == 'text/plain; charset=utf-8'
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/none-data'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == ''
+            assert response.headers.get('Content-Type') == 'text/plain; charset=utf-8'
+
     loop.run_until_complete(_async(loop))
     instance.stop_service()
     loop.run_until_complete(future)
