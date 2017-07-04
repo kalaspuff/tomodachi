@@ -1,7 +1,9 @@
 import datetime
 import asyncio
 import time
-from typing import Any, Dict, List, Union, Optional, Callable, Awaitable  # noqa
+import pytz
+import tzlocal
+from typing import Any, Dict, List, Union, Optional, Callable, Awaitable, Tuple  # noqa
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.crontab import get_next_datetime
 
@@ -27,15 +29,24 @@ class Scheduler(Invoker):
 
     @classmethod
     def next_call_at(cls, current_time: float, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> int:
+        if not timezone:
+            tz = tzlocal.get_localzone()
+        else:
+            try:
+                tz = pytz.timezone(timezone or '')
+            except Exception as e:
+                raise Exception('Unknown timezone: {}'.format(timezone)) from e
+        local_tz = tzlocal.get_localzone()
+
         if interval is None and timestamp is not None:
             if isinstance(timestamp, str):
                 try:
                     datetime_object = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
                     interval = '{} {} {} {} * {}'.format(datetime_object.minute, datetime_object.hour, datetime_object.day, datetime_object.month, datetime_object.year)
                     second_modifier = 1
-                    if datetime_object > datetime.datetime.fromtimestamp(current_time):
+                    if tz.localize(datetime_object) > local_tz.localize(datetime.datetime.fromtimestamp(current_time)):
                         second_modifier = -60
-                    next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + second_modifier))
+                    next_at = get_next_datetime(interval, local_tz.localize(datetime.datetime.fromtimestamp(current_time + second_modifier)).astimezone(tz))
                     if not next_at:
                         return int(current_time + 60 * 60 * 24 * 365 * 100)
                     return int(next_at.timestamp() + datetime_object.second)
@@ -45,7 +56,7 @@ class Scheduler(Invoker):
                 try:
                     datetime_object = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M')
                     interval = '{} {} {} {} * {}'.format(datetime_object.minute, datetime_object.hour, datetime_object.day, datetime_object.month, datetime_object.year)
-                    next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + 1))
+                    next_at = get_next_datetime(interval, local_tz.localize(datetime.datetime.fromtimestamp(current_time + 1)).astimezone(tz))
                     if not next_at:
                         return int(current_time + 60 * 60 * 24 * 365 * 100)
                     return int(next_at.timestamp())
@@ -57,9 +68,9 @@ class Scheduler(Invoker):
                     datetime_object = datetime.datetime(datetime.datetime.fromtimestamp(current_time).year, datetime.datetime.fromtimestamp(current_time).month, datetime.datetime.fromtimestamp(current_time).day, datetime_object.hour, datetime_object.minute, datetime_object.second)
                     interval = '{} {} * * *'.format(datetime_object.minute, datetime_object.hour)
                     second_modifier = 1
-                    if datetime_object > datetime.datetime.fromtimestamp(current_time):
+                    if tz.localize(datetime_object) > local_tz.localize(datetime.datetime.fromtimestamp(current_time)):
                         second_modifier = -60
-                    next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + second_modifier))
+                    next_at = get_next_datetime(interval, local_tz.localize(datetime.datetime.fromtimestamp(current_time + second_modifier)).astimezone(tz))
                     if not next_at:
                         return int(current_time + 60 * 60 * 24 * 365 * 100)
                     return int(next_at.timestamp() + datetime_object.second)
@@ -69,7 +80,7 @@ class Scheduler(Invoker):
                 try:
                     datetime_object = datetime.datetime.strptime(timestamp, '%H:%M')
                     interval = '{} {} * * *'.format(datetime_object.minute, datetime_object.hour)
-                    next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + 1))
+                    next_at = get_next_datetime(interval, local_tz.localize(datetime.datetime.fromtimestamp(current_time + 1)).astimezone(tz))
                     if not next_at:
                         return int(current_time + 60 * 60 * 24 * 365 * 100)
                     return int(next_at.timestamp())
@@ -81,40 +92,35 @@ class Scheduler(Invoker):
         if interval is not None:
             if isinstance(interval, int):
                 return int(current_time + interval)
+
+            interval_aliases = {
+                ('every second', '1s', '1 s', '1second', '1 second', 'second', 'secondly', 'once per second'): 1,
+                ('every minute', '1m', '1 m', '1minute', '1 minute', 'minute', 'minutely', 'once per minute'): '@minutely',
+                ('every hour', '1h', '1 h', '1hour', '1 hour', 'hour', 'hourly', 'once per hour'): '@hourly',
+                ('every day', '1d', '1 d', '1day', '1 day', 'day', 'daily', 'once per day', 'nightly'): '@daily',
+                ('every month', '1month', '1 month', 'month', 'monthly', 'once per month'): '@monthly',
+                ('every year', '1y', '1 y', '1year', '1 year', 'year', 'yearly', 'once per year', 'annually'): '@yearly',
+                ('monday', 'mondays', 'mon', 'every monday', 'once per monday', 'weekly', 'once per week', 'week', 'every week'): '0 0 * * 1',
+                ('tuesday', 'tuesdays', 'tue', 'every tuesday', 'once per tuesday'): '0 0 * * 2',
+                ('wednesday', 'wednesdays', 'wed', 'every wednesday', 'once per wednesday'): '0 0 * * 3',
+                ('thursday', 'thursdays', 'thu', 'every thursday', 'once per thursday'): '0 0 * * 4',
+                ('friday', 'fridays', 'fri', 'every friday', 'once per friday'): '0 0 * * 5',
+                ('saturday', 'saturdays', 'sat', 'every saturday', 'once per saturday'): '0 0 * * 6',
+                ('sunday', 'sundays', 'sun', 'every sunday', 'once per sunday'): '0 0 * * 0',
+                ('weekday', 'weekdays', 'every weekday'): '0 0 * * 1-5',
+                ('weekend', 'weekends', 'every weekend'): '0 0 * * 0,6'
+            }  # type: Dict[Tuple[str, ...], Union[str, int]]
             interval = interval.lower()
-            if interval in ('every second', '1s', '1 s', '1second', '1 second', 'second', 'secondly', 'once per second'):
-                return int(current_time + 1)
-            if interval in ('every minute', '1m', '1 m', '1minute', '1 minute', 'minute', 'minutely', 'once per minute'):
-                interval = '@minutely'
-            if interval in ('every hour', '1h', '1 h', '1hour', '1 hour', 'hour', 'hourly', 'once per hour'):
-                interval = '@hourly'
-            if interval in ('every day', '1d', '1 d', '1day', '1 day', 'day', 'daily', 'once per day', 'nightly'):
-                interval = '@daily'
-            if interval in ('every month', '1month', '1 month', 'month', 'monthly', 'once per month'):
-                interval = '@monthly'
-            if interval in ('every year', '1y', '1 y', '1year', '1 year', 'year', 'yearly', 'once per year', 'annually'):
-                interval = '@yearly'
-            if interval in ('monday', 'mondays', 'mon', 'every monday', 'once per monday', 'weekly', 'once per week', 'week', 'every week'):
-                interval = '0 0 * * 1'
-            if interval in ('tuesday', 'tuesdays', 'tue', 'every tuesday', 'once per tuesday'):
-                interval = '0 0 * * 2'
-            if interval in ('wednesday', 'wednesdays', 'wed', 'every wednesday', 'once per wednesday'):
-                interval = '0 0 * * 3'
-            if interval in ('thursday', 'thursdays', 'thu', 'every thursday', 'once per thursday'):
-                interval = '0 0 * * 4'
-            if interval in ('friday', 'fridays', 'fri', 'every friday', 'once per friday'):
-                interval = '0 0 * * 5'
-            if interval in ('saturday', 'saturdays', 'sat', 'every saturday', 'once per saturday'):
-                interval = '0 0 * * 6'
-            if interval in ('sunday', 'sundays', 'sun', 'every sunday', 'once per sunday'):
-                interval = '0 0 * * 0'
-            if interval in ('weekday', 'weekdays', 'every weekday'):
-                interval = '0 0 * * 1-5'
-            if interval in ('weekend', 'weekends', 'every weekend'):
-                interval = '0 0 * * 0,6'
 
             try:
-                next_at = get_next_datetime(interval, datetime.datetime.fromtimestamp(current_time + 1))
+                interval_value = [v for k, v in interval_aliases.items() if interval in k][0]  # type: Union[str, int]
+            except IndexError:
+                interval_value = interval
+            if isinstance(interval_value, int):
+                return int(current_time + interval_value)
+
+            try:
+                next_at = get_next_datetime(interval_value, local_tz.localize(datetime.datetime.fromtimestamp(current_time + 1)).astimezone(tz))
                 if not next_at:
                     return int(current_time + 60 * 60 * 24 * 365 * 100)
                 return int(next_at.timestamp())
@@ -125,7 +131,41 @@ class Scheduler(Invoker):
 
     async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> None:
         if timezone:
-            raise Exception("Timezone support not yet implemented")
+            tz_aliases = {
+                ('+00:00', '-00:00', '00:00', '0000', 'GMT +0000', 'GMT +00:00', 'GMT -00', 'GMT +00', 'GMT -0', 'GMT +0'): 'GMT0',
+                ('+01:00', '+0100', 'GMT +0100', 'GMT +01:00', 'GMT +01', 'GMT +1'): 'Etc/GMT-1',
+                ('+02:00', '+0200', 'GMT +0200', 'GMT +02:00', 'GMT +02', 'GMT +2'): 'Etc/GMT-2',
+                ('+03:00', '+0300', 'GMT +0300', 'GMT +03:00', 'GMT +03', 'GMT +3'): 'Etc/GMT-3',
+                ('+04:00', '+0400', 'GMT +0400', 'GMT +04:00', 'GMT +04', 'GMT +4'): 'Etc/GMT-4',
+                ('+05:00', '+0500', 'GMT +0500', 'GMT +05:00', 'GMT +05', 'GMT +5'): 'Etc/GMT-5',
+                ('+06:00', '+0600', 'GMT +0600', 'GMT +06:00', 'GMT +06', 'GMT +6'): 'Etc/GMT-6',
+                ('+07:00', '+0700', 'GMT +0700', 'GMT +07:00', 'GMT +07', 'GMT +7'): 'Etc/GMT-7',
+                ('+08:00', '+0800', 'GMT +0800', 'GMT +08:00', 'GMT +08', 'GMT +8'): 'Etc/GMT-8',
+                ('+09:00', '+0900', 'GMT +0900', 'GMT +09:00', 'GMT +09', 'GMT +9'): 'Etc/GMT-9',
+                ('+10:00', '+1000', 'GMT +1000', 'GMT +10:00', 'GMT +10',): 'Etc/GMT-10',
+                ('+11:00', '+1100', 'GMT +1100', 'GMT +11:00', 'GMT +11'): 'Etc/GMT-11',
+                ('+12:00', '+1200', 'GMT +1200', 'GMT +12:00', 'GMT +12'): 'Etc/GMT-12',
+                ('-01:00', '-0100', 'GMT -0100', 'GMT -01:00', 'GMT -01', 'GMT -1'): 'Etc/GMT+1',
+                ('-02:00', '-0200', 'GMT -0200', 'GMT -02:00', 'GMT -02', 'GMT -2'): 'Etc/GMT+2',
+                ('-03:00', '-0300', 'GMT -0300', 'GMT -03:00', 'GMT -03', 'GMT -3'): 'Etc/GMT+3',
+                ('-04:00', '-0400', 'GMT -0400', 'GMT -04:00', 'GMT -04', 'GMT -4'): 'Etc/GMT+4',
+                ('-05:00', '-0500', 'GMT -0500', 'GMT -05:00', 'GMT -05', 'GMT -5'): 'Etc/GMT+5',
+                ('-06:00', '-0600', 'GMT -0600', 'GMT -06:00', 'GMT -06', 'GMT -6'): 'Etc/GMT+6',
+                ('-07:00', '-0700', 'GMT -0700', 'GMT -07:00', 'GMT -07', 'GMT -7'): 'Etc/GMT+7',
+                ('-08:00', '-0800', 'GMT -0800', 'GMT -08:00', 'GMT -08', 'GMT -8'): 'Etc/GMT+8',
+                ('-09:00', '-0900', 'GMT -0900', 'GMT -09:00', 'GMT -09', 'GMT -9'): 'Etc/GMT+9',
+                ('-10:00', '-1000', 'GMT -1000', 'GMT -10:00', 'GMT -10'): 'Etc/GMT+10',
+                ('-11:00', '-1100', 'GMT -1100', 'GMT -11:00', 'GMT -11'): 'Etc/GMT+11',
+                ('-12:00', '-1200', 'GMT -1200', 'GMT -12:00', 'GMT -12'): 'Etc/GMT+12'
+            }  # type: Dict[Tuple[str, ...], str]
+            try:
+                try:
+                    timezone = [v for k, v in tz_aliases.items() if timezone in k or timezone.replace(' ', '') in [x.replace(' ', '') for x in k]][0]
+                except IndexError:
+                    pass
+                pytz.timezone(timezone or '')
+            except Exception as e:
+                raise Exception('Unknown timezone: {}'.format(timezone)) from e
 
         if not cls.close_waiter:
             cls.close_waiter = asyncio.Future()

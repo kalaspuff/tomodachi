@@ -1,5 +1,6 @@
 import datetime
-from typing import List, Tuple, Dict, Union, Optional  # noqa
+import pytz
+from typing import List, Tuple, Dict, Union, Optional, Any  # noqa
 from calendar import monthrange
 
 cron_attributes = [
@@ -89,6 +90,13 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
             raise Exception('Invalid cron notation: days out of scope')
 
     def calculate_date(next_date: Optional[datetime.datetime], last_day: bool, last_weekday: bool) -> Optional[datetime.datetime]:
+        if next_date:
+            tz = next_date.tzinfo  # type: Any
+            if tz is None:
+                tz = pytz.UTC
+        else:
+            return None
+
         while True:
             original_date = next_date
             for i, attr in enumerate(cron_attributes):
@@ -103,7 +111,7 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                     break
                 new_value = min(possible_values)
                 try:
-                    next_date = datetime.datetime(*[getattr(next_date, dv) if dv != attr[0] else new_value for dv in ['year', 'month', 'day', 'hour', 'minute']])
+                    next_date = tz.localize(datetime.datetime(*[getattr(next_date, dv) if dv != attr[0] else new_value for dv in ['year', 'month', 'day', 'hour', 'minute']]))
                 except ValueError:
                     next_date = None
                     break
@@ -121,12 +129,14 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                 next_date = original_date
                 if next_date:
                     try:
-                        next_date = datetime.datetime(next_date.year, next_date.month, next_date.day + 1)
+                        next_date = tz.localize(datetime.datetime(next_date.year, next_date.month, next_date.day + 1))
                     except ValueError:
                         try:
-                            next_date = datetime.datetime(next_date.year, next_date.month + 1, 1)
+                            if next_date:
+                                next_date = tz.localize(datetime.datetime(next_date.year, next_date.month + 1, 1))
                         except ValueError:
-                            next_date = datetime.datetime(next_date.year + 1, 1, 1)
+                            if next_date:
+                                next_date = tz.localize(datetime.datetime(next_date.year + 1, 1, 1))
             else:
                 break
 
@@ -135,13 +145,14 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
 
         return next_date
 
+    tz = now_date.tzinfo  # type: Any
     calculated_dates = [calculate_date(d, last_day, last_weekday) for d in [
         now_date if now_date.second == 0 else None,
-        datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour, now_date.minute + 1) if now_date.minute < 60 - 1 else None,
-        datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour + 1) if now_date.hour < 24 - 1 else None,
-        datetime.datetime(now_date.year, now_date.month, now_date.day + 1) if now_date.day < monthrange(now_date.year, now_date.month)[1] - 1 else None,
-        datetime.datetime(now_date.year, now_date.month + 1, 1) if now_date.month < 12 - 1 else None,
-        datetime.datetime(now_date.year + 1, 1, 1)
+        tz.localize(datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour, now_date.minute + 1)) if now_date.minute < 60 - 1 else None,
+        tz.localize(datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour + 1)) if now_date.hour < 24 - 1 else None,
+        tz.localize(datetime.datetime(now_date.year, now_date.month, now_date.day + 1)) if now_date.day < monthrange(now_date.year, now_date.month)[1] - 1 else None,
+        tz.localize(datetime.datetime(now_date.year, now_date.month + 1, 1)) if now_date.month < 12 - 1 else None,
+        tz.localize(datetime.datetime(now_date.year + 1, 1, 1))
     ] if d]
     if not any(calculated_dates):
         return None

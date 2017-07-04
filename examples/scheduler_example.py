@@ -34,3 +34,7 @@ class SchedulerService(object):
     @schedule(timestamp='22:15:30')  # as a date timestamp
     async def as_timestamp(self) -> None:
         self.logger.info('Heartbeat (22:15:30)')
+
+    @schedule(timestamp='00:00:00', timezone='Europe/Stockholm')  # with timezone support
+    async def midnight_in_sweden(self) -> None:
+        self.logger.info('Heartbeat (minight in Sweden)')
