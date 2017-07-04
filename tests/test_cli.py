@@ -57,7 +57,6 @@ def test_cli_entrypoint_print_help(monkeypatch: Any, capsys: Any) -> None:
 
 
 def test_cli_entrypoint_print_version(monkeypatch: Any, capsys: Any) -> None:
-    cli = tomodachi.cli.CLI()
     monkeypatch.setattr(logging.root, 'handlers', [])
 
     with pytest.raises(SystemExit):
