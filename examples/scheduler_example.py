@@ -1,7 +1,7 @@
 import logging
 import os
 import tomodachi
-from tomodachi.transport.schedule import schedule
+from tomodachi.transport.schedule import schedule, minutely, hourly
 
 
 @tomodachi.service
@@ -15,11 +15,11 @@ class SchedulerService(object):
     async def every_second(self) -> None:
         self.logger.info('Heartbeat')
 
-    @schedule(interval='minutely')
+    @minutely  # @schedule(interval='minutely')
     async def every_minute(self) -> None:
         self.logger.info('Heartbeat (every minute)')
 
-    @schedule(interval='hourly')
+    @hourly  # @schedule(interval='hourly')
     async def every_hour(self) -> None:
         self.logger.info('Heartbeat (every hour)')
 

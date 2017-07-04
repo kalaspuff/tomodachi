@@ -28,6 +28,13 @@ class Scheduler(Invoker):
         return (await start_func) if start_func else None
 
     @classmethod
+    def schedule_handler_with_interval(cls, interval: Union[str, int]) -> Callable:
+        def _func(cls: Any, obj: Any, context: Dict, func: Any) -> Any:
+            return cls.schedule_handler(cls, obj, context, func, interval=interval)
+
+        return _func
+
+    @classmethod
     def next_call_at(cls, current_time: float, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> int:
         if not timezone:
             tz = tzlocal.get_localzone()
@@ -246,3 +253,9 @@ class Scheduler(Invoker):
         return _schedule
 
 schedule = Scheduler.decorator(Scheduler.schedule_handler)
+
+heartbeat = Scheduler.decorator(Scheduler.schedule_handler_with_interval('every second'))
+minutely = Scheduler.decorator(Scheduler.schedule_handler_with_interval('minutely'))
+hourly = Scheduler.decorator(Scheduler.schedule_handler_with_interval('hourly'))
+daily = Scheduler.decorator(Scheduler.schedule_handler_with_interval('daily'))
+monthly = Scheduler.decorator(Scheduler.schedule_handler_with_interval('monthly'))
