@@ -28,7 +28,7 @@ class SchedulerService(object):
         self.logger.info('Heartbeat (every 2nd minute)')
 
     @schedule(interval='1/2 8-18 * * mon-fri')  # advanced cron notation
-    async def every_second_minute(self) -> None:
+    async def work_hours(self) -> None:
         self.logger.info('Heartbeat (every odd minute between 8-18 on weekdays)')
 
     @schedule(interval='30 5 * jan,mar Ltue')  # the last Tuesday of January and March at 05:30 AM
