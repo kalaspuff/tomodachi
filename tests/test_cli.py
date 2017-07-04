@@ -92,11 +92,23 @@ def test_cli_entrypoint_invalid_subcommand_show_help(monkeypatch: Any, capsys: A
     assert out == cli.help_command_usage() + "\n"
 
 
-def test_cli_start_service(monkeypatch: Any, capsys: Any) -> None:
+def test_cli_start_service_stopped_with_sigterm(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(logging.root, 'handlers', [])
 
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/auto_closing_service.py'])
+
+    out, err = capsys.readouterr()
+    assert err != ''
+    assert 'Starting services' in out
+    assert 'tomodachi/{}'.format(tomodachi.__version__) in out
+
+
+def test_cli_start_service_stopped_with_sigint(monkeypatch: Any, capsys: Any) -> None:
+    monkeypatch.setattr(logging.root, 'handlers', [])
+
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/auto_closing_service_sigint.py'])
 
     out, err = capsys.readouterr()
     assert err != ''
