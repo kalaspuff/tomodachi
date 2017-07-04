@@ -74,6 +74,10 @@ def test_impossible_dates() -> None:
     with pytest.raises(Exception):
         get_next_datetime('* * 29 2 * 2017-2019', t)
 
+    assert get_next_datetime('* * 29 2 mon 2048', t) is None
+
+    assert get_next_datetime('* * 29 2 mon 2048-2070,2073-2200', t) is None
+
     with pytest.raises(Exception):
         get_next_datetime('70 * * *', t)
 
