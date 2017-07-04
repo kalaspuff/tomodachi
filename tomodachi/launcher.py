@@ -5,6 +5,7 @@ import importlib
 import logging
 import datetime
 import uvloop
+import traceback
 from typing import Dict, Union, Optional, Any, List
 import tomodachi.container
 import tomodachi.importer
@@ -86,11 +87,10 @@ class ServiceLauncher(object):
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
                     raise exception[0]
-            except:
+            except Exception as e:
+                traceback.print_exception(e.__class__, e, e.__traceback__)
                 for signame in ('SIGINT', 'SIGTERM'):
                     loop.remove_signal_handler(getattr(signal, signame))
-                stop_services()
-                raise
 
             current_modules = [m for m in sys.modules.keys()]
             for m in current_modules:
