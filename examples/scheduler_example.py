@@ -13,7 +13,7 @@ class SchedulerService(object):
 
     @schedule(interval='every second')
     async def every_second(self) -> None:
-        self.logger.info('Heartbeat (every second)')
+        self.logger.info('Heartbeat')
 
     @schedule(interval='minutely')
     async def every_minute(self) -> None:
@@ -25,11 +25,15 @@ class SchedulerService(object):
 
     @schedule(interval='*/2 * * * *')  # cron notation
     async def every_second_minute(self) -> None:
-        self.logger.info('Heartbeat (every second minute)')
+        self.logger.info('Heartbeat (every 2nd minute)')
 
-    @schedule(interval='30 5 * jan,mar Ltue')  # advanced crontab notation: the last Tuesday of January and March at 05:30 AM
+    @schedule(interval='1/2 8-18 * * mon-fri')  # advanced cron notation
+    async def every_second_minute(self) -> None:
+        self.logger.info('Heartbeat (every odd minute between 8-18 on weekdays)')
+
+    @schedule(interval='30 5 * jan,mar Ltue')  # the last Tuesday of January and March at 05:30 AM
     async def advanced_cron_notation_scheduling(self) -> None:
-        self.logger.info('Heartbeat (every second minute)')
+        self.logger.info('Heartbeat (the last Tuesday of January and March at 05:30 AM)')
 
     @schedule(timestamp='22:15:30')  # as a date timestamp
     async def as_timestamp(self) -> None:
@@ -37,4 +41,4 @@ class SchedulerService(object):
 
     @schedule(timestamp='00:00:00', timezone='Europe/Stockholm')  # with timezone support
     async def midnight_in_sweden(self) -> None:
-        self.logger.info('Heartbeat (minight in Sweden)')
+        self.logger.info('Heartbeat (midnight in Sweden)')
