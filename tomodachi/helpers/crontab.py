@@ -89,15 +89,13 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
         if not any([monthrange(y, m)[1] >= min(values[2]) for y in values[5] for m in values[3]]):
             raise Exception('Invalid cron notation: days out of scope')
 
-    def calculate_date(next_date: Optional[datetime.datetime], last_day: bool, last_weekday: bool) -> Optional[datetime.datetime]:
-        if next_date:
-            tz = next_date.tzinfo  # type: Any
-            if tz is None:
-                tz = pytz.UTC
-        else:
-            return None
-        naive_date = not bool(next_date.tzinfo)
+    def calculate_date(input_date: datetime.datetime, last_day: bool, last_weekday: bool) -> Optional[datetime.datetime]:
+        tz = input_date.tzinfo  # type: Any
+        naive_date = not bool(input_date.tzinfo)
+        if tz is None:
+            tz = pytz.UTC
 
+        next_date = input_date  # type: Optional[datetime.datetime]
         while True:
             original_date = next_date
             for i, attr in enumerate(cron_attributes):
