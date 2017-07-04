@@ -34,18 +34,13 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     async def publish(cls, service: Any, data: Any, topic: str, wait: bool=True) -> None:
-        message_protocol = None
-        try:
-            message_protocol = service.message_protocol
-        except AttributeError as e:
-            pass
+        message_protocol = getattr(service, 'message_protocol', None)
 
         payload = data
         if message_protocol:
-            try:
-                payload = await message_protocol.build_message(service, topic, data)
-            except AttributeError as e:
-                pass
+            build_message_func = getattr(message_protocol, 'build_message', None)
+            if build_message_func:
+                payload = await build_message_func(service, topic, data)
 
         topic_arn = await cls.create_topic(cls, topic, service.context)
 
@@ -107,7 +102,9 @@ class AWSSNSSQSTransport(Invoker):
             message_uuid = None
             if message_protocol:
                 try:
-                    message, message_uuid, timestamp = await message_protocol.parse_message(payload)
+                    parse_message_func = getattr(message_protocol, 'parse_message', None)
+                    if parse_message_func:
+                        message, message_uuid, timestamp = await parse_message_func(payload)
                     if message is not False and message_uuid:
                         if not context.get('_aws_sns_sqs_received_messages'):
                             context['_aws_sns_sqs_received_messages'] = {}

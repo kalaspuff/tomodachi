@@ -13,11 +13,11 @@ class JsonBase(object):
         _uuid = str(uuid.uuid4())
         message = {
             'service': {
-                'name': service.name,
-                'uuid': service.uuid
+                'name': getattr(service, 'name', None),
+                'uuid': getattr(service, 'uuid', None)
             },
             'metadata': {
-                'message_uuid': '{}.{}'.format(service.uuid, _uuid),
+                'message_uuid': '{}.{}'.format(getattr(service, 'uuid', ''), _uuid),
                 'protocol_version': PROTOCOL_VERSION,
                 'compatible_protocol_versions': COMPATIBLE_PROTOCOL_VERSIONS,
                 'timestamp': time.time(),
