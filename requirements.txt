@@ -1,5 +1,5 @@
 aioamqp==0.10.0
-aiobotocore==0.4.2
+aiobotocore==0.4.3
 aiohttp==2.2.3
 appdirs==1.4.3
 async-timeout==1.2.1
