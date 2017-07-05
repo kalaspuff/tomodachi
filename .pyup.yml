@@ -1,2 +1,2 @@
-label_prs: update
+label_prs: deps-update
 branch_prefix: pyup/
