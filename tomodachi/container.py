@@ -163,7 +163,8 @@ class ServiceContainer(object):
             self.stop_service()
 
         self.services_started = services_started
-        self.started_waiter.set_result(services_started)
+        if not self.started_waiter.done():
+            self.started_waiter.set_result(services_started)
 
         await self.wait_stopped()
         for name, instance, log_level in services_started:

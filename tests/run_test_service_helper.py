@@ -19,8 +19,17 @@ def start_service(filename: str, monkeypatch: Any=None) -> Tuple:
             loop = asyncio.get_event_loop()
         asyncio.wait([asyncio.ensure_future(_stop_services())])
 
+    def force_stop_services(loop: Any=None) -> None:
+        if not loop:
+            loop = asyncio.get_event_loop()
+        asyncio.wait([asyncio.ensure_future(_force_stop_services())])
+
     async def _stop_services() -> None:
         service.stop_service()
+
+    async def _force_stop_services() -> None:
+        if not service.started_waiter.done():
+            service.started_waiter.set_result([])
 
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame), functools.partial(stop_services, loop))
@@ -35,6 +44,7 @@ def start_service(filename: str, monkeypatch: Any=None) -> Tuple:
             except:
                 loop = asyncio.get_event_loop()
                 stop_services(loop)
+                force_stop_services(loop)
                 raise
 
         future = asyncio.ensure_future(_async())

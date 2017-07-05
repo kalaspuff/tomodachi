@@ -34,18 +34,13 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     async def publish(cls, service: Any, data: Any, topic: str, wait: bool=True) -> None:
-        message_protocol = None
-        try:
-            message_protocol = service.message_protocol
-        except AttributeError as e:
-            pass
+        message_protocol = getattr(service, 'message_protocol', None)
 
         payload = data
         if message_protocol:
-            try:
-                payload = await message_protocol.build_message(service, topic, data)
-            except AttributeError as e:
-                pass
+            build_message_func = getattr(message_protocol, 'build_message', None)
+            if build_message_func:
+                payload = await build_message_func(service, topic, data)
 
         topic_arn = await cls.create_topic(cls, topic, service.context)
 
@@ -107,7 +102,9 @@ class AWSSNSSQSTransport(Invoker):
             message_uuid = None
             if message_protocol:
                 try:
-                    message, message_uuid, timestamp = await message_protocol.parse_message(payload)
+                    parse_message_func = getattr(message_protocol, 'parse_message', None)
+                    if parse_message_func:
+                        message, message_uuid, timestamp = await parse_message_func(payload)
                     if message is not False and message_uuid:
                         if not context.get('_aws_sns_sqs_received_messages'):
                             context['_aws_sns_sqs_received_messages'] = {}
@@ -184,11 +181,7 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             cls.clients[name] = session.create_client(name, region_name=region_name, aws_secret_access_key=aws_secret_access_key, aws_access_key_id=aws_access_key_id)
-        except botocore.exceptions.PartialCredentialsError as e:
-            error_message = str(e)
-            logging.getLogger('transport.aws_sns_sqs').warning('Invalid credentials [{}] to AWS ({})'.format(name, error_message))
-            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
-        except botocore.exceptions.NoRegionError as e:
+        except (botocore.exceptions.PartialCredentialsError, botocore.exceptions.NoRegionError) as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Invalid credentials [{}] to AWS ({})'.format(name, error_message))
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
@@ -207,24 +200,12 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             response = await asyncio.wait_for(client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context))), timeout=30)
-        except botocore.exceptions.NoCredentialsError as e:
+        except (botocore.exceptions.NoCredentialsError, aiohttp.client_exceptions.ClientOSError) as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sns] to AWS ({})'.format(error_message))
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
-        except botocore.exceptions.PartialCredentialsError as e:
-            error_message = str(e)
-            logging.getLogger('transport.aws_sns_sqs').warning('Unable to create topic [sns] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
-        except aiohttp.client_exceptions.ClientOSError as e:
-            error_message = str(e)
-            logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sns] to AWS ({})'.format(error_message))
-            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
-        except botocore.exceptions.ClientError as e:
-            error_message = str(e)
-            logging.getLogger('transport.aws_sns_sqs').warning('Unable to create topic [sns] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
-        except asyncio.TimeoutError as e:
-            error_message = 'Network timeout'
+        except (botocore.exceptions.PartialCredentialsError, botocore.exceptions.ClientError, asyncio.TimeoutError) as e:
+            error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else 'Network timeout'
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to create topic [sns] on AWS ({})'.format(error_message))
             raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
@@ -245,16 +226,8 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             response = await asyncio.wait_for(client.publish(TopicArn=topic_arn, Message=message), timeout=30)
-        except botocore.exceptions.ClientError as e:
-            error_message = str(e)
-            logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
-        except aiohttp.client_exceptions.ClientConnectorError as e:
-            error_message = str(e)
-            logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
-            raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
-        except asyncio.TimeoutError as e:
-            error_message = 'Network timeout'
+        except (botocore.exceptions.ClientError, aiohttp.client_exceptions.ClientConnectorError, asyncio.TimeoutError) as e:
+            error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else 'Network timeout'
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
             raise AWSSNSSQSException(error_message, log_level=context.get('log_level')) from e
 
@@ -293,15 +266,7 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             response = await client.create_queue(QueueName=queue_name)
-        except botocore.exceptions.NoCredentialsError as e:
-            error_message = str(e)
-            logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sqs] to AWS ({})'.format(error_message))
-            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
-        except botocore.exceptions.PartialCredentialsError as e:
-            error_message = str(e)
-            logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sqs] to AWS ({})'.format(error_message))
-            raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
-        except aiohttp.client_exceptions.ClientOSError as e:
+        except (botocore.exceptions.NoCredentialsError, botocore.exceptions.PartialCredentialsError, aiohttp.client_exceptions.ClientOSError) as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sqs] to AWS ({})'.format(error_message))
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
@@ -468,18 +433,8 @@ class AWSSNSSQSTransport(Invoker):
             while not cls.close_waiter.done():
                 try:
                     response = await asyncio.wait_for(client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10), timeout=30)
-                except botocore.exceptions.ClientError as e:
-                    error_message = str(e)
-                    logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
-                    await asyncio.sleep(1)
-                    continue
-                except asyncio.TimeoutError as e:
-                    error_message = 'Network timeout'
-                    logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
-                    await asyncio.sleep(1)
-                    continue
-                except aiohttp.client_exceptions.ClientConnectorError as e:
-                    error_message = str(e)
+                except (botocore.exceptions.ClientError, aiohttp.client_exceptions.ClientConnectorError, asyncio.TimeoutError) as e:
+                    error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else 'Network timeout'
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
                     await asyncio.sleep(1)
                     continue

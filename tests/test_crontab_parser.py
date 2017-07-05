@@ -1,4 +1,5 @@
 import datetime
+import pytz
 import pytest
 from tomodachi.helpers.crontab import get_next_datetime
 
@@ -27,6 +28,15 @@ def test_parser() -> None:
     assert get_next_datetime('15-30 * * * *', t) == datetime.datetime(2017, 6, 15, 10, 17)
     assert get_next_datetime('20-30 * * * *', t) == datetime.datetime(2017, 6, 15, 10, 20)
     assert get_next_datetime('5,10,55 * * * *', t) == datetime.datetime(2017, 6, 15, 10, 55)
+
+
+def test_timezones() -> None:
+    t = datetime.datetime(2017, 6, 15, 10, 16, 50, tzinfo=pytz.UTC)
+    assert get_next_datetime('* * * * *', t) == datetime.datetime(2017, 6, 15, 10, 17, tzinfo=pytz.UTC)
+
+    t = pytz.timezone('Europe/Stockholm').localize(datetime.datetime(2017, 6, 15, 10, 16, 50))
+    assert get_next_datetime('* * * * *', t) == pytz.timezone('Europe/Stockholm').localize(datetime.datetime(2017, 6, 15, 10, 17))
+    assert get_next_datetime('15 */2 * * *', t) == pytz.timezone('Europe/Stockholm').localize(datetime.datetime(2017, 6, 15, 12, 15))
 
 
 def test_advanced_parsing() -> None:
@@ -63,6 +73,10 @@ def test_impossible_dates() -> None:
 
     with pytest.raises(Exception):
         get_next_datetime('* * 29 2 * 2017-2019', t)
+
+    assert get_next_datetime('* * 29 2 mon 2048', t) is None
+
+    assert get_next_datetime('* * 29 2 mon 2048-2070,2073-2200', t) is None
 
     with pytest.raises(Exception):
         get_next_datetime('70 * * *', t)

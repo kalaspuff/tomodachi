@@ -57,7 +57,6 @@ def test_cli_entrypoint_print_help(monkeypatch: Any, capsys: Any) -> None:
 
 
 def test_cli_entrypoint_print_version(monkeypatch: Any, capsys: Any) -> None:
-    cli = tomodachi.cli.CLI()
     monkeypatch.setattr(logging.root, 'handlers', [])
 
     with pytest.raises(SystemExit):
@@ -92,7 +91,7 @@ def test_cli_entrypoint_invalid_subcommand_show_help(monkeypatch: Any, capsys: A
     assert out == cli.help_command_usage() + "\n"
 
 
-def test_cli_start_service(monkeypatch: Any, capsys: Any) -> None:
+def test_cli_start_service_stopped_with_sigterm(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(logging.root, 'handlers', [])
 
     with pytest.raises(SystemExit):
@@ -102,6 +101,44 @@ def test_cli_start_service(monkeypatch: Any, capsys: Any) -> None:
     assert err != ''
     assert 'Starting services' in out
     assert 'tomodachi/{}'.format(tomodachi.__version__) in out
+
+
+def test_cli_start_service_stopped_with_sigint(monkeypatch: Any, capsys: Any) -> None:
+    monkeypatch.setattr(logging.root, 'handlers', [])
+
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/auto_closing_service_sigint.py'])
+
+    out, err = capsys.readouterr()
+    assert err != ''
+    assert 'Starting services' in out
+    assert 'tomodachi/{}'.format(tomodachi.__version__) in out
+
+
+def test_cli_start_exception_service(monkeypatch: Any, capsys: Any) -> None:
+    monkeypatch.setattr(logging.root, 'handlers', [])
+
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/exception_service.py'])
+
+    out, err = capsys.readouterr()
+    assert err != ''
+    assert 'Starting services' in out
+    assert 'tomodachi/{}'.format(tomodachi.__version__) in out
+    assert 'fail in _start_service()' in err
+
+
+def test_cli_start_exception_service_init(monkeypatch: Any, capsys: Any) -> None:
+    monkeypatch.setattr(logging.root, 'handlers', [])
+
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(['tomodachi', 'run', 'tests/services/exception_service_init.py'])
+
+    out, err = capsys.readouterr()
+    assert err != ''
+    assert 'Starting services' in out
+    assert 'tomodachi/{}'.format(tomodachi.__version__) in out
+    assert 'fail in __init__()' in err
 
 
 def test_cli_start_service_production_mode(monkeypatch: Any, capsys: Any) -> None:

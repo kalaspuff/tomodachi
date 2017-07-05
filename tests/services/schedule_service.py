@@ -3,7 +3,7 @@ import asyncio
 import signal
 import tomodachi
 from typing import Any  # noqa
-from tomodachi.transport.schedule import schedule
+from tomodachi.transport.schedule import schedule, heartbeat
 
 
 @tomodachi.service
@@ -13,7 +13,7 @@ class SchedulerService(object):
     closer = asyncio.Future()  # type: Any
     seconds_triggered = 0
 
-    @schedule(interval='every second')
+    @heartbeat
     async def every_second(self) -> None:
         self.seconds_triggered += 1
 
@@ -25,16 +25,20 @@ class SchedulerService(object):
     async def midnight(self) -> None:
         pass
 
-    @schedule(timestamp='1:59:59')
+    @schedule(timestamp='01:59:59')
     async def soon_two_am(self) -> None:
         pass
 
-    @schedule(timestamp='2017-08-01 00:00:00')
+    @schedule(timestamp='2017-08-01 00:00:00', timezone='Europe/Stockholm')
     async def birthday_boy(self) -> None:
         pass
 
-    @schedule(timestamp='2017-08-01 08:00')
+    @schedule(timestamp='2017-08-01 08:00', timezone='Europe/Stockholm')
     async def birthday_boy_wakeup(self) -> None:
+        pass
+
+    @schedule(interval='*/15 8-18 * * mon-fri', timezone='GMT +01:00')
+    async def work_hours_in_gmt_1(self) -> None:
         pass
 
     async def _started_service(self) -> None:

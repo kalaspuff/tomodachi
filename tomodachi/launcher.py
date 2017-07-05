@@ -5,7 +5,8 @@ import importlib
 import logging
 import datetime
 import uvloop
-from typing import Dict, Union, Optional, Any
+import traceback
+from typing import Dict, Union, Optional, Any, List
 import tomodachi.container
 import tomodachi.importer
 import tomodachi.invoker
@@ -22,7 +23,7 @@ class ServiceLauncher(object):
     services = set()  # type: set
 
     @classmethod
-    def run_until_complete(cls, service_files: Union[list, set], configuration: Optional[Dict]=None, watcher: Optional[tomodachi.watcher.Watcher]=None) -> None:
+    def run_until_complete(cls, service_files: Union[List, set], configuration: Optional[Dict]=None, watcher: Optional[tomodachi.watcher.Watcher]=None) -> None:
         def stop_services() -> None:
             asyncio.wait([asyncio.ensure_future(_stop_services())])
 
@@ -43,9 +44,6 @@ class ServiceLauncher(object):
 
         def sigtermHandler(*args: Any) -> None:
             logging.getLogger('system').warning('Received termination signal [SIGTERM]')
-
-        if not isinstance(service_files, list) and not isinstance(service_files, set):
-            service_files = [service_files]
 
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_event_loop()
@@ -85,12 +83,14 @@ class ServiceLauncher(object):
 
             try:
                 cls.services = set([ServiceContainer(ServiceImporter.import_service_file(file), configuration) for file in service_files])
-                loop.run_until_complete(asyncio.wait([asyncio.ensure_future(service.run_until_complete()) for service in cls.services]))
-            except:
+                result = loop.run_until_complete(asyncio.wait([asyncio.ensure_future(service.run_until_complete()) for service in cls.services]))
+                exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
+                if exception:
+                    raise exception[0]
+            except Exception as e:
+                traceback.print_exception(e.__class__, e, e.__traceback__)
                 for signame in ('SIGINT', 'SIGTERM'):
                     loop.remove_signal_handler(getattr(signal, signame))
-                stop_services()
-                raise
 
             current_modules = [m for m in sys.modules.keys()]
             for m in current_modules:

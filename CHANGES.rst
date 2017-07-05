@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.2.17 (2017-07-05)
+-------------------
+
+- Timezone support for ``schedule`` invoker functions.
+
+- Added more decorator invoker functions as aliases for common scheduler
+  use cases - ``@minutely``, ``@hourly``, ``@daily`` and ``@heartbeat`` (every
+  second)
+
+- Updated example services and better test cases.
+
+
 0.2.16 (2017-07-02)
 -------------------
 

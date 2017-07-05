@@ -44,18 +44,13 @@ class AmqpTransport(Invoker):
             await cls.connect(cls, service, service.context)
         exchange_name = exchange_name or cls.exchange_name or 'amq.topic'
 
-        message_protocol = None  # type: Any
-        try:
-            message_protocol = service.message_protocol
-        except AttributeError as e:
-            pass
+        message_protocol = getattr(service, 'message_protocol', None)
 
         payload = data
         if message_protocol:
-            try:
-                payload = await message_protocol.build_message(service, routing_key, data)
-            except AttributeError as e:
-                pass
+            build_message_func = getattr(message_protocol, 'build_message', None)
+            if build_message_func:
+                payload = await build_message_func(service, routing_key, data)
 
         async def _publish_message() -> None:
             success = False
@@ -117,7 +112,9 @@ class AmqpTransport(Invoker):
             message_uuid = None
             if message_protocol:
                 try:
-                    message, message_uuid, timestamp = await message_protocol.parse_message(payload)
+                    parse_message_func = getattr(message_protocol, 'parse_message', None)
+                    if parse_message_func:
+                        message, message_uuid, timestamp = await parse_message_func(payload)
                     if message_uuid:
                         if not context.get('_amqp_received_messages'):
                             context['_amqp_received_messages'] = {}
