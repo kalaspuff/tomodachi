@@ -56,6 +56,20 @@ def test_cli_entrypoint_print_help(monkeypatch: Any, capsys: Any) -> None:
     assert out == cli.help_command_usage() + "\n"
 
 
+def test_cli_entrypoint_print_dependency_versions(monkeypatch: Any, capsys: Any) -> None:
+    monkeypatch.setattr(logging.root, 'handlers', [])
+
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(['tomodachi', '--dependency-versions'])
+
+    out, err = capsys.readouterr()
+    assert err == ''
+    assert out != 'tomodachi/{}'.format(tomodachi.__version__) + "\n"
+
+    import aiobotocore
+    assert 'aiobotocore/{}'.format(aiobotocore.__version__) + "\n" in out
+
+
 def test_cli_entrypoint_print_version(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(logging.root, 'handlers', [])
 

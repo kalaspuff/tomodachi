@@ -15,13 +15,14 @@ class CLI:
         return ('Usage: tomodachi.py subcommand [options] [args]\n'
                 '\n'
                 'Options:\n'
-                '  -h, --help            show this help message and exit\n'
-                '  -v, --version         print tomodachi version\n'
+                '  -h, --help             show this help message and exit\n'
+                '  -v, --version          print tomodachi version\n'
+                '  --dependency-versions  print versions of dependencies\n'
                 '\n'
                 'Available subcommands:\n'
                 '  run <service ...> [-c <config-file ...>] [--production]\n'
-                '  -c, --config          use json configuration files\n'
-                '  --production          disable restart on file changes\n'
+                '  -c, --config           use json configuration files\n'
+                '  --production           disable restart on file changes\n'
                 )
 
     def help_command(self) -> None:
@@ -30,6 +31,17 @@ class CLI:
 
     def version_command(self) -> None:
         print('tomodachi/{}'.format(tomodachi.__version__))
+        sys.exit(0)
+
+    def dependency_versions_command(self) -> None:
+        import aiobotocore
+        import botocore
+        import aiohttp
+        import aioamqp
+        print('aiobotocore/{}'.format(aiobotocore.__version__))
+        print('botocore/{}'.format(botocore.__version__))
+        print('aiohttp/{}'.format(aiohttp.__version__))
+        print('aioamqp/{}'.format(aioamqp.__version__))
         sys.exit(0)
 
     def run_command_usage(self) -> str:
@@ -81,7 +93,7 @@ class CLI:
 
     def main(self, argv: List[str]) -> None:
         try:
-            opts, args = getopt.getopt(argv, "hvV", ['help', 'version', 'version'])
+            opts, args = getopt.getopt(argv, "hvV ", ['help', 'version', 'version', 'dependency-versions'])
         except getopt.GetoptError:
             self.help_command()
         for opt, arg in opts:
@@ -89,6 +101,10 @@ class CLI:
                 self.help_command()
             if opt in ['-v', '-V', '--version']:
                 self.version_command()
+            if opt in ['-v', '-V', '--version']:
+                self.version_command()
+            if opt in ['--dependency-versions']:
+                self.dependency_versions_command()
         if len(args):
             if args[0] == 'run':
                 self.run_command(args[1:])
