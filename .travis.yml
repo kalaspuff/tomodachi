@@ -14,8 +14,8 @@ script:
     - pep8 --ignore=E501 .
     - py.test --cov=./ tests/
     - tomodachi run tests/run_example_service.py
-    - tomodachi -v
-    - tomodachi --dependency-versions
+    - python tomodachi.py -v
+    - python tomodachi.py --dependency-versions
     - mypy ./
 after_success:
     - codecov
