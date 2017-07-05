@@ -12,6 +12,8 @@ Changes
 
 - Updated example services and better test cases.
 
+- Updated aiohttp / aiobotocore / botocore dependencies.
+
 
 0.2.16 (2017-07-02)
 -------------------
