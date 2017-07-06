@@ -492,8 +492,7 @@ class AWSSNSSQSTransport(Invoker):
                         if exception and not stop_waiter.done():
                             stop_waiter.set_result(None)
 
-                    if not stop_waiter.done():
-                        await asyncio.sleep(0.2)
+                    await asyncio.sleep(0.2)
 
                 if not start_waiter.done():
                     start_waiter.set_result(None)
