@@ -36,13 +36,14 @@ class RequestHandler(web_protocol.RequestHandler):
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
-                logging.getLogger('transport.http').info('[http] [499] {} "{} {}{}{}" - {} -'.format(
+                logging.getLogger('transport.http').info('[http] [499] {} "{} {}{}{}" - {} "{}" -'.format(
                     request.request_ip,
                     request.method,
                     request.path,
                     '?{}'.format(request.query_string) if request.query_string else '',
                     ' {}'.format(version_string) if version_string else '',
                     request.content_length if request.content_length is not None else '-',
+                    request.headers.get('User-Agent', '').replace('"', '')
                 ))
 
         self.log_exception("Error handling request", exc_info=exc)
@@ -62,7 +63,7 @@ class RequestHandler(web_protocol.RequestHandler):
             self.force_close()
         elif self.transport is not None:
             if self._access_log is True:
-                logging.getLogger('transport.http').info('[http] [{}] {} "INVALID" {} - -'.format(
+                logging.getLogger('transport.http').info('[http] [{}] {} "INVALID" {} - "" -'.format(
                     status,
                     request.request_ip,
                     len(msg)
@@ -317,7 +318,7 @@ class HttpTransport(Invoker):
                                 version_string = None
                                 if isinstance(request.version, HttpVersion):
                                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
-                                logging.getLogger('transport.http').info('[http] [{}] {} "{} {}{}{}" {} {} {}'.format(
+                                logging.getLogger('transport.http').info('[http] [{}] {} "{} {}{}{}" {} {} "{}" {}'.format(
                                     response.status if response else 500,
                                     request.request_ip,
                                     request.method,
@@ -326,6 +327,7 @@ class HttpTransport(Invoker):
                                     ' {}'.format(version_string) if version_string else '',
                                     response.content_length if response and response.content_length is not None else '-',
                                     request.content_length if request.content_length is not None else '-',
+                                    request.headers.get('User-Agent', '').replace('"', ''),
                                     '{0:.5f}s'.format(round(request_time, 5))
                                 ))
 
