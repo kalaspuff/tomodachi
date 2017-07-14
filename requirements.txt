@@ -24,4 +24,4 @@ six==1.10.0
 tzlocal==1.4
 ujson==1.35
 uvloop==0.8.0
-yarl==0.11.0
+yarl==0.12.0
