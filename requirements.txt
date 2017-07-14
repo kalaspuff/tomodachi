@@ -3,7 +3,7 @@ aiobotocore==0.4.3
 aiohttp==2.2.3
 appdirs==1.4.3
 async-timeout==1.2.1
-botocore==1.5.78
+botocore==1.5.83
 chardet==3.0.4
 codecov==2.0.9
 coverage==4.4.1
