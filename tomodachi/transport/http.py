@@ -3,9 +3,8 @@ import asyncio
 import logging
 import traceback
 import time
-from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable  # noqa
+from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable, SupportsInt  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
-from html import escape as html_escape
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
 from aiohttp.http import HttpVersion
 from tomodachi.invoker import Invoker
@@ -187,7 +186,7 @@ class HttpTransport(Invoker):
 
             if isinstance(return_value, dict):
                 body = return_value.get('body')
-                _status = return_value.get('status')
+                _status = return_value.get('status')  # type: Optional[SupportsInt]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
                 if return_value.get('headers'):
@@ -243,7 +242,7 @@ class HttpTransport(Invoker):
 
             if isinstance(return_value, dict):
                 body = return_value.get('body')
-                _status = return_value.get('status')
+                _status = return_value.get('status')  # type: Optional[SupportsInt]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
                 if return_value.get('headers'):

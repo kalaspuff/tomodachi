@@ -1,6 +1,6 @@
 import datetime
 import pytz
-from typing import List, Tuple, Dict, Union, Optional, Any  # noqa
+from typing import List, Tuple, Dict, Union, Optional, Any, SupportsInt  # noqa
 from calendar import monthrange
 
 cron_attributes = [
@@ -38,36 +38,47 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
             last = False
             possible_values = [x for x in range(cron_range[0], cron_range[1] + 1)]  # type: List[int]
             if '-' in part:
-                a, b = part.split('-')  # type: Union[int, str], Union[int, str]
-                if '/' in str(b):
-                    b, _ = str(b).split('/')
-                if 'l' in str(a)[0]:
+                a_value, b_value = part.split('-')  # type: str, str
+                if '/' in b_value:
+                    b_value, _ = b_value.split('/')
+                if 'l' in a_value[0]:
                     last = True
-                    a = str(a)[1:]
-                a = int(aliases.get(str(a), a))
-                b = int(aliases.get(str(b), b))
+                    a_value = a_value[1:]
+                a = int(aliases.get(a_value, -1))
+                b = int(aliases.get(b_value, -1))
+                if a < 0:
+                    a = int(a_value)
+                if b < 0:
+                    b = int(b_value)
                 possible_values = [x for x in possible_values if x >= min(a, b) and x <= max(a, b)]
 
             if '/' in part:
-                a, b = part.split('/')
+                a_value, b_value = part.split('/')
                 try:
-                    a = int(aliases.get(a, a))
-                    b = int(b)
+                    a = int(aliases.get(a_value, -1))
+                    if a < 0:
+                        a = int(a_value)
+                    b = int(b_value)
                     possible_values = [x for x in possible_values if x % b == (a % b)]
                 except ValueError:
-                    b = int(b)
-                    if a in ['*', '?']:
+                    b = int(b_value)
+                    if a_value in ['*', '?']:
                         possible_values = [x for x in possible_values if x % b == 0]
                     else:
-                        a, _ = part.split('-')
-                        a = int(aliases.get(str(a), a))
+                        a_value, _ = part.split('-')
+                        a = int(aliases.get(a_value, -1))
+                        if a < 0:
+                            a = int(a_value)
                         possible_values = [x for x in possible_values if x % b == (a % b)]
 
             try:
-                if 'l' == part[0]:
+                part_value = part
+                if 'l' == part_value[0]:
                     last = True
-                    part = part[1:]
-                a = int(aliases.get(part, part))
+                    part_value = part_value[1:]
+                a = int(aliases.get(part_value, -1))
+                if a < 0:
+                    a = int(part_value)
                 possible_values = [x for x in possible_values if x == a]
             except ValueError:
                 pass
