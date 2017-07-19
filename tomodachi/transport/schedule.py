@@ -136,7 +136,7 @@ class Scheduler(Invoker):
 
         return int(current_time + 60 * 60 * 24 * 365 * 100)
 
-    async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> None:
+    def get_timezone(cls: Any, timezone: Optional[str]=None) -> Optional[str]:
         if timezone:
             tz_aliases = {
                 ('+00:00', '-00:00', '00:00', '0000', 'GMT +0000', 'GMT +00:00', 'GMT -00', 'GMT +00', 'GMT -0', 'GMT +0'): 'GMT0',
@@ -173,6 +173,11 @@ class Scheduler(Invoker):
                 pytz.timezone(timezone or '')
             except Exception as e:
                 raise Exception('Unknown timezone: {}'.format(timezone)) from e
+
+        return timezone
+
+    async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> None:
+        timezone = cls.get_timezone(timezone)
 
         if not cls.close_waiter:
             cls.close_waiter = asyncio.Future()
@@ -247,6 +252,9 @@ class Scheduler(Invoker):
         context['_schedule_loop_started'] = True
 
         async def _schedule() -> None:
+            for interval, timestamp, timezone, func, handler in context.get('_schedule_scheduled_functions', []):
+                cls.next_call_at(time.time(), interval, timestamp, cls.get_timezone(timezone))  # test provided interval/timestamp on init
+
             for interval, timestamp, timezone, func, handler in context.get('_schedule_scheduled_functions', []):
                 await cls.start_schedule_loop(cls, obj, context, handler, interval, timestamp, timezone)
 

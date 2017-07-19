@@ -36,6 +36,7 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
         parts = cron_parts[i].lower().split(',')
         for part in parts:
             last = False
+            parsed = False
             possible_values = [x for x in range(cron_range[0], cron_range[1] + 1)]  # type: List[int]
             if '-' in part:
                 a_value, b_value = part.split('-')  # type: str, str
@@ -47,10 +48,17 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                 a = int(aliases.get(a_value, -1))
                 b = int(aliases.get(b_value, -1))
                 if a < 0:
-                    a = int(a_value)
+                    try:
+                        a = int(a_value)
+                    except ValueError as e:
+                        raise Exception('Invalid cron notation: invalid values for {} ({})'.format(attr[0], a_value)) from e
                 if b < 0:
-                    b = int(b_value)
+                    try:
+                        b = int(b_value)
+                    except ValueError as e:
+                        raise Exception('Invalid cron notation: invalid values for {} ({})'.format(attr[0], b_value)) from e
                 possible_values = [x for x in possible_values if x >= min(a, b) and x <= max(a, b)]
+                parsed = True
 
             if '/' in part:
                 a_value, b_value = part.split('/')
@@ -61,15 +69,22 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                     b = int(b_value)
                     possible_values = [x for x in possible_values if x % b == (a % b)]
                 except ValueError:
-                    b = int(b_value)
+                    try:
+                        b = int(b_value)
+                    except ValueError as e:
+                        raise Exception('Invalid cron notation: invalid values for {} ({})'.format(attr[0], b_value)) from e
                     if a_value in ['*', '?']:
                         possible_values = [x for x in possible_values if x % b == 0]
                     else:
                         a_value, _ = part.split('-')
                         a = int(aliases.get(a_value, -1))
                         if a < 0:
-                            a = int(a_value)
+                            try:
+                                a = int(a_value)
+                            except ValueError as e:
+                                raise Exception('Invalid cron notation: invalid values for {} ({})'.format(attr[0], a_value)) from e
                         possible_values = [x for x in possible_values if x % b == (a % b)]
+                parsed = True
 
             try:
                 part_value = part
@@ -80,8 +95,11 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                 if a < 0:
                     a = int(part_value)
                 possible_values = [x for x in possible_values if x == a]
-            except ValueError:
-                pass
+            except ValueError as e:
+                if parsed or part_value in ['*', '?'] or part == 'l':
+                    pass
+                else:
+                    raise Exception('Invalid cron notation: invalid values for {} ({})'.format(attr[0], part_value)) from e
 
             if last and attr[0] == 'day':
                 last_day = True
