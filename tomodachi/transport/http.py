@@ -3,6 +3,7 @@ import asyncio
 import logging
 import traceback
 import time
+from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable, SupportsInt  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
@@ -31,7 +32,7 @@ class RequestHandler(web_protocol.RequestHandler):
         information. It always closes current connection."""
         if self.transport is None:
             # client has been disconnected during writing.
-            if self._access_log is True:
+            if self._access_log:
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
@@ -61,7 +62,7 @@ class RequestHandler(web_protocol.RequestHandler):
         if request.writer.output_size > 0 or self.transport is None:
             self.force_close()
         elif self.transport is not None:
-            if self._access_log is True:
+            if self._access_log:
                 logging.getLogger('transport.http').info('[http] [{}] {} "INVALID" {} - "" -'.format(
                     status,
                     request.request_ip,
@@ -277,6 +278,21 @@ class HttpTransport(Invoker):
         server_header = context.get('options', {}).get('http', {}).get('server_header', 'tomodachi')
         access_log = context.get('options', {}).get('http', {}).get('access_log', True)
 
+        logger_handler = None
+        if isinstance(access_log, str):
+            try:
+                wfh = WatchedFileHandler(filename=access_log)
+            except FileNotFoundError as e:
+                logging.getLogger('transport.http').warning('Unable to use file for access log - invalid path ("{}")'.format(access_log))
+                raise HttpException(str(e)) from e
+            except PermissionError as e:
+                logging.getLogger('transport.http').warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
+                raise HttpException(str(e)) from e
+            wfh.setLevel(logging.DEBUG)
+            logging.getLogger('transport.http').info('Logging to "{}"'.format(access_log))
+            logger_handler = wfh
+            logging.getLogger('transport.http').addHandler(logger_handler)
+
         async def _start_server() -> None:
             loop = asyncio.get_event_loop()
 
@@ -312,7 +328,7 @@ class HttpTransport(Invoker):
                                 response = web.Response(status=499)
                                 response._eof_sent = True
 
-                            if access_log is True:
+                            if access_log:
                                 request_time = time.time() - timer
                                 version_string = None
                                 if isinstance(request.version, HttpVersion):
@@ -360,6 +376,8 @@ class HttpTransport(Invoker):
                     await stop_method(*args, **kwargs)
                 server.close()
                 await app.shutdown()
+                if logger_handler:
+                    logging.getLogger('transport.http').removeHandler(logger_handler)
                 await app.cleanup()
 
             setattr(obj, '_stop_service', stop_service)
