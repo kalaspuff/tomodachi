@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable,
 from multidict import CIMultiDict, CIMultiDictProxy
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
 from aiohttp.http import HttpVersion
+from aiohttp.helpers import BasicAuth
 from tomodachi.invoker import Invoker
 
 
@@ -37,8 +38,9 @@ class RequestHandler(web_protocol.RequestHandler):
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
-                logging.getLogger('transport.http').info('[http] [499] {} "{} {}{}{}" - {} "{}" -'.format(
+                logging.getLogger('transport.http').info('[http] [499] {} {} "{} {}{}{}" - {} "{}" -'.format(
                     request.request_ip,
+                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                     request.method,
                     request.path,
                     '?{}'.format(request.query_string) if request.query_string else '',
@@ -64,9 +66,10 @@ class RequestHandler(web_protocol.RequestHandler):
             self.force_close()
         elif self.transport is not None:
             if self._access_log:
-                logging.getLogger('transport.http').info('[http] [{}] {} "INVALID" {} - "" -'.format(
+                logging.getLogger('transport.http').info('[http] [{}] {} {} "INVALID" {} - "" -'.format(
                     status,
                     request.request_ip,
+                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                     len(msg)
                 ))
 
@@ -317,6 +320,13 @@ class HttpTransport(Invoker):
                                     request_ip = request.headers.get(real_ip_header).split(',')[0].strip().split(' ')[0].strip()
                             request.request_ip = request_ip
 
+                        request.auth = None
+                        if request.headers.get('Authorization'):
+                            try:
+                                request.auth = BasicAuth.decode(request.headers.get('Authorization'))
+                            except ValueError:
+                                pass
+
                         if access_log:
                             timer = time.time()
                         response = None
@@ -342,9 +352,10 @@ class HttpTransport(Invoker):
                                 version_string = None
                                 if isinstance(request.version, HttpVersion):
                                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
-                                logging.getLogger('transport.http').info('[http] [{}] {} "{} {}{}{}" {} {} "{}" {}'.format(
+                                logging.getLogger('transport.http').info('[http] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
                                     response.status if response else 500,
                                     request.request_ip,
+                                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                                     request.method,
                                     request.path,
                                     '?{}'.format(request.query_string) if request.query_string else '',
