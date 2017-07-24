@@ -142,11 +142,7 @@ class Response(object):
             body = self._body
             try:
                 body_value = body.encode(charset.lower())
-            except ValueError as e:
-                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                    traceback.print_exception(e.__class__, e, e.__traceback__)
-                raise web.HTTPInternalServerError() from e
-            except LookupError as e:
+            except (ValueError, LookupError, UnicodeEncodeError) as e:
                 if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
                     traceback.print_exception(e.__class__, e, e.__traceback__)
                 raise web.HTTPInternalServerError() from e

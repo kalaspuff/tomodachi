@@ -120,6 +120,10 @@ class HttpService(object):
     async def forwarded_for(self, request: web.Request) -> str:
         return request.request_ip
 
+    @http('GET', r'/authorization/?')
+    async def authorization(self, request: web.Request) -> str:
+        return request.auth.login if request.auth else ''
+
     @http_error(status_code=404)
     async def test_404(self, request: web.Request) -> str:
         return 'test 404'

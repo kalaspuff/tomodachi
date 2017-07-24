@@ -207,6 +207,18 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
             assert response.status == 200
             assert await response.text() == '192.168.0.1'
 
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/authorization'.format(port), headers={'Authorization': 'Basic YXV0aHVzZXI6c2VjcmV0YWY='})
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == 'authuser'
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/authorization'.format(port), headers={'Authorization': 'Basic 0123456789'})
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == ''
+
     loop.run_until_complete(_async(loop))
     instance.stop_service()
     loop.run_until_complete(future)
