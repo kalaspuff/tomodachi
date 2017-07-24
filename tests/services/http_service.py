@@ -15,7 +15,8 @@ class HttpService(object):
     options = {
         'http': {
             'port': None,
-            'access_log': True
+            'access_log': True,
+            'real_ip_from': '127.0.0.1'
         }
     }
     uuid = None
@@ -114,6 +115,10 @@ class HttpService(object):
     @http('GET', r'/none-data/?')
     async def none_data(self, request: web.Request) -> None:
         return None
+
+    @http('GET', r'/forwarded-for/?')
+    async def forwarded_for(self, request: web.Request) -> str:
+        return request.request_ip
 
     @http_error(status_code=404)
     async def test_404(self, request: web.Request) -> str:

@@ -195,6 +195,18 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
             assert await response.text() == ''
             assert response.headers.get('Content-Type') == 'text/plain; charset=utf-8'
 
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/forwarded-for'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == '127.0.0.1'
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/forwarded-for'.format(port), headers={'X-Forwarded-For': '192.168.0.1, 10.0.0.1'})
+            assert response is not None
+            assert response.status == 200
+            assert await response.text() == '192.168.0.1'
+
     loop.run_until_complete(_async(loop))
     instance.stop_service()
     loop.run_until_complete(future)
