@@ -1,6 +1,8 @@
 import aiohttp
 import asyncio
 import pytest
+import os
+import logging
 from typing import Any
 from multidict import CIMultiDictProxy
 from run_test_service_helper import start_service
@@ -222,3 +224,44 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     loop.run_until_complete(_async(loop))
     instance.stop_service()
     loop.run_until_complete(future)
+
+
+def test_access_log(monkeypatch: Any, loop: Any) -> None:
+    log_path = '/tmp/03c2ad00-d47d-4569-84a3-0958f88f6c14.log'
+
+    logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=logging.INFO)
+    logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')
+
+    services, future = start_service('tests/services/http_access_log_service.py', monkeypatch)
+    instance = services.get('test_http')
+    port = instance.context.get('_http_port')
+
+    assert os.path.exists(log_path) is True
+    with open(log_path) as file:
+        content = file.read()
+        assert content == 'Listening [http] on http://127.0.0.1:{}/\n'.format(port)
+
+    async def _async(loop: Any) -> None:
+        async with aiohttp.ClientSession(loop=loop) as client:
+            await client.get('http://127.0.0.1:{}/test'.format(port))
+            with open(log_path) as file:
+                content = file.read()
+                assert '[http] [200] 127.0.0.1 - "GET /test HTTP/1.1" 4 0' in content
+                assert '[http] [404] 127.0.0.1 - "GET /404 HTTP/1.1" 8 0' not in content
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            await client.get('http://127.0.0.1:{}/404'.format(port))
+            with open(log_path) as file:
+                content = file.read()
+                assert '[http] [200] 127.0.0.1 - "GET /test HTTP/1.1" 4 0' in content
+                assert '[http] [404] 127.0.0.1 - "GET /404 HTTP/1.1" 8 0' in content
+
+    with open(log_path) as file:
+        content = file.read()
+        assert content == 'Listening [http] on http://127.0.0.1:{}/\n'.format(port)
+
+    loop.run_until_complete(_async(loop))
+    instance.stop_service()
+    loop.run_until_complete(future)
+
+    assert os.path.exists(log_path) is False
