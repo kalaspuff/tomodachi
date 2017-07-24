@@ -101,8 +101,6 @@ class CLI:
                 self.help_command()
             if opt in ['-v', '-V', '--version']:
                 self.version_command()
-            if opt in ['-v', '-V', '--version']:
-                self.version_command()
             if opt in ['--dependency-versions']:
                 self.dependency_versions_command()
         if len(args):
