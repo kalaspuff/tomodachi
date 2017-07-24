@@ -3,6 +3,7 @@ import asyncio
 import logging
 import traceback
 import time
+import ipaddress
 from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable, SupportsInt  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -298,6 +299,11 @@ class HttpTransport(Invoker):
 
             logging.getLogger('aiohttp.access').setLevel(logging.WARNING)
 
+            real_ip_header = context.get('options', {}).get('http', {}).get('real_ip_header', 'X-Forwarded-For')
+            real_ip_from = context.get('options', {}).get('http', {}).get('real_ip_from', [])
+            if isinstance(real_ip_from, str):
+                real_ip_from = [real_ip_from]
+
             async def middleware(app: web.Application, handler: Callable) -> Callable:
                 async def middleware_handler(request: web.Request) -> web.Response:
                     async def func() -> web.Response:
@@ -306,6 +312,9 @@ class HttpTransport(Invoker):
                             request_ip = None
                             if peername:
                                 request_ip, _ = peername
+                            if request.headers.get(real_ip_header) and request_ip and len(real_ip_from):
+                                if any([ipaddress.ip_address(request_ip) in ipaddress.ip_network(cidr) for cidr in real_ip_from]):
+                                    request_ip = request.headers.get(real_ip_header).split(',')[0].strip().split(' ')[0].strip()
                             request.request_ip = request_ip
 
                         if access_log:
