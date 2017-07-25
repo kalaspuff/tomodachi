@@ -1,8 +1,22 @@
 Changes
 =======
 
-0.3.0 (2017-XX-XX)
--------------------
+0.3.0 (2017-07-25)
+------------------
+
+- Changed format of access log for HTTP requests - now logging user agent and
+  login name (if authorization via Basic Auth).
+
+- Support for ``X-Forwarded-For`` headers via ``real_ip_from`` and
+  ``real_ip_header`` options which will log the forwarded IP instead of the
+  one from the load balancer / proxy.
+
+- Access log for HTTP can now be specified as a filename to which the service
+  will log all requests.
+
+- Fixes issue with schedule invoker which would crash if invoked at second 0.
+
+- Updated dependencies to latest available versions.
 
 
 0.2.17 (2017-07-05)
