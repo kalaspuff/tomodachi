@@ -218,6 +218,38 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
+    async def static_request_handler(cls: Any, obj: Any, context: Dict, func: Any, path: str, base_url: str) -> Any:
+        if '?P<filename>' not in base_url:
+            pattern = r'^{}(?P<filename>[^/]+?)$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
+        else:
+            pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
+        compiled_pattern = re.compile(pattern)
+
+        import inspect
+
+        for k, v in inspect.getmembers(func.__module__):
+            if k == '__dir__':
+                print(k)
+                print(v)
+        if path.startswith('/'):
+            pass
+
+        async def handler(request: web.Request) -> web.Response:
+            result = compiled_pattern.match(request.path)
+            filename = result.groupdict()['filename']
+            filepath = '{}{}{}'.format(path, '/' if not path.endswith('/') else '', filename)
+            status = 200
+            headers = CIMultiDict({})
+            content_type = 'application/octet-stream'
+            print(filepath)
+            return web.Response(body=b'filedata', status=status, headers=headers, content_type=content_type)
+
+        context['_http_routes'] = context.get('_http_routes', [])
+        context['_http_routes'].append(('GET', pattern, handler))
+
+        start_func = cls.start_server(obj, context)
+        return (await start_func) if start_func else None
+
     async def error_handler(cls: Any, obj: Any, context: Dict, func: Any, status_code: int) -> Any:
         default_content_type = context.get('options', {}).get('http', {}).get('content_type', 'text/plain')
         default_charset = context.get('options', {}).get('http', {}).get('charset', 'utf-8')
@@ -415,3 +447,4 @@ class HttpTransport(Invoker):
 
 http = HttpTransport.decorator(HttpTransport.request_handler)
 http_error = HttpTransport.decorator(HttpTransport.error_handler)
+http_static = HttpTransport.decorator(HttpTransport.static_request_handler)

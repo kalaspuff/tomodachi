@@ -5,7 +5,7 @@ import tomodachi
 from aiohttp import web
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
-from tomodachi.transport.http import http, http_error, Response
+from tomodachi.transport.http import http, http_error, http_static, Response
 
 
 @tomodachi.service
@@ -37,6 +37,10 @@ class ExampleHttpService(object):
     @http('GET', r'/response/?')
     async def response_object(self, request: web.Request) -> Response:
         return Response(body='{"data": true}', status=200, content_type='application/json')
+
+    @http_static('static/', r'/static/')
+    async def static_files(self) -> None:
+        pass
 
     @http_error(status_code=404)
     async def error_404(self, request: web.Request) -> str:
