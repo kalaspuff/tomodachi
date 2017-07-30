@@ -6,6 +6,7 @@ import re
 import traceback
 import types
 import uuid
+import os
 from types import ModuleType, TracebackType
 from typing import Dict, Optional, Any, Type
 from tomodachi import CLASS_ATTRIBUTE
@@ -16,6 +17,8 @@ from tomodachi.config import merge_dicts
 class ServiceContainer(object):
     def __init__(self, module_import: ModuleType, configuration: Optional[Dict]=None) -> None:
         self.module_import = module_import
+
+        self.file_path = '{}/{}.py'.format(os.path.realpath(os.getcwd()), module_import.__name__)
         self.module_name = module_import.__name__.rsplit('/', 1)[1] if '/' in module_import.__name__ else module_import.__name__
         self.configuration = configuration
         self.logger = logging.getLogger('services.{}'.format(self.module_name))
@@ -68,6 +71,8 @@ class ServiceContainer(object):
                 instance = cls()
                 if not getattr(instance, 'context', None):
                     setattr(instance, 'context', {i: getattr(instance, i) for i in dir(instance) if not callable(i) and not i.startswith("__") and not isinstance(getattr(instance, i), types.MethodType)})
+
+                getattr(instance, 'context', {})['_service_file_path'] = self.file_path
 
                 self.setup_configuration(instance)
 

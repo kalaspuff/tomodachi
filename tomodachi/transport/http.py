@@ -4,6 +4,7 @@ import logging
 import traceback
 import time
 import ipaddress
+import os
 from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable, SupportsInt  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -225,23 +226,23 @@ class HttpTransport(Invoker):
             pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
         compiled_pattern = re.compile(pattern)
 
-        import inspect
-
-        for k, v in inspect.getmembers(func.__module__):
-            if k == '__dir__':
-                print(k)
-                print(v)
         if path.startswith('/'):
-            pass
+            path = os.path.dirname(path)
+        else:
+            path = '{}/{}'.format(os.path.dirname(context.get('context', {}).get('_service_file_path')), path)
 
         async def handler(request: web.Request) -> web.Response:
             result = compiled_pattern.match(request.path)
             filename = result.groupdict()['filename']
-            filepath = '{}{}{}'.format(path, '/' if not path.endswith('/') else '', filename)
-            status = 200
-            headers = CIMultiDict({})
-            content_type = 'application/octet-stream'
+            filepath = '{}{}'.format(path, filename)
             print(filepath)
+
+            headers = CIMultiDict({})
+            if os.path.exists(filepath):
+                status = 200
+                content_type = 'application/octet-stream'
+            else:
+                status = 404
             return web.Response(body=b'filedata', status=status, headers=headers, content_type=content_type)
 
         context['_http_routes'] = context.get('_http_routes', [])
