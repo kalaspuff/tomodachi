@@ -5,10 +5,12 @@ import traceback
 import time
 import ipaddress
 import os
+import pathlib
 from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable, SupportsInt  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
+from aiohttp.web_fileresponse import FileResponse
 from aiohttp.http import HttpVersion
 from aiohttp.helpers import BasicAuth
 from tomodachi.invoker import Invoker
@@ -221,7 +223,7 @@ class HttpTransport(Invoker):
 
     async def static_request_handler(cls: Any, obj: Any, context: Dict, func: Any, path: str, base_url: str) -> Any:
         if '?P<filename>' not in base_url:
-            pattern = r'^{}(?P<filename>[^/]+?)$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
+            pattern = r'^{}(?P<filename>.+?)$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
         else:
             pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
         compiled_pattern = re.compile(pattern)
@@ -235,15 +237,15 @@ class HttpTransport(Invoker):
             result = compiled_pattern.match(request.path)
             filename = result.groupdict()['filename']
             filepath = '{}{}'.format(path, filename)
-            print(filepath)
 
-            headers = CIMultiDict({})
-            if os.path.exists(filepath):
-                status = 200
-                content_type = 'application/octet-stream'
-            else:
-                status = 404
-            return web.Response(body=b'filedata', status=status, headers=headers, content_type=content_type)
+            try:
+                if os.path.isdir(filepath) or not os.path.exists(filepath):
+                    raise web.HTTPNotFound()
+
+                pathlib.Path(filepath).open('r')
+                return FileResponse(filepath)
+            except PermissionError as e:
+                raise web.HTTPForbidden()
 
         context['_http_routes'] = context.get('_http_routes', [])
         context['_http_routes'].append(('GET', pattern, handler))
