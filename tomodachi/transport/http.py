@@ -233,6 +233,9 @@ class HttpTransport(Invoker):
         else:
             path = '{}/{}'.format(os.path.dirname(context.get('context', {}).get('_service_file_path')), path)
 
+        if not path.endswith('/'):
+            path = '{}/'.format(path)
+
         async def handler(request: web.Request) -> web.Response:
             result = compiled_pattern.match(request.path)
             filename = result.groupdict()['filename']

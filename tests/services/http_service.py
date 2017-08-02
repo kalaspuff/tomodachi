@@ -4,7 +4,7 @@ import signal
 import tomodachi
 from typing import Any, Dict, Tuple  # noqa
 from aiohttp import web
-from tomodachi.transport.http import http, http_error, Response
+from tomodachi.transport.http import http, http_error, http_static, Response
 from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
@@ -123,6 +123,14 @@ class HttpService(object):
     @http('GET', r'/authorization/?')
     async def authorization(self, request: web.Request) -> str:
         return request.auth.login if request.auth else ''
+
+    @http_static('../static_files', r'/static/')
+    async def static_files_filename_append(self) -> None:
+        pass
+
+    @http_static('../static_files', r'/download/(?P<filename>[^/]+?)/image')
+    async def static_files_filename_existing(self) -> None:
+        pass
 
     @http_error(status_code=404)
     async def test_404(self, request: web.Request) -> str:
