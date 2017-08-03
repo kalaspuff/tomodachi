@@ -6,6 +6,7 @@ import time
 import ipaddress
 import os
 import pathlib
+import inspect
 from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable, SupportsInt  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -175,11 +176,16 @@ class HttpTransport(Invoker):
 
         async def handler(request: web.Request) -> web.Response:
             result = compiled_pattern.match(request.path)
-            kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:]) if i >= 1}  # type: Dict
+            values = inspect.getfullargspec(func)
+            kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
             if result:
                 for k, v in result.groupdict().items():
                     kwargs[k] = v
-            routine = func(*(obj, request,), **kwargs)
+
+            try:
+                routine = func(*(obj, request,), **kwargs)
+            except Exception as e:
+                print(e)
             return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
 
             if isinstance(return_value, Response):
@@ -269,7 +275,8 @@ class HttpTransport(Invoker):
                 pass
 
         async def handler(request: web.Request) -> web.Response:
-            kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:]) if i >= 1}  # type: Dict
+            values = inspect.getfullargspec(func)
+            kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
             routine = func(*(obj, request,), **kwargs)
             return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
 
