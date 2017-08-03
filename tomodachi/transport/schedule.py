@@ -3,6 +3,7 @@ import asyncio
 import time
 import pytz
 import tzlocal
+import inspect
 from typing import Any, Dict, List, Union, Optional, Callable, Awaitable, Tuple  # noqa
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.crontab import get_next_datetime
@@ -13,7 +14,8 @@ class Scheduler(Invoker):
 
     async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> Any:
         async def handler() -> None:
-            kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:])}  # type: Dict
+            values = inspect.getfullargspec(func)
+            kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
             routine = func(*(obj,), **kwargs)
             try:
                 if isinstance(routine, Awaitable):
