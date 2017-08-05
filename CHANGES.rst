@@ -1,6 +1,17 @@
 Changes
 =======
 
+0.4.0 (2017-08-05)
+------------------
+
+- Release fixes a major issue which caused invoked functions to not be able to
+  declare any scope variables.
+
+- `@http_static` decorator for serving static files from a folder on disk.
+  Takes to values; 1. the path to the folder, either relative to the service
+  file or absolute; 2. the base URL path for static files as a regexp.
+
+
 0.3.0 (2017-07-25)
 ------------------
 
