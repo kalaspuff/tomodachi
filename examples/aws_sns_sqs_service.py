@@ -39,7 +39,7 @@ class ExampleAWSSNSSQSService(object):
     async def wildcard_route(self, metadata: Dict, data: Any) -> None:
         self.logger.info('Received data (function: wildcard_route, topic: {}) - "{}"'.format(metadata.get('topic', ''), data))
 
-    async def _started_service(self):
+    async def _started_service(self) -> None:
         async def publish(data: Any, topic: str) -> None:
             self.logger.info('Publish data "{}"'.format(data))
             await aws_sns_sqs_publish(self, data, topic=topic, wait=False)
