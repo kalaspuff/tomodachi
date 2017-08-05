@@ -5,6 +5,7 @@ import hashlib
 import re
 import binascii
 import asyncio
+import inspect
 from typing import Any, Dict, Union, Optional, Callable, Awaitable, Match
 from tomodachi.invoker import Invoker
 
@@ -102,7 +103,8 @@ class AmqpTransport(Invoker):
         async def handler(payload: Any, delivery_tag: Any) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
             if not _callback_kwargs:
-                _callback_kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:])}
+                values = inspect.getfullargspec(func)
+                _callback_kwargs = {k: values.defaults[i - len(values.args) + 1] if values.defaults and i >= len(values.args) - len(values.defaults) - 1 else None for i, k in enumerate(values.args[1:])} if values.args and len(values.args) > 1 else {}
             else:
                 _callback_kwargs = {k: None for k in _callback_kwargs if k != 'self'}
             kwargs = {k: v for k, v in _callback_kwargs.items()}
