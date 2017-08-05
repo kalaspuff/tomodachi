@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.4.1 (2017-08-05)
+------------------
+
+- Corrects and issue with AMQP transport which caused invoked functions to not
+  be able to declare scope variables without crashes.
+
+
 0.4.0 (2017-08-05)
 ------------------
 
