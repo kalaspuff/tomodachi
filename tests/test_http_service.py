@@ -3,6 +3,8 @@ import asyncio
 import pytest
 import os
 import logging
+import pathlib
+import mimetypes
 from typing import Any
 from multidict import CIMultiDictProxy
 from run_test_service_helper import start_service
@@ -220,6 +222,39 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
             assert response is not None
             assert response.status == 200
             assert await response.text() == ''
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            f = pathlib.Path('{}/tests/static_files/image.png'.format(os.path.realpath(os.getcwd()))).open('r')
+            ct, encoding = mimetypes.guess_type(str(f.name))
+
+            response = await client.get('http://127.0.0.1:{}/static/image.png'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert response.headers.get('Content-Type') == 'image/png'
+            assert response.headers.get('Content-Type') == ct
+
+            with open(str(f.name), 'rb') as fobj:
+                data = fobj.read(20000)
+                assert (await response.read()) == data
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            f = pathlib.Path('{}/tests/static_files/image.png'.format(os.path.realpath(os.getcwd()))).open('r')
+            ct, encoding = mimetypes.guess_type(str(f.name))
+
+            response = await client.get('http://127.0.0.1:{}/download/image.png/image'.format(port))
+            assert response is not None
+            assert response.status == 200
+            assert response.headers.get('Content-Type') == 'image/png'
+            assert response.headers.get('Content-Type') == ct
+
+            with open(str(f.name), 'rb') as fobj:
+                data = fobj.read(20000)
+                assert (await response.read()) == data
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get('http://127.0.0.1:{}/static/image-404.png'.format(port))
+            assert response is not None
+            assert response.status == 404
 
     loop.run_until_complete(_async(loop))
     instance.stop_service()

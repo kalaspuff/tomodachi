@@ -4,10 +4,14 @@ import logging
 import traceback
 import time
 import ipaddress
+import os
+import pathlib
+import inspect
 from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable, SupportsInt  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
+from aiohttp.web_fileresponse import FileResponse
 from aiohttp.http import HttpVersion
 from aiohttp.helpers import BasicAuth
 from tomodachi.invoker import Invoker
@@ -172,11 +176,16 @@ class HttpTransport(Invoker):
 
         async def handler(request: web.Request) -> web.Response:
             result = compiled_pattern.match(request.path)
-            kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if func.__defaults__ and len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:]) if i >= 1}  # type: Dict
+            values = inspect.getfullargspec(func)
+            kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
             if result:
                 for k, v in result.groupdict().items():
                     kwargs[k] = v
-            routine = func(*(obj, request,), **kwargs)
+
+            try:
+                routine = func(*(obj, request,), **kwargs)
+            except Exception as e:
+                print(e)
             return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
 
             if isinstance(return_value, Response):
@@ -218,6 +227,41 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
+    async def static_request_handler(cls: Any, obj: Any, context: Dict, func: Any, path: str, base_url: str) -> Any:
+        if '?P<filename>' not in base_url:
+            pattern = r'^{}(?P<filename>.+?)$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
+        else:
+            pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
+        compiled_pattern = re.compile(pattern)
+
+        if path.startswith('/'):
+            path = os.path.dirname(path)
+        else:
+            path = '{}/{}'.format(os.path.dirname(context.get('context', {}).get('_service_file_path')), path)
+
+        if not path.endswith('/'):
+            path = '{}/'.format(path)
+
+        async def handler(request: web.Request) -> web.Response:
+            result = compiled_pattern.match(request.path)
+            filename = result.groupdict()['filename']
+            filepath = '{}{}'.format(path, filename)
+
+            try:
+                if os.path.isdir(filepath) or not os.path.exists(filepath):
+                    raise web.HTTPNotFound()
+
+                pathlib.Path(filepath).open('r')
+                return FileResponse(filepath)
+            except PermissionError as e:
+                raise web.HTTPForbidden()
+
+        context['_http_routes'] = context.get('_http_routes', [])
+        context['_http_routes'].append(('GET', pattern, handler))
+
+        start_func = cls.start_server(obj, context)
+        return (await start_func) if start_func else None
+
     async def error_handler(cls: Any, obj: Any, context: Dict, func: Any, status_code: int) -> Any:
         default_content_type = context.get('options', {}).get('http', {}).get('content_type', 'text/plain')
         default_charset = context.get('options', {}).get('http', {}).get('charset', 'utf-8')
@@ -231,7 +275,8 @@ class HttpTransport(Invoker):
                 pass
 
         async def handler(request: web.Request) -> web.Response:
-            kwargs = {k: func.__defaults__[len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i] if len(func.__defaults__) - len(func.__code__.co_varnames[1:]) + i >= 0 else None for i, k in enumerate(func.__code__.co_varnames[1:]) if i >= 1}  # type: Dict
+            values = inspect.getfullargspec(func)
+            kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
             routine = func(*(obj, request,), **kwargs)
             return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
 
@@ -415,3 +460,4 @@ class HttpTransport(Invoker):
 
 http = HttpTransport.decorator(HttpTransport.request_handler)
 http_error = HttpTransport.decorator(HttpTransport.error_handler)
+http_static = HttpTransport.decorator(HttpTransport.static_request_handler)
