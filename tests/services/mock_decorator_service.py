@@ -9,5 +9,5 @@ class MockDecoratorService(object):
     function_tested = False
 
     @aws_sns_sqs('test-topic')
-    async def test(self) -> None:
-        self.function_tested = True
+    async def test(self, default_value: bool=True) -> None:
+        self.function_tested = default_value

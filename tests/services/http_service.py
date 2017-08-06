@@ -25,7 +25,8 @@ class HttpService(object):
 
     @http('GET', r'/test/?')
     async def test(self, request: web.Request) -> str:
-        return 'test'
+        return_value = 'test'
+        return return_value
 
     @http('GET', r'/test/(?P<id>[^/]+?)/?')
     async def test_with_id(self, request: web.Request, id: str) -> str:
