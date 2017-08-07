@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.4.2 (2017-08-07)
+------------------
+
+- Fixes an issue where Content-Type header couldn't be specified without
+  charset in HTTP transports.
+
+
 0.4.1 (2017-08-05)
 ------------------
 
