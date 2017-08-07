@@ -182,10 +182,7 @@ class HttpTransport(Invoker):
                 for k, v in result.groupdict().items():
                     kwargs[k] = v
 
-            try:
-                routine = func(*(obj, request,), **kwargs)
-            except Exception as e:
-                print(e)
+            routine = func(*(obj, request,), **kwargs)
             return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
 
             if isinstance(return_value, Response):
