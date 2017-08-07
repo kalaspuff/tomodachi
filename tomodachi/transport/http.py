@@ -125,8 +125,8 @@ class Response(object):
         self._status = status
         self._reason = reason
         self._headers = headers
-        self.content_type = content_type
-        self.charset = charset
+        self.content_type = content_type if hdrs.CONTENT_TYPE not in headers else None
+        self.charset = charset if hdrs.CONTENT_TYPE not in headers else None
 
         self.missing_content_type = hdrs.CONTENT_TYPE not in headers and not content_type and not charset
 
@@ -141,6 +141,8 @@ class Response(object):
                 charset = str([v for v in self._headers[hdrs.CONTENT_TYPE].split(';') if 'charset=' in v][0]).replace('charset=', '').strip()
             except IndexError:
                 pass
+        elif hdrs.CONTENT_TYPE in self._headers and ';' not in self._headers[hdrs.CONTENT_TYPE]:
+            charset = None
 
         if self._body and not isinstance(self._body, bytes) and charset:
             body = self._body
