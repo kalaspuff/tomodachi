@@ -40,6 +40,7 @@ class ExampleHttpService(object):
 
     @http_static('static/', r'/static/')
     async def static_files(self) -> None:
+        # This function is actually never called by accessing the /static/ URL:s.
         pass
 
     @http_error(status_code=404)
