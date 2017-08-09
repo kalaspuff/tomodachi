@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.4.3 (2017-08-09)
+------------------
+
+- Catches unintended HTTP exceptions and prints a useful stacktrace if log_level
+  is set to DEBUG.
+
+
 0.4.2 (2017-08-07)
 ------------------
 
