@@ -382,6 +382,17 @@ class HttpTransport(Invoker):
                                 response = e
                                 response.headers[hdrs.SERVER] = server_header or ''
                                 response.body = str(e).encode('utf-8')
+                        except Exception as e:
+                            error_handler = context.get('_http_error_handler', {}).get(500, None)
+                            if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                                traceback.print_exception(e.__class__, e, e.__traceback__)
+                            if error_handler:
+                                response = await error_handler(request)
+                                response.headers[hdrs.SERVER] = server_header or ''
+                            else:
+                                response = web.HTTPInternalServerError()
+                                response.headers[hdrs.SERVER] = server_header or ''
+                                response.body = b''
                         finally:
                             if not request.transport:
                                 response = web.Response(status=499)
