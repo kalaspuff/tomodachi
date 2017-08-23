@@ -2,7 +2,7 @@ aioamqp==0.10.0
 aiobotocore==0.4.4
 aiohttp==2.2.5
 appdirs==1.4.3
-async-timeout==1.2.1
+async-timeout==1.3.0
 botocore==1.5.78
 chardet==3.0.4
 codecov==2.0.9
