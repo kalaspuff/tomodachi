@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.4.4 (2017-08-25)
+------------------
+
+- Corrected an issue regarding crontab notation for scheduling function calls
+  where it didn't parse the upcoming date correctly if both isoweekday and day
+  part were given.
+
+
 0.4.3 (2017-08-09)
 ------------------
 
