@@ -133,3 +133,15 @@ def test_impossible_dates() -> None:
 
     with pytest.raises(Exception):
         get_next_datetime('* * 30 2 *', t)
+
+    with pytest.raises(Exception):
+        get_next_datetime('* * * * tue-mon', t)
+
+    with pytest.raises(Exception):
+        get_next_datetime('* * * x-dec *', t)
+
+    with pytest.raises(Exception):
+        get_next_datetime('* * * jan-y *', t)
+
+    with pytest.raises(Exception):
+        get_next_datetime('* * * nope *', t)
