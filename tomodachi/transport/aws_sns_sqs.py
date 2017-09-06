@@ -28,6 +28,18 @@ class AWSSNSSQSConnectionException(AWSSNSSQSException):
     pass
 
 
+class AWSSNSSQSInternalServiceError(AWSSNSSQSException):
+    pass
+
+
+class AWSSNSSQSInternalServiceErrorException(AWSSNSSQSInternalServiceError):
+    pass
+
+
+class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
+    pass
+
+
 class AWSSNSSQSTransport(Invoker):
     clients = None
     topics = {}  # type: Dict[str, str]
@@ -102,6 +114,7 @@ class AWSSNSSQSTransport(Invoker):
             message_protocol = context.get('message_protocol')
             message = payload
             message_uuid = None
+            message_key = None
             if message_protocol:
                 try:
                     parse_message_func = getattr(message_protocol, 'parse_message', None)
@@ -143,6 +156,10 @@ class AWSSNSSQSTransport(Invoker):
                 else:
                     kwargs = {}
                     routine = func(*(obj), **kwargs)
+            except (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException) as e:
+                if message_key:
+                    del context['_aws_sns_sqs_received_messages'][message_key]
+                return
             except Exception as e:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
                 raise e
@@ -150,6 +167,10 @@ class AWSSNSSQSTransport(Invoker):
             if isinstance(routine, Awaitable):
                 try:
                     return_value = await routine
+                except (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException) as e:
+                    if message_key:
+                        del context['_aws_sns_sqs_received_messages'][message_key]
+                    return
                 except Exception as e:
                     await cls.delete_message(cls, receipt_handle, queue_url, context)
                     raise e

@@ -18,6 +18,18 @@ class AmqpException(Exception):
             self._log_level = 'INFO'
 
 
+class AmqpInternalServiceError(AmqpException):
+    pass
+
+
+class AmqpInternalServiceErrorException(AmqpInternalServiceError):
+    pass
+
+
+class AmqpInternalServiceException(AmqpInternalServiceError):
+    pass
+
+
 class AmqpExclusiveQueueLockedException(AmqpException):
     pass
 
@@ -112,6 +124,7 @@ class AmqpTransport(Invoker):
             message_protocol = context.get('message_protocol')
             message = payload
             message_uuid = None
+            message_key = None
             if message_protocol:
                 try:
                     parse_message_func = getattr(message_protocol, 'parse_message', None)
@@ -153,6 +166,11 @@ class AmqpTransport(Invoker):
                 else:
                     kwargs = {}
                     routine = func(*(obj), **kwargs)
+            except (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException) as e:
+                if message_key:
+                    del context['_amqp_received_messages'][message_key]
+                await cls.channel.basic_client_nack(delivery_tag)
+                return
             except Exception as e:
                 await cls.channel.basic_client_ack(delivery_tag)
                 raise e
@@ -160,6 +178,11 @@ class AmqpTransport(Invoker):
             if isinstance(routine, Awaitable):
                 try:
                     return_value = await routine
+                except (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException) as e:
+                    if message_key:
+                        del context['_amqp_received_messages'][message_key]
+                    await cls.channel.basic_client_nack(delivery_tag)
+                    return
                 except Exception as e:
                     await cls.channel.basic_client_ack(delivery_tag)
                     raise e
