@@ -1,6 +1,17 @@
 Changes
 =======
 
+0.4.5 (2017-09-06)
+------------------
+
+- Possibility to requeue messages that result in specific exceptions.
+  Exceptions that will nack the message (for AMQP transport) is called
+  ``AmqpInternalServiceError``. Exceptions that won't delete the message from
+  the queue and in turn will result in it to "reappear" unless configured
+  non-default (for AWS SNS+SQS transport) is called
+  ``AWSSNSSQSInternalServiceError``.
+
+
 0.4.4 (2017-08-25)
 ------------------
 
