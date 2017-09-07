@@ -15,7 +15,7 @@ packaging==16.8
 pep8==1.7.0
 py==1.4.34
 pyparsing==2.2.0
-pytest==3.2.1
+pytest==3.2.2
 pytest-cov==2.5.1
 python-dateutil==2.6.1
 pytz==2017.2
