@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.4.5 (2017-09-06)
+0.4.5 (2017-09-07)
 ------------------
 
 - Possibility to requeue messages that result in specific exceptions.
