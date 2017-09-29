@@ -50,7 +50,7 @@ def test_watcher_callback(loop: Any) -> None:
     assert result == {}
 
     watcher.watched_files = {'_test': 0}
-    result = watcher.update_watched_files()
+    result = watcher.update_watched_files(reindex=True)
     assert len(result.get('added')) == 2
     assert len(result.get('removed')) == 1
     assert len(result.get('updated')) == 0
