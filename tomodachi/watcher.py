@@ -23,6 +23,10 @@ class Watcher(object):
             if ignored_dirs_list:
                 self.ignored_dirs.extend(ignored_dirs_list)
 
+            watched_file_endings_list = configuration.get('options', {}).get('watcher', {}).get('watched_file_endings', [])
+            if watched_file_endings_list:
+                self.watched_file_endings.extend(watched_file_endings_list)
+
         self.update_watched_files()
 
     def update_watched_files(self) -> Dict:
