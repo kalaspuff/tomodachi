@@ -3,9 +3,12 @@ Changes
 
 0.4.6 (2017-09-29)
 
-- Messages via SNS+SQS or AMQP over 60000 as JSON will now be sent in a gzipped
-  base64 encoded format to allow for larger limits and lower potential SNS
-  costs due to multiplexed messaging.
+- Messages via SNS+SQS or AMQP over 60000 bytes as JSON will now be sent in a
+  gzipped base64 encoded format to allow for larger limits and lower potential
+  SNS costs due to multiplexed messaging.
+
+- Fixes an issue with multidict 3.2.0 on hot-reload which made the tomodachi
+  application crash.
 
 
 0.4.5 (2017-09-07)
