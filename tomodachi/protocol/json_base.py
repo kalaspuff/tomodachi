@@ -15,7 +15,7 @@ class JsonBase(object):
         _uuid = str(uuid.uuid4())
 
         data_encoding = 'raw'
-        if len(ujson.dumps(data)) >= 60000 or True:
+        if len(ujson.dumps(data)) >= 60000:
             data = base64.b64encode(zlib.compress(ujson.dumps(data).encode('utf-8'))).decode('utf-8')
             data_encoding = 'base64_gzip_json'
 
