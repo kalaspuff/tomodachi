@@ -1,6 +1,19 @@
 Changes
 =======
 
+0.4.7 (2017-09-30)
+------------------
+
+- Reworked watcher since it ended up using 90% CPU of the running core due to
+  constant re-indexing (mstat) of every file every 0.5s. Full re-index will now
+  only run every 10 seconds, since it's more rare that new files are added than
+  existing files edited. Watcher for edited existing files will still run at the
+  same intervals.
+
+- Watched file types may now be specified via configuration via
+  ``options.watcher.watched_file_endings``.
+
+
 0.4.6 (2017-09-29)
 ------------------
 
