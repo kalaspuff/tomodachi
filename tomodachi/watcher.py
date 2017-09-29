@@ -29,14 +29,22 @@ class Watcher(object):
 
         self.update_watched_files()
 
-    def update_watched_files(self) -> Dict:
+    def update_watched_files(self, reindex: bool=False) -> Dict:
         watched_files = {}
-        for r in self.root:
-            for root, dirs, files in os.walk(r):
-                for file in files:
-                    _dir = os.path.dirname(os.path.join(root, file))
-                    if _dir not in self.ignored_dirs and not any([os.path.join(root, _dir).endswith('/{}'.format(ignored_dir)) or '/{}/'.format(ignored_dir) in os.path.join(root, _dir) for ignored_dir in self.ignored_dirs]) and any([file.endswith(ending) for ending in self.watched_file_endings]) and '/.' not in os.path.join(root, file):
-                        watched_files[(os.path.join(root, file))] = os.path.getmtime(os.path.join(root, file))
+        if not self.watched_files or reindex:
+            for r in self.root:
+                for root, dirs, files in os.walk(r):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        _dir = os.path.dirname(file_path)
+                        if _dir not in self.ignored_dirs and not any([os.path.join(root, _dir).endswith('/{}'.format(ignored_dir)) or '/{}/'.format(ignored_dir) in os.path.join(root, _dir) for ignored_dir in self.ignored_dirs]) and any([file.endswith(ending) for ending in self.watched_file_endings]) and '/.' not in file_path:
+                            watched_files[(file_path)] = os.path.getmtime(file_path)
+        else:
+            for file_path, mtime in self.watched_files.items():
+                try:
+                    watched_files[file_path] = os.path.getmtime(file_path)
+                except FileNotFoundError:
+                    pass
 
         if self.watched_files and self.watched_files != watched_files:
             added = [k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1):] for k in watched_files.keys() if k not in self.watched_files.keys()]
@@ -51,8 +59,10 @@ class Watcher(object):
         _loop = asyncio.get_event_loop() if not loop else loop  # type: Any
 
         async def _watch_loop() -> None:
+            loop_counter = 0
             while True:
-                updated_files = self.update_watched_files()
+                loop_counter = (loop_counter + 1) % 20
+                updated_files = self.update_watched_files(reindex=(loop_counter == 0))
                 if updated_files:
                     added = updated_files.get('added')
                     removed = updated_files.get('removed')
