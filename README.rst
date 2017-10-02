@@ -41,7 +41,7 @@ Basic HTTP based service 🌟
 
     @tomodachi.service
     class Service(object):
-        name = 'example_service'
+        name = 'example'
 
         # Request paths are specified as regex for full flexibility
         @http('GET', r'/resource/(?P<id>[^/]+?)/?')
@@ -65,15 +65,36 @@ Basic HTTP based service 🌟
             return 'error 404'
 
 
-Run service 😎
---------------
-::
+Run the service 😎
+------------------
+.. code:: bash
 
-    # if installed via *pip install tomodachi*
+    # if installed via pip
     $ tomodachi run service.py
 
     # if cloned from repo
     $ python tomodachi.py run service.py
+
+
+.. code:: bash
+
+    tomodachi/X.X.XX
+    October 02, 2017 - 13:38:00,481516
+    Quit services with <ctrl+c>.
+    2017-10-02 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    2017-10-02 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
+    2017-10-02 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+
+
+.. code:: bash
+
+    $ curl -v "http://127.0.0.1:9700/resource/1234"
+    < HTTP/1.1 200 OK
+    < Content-Type: text/plain; charset=utf-8
+    < Server: tomodachi
+    < Content-Length: 9
+    < Date: Mon, 02 Oct 2017 13:38:02 GMT
+    id = 1234    
 
 
 Requirements 👍
