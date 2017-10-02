@@ -7,6 +7,7 @@ import datetime
 import uvloop
 import traceback
 import multidict
+import yarl
 from typing import Dict, Union, Optional, Any, List
 import tomodachi.container
 import tomodachi.importer
@@ -99,6 +100,7 @@ class ServiceLauncher(object):
                     del(sys.modules[m])
 
             importlib.reload(multidict)
+            importlib.reload(yarl)
             importlib.reload(tomodachi.container)
             importlib.reload(tomodachi.invoker)
             importlib.reload(tomodachi.invoker.base)
