@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.5.0 (2017-10-02)
+------------------
+
+- Solves the issue where hot-loading into a state where the code errors due to
+  syntax errors would crash the application, making the user need to manually
+  restart the process.
+
+
 0.4.10 (2017-10-02)
 -------------------
 
