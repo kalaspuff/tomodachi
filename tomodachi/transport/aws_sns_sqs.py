@@ -10,7 +10,11 @@ import binascii
 import ujson
 import uuid
 import inspect
-from typing import Any, Dict, Union, Optional, Callable, Awaitable, List, Tuple, Match
+from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match
+try:
+    from typing import Awaitable
+except ImportError:
+    from collections.abc import Awaitable
 from tomodachi.invoker import Invoker
 
 DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'

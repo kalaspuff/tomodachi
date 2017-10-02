@@ -8,7 +8,11 @@ import os
 import pathlib
 import inspect
 from logging.handlers import WatchedFileHandler
-from typing import Any, Dict, List, Tuple, Union, Optional, Callable, Awaitable, SupportsInt  # noqa
+from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt  # noqa
+try:
+    from typing import Awaitable
+except ImportError:
+    from collections.abc import Awaitable
 from multidict import CIMultiDict, CIMultiDictProxy
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
 from aiohttp.web_fileresponse import FileResponse

@@ -8,7 +8,7 @@ import types
 import uuid
 import os
 from types import ModuleType, TracebackType
-from typing import Dict, Optional, Any, Type
+from typing import Dict, Optional, Any
 from tomodachi import CLASS_ATTRIBUTE
 from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
 from tomodachi.config import merge_dicts
@@ -26,7 +26,7 @@ class ServiceContainer(object):
         self._close_waiter = asyncio.Future()  # type: asyncio.Future
         self.started_waiter = asyncio.Future()  # type: asyncio.Future
 
-        def catch_uncaught_exceptions(type_: Type[BaseException], value: BaseException, traceback: TracebackType) -> None:
+        def catch_uncaught_exceptions(type_: type, value: BaseException, traceback: TracebackType) -> None:
             raise value
 
         sys.excepthook = catch_uncaught_exceptions
