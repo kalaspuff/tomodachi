@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.4.10 (2017-10-02)
+-------------------
+
+- Fixes for failing tests on hot-reloading during test phase.
+
+
 0.4.9 (2017-10-02)
 ------------------
 
