@@ -61,6 +61,16 @@ class ServiceLauncher(object):
         if watcher:
             async def _watcher_restart() -> None:
                 cls.restart_services = True
+
+                for file in service_files:
+                    try:
+                        ServiceImporter.import_service_file(file)
+                    except (FileNotFoundError, SyntaxError) as e:
+                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                        logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
+                        cls.restart_services = False
+                        return
+
                 logging.getLogger('watcher.restart').warning('Restarting services')
                 stop_services()
 
