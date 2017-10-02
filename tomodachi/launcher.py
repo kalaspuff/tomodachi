@@ -6,6 +6,7 @@ import logging
 import datetime
 import uvloop
 import traceback
+import multidict
 from typing import Dict, Union, Optional, Any, List
 import tomodachi.container
 import tomodachi.importer
@@ -66,7 +67,7 @@ class ServiceLauncher(object):
 
         cls.restart_services = True
         init_modules = [m for m in sys.modules.keys()]
-        safe_modules = ['typing', 'importlib.util', 'time', 'logging', 're', 'traceback', 'types', 'inspect', 'functools', 'multidict._multidict_py']
+        safe_modules = ['typing', 'importlib.util', 'time', 'logging', 're', 'traceback', 'types', 'inspect', 'functools']
 
         while cls.restart_services:
             if watcher:
@@ -97,6 +98,7 @@ class ServiceLauncher(object):
                 if m not in init_modules and m not in safe_modules:
                     del(sys.modules[m])
 
+            importlib.reload(multidict)
             importlib.reload(tomodachi.container)
             importlib.reload(tomodachi.invoker)
             importlib.reload(tomodachi.invoker.base)
