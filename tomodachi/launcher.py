@@ -6,8 +6,8 @@ import logging
 import datetime
 import uvloop
 import traceback
-import multidict
-import yarl
+import multidict  # noqa
+import yarl  # noqa
 from typing import Dict, Union, Optional, Any, List
 import tomodachi.container
 import tomodachi.importer
@@ -99,8 +99,6 @@ class ServiceLauncher(object):
                 if m not in init_modules and m not in safe_modules:
                     del(sys.modules[m])
 
-            importlib.reload(multidict)
-            importlib.reload(yarl)
             importlib.reload(tomodachi.container)
             importlib.reload(tomodachi.invoker)
             importlib.reload(tomodachi.invoker.base)
