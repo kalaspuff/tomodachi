@@ -69,12 +69,16 @@ Run service 😎
 --------------
 ::
 
-    $ tomodachi run service.py
+    # if installed via *pip install tomodachi*
+    $ tomodachi run service.py
+
+    # if cloned from repo
+    $ python tomodachi.py run service.py
 
 
 Requirements 👍
 ---------------
-* Python_ 3.5+
+* Python_ 3.5.2+, 3.6+
 * aiohttp_
 * aiobotocore_
 * aioamqp_
