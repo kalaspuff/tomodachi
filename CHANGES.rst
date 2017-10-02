@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.4.9 (2017-10-02)
+------------------
+
+- Solves issue with Segmentation fault in Python 3.6 during hot-reload on
+  Linux.
+
+
 0.4.8 (2017-10-02)
 ------------------
 
