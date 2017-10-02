@@ -78,7 +78,7 @@ Run service 😎
 
 Requirements 👍
 ---------------
-* Python_ 3.5.2+, 3.6+
+* Python_ 3.5+
 * aiohttp_
 * aiobotocore_
 * aioamqp_
