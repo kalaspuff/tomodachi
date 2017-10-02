@@ -66,7 +66,7 @@ class ServiceLauncher(object):
 
         cls.restart_services = True
         init_modules = [m for m in sys.modules.keys()]
-        safe_modules = ['typing', 'importlib.util', 'time', 'logging', 're', 'traceback', 'types', 'inspect', 'functools', 'multidict', 'multidict._multidict_py', 'yarl']
+        safe_modules = ['typing', 'importlib.util', 'time', 'logging', 're', 'traceback', 'types', 'inspect', 'functools', 'multidict._multidict_py']
 
         while cls.restart_services:
             if watcher:
