@@ -4,7 +4,11 @@ import time
 import pytz
 import tzlocal
 import inspect
-from typing import Any, Dict, List, Union, Optional, Callable, Awaitable, Tuple  # noqa
+from typing import Any, Dict, List, Union, Optional, Callable, Tuple  # noqa
+try:
+    from typing import Awaitable
+except ImportError:
+    from collections.abc import Awaitable
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.crontab import get_next_datetime
 

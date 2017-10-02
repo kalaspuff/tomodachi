@@ -6,7 +6,11 @@ import re
 import binascii
 import asyncio
 import inspect
-from typing import Any, Dict, Union, Optional, Callable, Awaitable, Match
+from typing import Any, Dict, Union, Optional, Callable, Match
+try:
+    from typing import Awaitable
+except ImportError:
+    from collections.abc import Awaitable
 from tomodachi.invoker import Invoker
 
 
