@@ -81,7 +81,7 @@ class Watcher(object):
                         logging.getLogger('watcher.files').warning('Updated files: {}'.format(', '.join([file for file in updated][0:3])))
 
                     if callback_func:
-                        await callback_func()
+                        await callback_func(set([file for file in added] + [file for file in updated]))
                 await asyncio.sleep(0.5)
 
         return _loop.create_task(_watch_loop())

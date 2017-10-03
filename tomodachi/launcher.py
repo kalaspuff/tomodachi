@@ -33,7 +33,10 @@ class ServiceLauncher(object):
             if cls._close_waiter and not cls._close_waiter.done():
                 cls._close_waiter.set_result(None)
                 for service in cls.services:
-                    service.stop_service()
+                    try:
+                        service.stop_service()
+                    except Exception:
+                        pass
                 if cls._stopped_waiter:
                     cls._stopped_waiter.set_result(None)
             if cls._stopped_waiter:
@@ -59,17 +62,30 @@ class ServiceLauncher(object):
         signal.signal(signal.SIGTERM, sigtermHandler)
 
         if watcher:
-            async def _watcher_restart() -> None:
+            async def _watcher_restart(updated_files: Union[List, set]) -> None:
                 cls.restart_services = True
 
                 for file in service_files:
                     try:
                         ServiceImporter.import_service_file(file)
-                    except (FileNotFoundError, SyntaxError) as e:
+                    except (SyntaxError, IndentationError) as e:
                         traceback.print_exception(e.__class__, e, e.__traceback__)
                         logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
                         cls.restart_services = False
                         return
+
+                pre_import_current_modules = [m for m in sys.modules.keys()]
+                for file in updated_files:
+                    if file.endswith('.py'):
+                        try:
+                            for m in pre_import_current_modules:
+                                if m == file.replace('.py', '').replace('/', '.'):
+                                    ServiceImporter.import_module(file)
+                        except (SyntaxError, IndentationError) as e:
+                            traceback.print_exception(e.__class__, e, e.__traceback__)
+                            logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
+                            cls.restart_services = False
+                            return
 
                 logging.getLogger('watcher.restart').warning('Restarting services')
                 stop_services()
@@ -80,6 +96,7 @@ class ServiceLauncher(object):
         init_modules = [m for m in sys.modules.keys()]
         safe_modules = ['typing', 'importlib.util', 'time', 'logging', 're', 'traceback', 'types', 'inspect', 'functools']
 
+        restarting = False
         while cls.restart_services:
             if watcher:
                 print('---')
@@ -101,8 +118,18 @@ class ServiceLauncher(object):
                     raise exception[0]
             except Exception as e:
                 traceback.print_exception(e.__class__, e, e.__traceback__)
-                for signame in ('SIGINT', 'SIGTERM'):
-                    loop.remove_signal_handler(getattr(signal, signame))
+                if restarting:
+                    logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
+                    logging.getLogger('watcher.restart').warning('Trying again in 1.5 seconds')
+                    loop.run_until_complete(asyncio.wait([asyncio.sleep(1.5)]))
+                    if cls._close_waiter and not cls._close_waiter.done():
+                        cls.restart_services = True
+                    else:
+                        for signame in ('SIGINT', 'SIGTERM'):
+                            loop.remove_signal_handler(getattr(signal, signame))
+                else:
+                    for signame in ('SIGINT', 'SIGTERM'):
+                        loop.remove_signal_handler(getattr(signal, signame))
 
             current_modules = [m for m in sys.modules.keys()]
             for m in current_modules:
@@ -113,6 +140,8 @@ class ServiceLauncher(object):
             importlib.reload(tomodachi.invoker)
             importlib.reload(tomodachi.invoker.base)
             importlib.reload(tomodachi.importer)
+
+            restarting = True
 
         if watcher:
             if not watcher_future.done():
