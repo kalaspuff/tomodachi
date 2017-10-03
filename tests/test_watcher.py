@@ -1,7 +1,7 @@
 import os
 import asyncio
 import sys
-from typing import Any, Dict  # noqa
+from typing import Any, Dict, Union, List  # noqa
 from tomodachi.watcher import Watcher
 
 
@@ -61,10 +61,10 @@ def test_watcher_callback(loop: Any) -> None:
         @classmethod
         async def _async(cls) -> None:
 
-            async def cb1() -> None:
+            async def cb1(updated_files: Union[List, set]) -> None:
                 cls.callbacks_run[1] = True
 
-            async def cb2() -> None:
+            async def cb2(updated_files: Union[List, set]) -> None:
                 cls.callbacks_run[2] = True
 
             task = await watcher.watch(callback_func=cb1)
