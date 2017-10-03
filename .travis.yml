@@ -14,8 +14,8 @@ python:
 services:
     - rabbitmq
 install:
-    - pip install -e .
-    - pip install -Ur requirements.txt
+    - travis_retry pip install -e .
+    - travis_retry pip install -Ur requirements.txt
     - pip freeze
 script:
     - pep8 --ignore=E501 .
