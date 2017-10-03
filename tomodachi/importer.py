@@ -48,13 +48,6 @@ class ServiceImporter(object):
 
         spec = importlib.util.spec_from_file_location(file_name, file_path)  # type: Any
         module_import = importlib.util.module_from_spec(spec)
-#            try:
-#                importlib.reload(service_import)
-#                service_import = importlib.util.module_from_spec(spec)
-#            except ImportError:
-#                pass
-#            sys.path.insert(0, cwd)
-#            sys.path.insert(0, os.path.dirname(file_path))
         spec.loader.exec_module(module_import)
 
         return module_import
