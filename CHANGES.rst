@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.5.1 (2017-10-03)
+------------------
+
+- More improvements regarding hot-reloading of code that may have syntax errors,
+  indentation errors or issues when the service is being initiated.
+
+
 0.5.0 (2017-10-02)
 ------------------
 
