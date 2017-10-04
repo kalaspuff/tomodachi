@@ -6,6 +6,7 @@ import logging
 import datetime
 import uvloop
 import traceback
+import os
 import multidict  # noqa
 import yarl  # noqa
 from typing import Dict, Union, Optional, Any, List
@@ -75,11 +76,14 @@ class ServiceLauncher(object):
                         return
 
                 pre_import_current_modules = [m for m in sys.modules.keys()]
+                cwd = os.getcwd()
                 for file in updated_files:
-                    if file.endswith('.py'):
+                    if file.lower().endswith('.py'):
+                        module_name = file[:-3].replace('/', '.')
+                        module_name_full_path = '{}/{}'.format(os.path.realpath(cwd), file)[:-3].replace('/', '.')
                         try:
                             for m in pre_import_current_modules:
-                                if m == file.replace('.py', '').replace('/', '.'):
+                                if m == module_name or (len(m) > len(file) and module_name_full_path.endswith(m)):
                                     ServiceImporter.import_module(file)
                         except (SyntaxError, IndentationError) as e:
                             traceback.print_exception(e.__class__, e, e.__traceback__)
