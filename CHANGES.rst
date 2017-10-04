@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.5.2 (2017-10-04)
+------------------
+
+- Better matching of imported modules on hot-reload.
+
+
 0.5.1 (2017-10-03)
 ------------------
 
