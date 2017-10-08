@@ -1,10 +1,13 @@
 Changes
 =======
 
-0.5.2 (2017-10-04)
+0.5.2 (2017-10-08)
 ------------------
 
-- Better matching of imported modules on hot-reload.
+- Add argument option for log level as '-l' or '--log'. (github: **djKooks**)
+
+- Better matching of imported modules on hot-reload which will cause reloading
+  into code with syntax errors or indentation errors much harder.
 
 
 0.5.1 (2017-10-03)
