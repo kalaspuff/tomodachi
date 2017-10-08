@@ -136,9 +136,10 @@ class AWSSNSSQSTransport(Invoker):
                             context['_aws_sns_sqs_received_messages'] = {k: v for k, v in context['_aws_sns_sqs_received_messages'].items() if v > time.time() - 60}
 
                     if _callback_kwargs:
-                        for k, v in message.items():
-                            if k in _callback_kwargs:
-                                kwargs[k] = v
+                        if isinstance(message, dict):
+                            for k, v in message.items():
+                                if k in _callback_kwargs:
+                                    kwargs[k] = v
                         if 'message' in _callback_kwargs and 'message' not in kwargs:
                             kwargs['message'] = message
                 except Exception as e:
