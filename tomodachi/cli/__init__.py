@@ -48,13 +48,13 @@ class CLI:
         return 'Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--production]'
 
     def run_command(self, args: List[str]) -> None:
-        logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=logging.INFO)
-        logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')
 
         if len(args) == 0:
             print(self.run_command_usage())
         else:
             configuration = None
+            log_level = logging.INFO
+
             if '-c' in args or '--config' in args:
                 index = args.index('-c') if '-c' in args else args.index('--config')
                 args.pop(index)
@@ -88,6 +88,17 @@ class CLI:
                 for arg in set(args):
                     root_directories.append(os.path.dirname('{}/{}'.format(os.path.realpath(cwd), arg)))
                 watcher = Watcher(root=root_directories, configuration=configuration)
+
+            if '-l' in args or '--log' in args:
+                index = args.index('-l') if '-l' in args else args.index('--log')
+                args.pop(index)
+                if len(args) > index:
+                    logging_level = logging.getLevelName(args.pop(index).upper())
+                    if isinstance(logging_level, int):
+                        log_level = logging_level
+
+            logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=log_level)
+            logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(0)
 
