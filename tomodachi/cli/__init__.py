@@ -21,7 +21,8 @@ class CLI:
                 '\n'
                 'Available subcommands:\n'
                 '  run <service ...> [-c <config-file ...>] [--production]\n'
-                '  -c, --config           use json configuration files\n'
+                '  -c, --config <files>   use json configuration files\n'
+                '  -l, --log <level>      specify log level\n'
                 '  --production           disable restart on file changes\n'
                 )
 
@@ -48,7 +49,6 @@ class CLI:
         return 'Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--production]'
 
     def run_command(self, args: List[str]) -> None:
-
         if len(args) == 0:
             print(self.run_command_usage())
         else:
@@ -93,9 +93,10 @@ class CLI:
                 index = args.index('-l') if '-l' in args else args.index('--log')
                 args.pop(index)
                 if len(args) > index:
-                    logging_level = logging.getLevelName(args.pop(index).upper())
-                    if isinstance(logging_level, int):
-                        log_level = logging_level
+                    try:
+                        log_level = getattr(logging, args.pop(index).upper())
+                    except AttributeError:
+                        pass
 
             logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=log_level)
             logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')
@@ -104,7 +105,7 @@ class CLI:
 
     def main(self, argv: List[str]) -> None:
         try:
-            opts, args = getopt.getopt(argv, "hvV ", ['help', 'version', 'version', 'dependency-versions'])
+            opts, args = getopt.getopt(argv, "hlvV ", ['help', 'log', 'version', 'version', 'dependency-versions'])
         except getopt.GetoptError:
             self.help_command()
         for opt, arg in opts:
