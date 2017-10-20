@@ -10,7 +10,7 @@ coverage==4.4.1
 docutils==0.14
 jmespath==0.9.3
 multidict==3.3.0
-mypy==0.530
+mypy==0.540
 packaging==16.8
 pep8==1.7.0
 py==1.4.34
