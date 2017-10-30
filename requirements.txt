@@ -18,7 +18,7 @@ pyparsing==2.2.0
 pytest==3.2.3
 pytest-cov==2.5.1
 python-dateutil==2.6.1
-pytz==2017.2
+pytz==2017.3
 requests==2.18.4
 six==1.11.0
 tzlocal==1.4
