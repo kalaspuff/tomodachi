@@ -137,7 +137,7 @@ class Scheduler(Invoker):
                 if not next_at:
                     return int(current_time + 60 * 60 * 24 * 365 * 100)
                 return int(next_at.timestamp())
-            except:
+            except Exception:
                 raise Exception('Invalid interval')
 
         return int(current_time + 60 * 60 * 24 * 365 * 100)
@@ -225,6 +225,7 @@ class Scheduler(Invoker):
         loop = asyncio.get_event_loop()  # type: Any
 
         stop_method = getattr(obj, '_stop_service', None)
+
         async def stop_service(*args: Any, **kwargs: Any) -> None:
             if not cls.close_waiter.done():
                 cls.close_waiter.set_result(None)
@@ -242,6 +243,7 @@ class Scheduler(Invoker):
         setattr(obj, '_stop_service', stop_service)
 
         started_method = getattr(obj, '_started_service', None)
+
         async def started_service(*args: Any, **kwargs: Any) -> None:
             if started_method:
                 await started_method(*args, **kwargs)
@@ -265,6 +267,7 @@ class Scheduler(Invoker):
                 await cls.start_schedule_loop(cls, obj, context, handler, interval, timestamp, timezone)
 
         return _schedule
+
 
 schedule = Scheduler.decorator(Scheduler.schedule_handler)
 

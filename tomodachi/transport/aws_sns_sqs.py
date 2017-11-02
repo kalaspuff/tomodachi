@@ -492,6 +492,7 @@ class AWSSNSSQSTransport(Invoker):
         loop = asyncio.get_event_loop()  # type: Any
 
         stop_method = getattr(obj, '_stop_service', None)
+
         async def stop_service(*args: Any, **kwargs: Any) -> None:
             if not cls.close_waiter.done():
                 cls.close_waiter.set_result(None)
@@ -543,6 +544,7 @@ class AWSSNSSQSTransport(Invoker):
         setattr(obj, '_stop_service', stop_service)
 
         started_method = getattr(obj, '_started_service', None)
+
         async def started_service(*args: Any, **kwargs: Any) -> None:
             if started_method:
                 await started_method(*args, **kwargs)
@@ -580,6 +582,7 @@ class AWSSNSSQSTransport(Invoker):
                 await cls.consume_queue(cls, obj, context, handler, queue_url=queue_url)
 
         return _subscribe
+
 
 aws_sns_sqs = AWSSNSSQSTransport.decorator(AWSSNSSQSTransport.subscribe_handler)
 aws_sns_sqs_publish = AWSSNSSQSTransport.publish

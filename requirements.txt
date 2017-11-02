@@ -12,7 +12,7 @@ jmespath==0.9.3
 multidict==3.3.0
 mypy==0.540
 packaging==16.8
-pep8==1.7.1
+pycodestyle==2.3.1
 py==1.4.34
 pyparsing==2.2.0
 pytest==3.2.3

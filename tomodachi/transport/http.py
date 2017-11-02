@@ -446,6 +446,7 @@ class HttpTransport(Invoker):
             context['_http_port'] = port
 
             stop_method = getattr(obj, '_stop_service', None)
+
             async def stop_service(*args: Any, **kwargs: Any) -> None:
                 if stop_method:
                     await stop_method(*args, **kwargs)
@@ -471,6 +472,7 @@ class HttpTransport(Invoker):
             logging.getLogger('transport.http').info('Listening [http] on http://{}:{}/'.format('127.0.0.1' if host == '0.0.0.0' else host, port))
 
         return _start_server
+
 
 http = HttpTransport.decorator(HttpTransport.request_handler)
 http_error = HttpTransport.decorator(HttpTransport.error_handler)

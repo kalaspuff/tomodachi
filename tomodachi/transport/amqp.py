@@ -234,6 +234,7 @@ class AmqpTransport(Invoker):
         channel = await protocol.channel()
         if not cls.channel:
             stop_method = getattr(obj, '_stop_service', None)
+
             async def stop_service(*args: Any, **kwargs: Any) -> None:
                 if stop_method:
                     await stop_method(*args, **kwargs)
@@ -313,6 +314,7 @@ class AmqpTransport(Invoker):
                 await channel.basic_consume(callback(routing_key, handler), queue_name=queue_name)
 
         return _subscribe
+
 
 amqp = AmqpTransport.decorator(AmqpTransport.subscribe_handler)
 amqp_publish = AmqpTransport.publish

@@ -37,11 +37,12 @@ def start_service(filename: str, monkeypatch: Any=None) -> Tuple:
     try:
         service = ServiceContainer(ServiceImporter.import_service_file(filename))
         assert service is not None
+
         async def _async() -> None:
             loop = asyncio.get_event_loop()  # type: Any
             try:
                 await service.run_until_complete()
-            except:
+            except Exception:
                 loop = asyncio.get_event_loop()
                 stop_services(loop)
                 force_stop_services(loop)
@@ -49,7 +50,7 @@ def start_service(filename: str, monkeypatch: Any=None) -> Tuple:
 
         future = asyncio.ensure_future(_async())
         loop.run_until_complete(asyncio.wait([service.started_waiter]))
-    except:
+    except Exception:
         for signame in ('SIGINT', 'SIGTERM'):
             loop.remove_signal_handler(getattr(signal, signame))
         loop = asyncio.get_event_loop()
