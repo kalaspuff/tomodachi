@@ -19,7 +19,7 @@ install:
     - pip freeze
 script:
     - pycodestyle --ignore E501 .
-    - py.test --cov=./ tests/
+    - travis_retry py.test --cov=./ tests/
     - tomodachi run tests/run_example_service.py
     - python tomodachi.py -v
     - python tomodachi.py --dependency-versions
