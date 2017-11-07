@@ -254,6 +254,9 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             response = await asyncio.wait_for(client.publish(TopicArn=topic_arn, Message=message), timeout=30)
+        except aiohttp.client_exceptions.ServerDisconnectedError as e:
+            await cls.recreate_client('sns', context)
+            response = await asyncio.wait_for(client.publish(TopicArn=topic_arn, Message=message), timeout=30)
         except (botocore.exceptions.ClientError, aiohttp.client_exceptions.ClientConnectorError, asyncio.TimeoutError) as e:
             error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else 'Network timeout'
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to publish message [sns] on AWS ({})'.format(error_message))
@@ -276,6 +279,9 @@ class AWSSNSSQSTransport(Invoker):
 
         async def _delete_message() -> None:
             try:
+                await asyncio.wait_for(client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30)
+            except aiohttp.client_exceptions.ServerDisconnectedError as e:
+                await cls.recreate_client('sqs', context)
                 await asyncio.wait_for(client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30)
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
@@ -441,6 +447,23 @@ class AWSSNSSQSTransport(Invoker):
 
         return subscription_arn_list
 
+    async def recreate_client(cls: Any, name: str, context: Dict) -> None:
+        if not cls.clients or not cls.clients.get(name):
+            cls.create_client(cls, name, context)
+            return
+
+        try:
+            client = cls.clients.get(name)
+            task = client.close()
+            if getattr(task, '_coro', None):
+                task = task._coro
+            await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
+        except Exception:
+            pass
+
+        cls.clients[name] = None
+        cls.create_client(cls, name, context)
+
     async def consume_queue(cls: Any, obj: Any, context: Dict, handler: Callable, queue_url: str) -> None:
         if not cls.clients or not cls.clients.get('sqs'):
             cls.create_client(cls, 'sqs', context)
@@ -461,6 +484,11 @@ class AWSSNSSQSTransport(Invoker):
             while not cls.close_waiter.done():
                 try:
                     response = await asyncio.wait_for(client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10), timeout=30)
+                except aiohttp.client_exceptions.ServerDisconnectedError as e:
+                    error_message = str(e)
+                    logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({}) - reconnecting'.format(error_message))
+                    await cls.recreate_client('sqs', context)
+                    continue
                 except (botocore.exceptions.ClientError, aiohttp.client_exceptions.ClientConnectorError, asyncio.TimeoutError) as e:
                     error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else 'Network timeout'
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
@@ -498,28 +526,35 @@ class AWSSNSSQSTransport(Invoker):
                 cls.close_waiter.set_result(None)
                 logging.getLogger('transport.aws_sns_sqs').warning('Draining message pool - may take up to 30 seconds')
 
+                master_stop_time = time.time()
                 for _ in range(0, 100):
                     tasks = []
                     t = time.time()
                     if stop_waiter.done():
                         break
-                    for topic, topic_arn in cls.topics.items():
-                        tasks.append(asyncio.ensure_future(cls.publish_message(cls, topic_arn, DRAIN_MESSAGE_PAYLOAD, context)))
-                    if tasks:
-                        task_results = await asyncio.wait(tasks, timeout=40)
-                        exception = None
-                        for v in [value for value in task_results][0]:
-                            try:
-                                if (v.exception() or v.cancelled()) and not exception:
-                                    exception = True
-                                    sleep_timer = (t + 30.0) - time.time()
-                                    if sleep_timer > 0.0:
-                                        logging.getLogger('transport.aws_sns_sqs').warning('Draining failed - please wait')
-                                        await asyncio.sleep(sleep_timer)
-                            except Exception:
-                                pass
-                        if exception and not stop_waiter.done():
-                            stop_waiter.set_result(None)
+                    try:
+                        for topic, topic_arn in cls.topics.items():
+                            tasks.append(asyncio.ensure_future(cls.publish_message(cls, topic_arn, DRAIN_MESSAGE_PAYLOAD, context)))
+                        if tasks:
+                            task_results = await asyncio.wait(tasks, timeout=35)
+                            exception = None
+                            for v in [value for value in task_results][0]:
+                                try:
+                                    if (v.exception() or v.cancelled()) and not exception:
+                                        exception = True
+                                        sleep_timer = (t + 30.0) - time.time()
+                                        if sleep_timer > 0.0:
+                                            logging.getLogger('transport.aws_sns_sqs').warning('Draining failed - please wait')
+                                            await asyncio.sleep(sleep_timer)
+                                except Exception:
+                                    pass
+                            if exception and not stop_waiter.done():
+                                stop_waiter.set_result(None)
+                    except Exception as e:
+                        pass
+
+                    if master_stop_time + 35.0 > time.time() and not stop_waiter.done():
+                        stop_waiter.set_result(None)
 
                     await asyncio.sleep(0.2)
 
