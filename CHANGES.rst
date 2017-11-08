@@ -1,6 +1,16 @@
 Changes
 =======
 
+0.5.3 (2017-11-08)
+------------------
+
+- Corrects issues on timeouts and server disconnects.
+
+- Specify fixed version for aiohttp to not break installation.
+
+- Code cleanup to conform with pycodestyle.
+
+
 0.5.2 (2017-10-08)
 ------------------
 
