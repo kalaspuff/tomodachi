@@ -97,10 +97,11 @@ class Server(web_server.Server):
 
 
 class DynamicResource(web_urldispatcher.DynamicResource):
-    def __init__(self, pattern: Any, formatter: str, *, name: Optional[str]=None) -> None:
-        super().__init__(re.compile('\\/'), '/', name=name)
+    def __init__(self, pattern: Any, *, name: Optional[str]=None) -> None:
+        self._routes = []
+        self._name = name
         self._pattern = pattern
-        self._formatter = formatter
+        self._formatter = ''
 
 
 class UrlDispatcher(web_urldispatcher.UrlDispatcher):
@@ -110,8 +111,7 @@ class UrlDispatcher(web_urldispatcher.UrlDispatcher):
         except re.error as exc:
             raise ValueError(
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
-        formatter = ''
-        resource = DynamicResource(compiled_pattern, formatter, name=name)
+        resource = DynamicResource(compiled_pattern, name=name)
         self.register_resource(resource)
         if method == 'GET':
             resource.add_route('HEAD', handler, expect_handler=expect_handler)
