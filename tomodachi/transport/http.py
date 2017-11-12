@@ -98,7 +98,7 @@ class Server(web_server.Server):
 
 class DynamicResource(web_urldispatcher.DynamicResource):
     def __init__(self, pattern: Any, *, name: Optional[str]=None) -> None:
-        self._routes = []
+        self._routes = []  # type: List
         self._name = name
         self._pattern = pattern
         self._formatter = ''
