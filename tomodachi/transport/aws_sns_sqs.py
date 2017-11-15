@@ -481,10 +481,15 @@ class AWSSNSSQSTransport(Invoker):
                 return _callback
 
             await start_waiter
+            is_disconnected = False
             while not cls.close_waiter.done():
                 try:
                     response = await asyncio.wait_for(client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10), timeout=30)
+                    if is_disconnected:
+                        is_disconnected = False
+                        logging.getLogger('transport.aws_sns_sqs').warning('Reconnected - receiving messages')
                 except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
+                    is_disconnected = True
                     error_message = str(e) if e and str(e) not in ['', 'None'] else 'Server disconnected'
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({}) - reconnecting'.format(error_message))
                     await asyncio.sleep(1)
@@ -492,8 +497,13 @@ class AWSSNSSQSTransport(Invoker):
                 except (botocore.exceptions.ClientError, aiohttp.client_exceptions.ClientConnectorError, asyncio.TimeoutError) as e:
                     error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else 'Network timeout'
                     if 'AWS.SimpleQueueService.NonExistentQueue' in error_message:
+                        if is_disconnected:
+                            is_disconnected = False
+                            logging.getLogger('transport.aws_sns_sqs').warning('Reconnected - receiving messages')
                         await asyncio.sleep(20)
                         continue
+                    if isinstance(e, (asyncio.TimeoutError, aiohttp.client_exceptions.ClientConnectorError)):
+                        is_disconnected = True
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
                     await asyncio.sleep(1)
                     continue
