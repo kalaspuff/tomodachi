@@ -1,6 +1,15 @@
 Changes
 =======
 
+0.6.0 (2017-11-15)
+------------------
+
+- Stricter version control of required packages to not break installation on
+  major/minor related updates.
+
+- Updates to support aiohttp 2.3.X and aiobotocore 0.5.X.
+
+
 0.5.3 (2017-11-08)
 ------------------
 
