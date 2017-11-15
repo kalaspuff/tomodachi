@@ -281,15 +281,27 @@ def test_access_log(monkeypatch: Any, loop: Any) -> None:
             await client.get('http://127.0.0.1:{}/test'.format(port))
             with open(log_path) as file:
                 content = file.read()
-                assert '[http] [200] 127.0.0.1 - "GET /test HTTP/1.1" 4 0' in content
-                assert '[http] [404] 127.0.0.1 - "GET /404 HTTP/1.1" 8 0' not in content
+                assert '[http] [200] 127.0.0.1 - "GET /test HTTP/1.1" 4 -' in content
+                assert '[http] [404] 127.0.0.1 - "GET /404 HTTP/1.1" 8 -' not in content
 
         async with aiohttp.ClientSession(loop=loop) as client:
             await client.get('http://127.0.0.1:{}/404'.format(port))
             with open(log_path) as file:
                 content = file.read()
-                assert '[http] [200] 127.0.0.1 - "GET /test HTTP/1.1" 4 0' in content
-                assert '[http] [404] 127.0.0.1 - "GET /404 HTTP/1.1" 8 0' in content
+                assert '[http] [200] 127.0.0.1 - "GET /test HTTP/1.1" 4 -' in content
+                assert '[http] [404] 127.0.0.1 - "GET /404 HTTP/1.1" 8 -' in content
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            await client.post('http://127.0.0.1:{}/zero-post'.format(port), data=b'')
+            with open(log_path) as file:
+                content = file.read()
+                assert '[http] [404] 127.0.0.1 - "POST /zero-post HTTP/1.1" 8 0' in content
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            await client.post('http://127.0.0.1:{}/post'.format(port), data=b'RANDOMDATA')
+            with open(log_path) as file:
+                content = file.read()
+                assert '[http] [404] 127.0.0.1 - "POST /post HTTP/1.1" 8 10' in content
 
     with open(log_path) as file:
         content = file.read()
