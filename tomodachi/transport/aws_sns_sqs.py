@@ -203,12 +203,21 @@ class AWSSNSSQSTransport(Invoker):
         config_base = context.get('options', {}).get('aws_sns_sqs', context.get('options', {}).get('aws', {}))
         aws_config_base = context.get('options', {}).get('aws', {})
 
-        region_name = config_base.get('aws_region_name', config_base.get('region_name')) or aws_config_base.get('aws_region_name', aws_config_base.get('region_name'))
-        aws_secret_access_key = config_base.get('aws_secret_access_key', config_base.get('secret_access_key')) or aws_config_base.get('aws_secret_access_key', aws_config_base.get('secret_access_key'))
-        aws_access_key_id = config_base.get('aws_access_key_id', config_base.get('access_key_id')) or aws_config_base.get('aws_access_key_id', aws_config_base.get('access_key_id'))
+        region_name = config_base.get('aws_region_name', config_base.get('region_name')) or \
+            aws_config_base.get('aws_region_name', aws_config_base.get('region_name'))
+        aws_secret_access_key = config_base.get('aws_secret_access_key', config_base.get('secret_access_key')) or \
+            aws_config_base.get('aws_secret_access_key', aws_config_base.get('secret_access_key'))
+        aws_access_key_id = config_base.get('aws_access_key_id', config_base.get('access_key_id')) or \
+            aws_config_base.get('aws_access_key_id', aws_config_base.get('access_key_id'))
+        endpoint_url = config_base.get('aws_endpoint_urls', config_base.get('endpoint_urls', {})).get(name) or \
+            config_base.get('aws_{}_endpoint_url'.format(name), config_base.get('{}_endpoint_url'.format(name))) or \
+            aws_config_base.get('aws_endpoint_urls', aws_config_base.get('endpoint_urls', {})).get(name) or \
+            config_base.get('aws_endpoint_url', config_base.get('endpoint_url')) or \
+            aws_config_base.get('aws_endpoint_url', aws_config_base.get('endpoint_url')) or \
+            context.get('options', {}).get('aws_endpoint_urls', {}).get(name)
 
         try:
-            cls.clients[name] = session.create_client(name, region_name=region_name, aws_secret_access_key=aws_secret_access_key, aws_access_key_id=aws_access_key_id)
+            cls.clients[name] = session.create_client(name, region_name=region_name, aws_secret_access_key=aws_secret_access_key, aws_access_key_id=aws_access_key_id, endpoint_url=endpoint_url)
         except (botocore.exceptions.PartialCredentialsError, botocore.exceptions.NoRegionError) as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Invalid credentials [{}] to AWS ({})'.format(name, error_message))
@@ -254,8 +263,8 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             response = await asyncio.wait_for(client.publish(TopicArn=topic_arn, Message=message), timeout=30)
-        except aiohttp.client_exceptions.ServerDisconnectedError as e:
-            await cls.recreate_client('sns', context)
+        except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
+            await asyncio.sleep(1)
             response = await asyncio.wait_for(client.publish(TopicArn=topic_arn, Message=message), timeout=30)
         except (botocore.exceptions.ClientError, aiohttp.client_exceptions.ClientConnectorError, asyncio.TimeoutError) as e:
             error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else 'Network timeout'
@@ -280,8 +289,8 @@ class AWSSNSSQSTransport(Invoker):
         async def _delete_message() -> None:
             try:
                 await asyncio.wait_for(client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30)
-            except aiohttp.client_exceptions.ServerDisconnectedError as e:
-                await cls.recreate_client('sqs', context)
+            except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
+                await asyncio.sleep(1)
                 await asyncio.wait_for(client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30)
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
@@ -452,15 +461,6 @@ class AWSSNSSQSTransport(Invoker):
             cls.create_client(cls, name, context)
             return
 
-        try:
-            client = cls.clients.get(name)
-            task = client.close()
-            if getattr(task, '_coro', None):
-                task = task._coro
-            await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
-        except Exception:
-            pass
-
         cls.clients[name] = None
         cls.create_client(cls, name, context)
 
@@ -484,13 +484,16 @@ class AWSSNSSQSTransport(Invoker):
             while not cls.close_waiter.done():
                 try:
                     response = await asyncio.wait_for(client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10), timeout=30)
-                except aiohttp.client_exceptions.ServerDisconnectedError as e:
-                    error_message = str(e)
+                except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
+                    error_message = str(e) if e and str(e) not in ['', 'None'] else 'Server disconnected'
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({}) - reconnecting'.format(error_message))
-                    await cls.recreate_client('sqs', context)
+                    await asyncio.sleep(1)
                     continue
                 except (botocore.exceptions.ClientError, aiohttp.client_exceptions.ClientConnectorError, asyncio.TimeoutError) as e:
                     error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else 'Network timeout'
+                    if 'AWS.SimpleQueueService.NonExistentQueue' in error_message:
+                        await asyncio.sleep(20)
+                        continue
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
                     await asyncio.sleep(1)
                     continue
