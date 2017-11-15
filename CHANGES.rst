@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.6.1 (2017-11-15)
+------------------
+
+- Introduced new options for AWS SNS/SQS transport to use `aws_endpoint_urls`
+  for `sns` and `sqs` if the user wishes to connect to other endpoints and the
+  actual AWS endpoints, which could be useful for development and testing. The
+  AWS SNS/SQS examples has been updated with values to reflect these options.
+
+- Reworked timeouts and reconnects and fixed an issue in the recreate_client
+  method which was called on server disconnects.
+
+
 0.6.0 (2017-11-15)
 ------------------
 
