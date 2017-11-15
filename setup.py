@@ -8,7 +8,7 @@ install_requires = [
     'aioamqp>=0.10.0, <0.11.0',
     'ujson>=1.35',
     'uvloop>=0.8.1',
-    'aiobotocore>=0.5.0, <0.6.0',
+    'aiobotocore>=0.5.1, <0.6.0',
     'tzlocal>=1.4',
     'aiohttp==2.3.2, <2.4.0'
 ]
