@@ -456,14 +456,6 @@ class AWSSNSSQSTransport(Invoker):
 
         return subscription_arn_list
 
-    async def recreate_client(cls: Any, name: str, context: Dict) -> None:
-        if not cls.clients or not cls.clients.get(name):
-            cls.create_client(cls, name, context)
-            return
-
-        cls.clients[name] = None
-        cls.create_client(cls, name, context)
-
     async def consume_queue(cls: Any, obj: Any, context: Dict, handler: Callable, queue_url: str) -> None:
         if not cls.clients or not cls.clients.get('sqs'):
             cls.create_client(cls, 'sqs', context)
@@ -500,6 +492,13 @@ class AWSSNSSQSTransport(Invoker):
                         if is_disconnected:
                             is_disconnected = False
                             logging.getLogger('transport.aws_sns_sqs').warning('Reconnected - receiving messages')
+                        try:
+                            context['_aws_sns_sqs_subscribed'] = False
+                            cls.topics = {}
+                            func = await cls.subscribe(cls, obj, context)
+                            await func()
+                        except Exception:
+                            pass
                         await asyncio.sleep(20)
                         continue
                     if isinstance(e, (asyncio.TimeoutError, aiohttp.client_exceptions.ClientConnectorError)):
