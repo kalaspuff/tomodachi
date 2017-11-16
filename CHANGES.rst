@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.6.2 (2017-11-15)
+------------------
+
+- Recreate queues and resubscribe to topics if queue is removed during runtime.
+
+
 0.6.1 (2017-11-15)
 ------------------
 
