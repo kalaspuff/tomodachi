@@ -608,13 +608,13 @@ class AWSSNSSQSTransport(Invoker):
         context['_aws_sns_sqs_subscribed'] = True
 
         async def _subscribe() -> None:
-            async def setup_queue(topic: str, func: Callable, queue_name: Optional[str]=None, competing_consumer: bool=False):
+            async def setup_queue(topic: str, func: Callable, queue_name: Optional[str]=None, competing_consumer: bool=False) -> str:
                 _uuid = obj.uuid
 
                 if queue_name is None:
                     queue_name = cls.get_queue_name(cls.encode_topic(topic), func.__name__, _uuid, competing_consumer, context)
 
-                queue_url, queue_arn = await cls.create_queue(cls, queue_name, context)
+                queue_url, queue_arn = await cls.create_queue(cls, queue_name, context)  # type: str, str
 
                 if re.search(r'([*#])', topic):
                     await cls.subscribe_wildcard_topic(cls, topic, queue_arn, queue_url, context)
