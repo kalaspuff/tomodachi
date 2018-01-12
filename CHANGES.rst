@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.6.3 (2018-01-12)
+------------------
+
+- Gracefully handle exceptions thrown when receiving messages from AWS SNS+SQS.
+  For example when invalid XML data in response which causes botocore to throw
+  a botocore.parsers.ResponseParserError.
+
+- Updated dependencies to allow for newer version of aiohttp 2.3.X.
+
+- Improved type hinting.
+
+
 0.6.2 (2017-11-15)
 ------------------
 
