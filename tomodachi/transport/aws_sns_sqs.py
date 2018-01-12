@@ -10,6 +10,7 @@ import binascii
 import ujson
 import uuid
 import inspect
+from botocore.parsers import ResponseParserError
 from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match
 try:
     from typing import Awaitable
@@ -486,6 +487,12 @@ class AWSSNSSQSTransport(Invoker):
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({}) - reconnecting'.format(error_message))
                     await asyncio.sleep(1)
                     continue
+                except ResponseParserError as e:
+                    is_disconnected = True
+                    error_message = 'Unable to parse response: the server was not able to produce a timely response to your request'
+                    logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({}) - reconnecting'.format(error_message))
+                    await asyncio.sleep(1)
+                    continue
                 except (botocore.exceptions.ClientError, aiohttp.client_exceptions.ClientConnectorError, asyncio.TimeoutError) as e:
                     error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else 'Network timeout'
                     if 'AWS.SimpleQueueService.NonExistentQueue' in error_message:
@@ -504,6 +511,11 @@ class AWSSNSSQSTransport(Invoker):
                     if isinstance(e, (asyncio.TimeoutError, aiohttp.client_exceptions.ClientConnectorError)):
                         is_disconnected = True
                     logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
+                    await asyncio.sleep(1)
+                    continue
+                except Exception as e:
+                    error_message = str(e)
+                    logging.getLogger('transport.aws_sns_sqs').warning('Unexpected error while receiving message from queue [sqs] on AWS ({})'.format(error_message))
                     await asyncio.sleep(1)
                     continue
 
