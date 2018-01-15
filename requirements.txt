@@ -8,7 +8,7 @@ codecov==2.0.13
 coverage==4.4.2
 docutils==0.14
 jmespath==0.9.3
-multidict==3.3.2
+multidict==4.0.0
 mypy==0.560
 packaging==16.8
 pycodestyle==2.3.1
