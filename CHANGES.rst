@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.6.5 (2018-01-16)
+------------------
+
+- Updated `aiohttp` to latest version which solves incompabilities with `yarl`.
+
+
 0.6.4 (2018-01-15)
 ------------------
 
