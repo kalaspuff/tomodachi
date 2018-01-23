@@ -645,3 +645,4 @@ class AWSSNSSQSTransport(Invoker):
 
 aws_sns_sqs = AWSSNSSQSTransport.decorator(AWSSNSSQSTransport.subscribe_handler)
 aws_sns_sqs_publish = AWSSNSSQSTransport.publish
+publish = AWSSNSSQSTransport.publish

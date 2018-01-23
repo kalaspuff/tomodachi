@@ -318,3 +318,4 @@ class AmqpTransport(Invoker):
 
 amqp = AmqpTransport.decorator(AmqpTransport.subscribe_handler)
 amqp_publish = AmqpTransport.publish
+publish = AmqpTransport.publish

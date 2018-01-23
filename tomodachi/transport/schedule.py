@@ -125,6 +125,12 @@ class Scheduler(Invoker):
             }  # type: Dict[Tuple[str, ...], Union[str, int]]
             interval = interval.lower()
 
+            if interval.endswith('s') or interval.endswith('seconds'):
+                try:
+                    interval = int(interval.replace('seconds', '').replace('s', '').replace(' ', ''))
+                except ValueError:
+                    pass
+
             try:
                 interval_value = [v for k, v in interval_aliases.items() if interval in k][0]  # type: Union[str, int]
             except IndexError:
@@ -271,7 +277,9 @@ class Scheduler(Invoker):
 
 schedule = Scheduler.decorator(Scheduler.schedule_handler)
 
-heartbeat = Scheduler.decorator(Scheduler.schedule_handler_with_interval('every second'))
+heartbeat = Scheduler.decorator(Scheduler.schedule_handler_with_interval(1))
+every_second = Scheduler.decorator(Scheduler.schedule_handler_with_interval(1))
+
 minutely = Scheduler.decorator(Scheduler.schedule_handler_with_interval('minutely'))
 hourly = Scheduler.decorator(Scheduler.schedule_handler_with_interval('hourly'))
 daily = Scheduler.decorator(Scheduler.schedule_handler_with_interval('daily'))

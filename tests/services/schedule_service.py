@@ -12,10 +12,15 @@ class SchedulerService(object):
     uuid = None
     closer = asyncio.Future()  # type: Any
     seconds_triggered = 0
+    third_seconds_triggered = 0
 
     @heartbeat
     async def every_second(self) -> None:
         self.seconds_triggered += 1
+
+    @schedule(interval='3 seconds')
+    async def every_third_second(self) -> None:
+        self.third_seconds_triggered += 1
 
     @schedule(interval='*/2 * * * *')
     async def every_second_minute(self) -> None:
