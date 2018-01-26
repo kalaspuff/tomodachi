@@ -256,6 +256,20 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
             assert response is not None
             assert response.status == 404
 
+        assert instance.websocket_connected is False
+        async with aiohttp.ClientSession(loop=loop) as client:
+            async with client.ws_connect('http://127.0.0.1:{}/websocket-simple'.format(port)) as ws:
+                await ws.close()
+                assert instance.websocket_connected is True
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            async with client.ws_connect('http://127.0.0.1:{}/websocket-data'.format(port)) as ws:
+                data = '9e2546ef-7fe1-4f94-a3fc-5dc85a771a17'
+                assert instance.websocket_received_data != data
+                await ws.send_str(data)
+                await ws.close()
+                assert instance.websocket_received_data == data
+
     loop.run_until_complete(_async(loop))
     instance.stop_service()
     loop.run_until_complete(future)

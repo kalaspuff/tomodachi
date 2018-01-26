@@ -2,9 +2,9 @@ import asyncio
 import os
 import signal
 import tomodachi
-from typing import Any, Dict, Tuple  # noqa
+from typing import Any, Dict, Tuple, Callable  # noqa
 from aiohttp import web
-from tomodachi.transport.http import http, http_error, http_static, Response
+from tomodachi.transport.http import http, http_error, http_static, websocket, Response
 from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
@@ -22,6 +22,8 @@ class HttpService(object):
     uuid = None
     closer = asyncio.Future()  # type: Any
     slow_request = False
+    websocket_connected = False
+    websocket_received_data = None
 
     @http('GET', r'/test/?')
     async def test(self, request: web.Request) -> str:
@@ -136,6 +138,17 @@ class HttpService(object):
     @http_error(status_code=404)
     async def test_404(self, request: web.Request) -> str:
         return 'test 404'
+
+    @websocket(r'/websocket-simple')
+    async def websocket_simple(self, websocket: web.WebSocketResponse) -> None:
+        self.websocket_connected = True
+
+    @websocket(r'/websocket-data')
+    async def websocket_data(self, websocket: web.WebSocketResponse) -> Callable:
+        async def _receive(data):
+            self.websocket_received_data = data
+
+        return _receive
 
     async def _started_service(self) -> None:
         async def _async() -> None:
