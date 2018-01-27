@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.7.0 (2018-01-27)
+------------------
+
+- Added `@websocket` as a decorator type for handling websockets. A function
+  call should return two callables which will be used for receiving messages
+  through the socket and as a way to notify about the closure of the socket.
+
+
 0.6.5 (2018-01-16)
 ------------------
 
