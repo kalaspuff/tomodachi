@@ -1,4 +1,4 @@
-tomodachi - a lightweight microservices framework with asyncio
+``tomodachi`` - a lightweight microservices framework with asyncio
 ==============================================================
 .. image:: https://travis-ci.org/kalaspuff/tomodachi.svg?branch=master
     :target: https://travis-ci.org/kalaspuff/tomodachi
@@ -10,7 +10,8 @@ tomodachi - a lightweight microservices framework with asyncio
     :target: https://pypi.python.org/pypi/tomodachi
 
 Python 3 microservice framework using asyncio (async / await) with HTTP,
-RabbitMQ / AMQP and AWS SNS+SQS support for event bus based communication.
+websockets, RabbitMQ / AMQP and AWS SNS+SQS support for event bus based
+communication.
 
 Tomodachi is a tiny framework designed to build fast microservices listening on
 HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
@@ -94,7 +95,7 @@ Run the service 😎
     < Server: tomodachi
     < Content-Length: 9
     < Date: Mon, 02 Oct 2017 13:38:02 GMT
-    id = 1234    
+    id = 1234
 
 
 Requirements 👍

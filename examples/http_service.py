@@ -2,10 +2,11 @@ import logging
 import os
 import asyncio
 import tomodachi
+from typing import Tuple, Callable
 from aiohttp import web
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
-from tomodachi.transport.http import http, http_error, http_static, Response
+from tomodachi.transport.http import http, http_error, http_static, websocket, Response
 
 
 @tomodachi.service
@@ -42,6 +43,22 @@ class ExampleHttpService(object):
     async def static_files(self) -> None:
         # This function is actually never called by accessing the /static/ URL:s.
         pass
+
+    @websocket(r'/websocket/?')
+    async def websocket_connection(self, websocket: web.WebSocketResponse) -> Tuple[Callable, Callable]:
+        # Called when a websocket client is connected
+        self.logger.info('websocket client connected')
+
+        async def _receive(data) -> None:
+            # Called when the websocket receives data
+            self.logger.info('websocket data received: {}'.format(data))
+            await websocket.send_str('response')
+
+        async def _close() -> None:
+            # Called when the websocket is closed by the other end
+            self.logger.info('websocket closed')
+
+        return _receive, _close
 
     @http_error(status_code=404)
     async def error_404(self, request: web.Request) -> str:

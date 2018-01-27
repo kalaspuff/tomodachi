@@ -7,6 +7,7 @@ import ipaddress
 import os
 import pathlib
 import inspect
+import uuid
 from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt  # noqa
 try:
@@ -14,7 +15,7 @@ try:
 except ImportError:
     from collections.abc import Awaitable
 from multidict import CIMultiDict, CIMultiDictProxy
-from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs
+from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs, WSMsgType
 from aiohttp.web_fileresponse import FileResponse
 from aiohttp.http import HttpVersion
 from aiohttp.helpers import BasicAuth
@@ -318,6 +319,58 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
+    async def websocket_handler(cls: Any, obj: Any, context: Dict, func: Any, url: str) -> Any:
+        pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
+        compiled_pattern = re.compile(pattern)
+
+        async def _func(obj: Any, request: web.Request) -> None:
+            websocket = web.WebSocketResponse()
+            await websocket.prepare(request)
+
+            request.is_websocket = True
+            request.websocket_uuid = str(uuid.uuid4())
+
+            logging.getLogger('transport.http').info('[websocket] {} {} "OPEN {}{}" {} "{}" {}'.format(
+                request.request_ip,
+                '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                request.path,
+                '?{}'.format(request.query_string) if request.query_string else '',
+                request.websocket_uuid,
+                request.headers.get('User-Agent', '').replace('"', ''),
+                '-'
+            ))
+
+            result = compiled_pattern.match(request.path)
+            values = inspect.getfullargspec(func)
+            kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
+            if result:
+                for k, v in result.groupdict().items():
+                    kwargs[k] = v
+
+            routine = func(*(obj, websocket,), **kwargs)
+            callback_functions = (await routine) if isinstance(routine, Awaitable) else routine  # type: Optional[Union[Tuple, Callable]]
+            _receive_func = None
+            _close_func = None
+
+            if callback_functions and isinstance(callback_functions, tuple):
+                try:
+                    _receive_func, _close_func = callback_functions
+                except ValueError:
+                    _receive_func, = callback_functions
+            elif callback_functions:
+                _receive_func = callback_functions
+
+            try:
+                async for message in websocket:
+                    if message.type == WSMsgType.TEXT:
+                        if _receive_func:
+                            await _receive_func(message.data)
+            finally:
+                if _close_func:
+                    await _close_func()
+
+        return await cls.request_handler(cls, obj, context, _func, 'GET', url)
+
     async def start_server(obj: Any, context: Dict) -> Optional[Callable]:
         if context.get('_http_server_started'):
             return None
@@ -365,6 +418,7 @@ class HttpTransport(Invoker):
                             request.request_ip = request_ip
 
                         request.auth = None
+                        request.is_websocket = False
                         if request.headers.get('Authorization'):
                             try:
                                 request.auth = BasicAuth.decode(request.headers.get('Authorization'))
@@ -407,19 +461,31 @@ class HttpTransport(Invoker):
                                 version_string = None
                                 if isinstance(request.version, HttpVersion):
                                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
-                                logging.getLogger('transport.http').info('[http] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                    response.status if response else 500,
-                                    request.request_ip,
-                                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
-                                    request.method,
-                                    request.path,
-                                    '?{}'.format(request.query_string) if request.query_string else '',
-                                    ' {}'.format(version_string) if version_string else '',
-                                    response.content_length if response and response.content_length is not None else '-',
-                                    request.content_length if request.content_length is not None else '-',
-                                    request.headers.get('User-Agent', '').replace('"', ''),
-                                    '{0:.5f}s'.format(round(request_time, 5))
-                                ))
+
+                                if not request.is_websocket:
+                                    logging.getLogger('transport.http').info('[http] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
+                                        response.status if response else 500,
+                                        request.request_ip,
+                                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                                        request.method,
+                                        request.path,
+                                        '?{}'.format(request.query_string) if request.query_string else '',
+                                        ' {}'.format(version_string) if version_string else '',
+                                        response.content_length if response and response.content_length is not None else '-',
+                                        request.content_length if request.content_length is not None else '-',
+                                        request.headers.get('User-Agent', '').replace('"', ''),
+                                        '{0:.5f}s'.format(round(request_time, 5))
+                                    ))
+                                else:
+                                    logging.getLogger('transport.http').info('[websocket] {} {} "CLOSE {}{}" {} "{}" {}'.format(
+                                        request.request_ip,
+                                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                                        request.path,
+                                        '?{}'.format(request.query_string) if request.query_string else '',
+                                        request.websocket_uuid,
+                                        request.headers.get('User-Agent', '').replace('"', ''),
+                                        '{0:.5f}s'.format(round(request_time, 5))
+                                    ))
 
                             return response
 
@@ -477,3 +543,6 @@ class HttpTransport(Invoker):
 http = HttpTransport.decorator(HttpTransport.request_handler)
 http_error = HttpTransport.decorator(HttpTransport.error_handler)
 http_static = HttpTransport.decorator(HttpTransport.static_request_handler)
+
+websocket = HttpTransport.decorator(HttpTransport.websocket_handler)
+ws = HttpTransport.decorator(HttpTransport.websocket_handler)
