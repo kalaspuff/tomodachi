@@ -143,7 +143,7 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
             assert response is not None
             assert response.status == 200
             assert await response.text() == 'test'
-            assert response.headers.get('Content-Type') == 'text/plain; '
+            assert response.headers.get('Content-Type').strip() == 'text/plain; '.strip()
 
         async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get('http://127.0.0.1:{}/test-charset'.format(port))

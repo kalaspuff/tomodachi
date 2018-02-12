@@ -464,14 +464,14 @@ class HttpTransport(Invoker):
 
                                 if not request.is_websocket:
                                     logging.getLogger('transport.http').info('[http] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                        response.status if response else 500,
+                                        response.status if response is not None else 500,
                                         request.request_ip,
                                         '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                                         request.method,
                                         request.path,
                                         '?{}'.format(request.query_string) if request.query_string else '',
                                         ' {}'.format(version_string) if version_string else '',
-                                        response.content_length if response and response.content_length is not None else '-',
+                                        response.content_length if response is not None and response.content_length is not None else '-',
                                         request.content_length if request.content_length is not None else '-',
                                         request.headers.get('User-Agent', '').replace('"', ''),
                                         '{0:.5f}s'.format(round(request_time, 5))
