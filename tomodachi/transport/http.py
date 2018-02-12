@@ -365,6 +365,8 @@ class HttpTransport(Invoker):
                     if message.type == WSMsgType.TEXT:
                         if _receive_func:
                             await _receive_func(message.data)
+                    elif message.type == WSMsgType.CLOSED or message.type == WSMsgType.ERROR:
+                        break
             finally:
                 if _close_func:
                     await _close_func()
