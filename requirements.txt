@@ -1,8 +1,10 @@
 aioamqp==0.10.0
 aiobotocore==0.5.2
-aiohttp==2.3.10
-async-timeout==2.0.0
+aiodns==1.1.1
+aiohttp==3.0.0
+async-timeout==1.4.0
 botocore==1.7.40
+cchardet==2.1.1
 chardet==3.0.4
 codecov==2.0.15
 coverage==4.5.1
@@ -11,6 +13,7 @@ jmespath==0.9.3
 multidict==4.1.0
 mypy==0.560
 packaging==16.8
+pycares==2.3.0
 pycodestyle==2.3.1
 py==1.5.2
 pyparsing==2.2.0
