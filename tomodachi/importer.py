@@ -15,15 +15,17 @@ class ServiceImporter(object):
         if file_path.endswith('.py.py'):
             file_path = file_path[:-3]
         try:
-            spec = importlib.util.spec_from_file_location(file_name, file_path)  # type: Any
+            sys.path.insert(0, cwd)
+            sys.path.insert(0, os.path.dirname(os.path.dirname(file_path)))
+            spec = importlib.util.find_spec('.{}'.format(file_path.rsplit('/', 1)[1])[:-3], package=os.path.dirname(file_path).rsplit('/', 1)[1])  # type: Any
+            if not spec:
+                raise OSError
             service_import = importlib.util.module_from_spec(spec)
             try:
                 importlib.reload(service_import)
                 service_import = importlib.util.module_from_spec(spec)
             except ImportError:
                 pass
-            sys.path.insert(0, cwd)
-            sys.path.insert(0, os.path.dirname(file_path))
             spec.loader.exec_module(service_import)
         except ImportError as e:
             if file_name.endswith('.py.py'):
