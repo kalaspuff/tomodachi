@@ -26,6 +26,8 @@ class ServiceImporter(object):
                 service_import = importlib.util.module_from_spec(spec)
             except ImportError:
                 pass
+            if not spec.loader:
+                raise OSError
             spec.loader.exec_module(service_import)
         except ImportError as e:
             if file_name.endswith('.py.py'):
