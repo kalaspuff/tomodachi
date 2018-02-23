@@ -170,24 +170,24 @@ class AmqpTransport(Invoker):
                 else:
                     kwargs = {}
                     routine = func(*(obj), **kwargs)
-            except (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException) as e:
-                if message_key:
-                    del context['_amqp_received_messages'][message_key]
-                await cls.channel.basic_client_nack(delivery_tag)
-                return
             except Exception as e:
+                if issubclass(e.__class__, (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException)):
+                    if message_key:
+                        del context['_amqp_received_messages'][message_key]
+                    await cls.channel.basic_client_nack(delivery_tag)
+                    return
                 await cls.channel.basic_client_ack(delivery_tag)
                 raise e
 
             if isinstance(routine, Awaitable):
                 try:
                     return_value = await routine
-                except (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException) as e:
-                    if message_key:
-                        del context['_amqp_received_messages'][message_key]
-                    await cls.channel.basic_client_nack(delivery_tag)
-                    return
                 except Exception as e:
+                    if issubclass(e.__class__, (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException)):
+                        if message_key:
+                            del context['_amqp_received_messages'][message_key]
+                        await cls.channel.basic_client_nack(delivery_tag)
+                        return
                     await cls.channel.basic_client_ack(delivery_tag)
                     raise e
             else:
