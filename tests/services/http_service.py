@@ -157,8 +157,10 @@ class HttpService(object):
                 if not self.closer.done():
                     self.closer.set_result(None)
 
-            asyncio.ensure_future(sleep_and_kill())
+            task = asyncio.ensure_future(sleep_and_kill())
             await self.closer
+            if not task.done():
+                task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
         asyncio.ensure_future(_async())
 

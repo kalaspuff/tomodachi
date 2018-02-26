@@ -115,7 +115,13 @@ class AmqpTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, exchange_name: str='', competing: bool=False) -> Any:
+    @classmethod
+    def prefix_queue_name(cls, queue_name: str, context: Dict) -> str:
+        if context.get('options', {}).get('amqp', {}).get('queue_name_prefix'):
+            return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('queue_name_prefix'), queue_name)
+        return queue_name
+
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, exchange_name: str='', competing: Optional[bool]=None, queue_name: Optional[str]=None) -> Any:
         async def handler(payload: Any, delivery_tag: Any) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
             if not _callback_kwargs:
@@ -200,7 +206,7 @@ class AmqpTransport(Invoker):
         exchange_name = exchange_name or context.get('options', {}).get('amqp', {}).get('exchange_name', 'amq.topic')
 
         context['_amqp_subscribers'] = context.get('_amqp_subscribers', [])
-        context['_amqp_subscribers'].append((routing_key, exchange_name, competing, func, handler))
+        context['_amqp_subscribers'].append((routing_key, exchange_name, competing, queue_name, func, handler))
 
         start_func = cls.subscribe(cls, obj, context)
         return (await start_func) if start_func else None
@@ -263,7 +269,7 @@ class AmqpTransport(Invoker):
         async def _subscribe() -> None:
             async def declare_queue(routing_key: str, func: Callable, exchange_name: str='', exchange_type: str='topic', queue_name: Optional[str]=None,
                                     passive: bool=False, durable: bool=True, exclusive: bool=False, auto_delete: bool=False,
-                                    competing_consumer: bool=False) -> Optional[str]:
+                                    competing_consumer: Optional[bool]=None) -> Optional[str]:
                 try:
                     if exchange_name and exchange_name != 'amq.topic':
                         await channel.exchange_declare(exchange_name=exchange_name, type_name=exchange_type, passive=False, durable=True, auto_delete=False)
@@ -279,10 +285,16 @@ class AmqpTransport(Invoker):
                         logging.getLogger('transport.amqp').warning('Unable to declare exchange [amqp] "{}" ({})'.format(exchange_name, error_message))
                         raise
 
+                if queue_name and competing_consumer is None:
+                    competing_consumer = True
+
                 _uuid = obj.uuid
                 max_consumers = 1 if not competing_consumer else None
+
                 if queue_name is None:
                     queue_name = cls.get_queue_name(cls.encode_routing_key(routing_key), func.__name__, _uuid, competing_consumer, context)
+                else:
+                    queue_name = cls.prefix_queue_name(queue_name, context)
 
                 amqp_arguments = {}
                 ttl = context.get('options', {}).get('amqp', {}).get('queue_ttl', 86400)
@@ -309,8 +321,8 @@ class AmqpTransport(Invoker):
                     await asyncio.shield(handler(body.decode(), envelope.delivery_tag))
                 return _callback
 
-            for routing_key, exchange_name, competing, func, handler in context.get('_amqp_subscribers', []):
-                queue_name = await declare_queue(routing_key, func, exchange_name=exchange_name, competing_consumer=competing)
+            for routing_key, exchange_name, competing, queue_name, func, handler in context.get('_amqp_subscribers', []):
+                queue_name = await declare_queue(routing_key, func, exchange_name=exchange_name, competing_consumer=competing, queue_name=queue_name)
                 await channel.basic_consume(callback(routing_key, handler), queue_name=queue_name)
 
         return _subscribe
