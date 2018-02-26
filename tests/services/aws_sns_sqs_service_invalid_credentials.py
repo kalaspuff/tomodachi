@@ -41,7 +41,7 @@ class AWSSNSSQSService(object):
             task = asyncio.ensure_future(sleep_and_kill())
             await self.closer
             if not task.done():
-                task.set_result(None)
+                task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
         asyncio.ensure_future(_async())
 
