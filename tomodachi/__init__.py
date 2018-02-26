@@ -24,11 +24,11 @@ def log_setup(service: Any, name: Optional[str]=None, level: Optional[Union[str,
             wfh.setLevel(level)
 
         if formatter and type(formatter) is str:
-            formatter = logging.Formatter(formatter)
+            formatter = logging.Formatter(str(formatter))
         if formatter and type(formatter) is bool and formatter is True:
             formatter = logging.Formatter('%(asctime)s (%(name)s): %(message)s')
 
-        if formatter:
+        if formatter and isinstance(formatter, logging.Formatter):
             wfh.setFormatter(formatter)
 
         logger.addHandler(wfh)
@@ -54,8 +54,12 @@ def log(service: Any, *args: Any, **kwargs: Any) -> None:
         log_message = args[2]
 
     if kwargs.get('level'):
-        log_level = int(kwargs.get('level')) if type(kwargs.get('level')) is int else getattr(logging, str(kwargs.get('level')))
-        kwargs.pop('level', None)
+        log_level = 0
+        log_level_value = kwargs.pop('level', 0)
+        if type(log_level_value) is int:
+            log_level = int(log_level_value)
+        else:
+            log_level = int(getattr(logging, str(log_level_value)))
     if kwargs.get('name'):
         log_name = kwargs.pop('name', None)
     if kwargs.get('msg'):
@@ -67,7 +71,9 @@ def log(service: Any, *args: Any, **kwargs: Any) -> None:
         log_level = logging.INFO
 
     logger = logging.getLogger(log_name)
-    logger.log(level=log_level, msg=log_message, **kwargs)
+
+    if log_message:
+        logger.log(level=log_level, msg=str(log_message), **kwargs)
 
 
 def service(cls: Any) -> Any:
