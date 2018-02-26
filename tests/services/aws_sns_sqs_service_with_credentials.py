@@ -8,6 +8,8 @@ from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
 
+data_uuid = str(uuid.uuid4())
+
 
 @tomodachi.service
 class AWSSNSSQSService(object):
@@ -29,10 +31,11 @@ class AWSSNSSQSService(object):
     uuid = os.environ.get('TOMODACHI_TEST_SERVICE_UUID')
     closer = asyncio.Future()  # type: Any
     test_topic_data_received = False
+    test_topic_specified_queue_name_data_received = False
     test_topic_metadata_topic = None
     test_topic_service_uuid = None
     wildcard_topic_data_received = False
-    data_uuid = None
+    data_uuid = data_uuid
 
     @aws_sns_sqs('test-topic')
     async def test(self, data: Any, metadata: Any, service: Any) -> None:
@@ -40,6 +43,20 @@ class AWSSNSSQSService(object):
             self.test_topic_data_received = True
             self.test_topic_metadata_topic = metadata.get('topic')
             self.test_topic_service_uuid = service.get('uuid')
+
+    @aws_sns_sqs('test-topic-unique', queue_name='test-queue-'.format(data_uuid))
+    async def test_specified_queue_name(self, data: Any, metadata: Any, service: Any) -> None:
+        if data == self.data_uuid:
+            if self.test_topic_specified_queue_name_data_received:
+                raise Exception('test_topic_specified_queue_name_data_received already set')
+            self.test_topic_specified_queue_name_data_received = True
+
+    @aws_sns_sqs('test-topic-unique', queue_name='test-queue-'.format(data_uuid))
+    async def test_specified_queue_name_again(self, data: Any, metadata: Any, service: Any) -> None:
+        if data == self.data_uuid:
+            if self.test_topic_specified_queue_name_data_received:
+                raise Exception('test_topic_specified_queue_name_data_received already set')
+            self.test_topic_specified_queue_name_data_received = True
 
     @aws_sns_sqs('test-topic#')
     async def faked_wildcard_topic(self, metadata: Any, data: Any) -> None:
@@ -56,12 +73,15 @@ class AWSSNSSQSService(object):
                 if not self.closer.done():
                     self.closer.set_result(None)
 
-            asyncio.ensure_future(sleep_and_kill())
+            task = asyncio.ensure_future(sleep_and_kill())
             await self.closer
+            if not task.done():
+                task.set_result(None)
             os.kill(os.getpid(), signal.SIGINT)
         asyncio.ensure_future(_async())
 
         self.data_uuid = str(uuid.uuid4())
+        await publish(self.data_uuid, 'test-topic-unique')
         for _ in range(30):
             if self.test_topic_data_received:
                 break
