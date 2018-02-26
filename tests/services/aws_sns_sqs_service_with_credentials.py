@@ -79,7 +79,12 @@ class AWSSNSSQSService(object):
         asyncio.ensure_future(_async())
 
         self.data_uuid = str(uuid.uuid4())
-        await publish(self.data_uuid, 'test-topic')
+        await publish(self.data_uuid, 'test-topic-unique')
+        for _ in range(30):
+            if self.test_topic_data_received:
+                break
+            await publish(self.data_uuid, 'test-topic')
+            await asyncio.sleep(0.1)
 
     def stop_service(self) -> None:
         if not self.closer.done():
