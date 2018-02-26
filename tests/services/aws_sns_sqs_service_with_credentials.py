@@ -29,6 +29,7 @@ class AWSSNSSQSService(object):
     uuid = os.environ.get('TOMODACHI_TEST_SERVICE_UUID')
     closer = asyncio.Future()  # type: Any
     test_topic_data_received = False
+    test_topic_specified_queue_name_data_received = False
     test_topic_metadata_topic = None
     test_topic_service_uuid = None
     wildcard_topic_data_received = False
@@ -40,6 +41,20 @@ class AWSSNSSQSService(object):
             self.test_topic_data_received = True
             self.test_topic_metadata_topic = metadata.get('topic')
             self.test_topic_service_uuid = service.get('uuid')
+
+    @aws_sns_sqs('test-topic', queue_name='test-queue')
+    async def test_specified_queue_name(self, data: Any, metadata: Any, service: Any) -> None:
+        if data == self.data_uuid:
+            if self.test_topic_specified_queue_name_data_received:
+                raise Exception('test_topic_specified_queue_name_data_received already set')
+            self.test_topic_specified_queue_name_data_received = True
+
+    @aws_sns_sqs('test-topic', queue_name='test-queue')
+    async def test_specified_queue_name_again(self, data: Any, metadata: Any, service: Any) -> None:
+        if data == self.data_uuid:
+            if self.test_topic_specified_queue_name_data_received:
+                raise Exception('test_topic_specified_queue_name_data_received already set')
+            self.test_topic_specified_queue_name_data_received = True
 
     @aws_sns_sqs('test-topic#')
     async def faked_wildcard_topic(self, metadata: Any, data: Any) -> None:
