@@ -11,6 +11,7 @@ def loop() -> Generator:
     asyncio.set_event_loop(loop)
     yield loop
     try:
-        loop.close()
+        if loop and not loop.is_closed():
+            loop.close()
     except RuntimeWarning:
         pass
