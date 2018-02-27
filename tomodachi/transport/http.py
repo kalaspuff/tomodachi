@@ -8,6 +8,7 @@ import os
 import pathlib
 import inspect
 import uuid
+import colorama
 from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt  # noqa
 try:
@@ -47,7 +48,14 @@ class RequestHandler(web_protocol.RequestHandler):
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
-                logging.getLogger('transport.http').info('[http] [499] {} {} "{} {}{}{}" - {} "{}" -'.format(
+                protocol = 'http'
+                status_code = '499'
+                if not logging.getLogger('transport.http').handlers:
+                    status_code = colorama.Fore.YELLOW + status_code + colorama.Style.RESET_ALL
+                    protocol = colorama.Fore.YELLOW + protocol + colorama.Style.RESET_ALL
+                logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" - {} "{}" -'.format(
+                    protocol,
+                    status_code,
                     request.request_ip,
                     '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                     request.method,
@@ -75,8 +83,21 @@ class RequestHandler(web_protocol.RequestHandler):
             self.force_close()
         elif self.transport is not None:
             if self._access_log:
-                logging.getLogger('transport.http').info('[http] [{}] {} {} "INVALID" {} - "" -'.format(
-                    status,
+                status_code = status
+                protocol = 'http'
+                if not logging.getLogger('transport.http').handlers:
+                    if status_code and status_code[0] == '2':
+                        status_code = colorama.Fore.GREEN + status_code + colorama.Style.RESET_ALL
+                        protocol = colorama.Fore.GREEN + protocol + colorama.Style.RESET_ALL
+                    elif status_code and (status_code[0] == '3' or status_code == '499'):
+                        status_code = colorama.Fore.YELLOW + status_code + colorama.Style.RESET_ALL
+                        protocol = colorama.Fore.YELLOW + protocol + colorama.Style.RESET_ALL
+                    elif status_code and status_code[0] == '4':
+                        status_code = colorama.Fore.RED + status_code + colorama.Style.RESET_ALL
+                        protocol = colorama.Fore.RED + protocol + colorama.Style.RESET_ALL
+                logging.getLogger('transport.http').info('[{}] [{}] {} {} "INVALID" {} - "" -'.format(
+                    protocol,
+                    status_code,
                     request.request_ip,
                     '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                     len(msg)
@@ -330,7 +351,11 @@ class HttpTransport(Invoker):
             request.is_websocket = True
             request.websocket_uuid = str(uuid.uuid4())
 
-            logging.getLogger('transport.http').info('[websocket] {} {} "OPEN {}{}" {} "{}" {}'.format(
+            protocol = 'websocket'
+            if not logging.getLogger('transport.http').handlers:
+                protocol = colorama.Fore.CYAN + protocol + colorama.Style.RESET_ALL
+            logging.getLogger('transport.http').info('[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
+                protocol,
                 request.request_ip,
                 '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                 request.path,
@@ -463,8 +488,24 @@ class HttpTransport(Invoker):
                                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
 
                                 if not request.is_websocket:
-                                    logging.getLogger('transport.http').info('[http] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                        response.status if response is not None else 500,
+                                    status_code = str(response.status) if response is not None else 500
+                                    protocol = 'http'
+                                    if not logging.getLogger('transport.http').handlers:
+                                        if status_code and status_code[0] == '2':
+                                            status_code = colorama.Fore.GREEN + status_code + colorama.Style.RESET_ALL
+                                            protocol = colorama.Fore.GREEN + protocol + colorama.Style.RESET_ALL
+                                        elif status_code and (status_code[0] == '3' or status_code == '499'):
+                                            status_code = colorama.Fore.YELLOW + status_code + colorama.Style.RESET_ALL
+                                            protocol = colorama.Fore.YELLOW + protocol + colorama.Style.RESET_ALL
+                                        elif status_code and status_code[0] == '4':
+                                            status_code = colorama.Fore.RED + status_code + colorama.Style.RESET_ALL
+                                            protocol = colorama.Fore.RED + protocol + colorama.Style.RESET_ALL
+                                        elif status_code and status_code[0] == '5':
+                                            status_code = colorama.Fore.WHITE + colorama.Back.RED + status_code + colorama.Style.RESET_ALL
+                                            protocol = colorama.Fore.WHITE + colorama.Back.RED + protocol + colorama.Style.RESET_ALL
+                                    logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
+                                        protocol,
+                                        status_code,
                                         request.request_ip,
                                         '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                                         request.method,
@@ -477,7 +518,11 @@ class HttpTransport(Invoker):
                                         '{0:.5f}s'.format(round(request_time, 5))
                                     ))
                                 else:
-                                    logging.getLogger('transport.http').info('[websocket] {} {} "CLOSE {}{}" {} "{}" {}'.format(
+                                    protocol = 'websocket'
+                                    if not logging.getLogger('transport.http').handlers:
+                                        protocol = colorama.Fore.GREEN + protocol + colorama.Style.RESET_ALL
+                                    logging.getLogger('transport.http').info('[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
+                                        protocol,
                                         request.request_ip,
                                         '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                                         request.path,
