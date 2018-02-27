@@ -8,6 +8,7 @@ import os
 import pathlib
 import inspect
 import uuid
+import colorama
 from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt  # noqa
 try:
@@ -36,6 +37,32 @@ class RequestHandler(web_protocol.RequestHandler):
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
         super().__init__(*args, **kwargs)
 
+    @staticmethod
+    def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]]=False) -> str:
+        if status is False:
+            status = text
+        status_code = str(status) if status else None
+        if status_code and not logging.getLogger('transport.http').handlers:
+            output_text = str(text) if text else ''
+            color = None
+
+            if status_code == '101':
+                color = colorama.Fore.CYAN
+            elif status_code[0] == '2':
+                color = colorama.Fore.GREEN
+            elif status_code[0] == '3' or status_code == '499':
+                color = colorama.Fore.YELLOW
+            elif status_code[0] == '4':
+                color = colorama.Fore.RED
+            elif status_code[0] == '5':
+                color = colorama.Fore.WHITE + colorama.Back.RED
+
+            if color:
+                return '{}{}{}'.format(color, output_text, colorama.Style.RESET_ALL)
+            return output_text
+
+        return str(text) if text else ''
+
     def handle_error(self, request: Any, status: int=500, exc: Any=None, message: Optional[str]=None) -> web.Response:
         """Handle errors.
 
@@ -47,7 +74,9 @@ class RequestHandler(web_protocol.RequestHandler):
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
-                logging.getLogger('transport.http').info('[http] [499] {} {} "{} {}{}{}" - {} "{}" -'.format(
+                logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" - {} "{}" -'.format(
+                    RequestHandler.colorize_status('http', 499),
+                    RequestHandler.colorize_status(499),
                     request.request_ip,
                     '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                     request.method,
@@ -75,8 +104,9 @@ class RequestHandler(web_protocol.RequestHandler):
             self.force_close()
         elif self.transport is not None:
             if self._access_log:
-                logging.getLogger('transport.http').info('[http] [{}] {} {} "INVALID" {} - "" -'.format(
-                    status,
+                logging.getLogger('transport.http').info('[{}] [{}] {} {} "INVALID" {} - "" -'.format(
+                    RequestHandler.colorize_status('http', status),
+                    RequestHandler.colorize_status(status),
                     request.request_ip,
                     '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                     len(msg)
@@ -330,7 +360,8 @@ class HttpTransport(Invoker):
             request.is_websocket = True
             request.websocket_uuid = str(uuid.uuid4())
 
-            logging.getLogger('transport.http').info('[websocket] {} {} "OPEN {}{}" {} "{}" {}'.format(
+            logging.getLogger('transport.http').info('[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
+                RequestHandler.colorize_status('websocket', 101),
                 request.request_ip,
                 '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                 request.path,
@@ -463,8 +494,10 @@ class HttpTransport(Invoker):
                                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
 
                                 if not request.is_websocket:
-                                    logging.getLogger('transport.http').info('[http] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                        response.status if response is not None else 500,
+                                    status_code = response.status if response is not None else 500
+                                    logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
+                                        RequestHandler.colorize_status('http', status_code),
+                                        RequestHandler.colorize_status(status_code),
                                         request.request_ip,
                                         '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                                         request.method,
@@ -477,7 +510,8 @@ class HttpTransport(Invoker):
                                         '{0:.5f}s'.format(round(request_time, 5))
                                     ))
                                 else:
-                                    logging.getLogger('transport.http').info('[websocket] {} {} "CLOSE {}{}" {} "{}" {}'.format(
+                                    logging.getLogger('transport.http').info('[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
+                                        RequestHandler.colorize_status('websocket', 101),
                                         request.request_ip,
                                         '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
                                         request.path,
