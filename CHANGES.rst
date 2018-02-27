@@ -3,7 +3,7 @@ Changes
 
 0.8.0 (2018-02-27)
 ------------------
-- It's not possible to specify queue_name on AWS SNS+SQS and AMQP decorators
+- It's now possible to specify queue_name on AWS SNS+SQS and AMQP decorators
   for competing queues. If not specified an automatically generated hash will
   be used as queue name as it worked previously.
 
