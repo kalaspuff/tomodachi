@@ -19,7 +19,15 @@ def log_setup(service: Any, name: Optional[str]=None, level: Optional[Union[str,
         level = getattr(logging, str(level))
 
     if not [x for x in logger.handlers if isinstance(x, WatchedFileHandler) and (level is None or level == x.level)]:
-        wfh = WatchedFileHandler(filename=filename)
+        try:
+            wfh = WatchedFileHandler(filename=filename)
+        except FileNotFoundError as e:
+            logging.getLogger('logging').warning('Unable to use file for logging - invalid path ("{}")'.format(filename))
+            raise e
+        except PermissionError as e:
+            logging.getLogger('logging').warning('Unable to use file for logging - invalid permissions ("{}")'.format(filename))
+            raise e
+
         if level:
             wfh.setLevel(level)
 
