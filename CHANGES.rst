@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.8.1 (2018-02-27)
+------------------
+- Correction for README in 0.8.X release.
+
+
 0.8.0 (2018-02-27)
 ------------------
 - It's now possible to specify queue_name on AWS SNS+SQS and AMQP decorators
