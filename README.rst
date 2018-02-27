@@ -1,5 +1,5 @@
 ``tomodachi`` - a lightweight microservices framework with asyncio
-==============================================================
+==================================================================
 .. image:: https://travis-ci.org/kalaspuff/tomodachi.svg?branch=master
     :target: https://travis-ci.org/kalaspuff/tomodachi
 .. image:: https://img.shields.io/pypi/v/tomodachi.svg
