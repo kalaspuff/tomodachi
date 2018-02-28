@@ -1,6 +1,40 @@
 Changes
 =======
 
+0.8.2 (2018-02-28)
+------------------
+- Fixed broken HTTP transports due to missing colorama import.
+
+
+0.8.1 (2018-02-27)
+------------------
+- Correction for README in 0.8.X release.
+
+
+0.8.0 (2018-02-27)
+------------------
+- It's now possible to specify queue_name on AWS SNS+SQS and AMQP decorators
+  for competing queues. If not specified an automatically generated hash will
+  be used as queue name as it worked previously.
+
+- Fixes an issue with relative imports from within service files, which
+  resulted in "SystemParent module '' not loaded, cannot perform relative
+  import" or "ImportError: attempted relative import with no known parent
+  package". (github: **0x1EE7**)
+
+- Exceptions that are subclasses of ``AmqpInternalServiceError`` and
+  ``AWSSNSSQSInternalServiceError`` will now also work in the same way,
+  resulting in the messages to be retried when raised.
+
+- Service classes now have built in log functions for setting up logging to
+  file as well as logging. They are ``self.log_setup('logname', level,
+  filename)`` and ``self.log('logname', level, message)``.
+
+- HTTP services will have their access log color coded when outputting to
+  nothing else than stdout, which should be helpful in an overview during
+  development.
+
+
 0.7.0 (2018-01-27)
 ------------------
 
