@@ -1,7 +1,7 @@
 import logging
 from logging.handlers import WatchedFileHandler
 from typing import Optional, Union, Any
-from tomodachi.__version__ import __version__  # noqa
+from tomodachi.__version__ import __version__, __version_info__  # noqa
 
 CLASS_ATTRIBUTE = 'TOMODACHI_SERVICE_CLASS'
 
