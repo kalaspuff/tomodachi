@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.8.2 (2018-02-28)
+------------------
+- Fixed broken HTTP transports due to missing colorama import.
+
+
 0.8.1 (2018-02-27)
 ------------------
 - Correction for README in 0.8.X release.
