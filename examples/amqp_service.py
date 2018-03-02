@@ -4,7 +4,7 @@ import tomodachi
 from typing import Any, Dict
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
-from tomodachi.transport.amqp import amqp, amqp_publish
+from tomodachi import amqp, amqp_publish
 
 
 @tomodachi.service

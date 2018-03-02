@@ -37,7 +37,6 @@ Basic HTTP based service 🌟
 .. code:: python
 
     import tomodachi
-    from tomodachi.transport.http import http, http_error
 
 
     @tomodachi.service
@@ -45,12 +44,12 @@ Basic HTTP based service 🌟
         name = 'example'
 
         # Request paths are specified as regex for full flexibility
-        @http('GET', r'/resource/(?P<id>[^/]+?)/?')
+        @tomodachi.http('GET', r'/resource/(?P<id>[^/]+?)/?')
         async def resource(self, request, id):
             # Returning a string value normally means 200 OK
             return 'id = {}'.format(id)
 
-        @http('GET', r'/health')
+        @tomodachi.http('GET', r'/health')
         async def health_check(self, request):
             # Return can also be a tuple, dict or even an aiohttp.web.Response
             # object for more complex responses - for example if you need to
@@ -61,7 +60,7 @@ Basic HTTP based service 🌟
             }
 
         # Specify custom 404 catch-all response
-        @http_error(status_code=404)
+        @tomodachi.http_error(status_code=404)
         async def error_404(self, request):
             return 'error 404'
 

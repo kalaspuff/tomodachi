@@ -6,7 +6,7 @@ from typing import Tuple, Callable
 from aiohttp import web
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
-from tomodachi.transport.http import http, http_error, http_static, websocket, Response
+from tomodachi import http, http_error, http_static, websocket, HttpResponse
 
 
 @tomodachi.service
@@ -36,8 +36,8 @@ class ExampleHttpService(object):
         return '友達 (id: {})'.format(id)
 
     @http('GET', r'/response/?')
-    async def response_object(self, request: web.Request) -> Response:
-        return Response(body='{"data": true}', status=200, content_type='application/json')
+    async def response_object(self, request: web.Request) -> HttpResponse:
+        return HttpResponse(body='{"data": true}', status=200, content_type='application/json')
 
     @http_static('static/', r'/static/')
     async def static_files(self) -> None:
