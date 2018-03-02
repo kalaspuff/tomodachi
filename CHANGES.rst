@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.8.3 (2018-03-02)
+------------------
+- Print stack trace for outputs from ``schedule`` invoker functions tasks
+  instead of silently catching exceptions.
+
+
 0.8.2 (2018-02-28)
 ------------------
 - Fixed broken HTTP transports due to missing colorama import.
