@@ -432,9 +432,12 @@ class HttpTransport(Invoker):
                                 if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
                                     traceback.print_exception(e.__class__, e, e.__traceback__)
                     elif message.type == WSMsgType.ERROR:
-                        e = ws.exception()
                         if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                            traceback.print_exception(e.__class__, e, e.__traceback__)
+                            ws_exception = websocket.exception()
+                            if isinstance(ws_exception, Exception):
+                                traceback.print_exception(ws_exception.__class__, ws_exception, ws_exception.__traceback__)
+                            else:
+                                logging.getLogger('transport.http').warning('Websocket exception: "{}"'.format(ws_exception))
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
             finally:
