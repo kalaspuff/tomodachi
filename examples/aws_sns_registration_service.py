@@ -1,16 +1,21 @@
-import logging
 import os
 import tomodachi
 from typing import Dict
-from tomodachi.protocol.json_base import JsonBase
 from tomodachi import aws_sns_sqs
+from tomodachi.protocol import JsonBase
 
 
 @tomodachi.service
 class AWSSNSRegistrationService(object):
     name = 'example_aws_sns_registration_service'
     log_level = 'INFO'
+    uuid = os.environ.get('SERVICE_UUID')
+
+    # The message protocol class defines how a message should be processed when sent and received
+    # See tomodachi/protocol/json_base.py for a basic example using JSON and transferring some metadata
     message_protocol = JsonBase
+
+    # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
     options = {
         'aws_sns_sqs': {
             'region_name': None,  # specify AWS region (example: 'eu-west-1')
@@ -22,13 +27,11 @@ class AWSSNSRegistrationService(object):
             'sqs': None  # For example 'http://localhost:4576' if localstack is used for testing
         }
     }
-    logger = logging.getLogger('log.{}'.format(name))
-    uuid = os.environ.get('SERVICE_UUID')
 
     @aws_sns_sqs('services.registration.register', queue_name='registration-service--register', competing=True)
     async def register(self, data: Dict) -> None:
-        self.logger.info('Register service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))
+        self.log('Register service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))
 
     @aws_sns_sqs('services.registration.deregister', queue_name='registration-service--deregister', competing=True)
     async def deregister(self, data: Dict) -> None:
-        self.logger.info('Deregister service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))
+        self.log('Deregister service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))
