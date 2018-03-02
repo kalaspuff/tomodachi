@@ -389,12 +389,12 @@ class HttpTransport(Invoker):
                     traceback.print_exception(e.__class__, e, e.__traceback__)
                 try:
                     await websocket.close()
-                except:
+                except Exception:
                     pass
 
                 try:
                     context['_http_open_websockets'].remove(websocket)
-                except:
+                except Exception:
                     pass
 
                 logging.getLogger('transport.http').info('[{}] {} {} "{} {}{}" {} "{}" {}'.format(
@@ -449,12 +449,12 @@ class HttpTransport(Invoker):
                             traceback.print_exception(e.__class__, e, e.__traceback__)
                 try:
                     await websocket.close()
-                except:
+                except Exception:
                     pass
 
                 try:
                     context['_http_open_websockets'].remove(websocket)
-                except:
+                except Exception:
                     pass
 
         return await cls.request_handler(cls, obj, context, _func, 'GET', url)
@@ -611,7 +611,7 @@ class HttpTransport(Invoker):
                 for websocket in open_websockets:
                     try:
                         await websocket.close()
-                    except:
+                    except Exception:
                         pass
                 server.close()
                 await app.shutdown()
