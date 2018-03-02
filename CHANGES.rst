@@ -6,6 +6,9 @@ Changes
 - Print stack trace for outputs from ``schedule`` invoker functions tasks
   instead of silently catching exceptions.
 
+- Handle close and receive errors for websockets and cleanly close already
+  opened websockets on service exit.
+
 
 0.8.2 (2018-02-28)
 ------------------
