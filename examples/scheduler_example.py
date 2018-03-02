@@ -1,7 +1,7 @@
 import logging
 import os
 import tomodachi
-from tomodachi.transport.schedule import schedule, minutely, hourly
+from tomodachi import schedule, minutely, hourly
 
 
 @tomodachi.service

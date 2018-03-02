@@ -3,7 +3,7 @@ import os
 import tomodachi
 from typing import Dict
 from tomodachi.protocol.json_base import JsonBase
-from tomodachi.transport.aws_sns_sqs import aws_sns_sqs
+from tomodachi import aws_sns_sqs
 
 
 @tomodachi.service
