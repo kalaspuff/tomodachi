@@ -28,10 +28,10 @@ class AWSSNSRegistrationService(object):
         }
     }
 
-    @aws_sns_sqs('services.registration.register', queue_name='registration-service--register', competing=True)
+    @aws_sns_sqs('services-registration-register', queue_name='registration-service--register', competing=True)
     async def register(self, data: Dict) -> None:
         self.log('Register service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))
 
-    @aws_sns_sqs('services.registration.deregister', queue_name='registration-service--deregister', competing=True)
+    @aws_sns_sqs('services-registration-deregister', queue_name='registration-service--deregister', competing=True)
     async def deregister(self, data: Dict) -> None:
         self.log('Deregister service "{}" [id: {}]'.format(data.get('name'), data.get('uuid')))

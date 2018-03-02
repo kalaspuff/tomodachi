@@ -19,7 +19,7 @@ class AWSSNSRegistration(object):
             'uuid': service.uuid,
             'http_endpoints': cls.http_endpoints.get(service)
         }
-        await aws_sns_sqs_publish(service, data, topic='services.registration.register')
+        await aws_sns_sqs_publish(service, data, topic='services-registration-register')
 
     @classmethod
     async def _deregister_service(cls, service: Any) -> None:
@@ -29,6 +29,6 @@ class AWSSNSRegistration(object):
             'uuid': service.uuid
         }
         try:
-            await aws_sns_sqs_publish(service, data, topic='services.registration.deregister')
+            await aws_sns_sqs_publish(service, data, topic='services-registration-deregister')
         except Exception:
             logging.getLogger('discovery.aws_sns_registration').info('Deregistering service "{}" failed [id: {}]'.format(service.name, service.uuid))

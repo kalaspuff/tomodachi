@@ -33,19 +33,19 @@ class ExampleAWSSNSSQSService(object):
         }
     }
 
-    @aws_sns_sqs('example.route1')
+    @aws_sns_sqs('example-route1')
     async def route1a(self, data: Any) -> None:
         self.log('Received data (function: route1a) - "{}"'.format(data))
 
-    @aws_sns_sqs('example.route1')
+    @aws_sns_sqs('example-route1')
     async def route1b(self, data: Any) -> None:
         self.log('Received data (function: route1b) - "{}"'.format(data))
 
-    @aws_sns_sqs('example.route2')
+    @aws_sns_sqs('example-route2')
     async def route2(self, data: Any) -> None:
         self.log('Received data (function: route2) - "{}"'.format(data))
 
-    @aws_sns_sqs('example.#')
+    @aws_sns_sqs('example-#')
     async def wildcard_route(self, metadata: Dict, data: Any) -> None:
         self.log('Received data (function: wildcard_route, topic: {}) - "{}"'.format(metadata.get('topic', ''), data))
 
@@ -54,5 +54,5 @@ class ExampleAWSSNSSQSService(object):
             self.log('Publish data "{}"'.format(data))
             await aws_sns_sqs_publish(self, data, topic=topic, wait=False)
 
-        await publish('友達', 'example.route1')
-        await publish('other data', 'example.route2')
+        await publish('友達', 'example-route1')
+        await publish('other data', 'example-route2')
