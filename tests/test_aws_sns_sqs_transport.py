@@ -62,6 +62,9 @@ def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -
     os.kill(os.getpid(), signal.SIGINT)
     loop.run_until_complete(future)
 
+    if not future.done():
+        future.set_result(None)
+
     out, err = capsys.readouterr()
     assert 'The security token included in the request is invalid' in err
     assert out == ''

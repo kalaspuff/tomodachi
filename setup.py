@@ -11,7 +11,8 @@ install_requires = [
     'aiobotocore>=0.5.1, <0.6.0',
     'tzlocal>=1.4',
     'aiohttp>=2.3.8, <2.4.0',
-    'yarl>=1.0.0'
+    'yarl>=1.0.0',
+    'colorama>=0.3.9, <0.4.0'
 ]
 
 PY_VER = sys.version_info

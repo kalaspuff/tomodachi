@@ -102,7 +102,13 @@ class AWSSNSSQSTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('aws_sns_sqs', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, competing: bool=False) -> Any:
+    @classmethod
+    def prefix_queue_name(cls, queue_name: str, context: Dict) -> str:
+        if context.get('options', {}).get('aws_sns_sqs', {}).get('queue_name_prefix'):
+            return '{}{}'.format(context.get('options', {}).get('aws_sns_sqs', {}).get('queue_name_prefix'), queue_name)
+        return queue_name
+
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, competing: Optional[bool]=None, queue_name: Optional[str]=None) -> Any:
         async def handler(payload: Optional[str], receipt_handle: Optional[str]=None, queue_url: Optional[str]=None) -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
@@ -162,22 +168,22 @@ class AWSSNSSQSTransport(Invoker):
                 else:
                     kwargs = {}
                     routine = func(*(obj), **kwargs)
-            except (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException) as e:
-                if message_key:
-                    del context['_aws_sns_sqs_received_messages'][message_key]
-                return
             except Exception as e:
+                if issubclass(e.__class__, (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException)):
+                    if message_key:
+                        del context['_aws_sns_sqs_received_messages'][message_key]
+                    return
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
                 raise e
 
             if isinstance(routine, Awaitable):
                 try:
                     return_value = await routine
-                except (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException) as e:
-                    if message_key:
-                        del context['_aws_sns_sqs_received_messages'][message_key]
-                    return
                 except Exception as e:
+                    if issubclass(e.__class__, (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException)):
+                        if message_key:
+                            del context['_aws_sns_sqs_received_messages'][message_key]
+                        return
                     await cls.delete_message(cls, receipt_handle, queue_url, context)
                     raise e
             else:
@@ -188,7 +194,7 @@ class AWSSNSSQSTransport(Invoker):
             return return_value
 
         context['_aws_sns_sqs_subscribers'] = context.get('_aws_sns_sqs_subscribers', [])
-        context['_aws_sns_sqs_subscribers'].append((topic, competing, func, handler))
+        context['_aws_sns_sqs_subscribers'].append((topic, competing, queue_name, func, handler))
 
         start_func = cls.subscribe(cls, obj, context)
         return (await start_func) if start_func else None
@@ -620,11 +626,16 @@ class AWSSNSSQSTransport(Invoker):
         context['_aws_sns_sqs_subscribed'] = True
 
         async def _subscribe() -> None:
-            async def setup_queue(topic: str, func: Callable, queue_name: Optional[str]=None, competing_consumer: bool=False) -> str:
+            async def setup_queue(topic: str, func: Callable, queue_name: Optional[str]=None, competing_consumer: Optional[bool]=None) -> str:
                 _uuid = obj.uuid
+
+                if queue_name and competing_consumer is False:
+                    raise AWSSNSSQSException('Queue with predefined queue name must be competing', log_level=context.get('log_level'))
 
                 if queue_name is None:
                     queue_name = cls.get_queue_name(cls.encode_topic(topic), func.__name__, _uuid, competing_consumer, context)
+                else:
+                    queue_name = cls.prefix_queue_name(queue_name, context)
 
                 queue_url, queue_arn = await cls.create_queue(cls, queue_name, context)  # type: str, str
 
@@ -636,8 +647,8 @@ class AWSSNSSQSTransport(Invoker):
 
                 return queue_url
 
-            for topic, competing, func, handler in context.get('_aws_sns_sqs_subscribers', []):
-                queue_url = await setup_queue(topic, func, competing_consumer=competing)
+            for topic, competing, queue_name, func, handler in context.get('_aws_sns_sqs_subscribers', []):
+                queue_url = await setup_queue(topic, func, competing_consumer=competing, queue_name=queue_name)
                 await cls.consume_queue(cls, obj, context, handler, queue_url=queue_url)
 
         return _subscribe

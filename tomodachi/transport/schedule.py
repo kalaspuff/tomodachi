@@ -3,6 +3,7 @@ import asyncio
 import time
 import pytz
 import tzlocal
+import traceback
 import inspect
 from typing import Any, Dict, List, Union, Optional, Callable, Tuple  # noqa
 try:
@@ -20,12 +21,13 @@ class Scheduler(Invoker):
         async def handler() -> None:
             values = inspect.getfullargspec(func)
             kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
-            routine = func(*(obj,), **kwargs)
             try:
+                routine = func(*(obj,), **kwargs)
                 if isinstance(routine, Awaitable):
                     await routine
             except Exception as e:
-                pass
+                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                    traceback.print_exception(e.__class__, e, e.__traceback__)
 
         context['_schedule_scheduled_functions'] = context.get('_schedule_scheduled_functions', [])
         context['_schedule_scheduled_functions'].append((interval, timestamp, timezone, func, handler))

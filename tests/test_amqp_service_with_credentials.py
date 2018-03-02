@@ -22,6 +22,7 @@ def test_start_amqp_service_with_credentials(monkeypatch: Any, capsys: Any, loop
         assert instance.test_topic_metadata_topic == 'test.topic'
         assert instance.test_topic_service_uuid == instance.uuid
         assert instance.wildcard_topic_data_received
+        assert instance.test_topic_specified_queue_name_data_received
 
     loop.run_until_complete(_async(loop))
     instance.stop_service()

@@ -6,7 +6,6 @@ import re
 import traceback
 import types
 import uuid
-import os
 from types import ModuleType, TracebackType
 from typing import Dict, Optional, Any
 from tomodachi import CLASS_ATTRIBUTE
@@ -18,8 +17,8 @@ class ServiceContainer(object):
     def __init__(self, module_import: ModuleType, configuration: Optional[Dict]=None) -> None:
         self.module_import = module_import
 
-        self.file_path = '{}/{}.py'.format(os.path.realpath(os.getcwd()), module_import.__name__)
-        self.module_name = module_import.__name__.rsplit('/', 1)[1] if '/' in module_import.__name__ else module_import.__name__
+        self.file_path = module_import.__file__
+        self.module_name = (module_import.__name__.rsplit('/', 1)[1] if '/' in module_import.__name__ else module_import.__name__).rsplit('.', 1)[-1]
         self.configuration = configuration
         self.logger = logging.getLogger('services.{}'.format(self.module_name))
 
