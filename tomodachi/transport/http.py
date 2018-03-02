@@ -357,6 +357,9 @@ class HttpTransport(Invoker):
             websocket = web.WebSocketResponse()
             await websocket.prepare(request)
 
+            context['_http_open_websockets'] = context.get('_http_open_websockets', [])
+            context['_http_open_websockets'].append(websocket)
+
             request.is_websocket = True
             request.websocket_uuid = str(uuid.uuid4())
 
@@ -378,8 +381,36 @@ class HttpTransport(Invoker):
                 for k, v in result.groupdict().items():
                     kwargs[k] = v
 
-            routine = func(*(obj, websocket,), **kwargs)
-            callback_functions = (await routine) if isinstance(routine, Awaitable) else routine  # type: Optional[Union[Tuple, Callable]]
+            try:
+                routine = func(*(obj, websocket,), **kwargs)
+                callback_functions = (await routine) if isinstance(routine, Awaitable) else routine  # type: Optional[Union[Tuple, Callable]]
+            except Exception as e:
+                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                try:
+                    await websocket.close()
+                except Exception:
+                    pass
+
+                try:
+                    context['_http_open_websockets'].remove(websocket)
+                except Exception:
+                    pass
+
+                logging.getLogger('transport.http').info('[{}] {} {} "{} {}{}" {} "{}" {}'.format(
+                    RequestHandler.colorize_status('websocket', 500),
+                    request.request_ip,
+                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                    RequestHandler.colorize_status('ERROR', 500),
+                    request.path,
+                    '?{}'.format(request.query_string) if request.query_string else '',
+                    request.websocket_uuid,
+                    request.headers.get('User-Agent', '').replace('"', ''),
+                    '-'
+                ))
+
+                return
+
             _receive_func = None
             _close_func = None
 
@@ -396,11 +427,36 @@ class HttpTransport(Invoker):
                     if message.type == WSMsgType.TEXT:
                         if _receive_func:
                             await _receive_func(message.data)
-                    elif message.type == WSMsgType.CLOSED or message.type == WSMsgType.ERROR:
-                        break
+                            try:
+                                await _receive_func(message.data)
+                            except Exception as e:
+                                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                    elif message.type == WSMsgType.ERROR:
+                        if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                            ws_exception = websocket.exception()
+                            if isinstance(ws_exception, Exception):
+                                traceback.print_exception(ws_exception.__class__, ws_exception, ws_exception.__traceback__)
+                            else:
+                                logging.getLogger('transport.http').warning('Websocket exception: "{}"'.format(ws_exception))
+                    elif message.type == WSMsgType.CLOSED:
+                        break  # noqa
             finally:
                 if _close_func:
-                    await _close_func()
+                    try:
+                        await _close_func()
+                    except Exception as e:
+                        if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                            traceback.print_exception(e.__class__, e, e.__traceback__)
+                try:
+                    await websocket.close()
+                except Exception:
+                    pass
+
+                try:
+                    context['_http_open_websockets'].remove(websocket)
+                except Exception:
+                    pass
 
         return await cls.request_handler(cls, obj, context, _func, 'GET', url)
 
@@ -552,6 +608,12 @@ class HttpTransport(Invoker):
             async def stop_service(*args: Any, **kwargs: Any) -> None:
                 if stop_method:
                     await stop_method(*args, **kwargs)
+                open_websockets = context.get('_http_open_websockets', [])[:]
+                for websocket in open_websockets:
+                    try:
+                        await websocket.close()
+                    except Exception:
+                        pass
                 server.close()
                 await app.shutdown()
                 if logger_handler:

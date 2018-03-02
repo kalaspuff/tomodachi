@@ -8,6 +8,15 @@ Changes
 - Dropped support for Python versions below 3.5.3 as new ``aiohttp`` requires at least Python 3.5.3. Last version with support for Python 3.5.0, 3.5.1 and 3.5.2 is ``tomodachi==0.8.2``.
 
 
+0.8.3 (2018-03-02)
+------------------
+- Print stack trace for outputs from ``schedule`` invoker functions tasks
+  instead of silently catching exceptions.
+
+- Handle close and receive errors for websockets and cleanly close already
+  opened websockets on service exit.
+
+
 0.8.2 (2018-02-28)
 ------------------
 - Fixed broken HTTP transports due to missing colorama import.
