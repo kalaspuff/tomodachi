@@ -278,7 +278,7 @@ class HttpTransport(Invoker):
 
         async def handler(request: web.Request) -> web.Response:
             result = compiled_pattern.match(request.path)
-            filename = result.groupdict()['filename']
+            filename = result.groupdict()['filename'] if result else ''
             filepath = '{}{}'.format(path, filename)
 
             try:
