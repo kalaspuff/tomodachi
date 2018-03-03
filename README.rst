@@ -19,7 +19,7 @@ AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
 use of any type of transport layer available.
 
 *Tomodachi* (**友達**) *means friends – and since microservices wouldn't make
-sense on their own I think they need to be friends with each other.* 😍 👬 👭 👫
+sense on their own I think they need to be friends with each other.* 😻 👬 👭 👫
 
 
 How do I use this?
@@ -27,9 +27,9 @@ How do I use this?
 
 Installation via pip 🌮
 -----------------------
-::
+:: code:: bash
 
-    $ pip install tomodachi
+    $ local ~$ pip install tomodachi
 
 
 Basic HTTP based service 🌟
