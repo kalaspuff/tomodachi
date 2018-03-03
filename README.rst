@@ -27,7 +27,7 @@ How do I use this?
 
 Installation via pip 🌮
 -----------------------
-:: code:: bash
+.. code:: bash
 
     $ local ~$ pip install tomodachi
 
