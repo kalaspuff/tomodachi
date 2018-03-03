@@ -29,7 +29,7 @@ Installation via pip 🌮
 -----------------------
 .. code:: bash
 
-    $ local ~$ pip install tomodachi
+    local ~$ pip install tomodachi
 
 
 Basic HTTP based service 🌟
