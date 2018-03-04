@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.9.0 (2018-XX-XX)
+0.9.0 (2018-03-04)
 ------------------
 - Updated to use ``aiohttp`` 3.X.X+ and ``aiobotocore`` 0.6.X+.
 
