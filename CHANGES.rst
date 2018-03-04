@@ -7,7 +7,7 @@ Changes
 
 - Dropped support for Python versions below 3.5.3 as new ``aiohttp`` requires
   at least Python 3.5.3. Last version with support for Python 3.5.0, 3.5.1 and
-  3.5.2 is ``tomodachi==0.8.2``.
+  3.5.2 is ``tomodachi`` ``0.8.X`` series.
 
 
 0.8.3 (2018-03-02)
