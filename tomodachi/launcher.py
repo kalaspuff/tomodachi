@@ -47,9 +47,11 @@ class ServiceLauncher(object):
             sys.stdout.write('\b\b\r')
             sys.stdout.flush()
             logging.getLogger('system').warning('Received <ctrl+c> interrupt [SIGINT]')
+            cls.restart_services = False
 
         def sigtermHandler(*args: Any) -> None:
             logging.getLogger('system').warning('Received termination signal [SIGTERM]')
+            cls.restart_services = False
 
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_event_loop()
