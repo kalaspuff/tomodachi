@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.9.1 (2018-03-05)
+------------------
+- ``schedule`` functions limits to 20 running tasks of the same function to
+  prevent overflows in development.
+
+- Fixes an issue where ``scheddle`` tasks stopped executing if a service was
+  hot-reloaded on code change.
+
+- Handles websocket cancellations better if the client would close the
+  connection before the request had been upgraded.
+
+
 0.9.0 (2018-03-04)
 ------------------
 - Updated to use ``aiohttp`` 3.X.X+ and ``aiobotocore`` 0.6.X+.
