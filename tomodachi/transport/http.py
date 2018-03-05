@@ -20,6 +20,7 @@ from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs, WSMs
 from aiohttp.web_fileresponse import FileResponse
 from aiohttp.http import HttpVersion
 from aiohttp.helpers import BasicAuth
+from aiohttp.streams import EofStream
 from tomodachi.invoker import Invoker
 
 
@@ -353,26 +354,49 @@ class HttpTransport(Invoker):
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
+        access_log = context.get('options', {}).get('http', {}).get('access_log', True)
+
         async def _func(obj: Any, request: web.Request) -> None:
             websocket = web.WebSocketResponse()
-            await websocket.prepare(request)
+            try:
+                request.is_websocket = True
+                request.websocket_uuid = str(uuid.uuid4())
+
+                await websocket.prepare(request)
+            except Exception:
+                try:
+                    await websocket.close()
+                except Exception:
+                    pass
+
+                if access_log:
+                    logging.getLogger('transport.http').info('[{}] {} {} "CANCELLED {}{}" {} "{}" {}'.format(
+                        RequestHandler.colorize_status('websocket', 101),
+                        request.request_ip,
+                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                        request.path,
+                        '?{}'.format(request.query_string) if request.query_string else '',
+                        request.websocket_uuid,
+                        request.headers.get('User-Agent', '').replace('"', ''),
+                        '-'
+                    ))
+
+                return
 
             context['_http_open_websockets'] = context.get('_http_open_websockets', [])
             context['_http_open_websockets'].append(websocket)
 
-            request.is_websocket = True
-            request.websocket_uuid = str(uuid.uuid4())
-
-            logging.getLogger('transport.http').info('[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
-                RequestHandler.colorize_status('websocket', 101),
-                request.request_ip,
-                '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
-                request.path,
-                '?{}'.format(request.query_string) if request.query_string else '',
-                request.websocket_uuid,
-                request.headers.get('User-Agent', '').replace('"', ''),
-                '-'
-            ))
+            if access_log:
+                logging.getLogger('transport.http').info('[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
+                    RequestHandler.colorize_status('websocket', 101),
+                    request.request_ip,
+                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                    request.path,
+                    '?{}'.format(request.query_string) if request.query_string else '',
+                    request.websocket_uuid,
+                    request.headers.get('User-Agent', '').replace('"', ''),
+                    '-'
+                ))
 
             result = compiled_pattern.match(request.path)
             values = inspect.getfullargspec(func)
@@ -397,17 +421,18 @@ class HttpTransport(Invoker):
                 except Exception:
                     pass
 
-                logging.getLogger('transport.http').info('[{}] {} {} "{} {}{}" {} "{}" {}'.format(
-                    RequestHandler.colorize_status('websocket', 500),
-                    request.request_ip,
-                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
-                    RequestHandler.colorize_status('ERROR', 500),
-                    request.path,
-                    '?{}'.format(request.query_string) if request.query_string else '',
-                    request.websocket_uuid,
-                    request.headers.get('User-Agent', '').replace('"', ''),
-                    '-'
-                ))
+                if access_log:
+                    logging.getLogger('transport.http').info('[{}] {} {} "{} {}{}" {} "{}" {}'.format(
+                        RequestHandler.colorize_status('websocket', 500),
+                        request.request_ip,
+                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                        RequestHandler.colorize_status('ERROR', 500),
+                        request.path,
+                        '?{}'.format(request.query_string) if request.query_string else '',
+                        request.websocket_uuid,
+                        request.headers.get('User-Agent', '').replace('"', ''),
+                        '-'
+                    ))
 
                 return
 
@@ -435,12 +460,16 @@ class HttpTransport(Invoker):
                     elif message.type == WSMsgType.ERROR:
                         if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
                             ws_exception = websocket.exception()
-                            if isinstance(ws_exception, Exception):
+                            if isinstance(ws_exception, (EofStream, RuntimeError)):
+                                pass
+                            elif isinstance(ws_exception, Exception):
                                 traceback.print_exception(ws_exception.__class__, ws_exception, ws_exception.__traceback__)
                             else:
                                 logging.getLogger('transport.http').warning('Websocket exception: "{}"'.format(ws_exception))
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
+            except Exception as e:
+                pass
             finally:
                 if _close_func:
                     try:
