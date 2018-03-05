@@ -1,6 +1,10 @@
 ``tomodachi`` - a lightweight microservices framework with asyncio
 ==================================================================
-.. image:: https://travis-ci.org/kalaspuff/tomodachi.svg?branch=master
+  A Python 3 microservice framework using asyncio (async / await) with HTTP,
+  websockets, RabbitMQ / AMQP and AWS SNS+SQS built-in support for event based
+  messaging and intra-service communication.
+
+.. image:: https://travis-ci.org/kalaspuff/tomodachi.svg?branch=master 
     :target: https://travis-ci.org/kalaspuff/tomodachi
 .. image:: https://img.shields.io/pypi/v/tomodachi.svg
     :target: https://pypi.python.org/pypi/tomodachi
@@ -8,10 +12,6 @@
     :target: https://codecov.io/gh/kalaspuff/tomodachi
 .. image:: https://img.shields.io/pypi/pyversions/tomodachi.svg
     :target: https://pypi.python.org/pypi/tomodachi
-
-Python 3 microservice framework using asyncio (async / await) with HTTP,
-websockets, RabbitMQ / AMQP and AWS SNS+SQS support for event bus based
-communication.
 
 Tomodachi is a tiny framework designed to build fast microservices listening on
 HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
@@ -22,18 +22,48 @@ use of any type of transport layer available.
 sense on their own I think they need to be friends with each other.* 😻 👬 👭 👫
 
 
+| **Please note: this is a work in progress.** 
+``tomodachi`` is still a highly experimental project with an unregular release 
+schedule.
+
+
+Usage
+-----
+``tomodachi`` is invoked via command line interface.
+
+.. code::
+
+    Usage: tomodachi <subcommand> [options] [args]
+
+    Options:
+      -h, --help             show this help message and exit
+      -v, --version          print tomodachi version
+      --dependency-versions  print versions of dependencies
+
+    Available subcommands:
+      run <service ...> [-c <config-file ...>] [--production]
+      -c, --config <files>   use json configuration files
+      -l, --log <level>      specify log level
+      --production           disable restart on file changes
+
+
 How do I use this?
-==================
+------------------
+Preferrably installation should be done via ``pip`` to get the cli alias set 
+up automatically. Locally it is recommended to install ``tomodachi`` into a 
+virtualenv to avoid random packages into your base site-packages.
 
 Installation via pip 🌮
------------------------
+^^^^^^^^^^^^^^^^^^^^^^^
 .. code:: bash
 
     local ~$ pip install tomodachi
 
 
 Basic HTTP based service 🌟
----------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*Code for a simple service which would service data over HTTP.*
+
 .. code:: python
 
     import tomodachi
@@ -65,8 +95,28 @@ Basic HTTP based service 🌟
             return 'error 404'
 
 
+RabbitMQ or AWS SNS/SQS event based messaging service
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*A service that would invoke a function when messages are published on a topic exchange.*
+
+.. code:: python
+
+    import tomodachi
+
+
+    @tomodachi.service
+    class Service(object):
+        name = 'example'
+
+        # A route / topic on which the service will subscribe to via AMQP (or AWS SNS/SQS)
+        @tomodachi.amqp('example.topic')
+        async def example_topic_func(self, message):
+            # Received message, sending same message as response on another topic
+            await tomodachi.amqp_publish(self, message, routing_key='example.response')
+
+
 Run the service 😎
-------------------
+^^^^^^^^^^^^^^^^^^
 .. code:: bash
 
     # if installed via pip
@@ -85,6 +135,8 @@ Run the service 😎
     2017-10-02 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
     2017-10-02 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
+
+*HTTP service acts like a normal web server.*
 
 .. code:: bash
 
