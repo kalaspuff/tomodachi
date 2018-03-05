@@ -205,25 +205,30 @@ class Scheduler(Invoker):
             tasks = []  # type: List
             current_time = time.time()
             while not cls.close_waiter.done():
-                last_time = current_time
-                actual_time = time.time()
-                current_time = last_time + 1 if int(last_time + 1) < int(actual_time) else actual_time
-                if next_call_at is None:
-                    next_call_at = cls.next_call_at(current_time, interval, timestamp, timezone)
-                    if prev_call_at and prev_call_at == next_call_at:
-                        next_call_at = None
+                try:
+                    last_time = current_time
+                    actual_time = time.time()
+                    current_time = last_time + 1 if int(last_time + 1) < int(actual_time) else actual_time
+                    if next_call_at is None:
+                        next_call_at = cls.next_call_at(current_time, interval, timestamp, timezone)
+                        if prev_call_at and prev_call_at == next_call_at:
+                            next_call_at = None
+                            continue
+                    sleep_diff = int(current_time + 1) - actual_time + 0.001
+                    if sleep_diff > 0:
+                        await asyncio.sleep(sleep_diff)
+                    if next_call_at > time.time():
                         continue
-                sleep_diff = int(current_time + 1) - actual_time + 0.001
-                if sleep_diff > 0:
-                    await asyncio.sleep(sleep_diff)
-                if next_call_at > time.time():
-                    continue
-                if cls.close_waiter.done():
-                    continue
-                prev_call_at = next_call_at
-                next_call_at = None
-                tasks = [task for task in tasks if not task.done()]
-                tasks.append(asyncio.ensure_future(asyncio.shield(handler())))
+                    if cls.close_waiter.done():
+                        continue
+                    prev_call_at = next_call_at
+                    next_call_at = None
+                    tasks = [task for task in tasks if not task.done()]
+                    tasks.append(asyncio.ensure_future(asyncio.shield(handler())))
+                except Exception as e:
+                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                    await asyncio.sleep(1)
 
             if tasks:
                 await asyncio.wait(tasks)
