@@ -4,7 +4,7 @@
   websockets, RabbitMQ / AMQP and AWS SNS+SQS built-in support for event based
   messaging and intra-service communication.
 
-.. image:: https://travis-ci.org/kalaspuff/tomodachi.svg?branch=master 
+.. image:: https://travis-ci.org/kalaspuff/tomodachi.svg?branch=master
     :target: https://travis-ci.org/kalaspuff/tomodachi
 .. image:: https://img.shields.io/pypi/v/tomodachi.svg
     :target: https://pypi.python.org/pypi/tomodachi
@@ -22,8 +22,8 @@ use of any type of transport layer available.
 sense on their own I think they need to be friends with each other.* 😻 👬 👭 👫
 
 
-| **Please note: this is a work in progress.** 
-``tomodachi`` is still a highly experimental project with an unregular release 
+| **Please note: this is a work in progress.**
+``tomodachi`` is still a highly experimental project with an unregular release
 schedule.
 
 
@@ -49,12 +49,10 @@ Usage
 
 How do I use this?
 ------------------
-Preferrably installation should be done via ``pip`` to get the cli alias set 
-up automatically. Locally it is recommended to install ``tomodachi`` into a 
+Preferrably installation should be done via ``pip`` to get the cli alias set
+up automatically. Locally it is recommended to install ``tomodachi`` into a
 virtualenv to avoid random packages into your base site-packages.
 
-Installation via pip 🌮
-^^^^^^^^^^^^^^^^^^^^^^^
 .. code:: bash
 
     local ~$ pip install tomodachi
@@ -67,7 +65,6 @@ Basic HTTP based service 🌟
 .. code:: python
 
     import tomodachi
-
 
     @tomodachi.service
     class Service(object):
@@ -95,14 +92,13 @@ Basic HTTP based service 🌟
             return 'error 404'
 
 
-RabbitMQ or AWS SNS/SQS event based messaging service
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-*A service that would invoke a function when messages are published on a topic exchange.*
+RabbitMQ or AWS SNS/SQS event based messaging service 📡
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*Example of a service that would invoke a function when messages are published on a topic exchange.*
 
 .. code:: python
 
     import tomodachi
-
 
     @tomodachi.service
     class Service(object):
@@ -111,12 +107,12 @@ RabbitMQ or AWS SNS/SQS event based messaging service
         # A route / topic on which the service will subscribe to via AMQP (or AWS SNS/SQS)
         @tomodachi.amqp('example.topic')
         async def example_topic_func(self, message):
-            # Received message, sending same message as response on another topic
+            # Received message, sending same message as response on another route / topic
             await tomodachi.amqp_publish(self, message, routing_key='example.response')
 
 
 Run the service 😎
-^^^^^^^^^^^^^^^^^^
+------------------
 .. code:: bash
 
     # if installed via pip
