@@ -117,8 +117,8 @@ class AmqpTransport(Invoker):
     async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, exchange_name: str='', competing: Optional[bool]=None, queue_name: Optional[str]=None) -> Any:
         async def handler(payload: Any, delivery_tag: Any) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
+            values = inspect.getfullargspec(func)
             if not _callback_kwargs:
-                values = inspect.getfullargspec(func)
                 _callback_kwargs = {k: values.defaults[i - len(values.args) + 1] if values.defaults and i >= len(values.args) - len(values.defaults) - 1 else None for i, k in enumerate(values.args[1:])} if values.args and len(values.args) > 1 else {}
             else:
                 _callback_kwargs = {k: None for k in _callback_kwargs if k != 'self'}
@@ -148,7 +148,7 @@ class AmqpTransport(Invoker):
                         for k, v in message.items():
                             if k in _callback_kwargs:
                                 kwargs[k] = v
-                        if 'message' in _callback_kwargs and 'message' not in kwargs:
+                        if 'message' in _callback_kwargs and 'message' not in message:
                             kwargs['message'] = message
                 except Exception as e:
                     # log message protocol exception
@@ -161,14 +161,16 @@ class AmqpTransport(Invoker):
                     return
 
             try:
-                if len(kwargs):
+                if not message_protocol and len(values.args[1:]):
+                    routine = func(*(obj, message))
+                elif len(kwargs):
                     routine = func(*(obj,), **kwargs)
-                elif len(func.__code__.co_varnames[1:]):
+                elif len(values.args[1:]):
                     kwargs = {}
                     routine = func(*(obj, message), **kwargs)
                 else:
                     kwargs = {}
-                    routine = func(*(obj), **kwargs)
+                    routine = func(*(obj,), **kwargs)
             except Exception as e:
                 if issubclass(e.__class__, (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException)):
                     if message_key:
