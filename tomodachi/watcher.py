@@ -33,7 +33,8 @@ class Watcher(object):
         watched_files = {}
         if not self.watched_files or reindex:
             for r in self.root:
-                for root, dirs, files in os.walk(r):
+                for root, dirs, files in os.walk(r, topdown=True):
+                    dirs[:] = [d for d in dirs if d not in self.ignored_dirs]
                     for file in files:
                         file_path = os.path.join(root, file)
                         _dir = os.path.dirname(file_path)
