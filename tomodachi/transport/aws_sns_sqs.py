@@ -11,11 +11,7 @@ import ujson
 import uuid
 import inspect
 from botocore.parsers import ResponseParserError
-from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match
-try:
-    from typing import Awaitable
-except ImportError:
-    from collections.abc import Awaitable
+from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match, Awaitable
 from tomodachi.invoker import Invoker
 
 DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'
@@ -23,10 +19,7 @@ DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22
 
 class AWSSNSSQSException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        if kwargs and kwargs.get('log_level'):
-            self._log_level = kwargs.get('log_level')
-        else:
-            self._log_level = 'INFO'
+        self._log_level = kwargs.get('log_level') if kwargs and kwargs.get('log_level') else 'INFO'
 
 
 class AWSSNSSQSConnectionException(AWSSNSSQSException):

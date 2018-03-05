@@ -10,11 +10,7 @@ import inspect
 import uuid
 import colorama
 from logging.handlers import WatchedFileHandler
-from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt  # noqa
-try:
-    from typing import Awaitable
-except ImportError:
-    from collections.abc import Awaitable
+from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt, Awaitable  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs, WSMsgType
 from aiohttp.web_fileresponse import FileResponse
@@ -26,10 +22,7 @@ from tomodachi.invoker import Invoker
 
 class HttpException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        if kwargs and kwargs.get('log_level'):
-            self._log_level = kwargs.get('log_level')
-        else:
-            self._log_level = 'INFO'
+        self._log_level = kwargs.get('log_level') if kwargs and kwargs.get('log_level') else 'INFO'
 
 
 class RequestHandler(web_protocol.RequestHandler):
@@ -88,8 +81,6 @@ class RequestHandler(web_protocol.RequestHandler):
                     request.headers.get('User-Agent', '').replace('"', '')
                 ))
 
-        self.log_exception("Error handling request", exc_info=exc)
-
         headers = {}
         headers[hdrs.CONTENT_TYPE] = 'text/plain; charset=utf-8'
 
@@ -104,12 +95,16 @@ class RequestHandler(web_protocol.RequestHandler):
         if request.writer.output_size > 0 or self.transport is None:
             self.force_close()
         elif self.transport is not None:
+            peername = request.transport.get_extra_info('peername')
+            request_ip = None
+            if peername:
+                request_ip, _ = peername
             if self._access_log:
                 logging.getLogger('transport.http').info('[{}] [{}] {} {} "INVALID" {} - "" -'.format(
                     RequestHandler.colorize_status('http', status),
                     RequestHandler.colorize_status(status),
-                    request.request_ip,
-                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                    request.request_ip if getattr(request, 'request_ip', None) else (request_ip or ''),
+                    '"{}"'.format(request.auth.login.replace('"', '')) if getattr(request, 'auth', None) and request.auth and getattr(request.auth, 'login', None) else '-',
                     len(msg)
                 ))
 

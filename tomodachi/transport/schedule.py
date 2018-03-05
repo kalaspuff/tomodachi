@@ -6,11 +6,7 @@ import tzlocal
 import traceback
 import inspect
 import logging
-from typing import Any, Dict, List, Union, Optional, Callable, Tuple  # noqa
-try:
-    from typing import Awaitable
-except ImportError:
-    from collections.abc import Awaitable
+from typing import Any, Dict, List, Union, Optional, Callable, Tuple, Awaitable  # noqa
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.crontab import get_next_datetime
 

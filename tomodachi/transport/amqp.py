@@ -6,20 +6,13 @@ import re
 import binascii
 import asyncio
 import inspect
-from typing import Any, Dict, Union, Optional, Callable, Match
-try:
-    from typing import Awaitable
-except ImportError:
-    from collections.abc import Awaitable
+from typing import Any, Dict, Union, Optional, Callable, Match, Awaitable
 from tomodachi.invoker import Invoker
 
 
 class AmqpException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        if kwargs and kwargs.get('log_level'):
-            self._log_level = kwargs.get('log_level')
-        else:
-            self._log_level = 'INFO'
+        self._log_level = kwargs.get('log_level') if kwargs and kwargs.get('log_level') else 'INFO'
 
 
 class AmqpInternalServiceError(AmqpException):
