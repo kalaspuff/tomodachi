@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.9.4 (2018-03-06)
+------------------
+- Fixes an issue affecting websocket connections where the receive function
+  wes invalidly called twice of which one time were without error handling.
+
+
 0.9.3 (2018-03-06)
 ------------------
 - Solves an error with functions for AMQP / AWS SNS+SQS functions that are used
