@@ -9,7 +9,7 @@ from tomodachi.transport.amqp import amqp, amqp_publish
 
 
 @tomodachi.service
-class AWSSNSSQSService(object):
+class AMQPService(object):
     name = 'test_amqp'
     log_level = 'INFO'
     message_protocol = JsonBase

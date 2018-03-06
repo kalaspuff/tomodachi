@@ -620,7 +620,19 @@ class AWSSNSSQSTransport(Invoker):
             return None
         context['_aws_sns_sqs_subscribed'] = True
 
+        if cls.clients:
+            tasks = []
+            for _, client in cls.clients.items():
+                task = client.close()
+                if getattr(task, '_coro', None):
+                    task = task._coro
+                tasks.append(asyncio.ensure_future(task))
+            await asyncio.wait(tasks, timeout=3)
+            cls.clients = None
+
         async def _subscribe() -> None:
+            cls.close_waiter = asyncio.Future()
+
             async def setup_queue(topic: str, func: Callable, queue_name: Optional[str]=None, competing_consumer: Optional[bool]=None) -> str:
                 _uuid = obj.uuid
 
