@@ -40,3 +40,11 @@ class SchedulerService(object):
     @schedule(timestamp='00:00:00', timezone='Europe/Stockholm')  # with timezone support
     async def midnight_in_sweden(self) -> None:
         self.log('Heartbeat (midnight in Sweden)')
+
+    @schedule(interval=20)
+    async def every_twenty_seconds(self) -> None:
+        self.log('Every 20 seconds')
+
+    @schedule(interval=20, immediately=True)
+    async def every_twenty_seconds_and_immediately(self) -> None:
+        self.log('Every 20 seconds and immediately')
