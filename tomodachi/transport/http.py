@@ -446,7 +446,6 @@ class HttpTransport(Invoker):
                 async for message in websocket:
                     if message.type == WSMsgType.TEXT:
                         if _receive_func:
-                            await _receive_func(message.data)
                             try:
                                 await _receive_func(message.data)
                             except Exception as e:
