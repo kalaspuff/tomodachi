@@ -11,6 +11,11 @@ Changes
 
 - Improved README with event based messaging example using AMQP.
 
+- Added the option of running ``schedule`` tasks immediately on service start.
+  For example a function decorated by
+  ``@schedule(interval=20, immediately=True)`` would be run immediately on
+  service start and then every 20 seconds.
+
 
 0.9.2 (2018-03-05)
 ------------------
@@ -26,7 +31,7 @@ Changes
 - ``schedule`` functions limits to 20 running tasks of the same function to
   prevent overflows in development.
 
-- Fixes an issue where ``scheddle`` tasks stopped executing if a service was
+- Fixes an issue where ``schedule`` tasks stopped executing if a service was
   hot-reloaded on code change.
 
 - Handles websocket cancellations better if the client would close the
