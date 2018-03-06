@@ -18,8 +18,8 @@ HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
 AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
 use of any type of transport layer available.
 
-*Tomodachi* (**友達**) *means friends – and since microservices wouldn't make
-sense on their own I think they need to be friends with each other.* 😻 👬 👭 👫
+*Tomodachi* (**友達**) *means friends – a suitable name for microservices working
+together.* 😻 👬 👭 👫 😻
 
 
 | **Please note: this is a work in progress.**
