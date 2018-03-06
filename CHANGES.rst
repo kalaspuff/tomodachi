@@ -5,7 +5,7 @@ Changes
 ------------------
 - Improved error handling for bad requests (error 400) on HTTP calls.
 
-- File watcher for hot-reload not excludes ignored directories in a more
+- File watcher for hot-reload now excludes ignored directories in a more
   effective way to ease CPU load and for faster boot time for projects
   with thousands of files which should've been ignored.
 
