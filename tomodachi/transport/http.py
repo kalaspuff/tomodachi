@@ -10,25 +10,19 @@ import inspect
 import uuid
 import colorama
 from logging.handlers import WatchedFileHandler
-from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt  # noqa
-try:
-    from typing import Awaitable
-except ImportError:
-    from collections.abc import Awaitable
+from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt, Awaitable  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs, WSMsgType
 from aiohttp.web_fileresponse import FileResponse
 from aiohttp.http import HttpVersion
 from aiohttp.helpers import BasicAuth
+from aiohttp.streams import EofStream
 from tomodachi.invoker import Invoker
 
 
 class HttpException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        if kwargs and kwargs.get('log_level'):
-            self._log_level = kwargs.get('log_level')
-        else:
-            self._log_level = 'INFO'
+        self._log_level = kwargs.get('log_level') if kwargs and kwargs.get('log_level') else 'INFO'
 
 
 class RequestHandler(web_protocol.RequestHandler):
@@ -87,8 +81,6 @@ class RequestHandler(web_protocol.RequestHandler):
                     request.headers.get('User-Agent', '').replace('"', '')
                 ))
 
-        self.log_exception("Error handling request", exc_info=exc)
-
         headers = {}
         headers[hdrs.CONTENT_TYPE] = 'text/plain; charset=utf-8'
 
@@ -103,12 +95,16 @@ class RequestHandler(web_protocol.RequestHandler):
         if request.writer.output_size > 0 or self.transport is None:
             self.force_close()
         elif self.transport is not None:
+            peername = request.transport.get_extra_info('peername')
+            request_ip = None
+            if peername:
+                request_ip, _ = peername
             if self._access_log:
                 logging.getLogger('transport.http').info('[{}] [{}] {} {} "INVALID" {} - "" -'.format(
                     RequestHandler.colorize_status('http', status),
                     RequestHandler.colorize_status(status),
-                    request.request_ip,
-                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                    request.request_ip if getattr(request, 'request_ip', None) else (request_ip or ''),
+                    '"{}"'.format(request.auth.login.replace('"', '')) if getattr(request, 'auth', None) and request.auth and getattr(request.auth, 'login', None) else '-',
                     len(msg)
                 ))
 
@@ -353,26 +349,49 @@ class HttpTransport(Invoker):
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
+        access_log = context.get('options', {}).get('http', {}).get('access_log', True)
+
         async def _func(obj: Any, request: web.Request) -> None:
             websocket = web.WebSocketResponse()
-            await websocket.prepare(request)
+            try:
+                request.is_websocket = True
+                request.websocket_uuid = str(uuid.uuid4())
+
+                await websocket.prepare(request)
+            except Exception:
+                try:
+                    await websocket.close()
+                except Exception:
+                    pass
+
+                if access_log:
+                    logging.getLogger('transport.http').info('[{}] {} {} "CANCELLED {}{}" {} "{}" {}'.format(
+                        RequestHandler.colorize_status('websocket', 101),
+                        request.request_ip,
+                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                        request.path,
+                        '?{}'.format(request.query_string) if request.query_string else '',
+                        request.websocket_uuid,
+                        request.headers.get('User-Agent', '').replace('"', ''),
+                        '-'
+                    ))
+
+                return
 
             context['_http_open_websockets'] = context.get('_http_open_websockets', [])
             context['_http_open_websockets'].append(websocket)
 
-            request.is_websocket = True
-            request.websocket_uuid = str(uuid.uuid4())
-
-            logging.getLogger('transport.http').info('[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
-                RequestHandler.colorize_status('websocket', 101),
-                request.request_ip,
-                '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
-                request.path,
-                '?{}'.format(request.query_string) if request.query_string else '',
-                request.websocket_uuid,
-                request.headers.get('User-Agent', '').replace('"', ''),
-                '-'
-            ))
+            if access_log:
+                logging.getLogger('transport.http').info('[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
+                    RequestHandler.colorize_status('websocket', 101),
+                    request.request_ip,
+                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                    request.path,
+                    '?{}'.format(request.query_string) if request.query_string else '',
+                    request.websocket_uuid,
+                    request.headers.get('User-Agent', '').replace('"', ''),
+                    '-'
+                ))
 
             result = compiled_pattern.match(request.path)
             values = inspect.getfullargspec(func)
@@ -397,17 +416,18 @@ class HttpTransport(Invoker):
                 except Exception:
                     pass
 
-                logging.getLogger('transport.http').info('[{}] {} {} "{} {}{}" {} "{}" {}'.format(
-                    RequestHandler.colorize_status('websocket', 500),
-                    request.request_ip,
-                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
-                    RequestHandler.colorize_status('ERROR', 500),
-                    request.path,
-                    '?{}'.format(request.query_string) if request.query_string else '',
-                    request.websocket_uuid,
-                    request.headers.get('User-Agent', '').replace('"', ''),
-                    '-'
-                ))
+                if access_log:
+                    logging.getLogger('transport.http').info('[{}] {} {} "{} {}{}" {} "{}" {}'.format(
+                        RequestHandler.colorize_status('websocket', 500),
+                        request.request_ip,
+                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                        RequestHandler.colorize_status('ERROR', 500),
+                        request.path,
+                        '?{}'.format(request.query_string) if request.query_string else '',
+                        request.websocket_uuid,
+                        request.headers.get('User-Agent', '').replace('"', ''),
+                        '-'
+                    ))
 
                 return
 
@@ -434,12 +454,16 @@ class HttpTransport(Invoker):
                     elif message.type == WSMsgType.ERROR:
                         if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
                             ws_exception = websocket.exception()
-                            if isinstance(ws_exception, Exception):
+                            if isinstance(ws_exception, (EofStream, RuntimeError)):
+                                pass
+                            elif isinstance(ws_exception, Exception):
                                 traceback.print_exception(ws_exception.__class__, ws_exception, ws_exception.__traceback__)
                             else:
                                 logging.getLogger('transport.http').warning('Websocket exception: "{}"'.format(ws_exception))
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
+            except Exception as e:
+                pass
             finally:
                 if _close_func:
                     try:

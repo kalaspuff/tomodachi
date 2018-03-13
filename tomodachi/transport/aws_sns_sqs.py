@@ -11,11 +11,7 @@ import ujson
 import uuid
 import inspect
 from botocore.parsers import ResponseParserError
-from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match
-try:
-    from typing import Awaitable
-except ImportError:
-    from collections.abc import Awaitable
+from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match, Awaitable
 from tomodachi.invoker import Invoker
 
 DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'
@@ -23,10 +19,7 @@ DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22
 
 class AWSSNSSQSException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        if kwargs and kwargs.get('log_level'):
-            self._log_level = kwargs.get('log_level')
-        else:
-            self._log_level = 'INFO'
+        self._log_level = kwargs.get('log_level') if kwargs and kwargs.get('log_level') else 'INFO'
 
 
 class AWSSNSSQSConnectionException(AWSSNSSQSException):
@@ -115,8 +108,8 @@ class AWSSNSSQSTransport(Invoker):
                 return
 
             _callback_kwargs = callback_kwargs  # type: Any
+            values = inspect.getfullargspec(func)
             if not _callback_kwargs:
-                values = inspect.getfullargspec(func)
                 _callback_kwargs = {k: values.defaults[i - len(values.args) + 1] if values.defaults and i >= len(values.args) - len(values.defaults) - 1 else None for i, k in enumerate(values.args[1:])} if values.args and len(values.args) > 1 else {}
             else:
                 _callback_kwargs = {k: None for k in _callback_kwargs if k != 'self'}
@@ -147,7 +140,7 @@ class AWSSNSSQSTransport(Invoker):
                             for k, v in message.items():
                                 if k in _callback_kwargs:
                                     kwargs[k] = v
-                        if 'message' in _callback_kwargs and 'message' not in kwargs:
+                        if 'message' in _callback_kwargs and 'message' not in message:
                             kwargs['message'] = message
                 except Exception as e:
                     # log message protocol exception
@@ -160,14 +153,16 @@ class AWSSNSSQSTransport(Invoker):
                     return
 
             try:
-                if len(kwargs):
+                if not message_protocol and len(values.args[1:]):
+                    routine = func(*(obj, message))
+                elif len(kwargs):
                     routine = func(*(obj,), **kwargs)
-                elif len(func.__code__.co_varnames[1:]):
+                elif len(values.args[1:]):
                     kwargs = {}
                     routine = func(*(obj, message), **kwargs)
                 else:
                     kwargs = {}
-                    routine = func(*(obj), **kwargs)
+                    routine = func(*(obj,), **kwargs)
             except Exception as e:
                 if issubclass(e.__class__, (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException)):
                     if message_key:
@@ -625,7 +620,19 @@ class AWSSNSSQSTransport(Invoker):
             return None
         context['_aws_sns_sqs_subscribed'] = True
 
+        if cls.clients:
+            tasks = []
+            for _, client in cls.clients.items():
+                task = client.close()
+                if getattr(task, '_coro', None):
+                    task = task._coro
+                tasks.append(asyncio.ensure_future(task))
+            await asyncio.wait(tasks, timeout=3)
+            cls.clients = None
+
         async def _subscribe() -> None:
+            cls.close_waiter = asyncio.Future()
+
             async def setup_queue(topic: str, func: Callable, queue_name: Optional[str]=None, competing_consumer: Optional[bool]=None) -> str:
                 _uuid = obj.uuid
 

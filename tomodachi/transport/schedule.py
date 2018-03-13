@@ -5,11 +5,8 @@ import pytz
 import tzlocal
 import traceback
 import inspect
-from typing import Any, Dict, List, Union, Optional, Callable, Tuple  # noqa
-try:
-    from typing import Awaitable
-except ImportError:
-    from collections.abc import Awaitable
+import logging
+from typing import Any, Dict, List, Union, Optional, Callable, Tuple, Awaitable  # noqa
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.crontab import get_next_datetime
 
@@ -17,7 +14,7 @@ from tomodachi.helpers.crontab import get_next_datetime
 class Scheduler(Invoker):
     close_waiter = None
 
-    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> Any:
+    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None, immediately: Optional[bool]=False) -> Any:
         async def handler() -> None:
             values = inspect.getfullargspec(func)
             kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
@@ -30,7 +27,7 @@ class Scheduler(Invoker):
                     traceback.print_exception(e.__class__, e, e.__traceback__)
 
         context['_schedule_scheduled_functions'] = context.get('_schedule_scheduled_functions', [])
-        context['_schedule_scheduled_functions'].append((interval, timestamp, timezone, func, handler))
+        context['_schedule_scheduled_functions'].append((interval, timestamp, timezone, immediately, func, handler))
 
         start_func = cls.start_scheduler(cls, obj, context)
         return (await start_func) if start_func else None
@@ -190,7 +187,7 @@ class Scheduler(Invoker):
 
         return timezone
 
-    async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> None:
+    async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, func: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None, immediately: Optional[bool]=False) -> None:
         timezone = cls.get_timezone(timezone)
 
         if not cls.close_waiter:
@@ -204,26 +201,42 @@ class Scheduler(Invoker):
             prev_call_at = None
             tasks = []  # type: List
             current_time = time.time()
+            too_many_tasks = False
+            run_immediately = immediately
             while not cls.close_waiter.done():
-                last_time = current_time
-                actual_time = time.time()
-                current_time = last_time + 1 if int(last_time + 1) < int(actual_time) else actual_time
-                if next_call_at is None:
-                    next_call_at = cls.next_call_at(current_time, interval, timestamp, timezone)
-                    if prev_call_at and prev_call_at == next_call_at:
-                        next_call_at = None
+                try:
+                    if not run_immediately:
+                        last_time = current_time
+                        actual_time = time.time()
+                        current_time = last_time + 1 if int(last_time + 1) < int(actual_time) else actual_time
+                        if next_call_at is None:
+                            next_call_at = cls.next_call_at(current_time, interval, timestamp, timezone)
+                            if prev_call_at and prev_call_at == next_call_at:
+                                next_call_at = None
+                                continue
+                        sleep_diff = int(current_time + 1) - actual_time + 0.001
+                        if sleep_diff > 0:
+                            await asyncio.sleep(sleep_diff)
+                        if next_call_at > time.time():
+                            continue
+                    run_immediately = False
+                    if cls.close_waiter.done():
                         continue
-                sleep_diff = int(current_time + 1) - actual_time + 0.001
-                if sleep_diff > 0:
-                    await asyncio.sleep(sleep_diff)
-                if next_call_at > time.time():
-                    continue
-                if cls.close_waiter.done():
-                    continue
-                prev_call_at = next_call_at
-                next_call_at = None
-                tasks = [task for task in tasks if not task.done()]
-                tasks.append(asyncio.ensure_future(asyncio.shield(handler())))
+                    prev_call_at = next_call_at
+                    next_call_at = None
+                    tasks = [task for task in tasks if not task.done()]
+                    if len(tasks) >= 20:
+                        if not too_many_tasks:
+                            too_many_tasks = True
+                            logging.getLogger('transport.schedule').warning('Too many scheduled tasks (20) for function "{}"'.format(func.__name__))
+                        await asyncio.sleep(1)
+                        continue
+                    too_many_tasks = False
+                    tasks.append(asyncio.ensure_future(asyncio.shield(handler())))
+                except Exception as e:
+                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                    await asyncio.sleep(1)
 
             if tasks:
                 await asyncio.wait(tasks)
@@ -268,11 +281,13 @@ class Scheduler(Invoker):
         context['_schedule_loop_started'] = True
 
         async def _schedule() -> None:
-            for interval, timestamp, timezone, func, handler in context.get('_schedule_scheduled_functions', []):
+            cls.close_waiter = asyncio.Future()
+
+            for interval, timestamp, timezone, immediately, func, handler in context.get('_schedule_scheduled_functions', []):
                 cls.next_call_at(time.time(), interval, timestamp, cls.get_timezone(timezone))  # test provided interval/timestamp on init
 
-            for interval, timestamp, timezone, func, handler in context.get('_schedule_scheduled_functions', []):
-                await cls.start_schedule_loop(cls, obj, context, handler, interval, timestamp, timezone)
+            for interval, timestamp, timezone, immediately, func, handler in context.get('_schedule_scheduled_functions', []):
+                await cls.start_schedule_loop(cls, obj, context, handler, func, interval, timestamp, timezone, immediately)
 
         return _schedule
 

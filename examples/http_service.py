@@ -1,20 +1,23 @@
-import logging
 import os
 import asyncio
 import tomodachi
 from typing import Tuple, Callable
 from aiohttp import web
-from tomodachi.discovery.dummy_registry import DummyRegistry
-from tomodachi.protocol.json_base import JsonBase
 from tomodachi import http, http_error, http_static, websocket, HttpResponse
+from tomodachi.discovery import DummyRegistry
 
 
 @tomodachi.service
 class ExampleHttpService(object):
     name = 'example_http_service'
     log_level = 'DEBUG'
+    uuid = os.environ.get('SERVICE_UUID')
+
+    # Build own "discovery" functions, to be run on start and stop
+    # See tomodachi/discovery/dummy_registry.py for example
     discovery = [DummyRegistry]
-    message_protocol = JsonBase
+
+    # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
     options = {
         'http': {
             'port': 4711,
@@ -23,12 +26,11 @@ class ExampleHttpService(object):
             'access_log': True
         }
     }
-    logger = logging.getLogger('log.{}'.format(name))
-    uuid = os.environ.get('SERVICE_UUID')
 
     @http('GET', r'/example/?')
     async def example(self, request: web.Request) -> str:
         await asyncio.sleep(1)
+        asdf
         return '友達'  # tomodachi
 
     @http('GET', r'/example/(?P<id>[^/]+?)/?')
@@ -47,16 +49,16 @@ class ExampleHttpService(object):
     @websocket(r'/websocket/?')
     async def websocket_connection(self, websocket: web.WebSocketResponse) -> Tuple[Callable, Callable]:
         # Called when a websocket client is connected
-        self.logger.info('websocket client connected')
+        self.log('websocket client connected')
 
         async def _receive(data) -> None:
             # Called when the websocket receives data
-            self.logger.info('websocket data received: {}'.format(data))
+            self.log('websocket data received: {}'.format(data))
             await websocket.send_str('response')
 
         async def _close() -> None:
             # Called when the websocket is closed by the other end
-            self.logger.info('websocket closed')
+            self.log('websocket closed')
 
         return _receive, _close
 

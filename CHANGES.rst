@@ -1,6 +1,58 @@
 Changes
 =======
 
+0.9.4 (2018-03-06)
+------------------
+- Fixes an issue affecting websocket connections where the receive function
+  was invalidly called twice of which one time were without error handling.
+
+
+0.9.3 (2018-03-06)
+------------------
+- Solves an error with functions for AMQP / AWS SNS+SQS functions that are used
+  without a message_protocol class.
+
+- Improved disconnect and reconnect to AWS SNS+SQS via aiobotocore on hot-reload
+  and during testing.
+
+- Improved README with event based messaging example using AMQP.
+
+- Added the option of running ``schedule`` tasks immediately on service start.
+  For example a function decorated by
+  ``@schedule(interval=20, immediately=True)`` would be run immediately on
+  service start and then every 20 seconds.
+
+
+0.9.2 (2018-03-05)
+------------------
+- Improved error handling for bad requests (error 400) on HTTP calls.
+
+- File watcher for hot-reload now excludes ignored directories in a more
+  effective way to ease CPU load and for faster boot time for projects
+  with thousands of files which should've been ignored.
+
+
+0.9.1 (2018-03-05)
+------------------
+- ``schedule`` functions limits to 20 running tasks of the same function to
+  prevent overflows in development.
+
+- Fixes an issue where ``schedule`` tasks stopped executing if a service was
+  hot-reloaded on code change.
+
+- Handles websocket cancellations better if the client would close the
+  connection before the request had been upgraded.
+
+
+0.9.0 (2018-03-04)
+------------------
+- Updated to use ``aiohttp`` 3.X.X+ and ``aiobotocore`` 0.6.X+.
+
+- Dropped support for Python versions below 3.5.3 as new ``aiohttp`` requires
+  at least Python 3.5.3. Last version with support for Python 3.5.0, 3.5.1 and
+  3.5.2 is ``tomodachi`` ``0.8.X`` series.
+
+
 0.8.3 (2018-03-02)
 ------------------
 - Print stack trace for outputs from ``schedule`` invoker functions tasks
