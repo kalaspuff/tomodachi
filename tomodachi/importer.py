@@ -17,7 +17,15 @@ class ServiceImporter(object):
         try:
             sys.path.insert(0, cwd)
             sys.path.insert(0, os.path.dirname(os.path.dirname(file_path)))
-            spec = importlib.util.find_spec('.{}'.format(file_path.rsplit('/', 1)[1])[:-3], package=os.path.dirname(file_path).rsplit('/', 1)[1])  # type: Any
+            try:
+                spec = importlib.util.find_spec('.{}'.format(file_path.rsplit('/', 1)[1])[:-3], package=os.path.dirname(file_path).rsplit('/', 1)[1])  # type: Any
+                if not spec:
+                    spec = importlib.util.spec_from_file_location(file_name, file_path)
+            except AttributeError as e:
+                try:
+                    spec = importlib.util.spec_from_file_location(file_name, file_path)
+                except Exception:
+                    raise e
             if not spec:
                 raise OSError
             service_import = importlib.util.module_from_spec(spec)
@@ -32,14 +40,16 @@ class ServiceImporter(object):
         except ImportError as e:
             if file_name.endswith('.py.py'):
                 return cls.import_service_file(file_name[:-3])
-            logging.getLogger('import').warning('Invalid service, unable to load service file "{}"'.format(file_name))
+            logging.getLogger('import').warning('Invalid service, unable to load service file "{}.py"'.format(file_name))
             raise e
         except OSError:
             if file_name.endswith('.py'):
                 return cls.import_service_file(file_name[:-3])
-            logging.getLogger('import').warning('Invalid service, no such service file "{}"'.format(file_name))
+            logging.getLogger('import').warning('Invalid service, no such service file "{}.py"'.format(file_name))
             sys.exit(2)
         except Exception as e:
+            if not file_name.endswith('.py'):
+                file_name = '{}.py'.format(file_name)
             logging.getLogger('import').warning('Unable to load service file "{}"'.format(file_name))
             logging.getLogger('import').warning('Error: {}'.format(e))
             raise e
