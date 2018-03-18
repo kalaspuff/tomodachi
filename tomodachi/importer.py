@@ -27,6 +27,7 @@ class ServiceImporter(object):
                     #  package name already taken, imported service not part of a package
                     spec = importlib.util.spec_from_file_location(file_name, file_path)
             except AttributeError as e:
+                #  package name already taken, imported service not part of a package
                 try:
                     spec = importlib.util.spec_from_file_location(file_name, file_path)
                 except Exception:
