@@ -43,20 +43,24 @@ class ServiceImporter(object):
             if not spec.loader:
                 raise OSError
             spec.loader.exec_module(service_import)
-        except ImportError as e:
+        except (ImportError, ModuleNotFoundError) as e:  # noqa
             if file_name.endswith('.py.py'):
                 return cls.import_service_file(file_name[:-3])
+            if file_name.endswith('.py') and isinstance(e, ModuleNotFoundError):  # noqa
+                return cls.import_service_file(file_name[:-3])
+            if file_name.endswith('.py'):
+                file_name = file_name[:-3]
             logging.getLogger('import').warning('Invalid service, unable to load service file "{}.py"'.format(file_name))
             raise e
         except OSError:
             if file_name.endswith('.py'):
-                return cls.import_service_file(file_name[:-3])
+                file_name = file_name[:-3]
             logging.getLogger('import').warning('Invalid service, no such service file "{}.py"'.format(file_name))
             sys.exit(2)
         except Exception as e:
-            if not file_name.endswith('.py'):
-                file_name = '{}.py'.format(file_name)
-            logging.getLogger('import').warning('Unable to load service file "{}"'.format(file_name))
+            if file_name.endswith('.py'):
+                file_name = file_name[:-3]
+            logging.getLogger('import').warning('Unable to load service file "{}.py"'.format(file_name))
             logging.getLogger('import').warning('Error: {}'.format(e))
             raise e
         return service_import

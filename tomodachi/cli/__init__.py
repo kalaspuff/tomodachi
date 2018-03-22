@@ -108,7 +108,7 @@ class CLI:
             opts, args = getopt.getopt(argv, "hlvV ", ['help', 'log', 'version', 'version', 'dependency-versions'])
         except getopt.GetoptError:
             self.help_command()
-        for opt, arg in opts:
+        for opt, _ in opts:
             if opt in ['-h', '--help']:
                 self.help_command()
             if opt in ['-v', '-V', '--version']:
