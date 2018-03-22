@@ -502,6 +502,7 @@ class HttpTransport(Invoker):
                 logging.getLogger('transport.http').warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             wfh.setLevel(logging.DEBUG)
+            logging.getLogger('transport.http').setLevel(logging.DEBUG)
             logging.getLogger('transport.http').info('Logging to "{}"'.format(access_log))
             logger_handler = wfh
             logging.getLogger('transport.http').addHandler(logger_handler)
