@@ -21,7 +21,7 @@ py==1.5.3
 pyparsing==2.2.0
 pytest==3.5.0
 pytest-cov==2.5.1
-python-dateutil==2.7.0
+python-dateutil==2.7.1
 pytz==2018.3
 requests==2.18.4
 six==1.11.0
