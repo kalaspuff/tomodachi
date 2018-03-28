@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.9.5 (2018-03-16)
+------------------
+- More robust handling of invoking service files that aren't a part of a
+  Python package.
+
+
 0.9.4 (2018-03-06)
 ------------------
 - Fixes an issue affecting websocket connections where the receive function

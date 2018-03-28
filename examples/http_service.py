@@ -30,7 +30,6 @@ class ExampleHttpService(object):
     @http('GET', r'/example/?')
     async def example(self, request: web.Request) -> str:
         await asyncio.sleep(1)
-        asdf
         return '友達'  # tomodachi
 
     @http('GET', r'/example/(?P<id>[^/]+?)/?')
