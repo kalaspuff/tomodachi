@@ -18,7 +18,7 @@ HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
 AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
 use of any type of transport layer available.
 
-*Tomodachi* (**友達**) *means friends – a suitable name for microservices working
+*Tomodachi* [**友達**] *means friends – a suitable name for microservices working
 together.* 😻 👬 👭 👫 😻
 
 
@@ -115,14 +115,18 @@ Run the service 😎
 ------------------
 .. code:: bash
 
-    # if installed via pip
+    # cli alias is set up if installed via pip
+    local ~/src/service$ tomodachi run service.py
+
+    # example if cloned from repo
+    local ~/src/tomodachi$ python tomodachi.py run example/http_service.py
+
+
+*Defaults to output information on stdout.*
+
+.. code:: console
+
     $ tomodachi run service.py
-
-    # if cloned from repo
-    $ python tomodachi.py run service.py
-
-
-.. code:: bash
 
     tomodachi/X.X.XX
     October 02, 2017 - 13:38:00,481516
@@ -134,9 +138,10 @@ Run the service 😎
 
 *HTTP service acts like a normal web server.*
 
-.. code:: bash
+.. code:: console
 
     $ curl -v "http://127.0.0.1:9700/resource/1234"
+
     < HTTP/1.1 200 OK
     < Content-Type: text/plain; charset=utf-8
     < Server: tomodachi
@@ -147,7 +152,7 @@ Run the service 😎
 
 Requirements 👍
 ---------------
-* Python_ 3.5.3+, 3.6+, 3.7+
+* Python_ 3.5.3+, 3.6+
 * aiohttp_
 * aiobotocore_
 * aioamqp_
