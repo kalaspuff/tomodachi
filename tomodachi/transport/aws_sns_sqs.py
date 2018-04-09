@@ -101,7 +101,16 @@ class AWSSNSSQSTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('aws_sns_sqs', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, competing: Optional[bool]=None, queue_name: Optional[str]=None) -> Any:
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, competing: Optional[bool]=None, queue_name: Optional[str]=None, **kwargs: Any) -> Any:
+        parser_kwargs = kwargs
+        message_protocol = context.get('message_protocol')
+        # Validate the parser kwargs if there is a validation function in the
+        # protocol
+        if message_protocol:
+            protocol_kwargs_validation_func = getattr(message_protocol, 'validate', None)
+            if protocol_kwargs_validation_func:
+                protocol_kwargs_validation_func(**parser_kwargs)
+
         async def handler(payload: Optional[str], receipt_handle: Optional[str]=None, queue_url: Optional[str]=None) -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
@@ -115,7 +124,6 @@ class AWSSNSSQSTransport(Invoker):
                 _callback_kwargs = {k: None for k in _callback_kwargs if k != 'self'}
             kwargs = {k: v for k, v in _callback_kwargs.items()}
 
-            message_protocol = context.get('message_protocol')
             message = payload
             message_uuid = None
             message_key = None
@@ -123,7 +131,10 @@ class AWSSNSSQSTransport(Invoker):
                 try:
                     parse_message_func = getattr(message_protocol, 'parse_message', None)
                     if parse_message_func:
-                        message, message_uuid, timestamp = await parse_message_func(payload)
+                        if len(parser_kwargs):
+                            message, message_uuid, timestamp = await parse_message_func(payload, **parser_kwargs)
+                        else:
+                            message, message_uuid, timestamp = await parse_message_func(payload)
                     if message is not False and message_uuid:
                         if not context.get('_aws_sns_sqs_received_messages'):
                             context['_aws_sns_sqs_received_messages'] = {}
