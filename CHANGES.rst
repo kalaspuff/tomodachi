@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.10.0 (2018-XX-XX)
+-------------------
+- Base example message protocol class for using Protocol Buffers over AMQP
+  or AWS SNS+SQS.
+
+- Updates to work with ``aiohttp`` 3.1.X+.
+
+- Improved logging functionality.
+
+- Better type hinting and linting.
+
+
 0.9.5 (2018-03-16)
 ------------------
 - More robust handling of invoking service files that aren't a part of a
