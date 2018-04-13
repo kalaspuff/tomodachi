@@ -1,3 +1,4 @@
+import base64
 import os
 import signal
 import time
@@ -9,6 +10,7 @@ from google.protobuf.json_format import MessageToJson
 
 from proto_build.message_pb2 import Person
 from run_test_service_helper import start_service
+from tomodachi.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
 
 
 def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
@@ -83,9 +85,9 @@ def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
         data.name = 'John Doe'
         data.id = '12'
         t1 = time.time()
-        json_message = await instance.message_protocol.build_message(instance, 'topic', data)
+        protobuf_message = await instance.message_protocol.build_message(instance, 'topic', data)
         t2 = time.time()
-        result, message_uuid, timestamp = await instance.message_protocol.parse_message(json_message, Person)
+        result, message_uuid, timestamp = await instance.message_protocol.parse_message(protobuf_message, Person)
         assert result.get('data') == data
         assert result.get('metadata', {}).get('data_encoding') == 'base64'
         assert result.get('data') == data
@@ -98,10 +100,11 @@ def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
         assert timestamp >= t1
         assert timestamp <= t2
 
-        tmp_message = ujson.loads(json_message)
-        tmp_message['metadata']['compatible_protocol_versions'] = 'non-compatible'
-        json_message = ujson.dumps(tmp_message)
-        result, message_uuid, timestamp = await instance.message_protocol.parse_message(json_message, Person)
+        tmp_message = SNSSQSMessage()
+        tmp_message.ParseFromString(base64.b64decode(protobuf_message))
+        tmp_message.metadata.compatible_protocol_versions.pop()
+        tmp_message.metadata.compatible_protocol_versions.append('non-compatible')
+        result, message_uuid, timestamp = await instance.message_protocol.parse_message(base64.b64encode(tmp_message.SerializeToString()), Person)
         assert result is False
         assert message_uuid[0:36] == instance.uuid
         assert timestamp >= t1
