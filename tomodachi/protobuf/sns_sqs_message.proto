@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package proto;
+
+message Service {
+    string name = 1;
+    string uuid = 2;
+}
+
+message Metadata {
+    string message_uuid = 1;
+    string protocol_version = 2;
+    repeated string compatible_protocol_versions = 3;
+    double timestamp = 4;
+    string topic = 5;
+    string data_encoding = 6;
+}
+
+message SNSSQSMessage {
+    Service service = 1;
+    Metadata metadata = 2;
+    string data = 3;
+}
