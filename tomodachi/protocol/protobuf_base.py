@@ -1,3 +1,4 @@
+import logging
 import uuid
 import time
 import base64
@@ -55,6 +56,7 @@ class ProtobufBase(object):
                     # for non-static functions
                     validator(obj)
         except Exception as e:
+            logging.getLogger('protocol.protobuf_base').warning(e)
             raise e
 
         return {
