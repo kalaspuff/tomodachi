@@ -2,12 +2,12 @@ import re
 
 
 class RegexMissmatchException(Exception):
-    def __init__(self, value: str, pattern: str):
+    def __init__(self, value: str, pattern: str) -> None:
         message = f'RegexMissmatchException: value "{value}" does not match pattern "{pattern}"'
         super().__init__(message)
 
 
-def validate_field_regex(value: str, pattern_str: str):
+def validate_field_regex(value: str, pattern_str: str) -> None:
     pattern = re.compile(pattern_str)
     if not pattern.match(value):
         raise RegexMissmatchException(value=value, pattern=pattern_str)

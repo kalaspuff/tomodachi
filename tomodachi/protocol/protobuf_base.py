@@ -2,7 +2,7 @@ import logging
 import uuid
 import time
 import base64
-from typing import Any, Dict, Tuple, Union, Callable
+from typing import Any, Dict, Tuple, Union
 
 from tomodachi.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
 
@@ -34,7 +34,7 @@ class ProtobufBase(object):
         return base64.b64encode(message.SerializeToString())
 
     @classmethod
-    async def parse_message(cls, payload: str, proto_class: Any, validator: Callable = None) -> Union[Dict, Tuple]:
+    async def parse_message(cls, payload: str, proto_class: Any, validator: Any = None) -> Union[Dict, Tuple]:
         message = SNSSQSMessage()
         message.ParseFromString(base64.b64decode(payload))
 
@@ -56,7 +56,7 @@ class ProtobufBase(object):
                     # for non-static functions
                     validator(obj)
             except Exception as e:
-                logging.getLogger('protocol.protobuf_base').warning(e)
+                logging.getLogger('protocol.protobuf_base').warning(e.__str__())
                 raise e
 
         return {
