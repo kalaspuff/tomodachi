@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 import time
 import base64
@@ -10,7 +11,19 @@ PROTOCOL_VERSION = 'protobuf_base-wip'
 COMPATIBLE_PROTOCOL_VERSIONS = ['protobuf_base-wip']
 
 
+class ProtobufValidationRegexException(Exception):
+    def __init__(self, value: str, pattern: str):
+        message = f'ProtobufValidationRegexException: value "{value}" does not match pattern "{pattern}"'
+        super().__init__(message)
+
+
 class ProtobufBase(object):
+
+    @staticmethod
+    def validate_field_regex(value: str, pattern_str: str):
+        pattern = re.compile(pattern_str)
+        if not pattern.match(value):
+            raise ProtobufValidationRegexException(value=value, pattern=pattern_str)
 
     @classmethod
     def validate(cls, **kwargs: Any) -> None:
