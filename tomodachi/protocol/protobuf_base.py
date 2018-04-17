@@ -47,17 +47,17 @@ class ProtobufBase(object):
         obj = proto_class()
         obj.ParseFromString(base64.b64decode(message.data))
 
-        try:
-            if validator is not None:
+        if validator is not None:
+            try:
                 if hasattr(validator, '__func__'):
                     # for static functions
                     validator.__func__(obj)
                 else:
                     # for non-static functions
                     validator(obj)
-        except Exception as e:
-            logging.getLogger('protocol.protobuf_base').warning(e)
-            raise e
+            except Exception as e:
+                logging.getLogger('protocol.protobuf_base').warning(e)
+                raise e
 
         return {
             'service': {
