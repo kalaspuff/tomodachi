@@ -3,7 +3,7 @@ import re
 
 class RegexMissmatchException(Exception):
     def __init__(self, value: str, pattern: str) -> None:
-        message = f'RegexMissmatchException: value "{value}" does not match pattern "{pattern}"'
+        message = 'RegexMissmatchException: value "{}" does not match pattern "{}"'.format(value, pattern)
         super().__init__(message)
 
 
