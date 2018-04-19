@@ -22,7 +22,7 @@ if not PY_VER >= (3, 5, 3):
 
 
 def read(f: str) -> str:
-    return str(open(os.path.join(os.path.dirname(__file__), f)).read().strip())
+    return str(open(os.path.join(os.path.dirname(__file__), f), 'rb').read().decode().strip())
 
 
 classifiers = [
