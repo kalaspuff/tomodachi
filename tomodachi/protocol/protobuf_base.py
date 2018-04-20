@@ -1,3 +1,4 @@
+import logging
 import uuid
 import time
 import base64
@@ -33,7 +34,7 @@ class ProtobufBase(object):
         return base64.b64encode(message.SerializeToString())
 
     @classmethod
-    async def parse_message(cls, payload: str, proto_class: Any) -> Union[Dict, Tuple]:
+    async def parse_message(cls, payload: str, proto_class: Any, validator: Any = None) -> Union[Dict, Tuple]:
         message = SNSSQSMessage()
         message.ParseFromString(base64.b64decode(payload))
 
@@ -45,6 +46,18 @@ class ProtobufBase(object):
 
         obj = proto_class()
         obj.ParseFromString(base64.b64decode(message.data))
+
+        if validator is not None:
+            try:
+                if hasattr(validator, '__func__'):
+                    # for static functions
+                    validator.__func__(obj)
+                else:
+                    # for non-static functions
+                    validator(obj)
+            except Exception as e:
+                logging.getLogger('protocol.protobuf_base').warning(e.__str__())
+                raise e
 
         return {
             'service': {
