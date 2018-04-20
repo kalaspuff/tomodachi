@@ -1,10 +1,13 @@
 Changes
 =======
 
-0.10.0 (2018-XX-XX)
+0.10.0 (2018-04-20)
 -------------------
 - Base example message protocol class for using Protocol Buffers over AMQP
-  or AWS SNS+SQS.
+  or AWS SNS+SQS. (github: **smaaland**).
+
+- Validation of event based messages via validation function specified
+  during decoration. (github: **smaaland**)
 
 - Updates to work with ``aiohttp`` 3.1.X+.
 
