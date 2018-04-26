@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.10.1 (2018-04-26)
+-------------------
+- Fixes a bug for optional dependency ``protobuf``. ``message_protocol``
+  imports would break unless the ``google.protobuf`` package was installed.
+
+
 0.10.0 (2018-04-20)
 -------------------
 - Base example message protocol class for using Protocol Buffers over AMQP
