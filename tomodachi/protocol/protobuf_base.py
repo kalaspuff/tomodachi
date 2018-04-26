@@ -11,7 +11,6 @@ COMPATIBLE_PROTOCOL_VERSIONS = ['protobuf_base-wip']
 
 
 class ProtobufBase(object):
-
     @classmethod
     def validate(cls, **kwargs: Any) -> None:
         if 'proto_class' not in kwargs:
