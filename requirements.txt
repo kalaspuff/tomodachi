@@ -13,7 +13,7 @@ coverage==4.5.1
 docutils==0.14
 jmespath==0.9.3
 multidict==4.1.0
-mypy==0.590
+mypy==0.600
 packaging==17.1
 protobuf==3.5.2.post1
 pycares==2.3.0
