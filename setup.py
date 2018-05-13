@@ -8,9 +8,9 @@ install_requires = [
     'aioamqp>=0.10.0, <0.11.0',
     'ujson>=1.35',
     'uvloop>=0.8.1',
-    'aiobotocore>=0.6.0, <0.7.0',
+    'aiobotocore>=0.6.0, <0.9.0',
     'tzlocal>=1.4',
-    'aiohttp>=3.0.5, <3.2.0',
+    'aiohttp>=3.0.5, <3.3.0',
     'yarl>=1.1.0',
     'colorama>=0.3.9, <0.4.0'
 ]
@@ -22,7 +22,7 @@ if not PY_VER >= (3, 5, 3):
 
 
 def read(f: str) -> str:
-    return str(open(os.path.join(os.path.dirname(__file__), f)).read().strip())
+    return str(open(os.path.join(os.path.dirname(__file__), f), 'rb').read().decode().strip())
 
 
 classifiers = [

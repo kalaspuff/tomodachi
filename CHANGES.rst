@@ -1,6 +1,27 @@
 Changes
 =======
 
+0.10.1 (2018-04-26)
+-------------------
+- Fixes a bug for optional dependency ``protobuf``. ``message_protocol``
+  imports would break unless the ``google.protobuf`` package was installed.
+
+
+0.10.0 (2018-04-20)
+-------------------
+- Base example message protocol class for using Protocol Buffers over AMQP
+  or AWS SNS+SQS. (github: **smaaland**).
+
+- Validation of event based messages via validation function specified
+  during decoration. (github: **smaaland**)
+
+- Updates to work with ``aiohttp`` 3.1.X+.
+
+- Improved logging functionality.
+
+- Better type hinting and linting.
+
+
 0.9.5 (2018-03-16)
 ------------------
 - More robust handling of invoking service files that aren't a part of a
