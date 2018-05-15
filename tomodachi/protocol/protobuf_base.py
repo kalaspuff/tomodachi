@@ -29,8 +29,8 @@ class ProtobufBase(object):
         message.metadata.timestamp = time.time()
         message.metadata.topic = topic
         message.metadata.data_encoding = 'base64'
-        message.data = base64.b64encode(data.SerializeToString())
-        return base64.b64encode(message.SerializeToString())
+        message.data = base64.b64encode(data.SerializeToString()).decode('ascii')
+        return base64.b64encode(message.SerializeToString()).decode('ascii')
 
     @classmethod
     async def parse_message(cls, payload: str, proto_class: Any, validator: Any = None) -> Union[Dict, Tuple]:
