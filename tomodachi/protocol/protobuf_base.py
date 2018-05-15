@@ -19,7 +19,7 @@ class ProtobufBase(object):
             raise Exception('proto_class is not a GeneratedProtocolMessageType')
 
     @classmethod
-    async def build_message(cls, service: Any, topic: str, data: Any) -> bytes:
+    async def build_message(cls, service: Any, topic: str, data: Any) -> str:
         message = SNSSQSMessage()
         message.service.name = getattr(service, 'name', None)
         message.service.uuid = getattr(service, 'uuid', None)
