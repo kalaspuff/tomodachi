@@ -151,7 +151,9 @@ class AmqpTransport(Invoker):
                         if 'message' in _callback_kwargs and 'message' not in message:
                             kwargs['message'] = message
                 except Exception as e:
-                    # log message protocol exception
+                    if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                        logging.getLogger('transport.amqp').exception(str(e))
+
                     if message is not False and not message_uuid:
                         await cls.channel.basic_client_ack(delivery_tag)
                     elif message is False and message_uuid:
@@ -172,6 +174,9 @@ class AmqpTransport(Invoker):
                     kwargs = {}
                     routine = func(*(obj,), **kwargs)
             except Exception as e:
+                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
+                    logging.getLogger('transport.amqp').exception(str(e))
+
                 if issubclass(e.__class__, (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException)):
                     if message_key:
                         del context['_amqp_received_messages'][message_key]
