@@ -646,15 +646,9 @@ class HttpTransport(Invoker):
             setattr(obj, '_stop_service', stop_service)
 
             for method, pattern, handler in context.get('_http_routes', []):
-                try:
-                    for registry in obj.discovery:
-                        try:
-                            if getattr(registry, 'add_http_endpoint'):
-                                await registry.add_http_endpoint(obj, host, port, method, pattern)
-                        except AttributeError:
-                            pass
-                except AttributeError:
-                    pass
+                for registry in getattr(obj, 'discovery', []):
+                    if getattr(registry, 'add_http_endpoint', None):
+                        await registry.add_http_endpoint(obj, host, port, method, pattern)
 
             logging.getLogger('transport.http').info('Listening [http] on http://{}:{}/'.format('127.0.0.1' if host == '0.0.0.0' else host, port))
 
