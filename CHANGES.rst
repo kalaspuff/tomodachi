@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.10.2 (2018-05-15)
+-------------------
+- Encoding issue for Protocol Buffers messages solved.
+  (github: **smaaland**).
+
+- Support for ``aiobotocore`` 0.8.X+.
+
+
 0.10.1 (2018-04-26)
 -------------------
 - Fixes a bug for optional dependency ``protobuf``. ``message_protocol``
