@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.11.0 (2018-05-15)
+-------------------
+- Propagation of exceptions in invoked functions to be able to hook in
+  exception handlers into logging. (github: **0x1EE7**)
+
+
 0.10.2 (2018-05-15)
 -------------------
 - Encoding issue for Protocol Buffers messages solved.
