@@ -3,7 +3,6 @@ import asyncio
 import time
 import pytz
 import tzlocal
-import traceback
 import inspect
 import logging
 from typing import Any, Dict, List, Union, Optional, Callable, Tuple, Awaitable  # noqa
@@ -24,7 +23,7 @@ class Scheduler(Invoker):
                     await routine
             except Exception as e:
                 if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                    logging.getLogger('transport.schedule').exception(str(e))
 
         context['_schedule_scheduled_functions'] = context.get('_schedule_scheduled_functions', [])
         context['_schedule_scheduled_functions'].append((interval, timestamp, timezone, immediately, func, handler))
@@ -235,7 +234,7 @@ class Scheduler(Invoker):
                     tasks.append(asyncio.ensure_future(asyncio.shield(handler())))
                 except Exception as e:
                     if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                        logging.getLogger('transport.schedule').exception(str(e))
                     await asyncio.sleep(1)
 
             if tasks:
