@@ -5,7 +5,6 @@ import importlib
 import logging
 import datetime
 import uvloop
-import traceback
 import os
 import multidict  # noqa
 import yarl  # noqa
@@ -72,7 +71,7 @@ class ServiceLauncher(object):
                     try:
                         ServiceImporter.import_service_file(file)
                     except (SyntaxError, IndentationError) as e:
-                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                        logging.getLogger('watcher.restart').exception(str(e))
                         logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
                         cls.restart_services = False
                         return
@@ -88,7 +87,7 @@ class ServiceLauncher(object):
                                 if m == module_name or (len(m) > len(file) and module_name_full_path.endswith(m)):
                                     ServiceImporter.import_module(file)
                         except (SyntaxError, IndentationError) as e:
-                            traceback.print_exception(e.__class__, e, e.__traceback__)
+                            logging.getLogger('watcher.restart').exception(str(e))
                             logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
                             cls.restart_services = False
                             return
@@ -123,7 +122,7 @@ class ServiceLauncher(object):
                 if exception:
                     raise exception[0]
             except Exception as e:
-                traceback.print_exception(e.__class__, e, e.__traceback__)
+                logging.getLogger('watcher.restart').exception(str(e))
                 if restarting:
                     logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
                     logging.getLogger('watcher.restart').warning('Trying again in 1.5 seconds')

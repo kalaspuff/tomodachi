@@ -3,7 +3,6 @@ import asyncio
 import sys
 import logging
 import re
-import traceback
 import types
 import uuid
 from types import ModuleType, TracebackType
@@ -156,9 +155,9 @@ class ServiceContainer(object):
                 self.stop_service()
                 try:
                     if not getattr(e, '_log_level') or getattr(e, '_log_level') in ['DEBUG']:
-                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                        self.logger.exception(str(e))
                 except AttributeError:
-                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                    self.logger.exception(str(e))
 
             if started_futures and any(started_futures):
                 await asyncio.wait([asyncio.ensure_future(func()) for func in started_futures if func])
