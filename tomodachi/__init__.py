@@ -2,6 +2,7 @@ from typing import Any
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 try:
     import tomodachi.helpers.logging
+    from tomodachi.invoker import decorator
     from tomodachi.transport.amqp import (amqp,
                                           amqp_publish)
     from tomodachi.transport.aws_sns_sqs import (aws_sns_sqs,
