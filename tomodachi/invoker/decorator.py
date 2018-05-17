@@ -4,13 +4,12 @@ import types
 
 
 class DecorationClass(object):
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: str) -> Any:
         if name == '__class__':
             return types.FunctionType
         return super(DecorationClass, self).__getattribute__(name)
 
-    def __init__(self, fn, decorator_fn, include_function):
-        self.__call__ = fn.__call__
+    def __init__(self, fn: Any, decorator_fn: Any, include_function: bool) -> None:
         self.__closure__ = fn.__closure__
         self.__code__ = fn.__code__
         self.__doc__ = fn.__doc__
@@ -20,13 +19,13 @@ class DecorationClass(object):
         self.__annotations__ = fn.__annotations__
         self.__kwdefaults__ = fn.__kwdefaults__
 
-        self.args = None
-        self.kwargs = None
+        self.args = None  # type: Any
+        self.kwargs = None  # type: Any
         self.function = fn
         self.decorator_function = decorator_fn
         self.include_function = include_function
 
-    async def __call__(self, *args, **kwargs):
+    async def __call__(self, *args: Any, **kwargs: Any) -> Any:
         self.args = args
         self.kwargs = kwargs
 
@@ -40,15 +39,16 @@ class DecorationClass(object):
             return (await routine) if isinstance(routine, Awaitable) else routine
         return return_value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<function {} at {}>'.format(self.__qualname__, hex(id(self)))
 
 
-def decorator(include_function: bool=False):
+def decorator(include_function: bool=False) -> Callable:
     fn = None
     if include_function and callable(include_function):
         fn = include_function
         include_function = False
+
     def _decorator(decorator_func: Callable) -> Callable:
         def _wrapper(func: Callable) -> Callable:
             class_func = DecorationClass(func, decorator_func, include_function)
