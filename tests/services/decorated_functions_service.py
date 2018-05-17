@@ -5,7 +5,6 @@ import tomodachi
 from typing import Any
 from aiohttp import web
 from tomodachi.transport.http import http
-from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
 @tomodachi.decorator
@@ -37,7 +36,6 @@ def count_invocations_0(self: Any, *args: Any, **kwargs: Any) -> str:
 @tomodachi.service
 class HttpService(object):
     name = 'test_http'
-    discovery = [DummyRegistry]
     options = {
         'http': {
             'port': None,
