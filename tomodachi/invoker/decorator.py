@@ -1,8 +1,8 @@
 import functools
-from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt, Awaitable  # noqa
+from typing import Any, Callable, Awaitable  # noqa
 
 
-def decorator(include_function=False) -> Callable:
+def decorator(include_function: bool=False) -> Callable:
     fn = None
     if include_function and callable(include_function):
         fn = include_function

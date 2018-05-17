@@ -2,34 +2,34 @@ import asyncio
 import os
 import signal
 import tomodachi
-from typing import Any, Dict, Tuple, Callable, Union  # noqa
+from typing import Any
 from aiohttp import web
-from tomodachi.transport.http import http, http_error, http_static, websocket, Response
+from tomodachi.transport.http import http
 from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
 @tomodachi.decorator
-async def count_invocations_1(self, *args, **kwargs):
+async def count_invocations_1(self: Any, *args: Any, **kwargs: Any) -> None:
     self.invocation_count += 1
 
 
 @tomodachi.decorator()
-async def count_invocations_2(self, *args, **kwargs):
+async def count_invocations_2(self: Any, *args: Any, **kwargs: Any) -> None:
     self.invocation_count += 1
 
 
 @tomodachi.decorator(include_function=True)
-async def count_invocations_3(func, self, *args, **kwargs):
+async def count_invocations_3(func: Any, self: Any, *args: Any, **kwargs: Any) -> None:
     self.invocation_count += 1
 
 
 @tomodachi.decorator
-def count_invocations_4(self, *args, **kwargs):
+def count_invocations_4(self: Any, *args: Any, **kwargs: Any) -> None:
     self.invocation_count += 1
 
 
 @tomodachi.decorator
-def count_invocations_0(self, *args, **kwargs):
+def count_invocations_0(self: Any, *args: Any, **kwargs: Any) -> str:
     self.invocation_count += 1
     return '0'
 
@@ -48,9 +48,6 @@ class HttpService(object):
     invocation_count = 0
     uuid = None
     closer = asyncio.Future()  # type: Any
-    slow_request = False
-    websocket_connected = False
-    websocket_received_data = None
 
     @http('GET', r'/count/1/?')
     @count_invocations_1
