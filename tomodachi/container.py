@@ -135,8 +135,7 @@ class ServiceContainer(object):
                 self.logger.warning('Failed to start service')
                 started_futures = set()
                 self.stop_service()
-                if not getattr(e, '_log_level', None) or getattr(e, '_log_level', None) in ['DEBUG']:
-                    self.logger.exception(str(e))
+                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
 
             if started_futures and any(started_futures):
                 await asyncio.wait([asyncio.ensure_future(func()) for func in started_futures if func])

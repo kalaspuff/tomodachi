@@ -179,8 +179,7 @@ class Response(object):
             try:
                 body_value = body.encode(charset.lower())
             except (ValueError, LookupError, UnicodeEncodeError) as e:
-                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                    logging.getLogger('transport.http').exception(str(e))
+                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 raise web.HTTPInternalServerError() from e
         elif self._body:
             body_value = self._body.encode() if not isinstance(self._body, bytes) else self._body
@@ -403,8 +402,7 @@ class HttpTransport(Invoker):
                 routine = func(*(obj, websocket,), **kwargs)
                 callback_functions = (await routine) if isinstance(routine, Awaitable) else routine  # type: Optional[Union[Tuple, Callable]]
             except Exception as e:
-                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                    logging.getLogger('transport.http').exception(str(e))
+                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 try:
                     await websocket.close()
                 except Exception:
@@ -448,15 +446,14 @@ class HttpTransport(Invoker):
                             try:
                                 await _receive_func(message.data)
                             except Exception as e:
-                                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                                    logging.getLogger('transport.http').exception(str(e))
+                                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                     elif message.type == WSMsgType.ERROR:
                         if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
                             ws_exception = websocket.exception()
                             if isinstance(ws_exception, (EofStream, RuntimeError)):
                                 pass
                             elif isinstance(ws_exception, Exception):
-                                logging.getLogger('transport.http').exception(str(ws_exception))
+                                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(ws_exception)))
                             else:
                                 logging.getLogger('transport.http').warning('Websocket exception: "{}"'.format(ws_exception))
                     elif message.type == WSMsgType.CLOSED:
@@ -468,8 +465,7 @@ class HttpTransport(Invoker):
                     try:
                         await _close_func()
                     except Exception as e:
-                        if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                            logging.getLogger('transport.http').exception(str(e))
+                        logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 try:
                     await websocket.close()
                 except Exception:
@@ -554,8 +550,7 @@ class HttpTransport(Invoker):
                                 response.body = str(e).encode('utf-8')
                         except Exception as e:
                             error_handler = context.get('_http_error_handler', {}).get(500, None)
-                            if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                                logging.getLogger('transport.http').exception(str(e))
+                            logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                             if error_handler:
                                 response = await error_handler(request)
                                 response.headers[hdrs.SERVER] = server_header or ''
