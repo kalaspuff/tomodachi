@@ -4,8 +4,8 @@ Changes
 0.11.1 (2018-05-18)
 -------------------
 - Decorators for invoker functions already decorated with for example
-  `@tomodachi.http` or `@tomodachi.aws_sns_sqs` is not easier to
-  implement using the `@tomodachi.decorator` decorator.
+  ``@tomodachi.http`` or ``@tomodachi.aws_sns_sqs`` is not easier to
+  implement using the ``@tomodachi.decorator`` decorator.
 
 - Added improved exception logging from HTTP and schedule invokers also
   to the AWS SNS+SQS and AMQP endpoints. Unhandled exceptions are now
