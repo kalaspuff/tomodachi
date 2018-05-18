@@ -132,7 +132,7 @@ Run the service 😎
 
 *Defaults to output information on stdout.*
 
-.. code:: console
+.. code:: bash
 
     local ~/code/service$ tomodachi run service.py
 
@@ -146,7 +146,7 @@ Run the service 😎
 
 *HTTP service acts like a normal web server.*
 
-.. code:: console
+.. code:: bash
 
     local ~$ curl -v "http://127.0.0.1:9700/resource/1234"
 
@@ -254,7 +254,7 @@ Offered under the `MIT license <https://github.com/kalaspuff/tomodachi/blob/mast
 
 Source code 🦄
 --------------
-The latest developer version of tomodachi is available at the GitHub repo https://github.com/kalaspuff/tomodachi
+The latest developer version of ``tomodachi`` is available at the GitHub repo https://github.com/kalaspuff/tomodachi
 
 
 Any questions?
@@ -272,4 +272,8 @@ Should I run this in production?
   The library is proviedd as is and update schedules are unregular. It's all still highly experimental and it depends on other experimental projects, so you have to be in charge here and decide for yourself. Let me know if you do however!
 
 Who built this and why?
-  My name is **Carl Oscar Aaro** and I'm a coder from Sweden. I simply wanted to learn more about asyncio and needed a constructive off-work project to experiment with – and here we are. 🎉
+  My name is **Carl Oscar Aaro** and I'm a coder from Sweden. I simply wanted to learn more about asyncio and needed a constructive off-work project to experiment with – and here we are. Nowadays I use ``tomodachi`` as a base for many smaller projects where I just want to be able to focus on the application itself, while still having the power of building distributed systems. 🎉
+  
+
+* https://github.com/kalaspuff
+* https://www.linkedin.com/in/carloscaraaro/
