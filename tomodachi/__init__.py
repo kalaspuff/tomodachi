@@ -31,17 +31,13 @@ __all__ = ['service', 'Service', '__version__', '__version_info__',
            'schedule', 'heartbeat', 'minutely', 'hourly', 'daily', 'monthly']
 
 CLASS_ATTRIBUTE = 'TOMODACHI_SERVICE_CLASS'
-EMPTY_LAMBDA = lambda: None
+
 
 def service(cls: Any) -> Any:
     setattr(cls, CLASS_ATTRIBUTE, True)
     if not getattr(cls, 'log', None):
         cls.log = tomodachi.helpers.logging.log
-    elif callable(cls.log) and inspect.getfullargspec(cls.log) == inspect.getfullargspec(EMPTY_LAMBDA):
-        cls.log = tomodachi.helpers.logging.log
     if not getattr(cls, 'log_setup', None):
-        cls.log_setup = tomodachi.helpers.logging.log_setup
-    elif callable(cls.log_setup) and inspect.getfullargspec(cls.log_setup) == inspect.getfullargspec(EMPTY_LAMBDA):
         cls.log_setup = tomodachi.helpers.logging.log_setup
     return cls
 
