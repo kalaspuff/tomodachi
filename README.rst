@@ -162,9 +162,13 @@ Example of ``tomodachi`` service containerized in Docker 🐳
 -----------------------------------------------------------
 Great ways to run microservices are either to run them in Docker or running them serverless.
 Here's an example of getting a tomodachi service up and running in Docker in no-time. The
-base-image also sets up nginx and proxies requests from port 80 to the service backend on 8080.
+base-image (``kalaspuff/python-nginx-proxy``) also sets up ``nginx`` and proxies requests from 
+port 80 to the service backend on 8080.
 
-**./Dockerfile**
+We're building a container using just two small files, the ``Dockerfile`` and the actual code
+for the microservice, ``service.py``.
+
+**Dockerfile**
 
 .. code:: dockerfile
 
@@ -182,7 +186,7 @@ base-image also sets up nginx and proxies requests from port 80 to the service b
     ADD service.py .
     CMD tomodachi run service.py --production
 
-**./service.py**
+**service.py**
 
 .. code:: python
 
@@ -201,7 +205,7 @@ base-image also sets up nginx and proxies requests from port 80 to the service b
         async def index_endpoint(self, request):
             return 'friends forever!'
 
-**Building and running the container, forwarding host's port 31337 to port 80**
+*Building and running the container, forwarding host's port 31337 to port 80.*
 
 .. code:: console
 
@@ -214,7 +218,7 @@ base-image also sets up nginx and proxies requests from port 80 to the service b
     2017-10-02 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:8080/
     2017-10-02 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
-**Making requests to the running container**
+*Making requests to the running container.*
 
 .. code:: console
 
