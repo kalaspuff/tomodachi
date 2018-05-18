@@ -43,7 +43,7 @@ class DecorationClass(object):
         return '<function {} at {}>'.format(self.__qualname__, hex(id(self)))
 
 
-def decorator(include_function: bool=False) -> Callable:
+def decorator(include_function: Any=False) -> Callable:
     fn = None
     if include_function and callable(include_function):
         fn = include_function

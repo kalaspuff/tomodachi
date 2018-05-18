@@ -2,5 +2,5 @@ import tomodachi
 
 
 @tomodachi.service
-class EmptyService(object):
+class EmptyService(tomodachi.Service):
     name = 'test_empty'

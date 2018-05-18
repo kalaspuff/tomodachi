@@ -2,21 +2,20 @@ import os
 import asyncio
 import tomodachi
 import uuid
-from typing import Any, Optional, Union
+from typing import Any
 from aiohttp import web
-from tomodachi import http, http_error, http_static, websocket, HttpResponse
-from tomodachi.discovery import DummyRegistry
+from tomodachi import http, HttpResponse
 
 
 @tomodachi.decorator
-async def require_auth_token(instance: Any, request: web.Request) -> Optional[Union[HttpResponse, bool]]:
+async def require_auth_token(instance: Any, request: web.Request) -> Any:
     post_body = await request.read() if request.body_exists else None
     if post_body.decode() != instance.allowed_token:
         return HttpResponse(body='Invalid token', status=403)
 
 
 @tomodachi.service
-class ExampleHttpAuthService(object):
+class ExampleHttpAuthService(tomodachi.Service):
     name = 'example_http_auth_service'
     log_level = 'DEBUG'
     allowed_token = str(uuid.uuid4())

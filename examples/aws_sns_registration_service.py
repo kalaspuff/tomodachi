@@ -5,8 +5,7 @@ from tomodachi import aws_sns_sqs
 from tomodachi.protocol import JsonBase
 
 
-@tomodachi.service
-class AWSSNSRegistrationService(object):
+class AWSSNSRegistrationService(tomodachi.Service):
     name = 'example_aws_sns_registration_service'
     log_level = 'INFO'
     uuid = os.environ.get('SERVICE_UUID')

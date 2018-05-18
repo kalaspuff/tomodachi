@@ -67,7 +67,7 @@ Basic HTTP based service 🌟
     import tomodachi
 
     @tomodachi.service
-    class Service(object):
+    class Service(tomodachi.Service):
         name = 'example'
 
         # Request paths are specified as regex for full flexibility
@@ -101,7 +101,7 @@ RabbitMQ or AWS SNS/SQS event based messaging service 📡
     import tomodachi
 
     @tomodachi.service
-    class Service(object):
+    class Service(tomodachi.Service):
         name = 'example'
 
         # A route / topic on which the service will subscribe to via AMQP (or AWS SNS/SQS)
@@ -109,6 +109,14 @@ RabbitMQ or AWS SNS/SQS event based messaging service 📡
         async def example_topic_func(self, message):
             # Received message, sending same message as response on another route / topic
             await tomodachi.amqp_publish(self, message, routing_key='example.response')
+
+
+Scheduling, inter-communication between services, etc. ⚡️
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+There are other examples available with examples of how to use services with self-invoking
+methods called on a specified interval or at specific times / days. Inter-communication
+between different services may be established using a pub-sub type with messages over AMQP
+or AWS SNS+SQS which is natively supported.
 
 
 Run the service 😎
@@ -150,6 +158,73 @@ Run the service 😎
     id = 1234
 
 
+Example of tomodachi in Docker 🐳
+---------------------------------
+Great ways to run microservices are either to run them in Docker or running them serverless.
+Here's an example of getting a tomodachi service up and running in Docker in no-time. The
+base-image also sets up nginx and proxies requests from port 80 to the service backend on 8080.
+
+*Dockerfile*
+
+.. code:: dockerfile
+
+    FROM kalaspuff/python-nginx-proxy:1.1.0
+    WORKDIR /
+    RUN apt-get -y update \
+        && apt-get install -y build-essential=12.3 \
+        && pip install tomodachi \
+        && apt-get purge -y --auto-remove build-essential \
+        && apt-get clean autoclean \
+        && apt-get autoremove -y \
+        && rm -rf /var/lib/{apt,dpkg,cache,log}/
+    RUN mkdir /app
+    WORKDIR /app
+    ADD service.py .
+    CMD tomodachi run service.py --production
+
+*service.py*
+
+.. code:: python
+
+    import tomodachi
+
+    @tomodachi.service
+    class Service(tomodachi.Service):
+        name = 'example'
+        options = {
+            'http': {
+                'port': 8080
+            }
+        }
+
+        @tomodachi.http('GET', r'/health')
+        async def health_check(self, request):
+            return 'healthy'
+
+*Building and running the container*
+
+.. code:: console
+
+    $ docker build .
+
+.. code:: console
+
+    $ docker run -ti -p 31337:80 ab6d88c9e3c1
+    2017-10-02 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    2017-10-02 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:8080/
+    2017-10-02 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+
+*Making requests to the running container*
+
+.. code:: console
+
+    $ curl http://127.0.0.1:31337/health
+    healthy
+
+
+Nothing more nothing less. It's actually as easy as that.
+
+
 Requirements 👍
 ---------------
 * Python_ 3.5.3+, 3.6+
@@ -181,16 +256,16 @@ The latest developer version of tomodachi is available at the GitHub repo https:
 Any questions?
 ==============
 What is the best way to run a tomodachi service?
-  There is no way to tell you how to orchestrate your infrastructure. Some people may run it containerized in a Docker environment, deployed via Terraform and some may run several services on the same environment, on the same machine. There are no standards and we're not here to tell you about your best practices.
+  There is no way to tell you how to orchestrate your infrastructure. Some people may run it containerized in a Docker environment, deployed via Terraform / Nomad / Kubernetes and some may run several services on the same environment, on the same machine. There may be best practices but theres no way telling you how to orchestrate your application environment.
 
 Are there any more example services?
   There are a few examples in the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples>`_ folder, including examples to publish events/messages to an AWS SNS topic and subscribe to an AWS SQS queue. There's also a similar example of how to work with pub-sub for RabbitMQ via AMQP transport protocol.
 
 Why should I use this?
-  I'm not saying you should, but I'm not saying you shouldn't. ``tomodachi`` is a perfect place to start when experimenting with your architecture or trying out a concept for a new service. It may not have all the features you desire and it may never do.
+  ``tomodachi`` is a perfect place to start when experimenting with your architecture or trying out a concept for a new service. It may not have all the features you desire and it may never do, but I believe it's great for bootstrapping microservices in async Python.
 
 Should I run this in production?
-  It's all still highly experimental and it depends on other experimental projects, so you have to be in charge here and decide for yourself. Let me know if you do however!
+  The library is proviedd as is and update schedules are unregular. It's all still highly experimental and it depends on other experimental projects, so you have to be in charge here and decide for yourself. Let me know if you do however!
 
 Who built this and why?
   My name is **Carl Oscar Aaro** and I'm a coder from Sweden. I simply wanted to learn more about asyncio and needed a constructive off-work project to experiment with – and here we are. 🎉

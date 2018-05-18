@@ -34,7 +34,7 @@ def count_invocations_0(self: Any, *args: Any, **kwargs: Any) -> str:
 
 
 @tomodachi.service
-class HttpService(object):
+class HttpService(tomodachi.Service):
     name = 'test_http'
     options = {
         'http': {

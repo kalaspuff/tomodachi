@@ -9,7 +9,7 @@ from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
 @tomodachi.service
-class HttpService(object):
+class HttpService(tomodachi.Service):
     name = 'test_http'
     discovery = [DummyRegistry]
     options = {
