@@ -1,6 +1,15 @@
 Changes
 =======
 
+0.11.2 (2018-05-19)
+-------------------
+- Improved base documentation.
+
+- Improved and updated examples.
+
+- Type hinting corrections for examples.
+
+
 0.11.1 (2018-05-18)
 -------------------
 - Decorators for invoker functions already decorated with for example
