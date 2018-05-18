@@ -124,17 +124,17 @@ Run the service 😎
 .. code:: bash
 
     # cli alias is set up if installed via pip
-    local ~/src/service$ tomodachi run service.py
+    local ~/code/service$ tomodachi run service.py
 
     # example if cloned from repo
-    local ~/src/tomodachi$ python tomodachi.py run example/http_service.py
+    local ~/code/tomodachi$ python tomodachi.py run example/http_simple_service.py
 
 
 *Defaults to output information on stdout.*
 
 .. code:: console
 
-    $ tomodachi run service.py
+    local ~/code/service$ tomodachi run service.py
 
     tomodachi/X.X.XX
     October 02, 2017 - 13:38:00,481516
@@ -148,7 +148,7 @@ Run the service 😎
 
 .. code:: console
 
-    $ curl -v "http://127.0.0.1:9700/resource/1234"
+    local ~$ curl -v "http://127.0.0.1:9700/resource/1234"
 
     < HTTP/1.1 200 OK
     < Content-Type: text/plain; charset=utf-8
@@ -209,11 +209,11 @@ for the microservice, ``service.py``.
 
 .. code:: console
 
-    $ docker build . -t tomodachi-microservice
+    local ~/code/service$ docker build . -t tomodachi-microservice
 
 .. code:: console
 
-    $ docker run -ti -p 31337:80 tomodachi-microservice
+    local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
     2017-10-02 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
     2017-10-02 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:8080/
     2017-10-02 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
@@ -222,7 +222,7 @@ for the microservice, ``service.py``.
 
 .. code:: console
 
-    $ curl http://127.0.0.1:31337/
+    local ~$ curl http://127.0.0.1:31337/
     friends forever!
 
 
