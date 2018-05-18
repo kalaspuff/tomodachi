@@ -158,13 +158,13 @@ Run the service 😎
     id = 1234
 
 
-Example of tomodachi in Docker 🐳
----------------------------------
+Example of ``tomodachi`` service containerized in Docker 🐳
+-----------------------------------------------------------
 Great ways to run microservices are either to run them in Docker or running them serverless.
 Here's an example of getting a tomodachi service up and running in Docker in no-time. The
 base-image also sets up nginx and proxies requests from port 80 to the service backend on 8080.
 
-*Dockerfile*
+**./Dockerfile**
 
 .. code:: dockerfile
 
@@ -182,7 +182,7 @@ base-image also sets up nginx and proxies requests from port 80 to the service b
     ADD service.py .
     CMD tomodachi run service.py --production
 
-*service.py*
+**./service.py**
 
 .. code:: python
 
@@ -197,29 +197,29 @@ base-image also sets up nginx and proxies requests from port 80 to the service b
             }
         }
 
-        @tomodachi.http('GET', r'/health')
-        async def health_check(self, request):
-            return 'healthy'
+        @tomodachi.http('GET', r'/')
+        async def index_endpoint(self, request):
+            return 'friends forever!'
 
-*Building and running the container*
-
-.. code:: console
-
-    $ docker build .
+**Building and running the container, forwarding host's port 31337 to port 80**
 
 .. code:: console
 
-    $ docker run -ti -p 31337:80 ab6d88c9e3c1
+    $ docker build . -t tomodachi-microservice
+
+.. code:: console
+
+    $ docker run -ti -p 31337:80 tomodachi-microservice
     2017-10-02 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
     2017-10-02 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:8080/
     2017-10-02 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
-*Making requests to the running container*
+**Making requests to the running container**
 
 .. code:: console
 
-    $ curl http://127.0.0.1:31337/health
-    healthy
+    $ curl http://127.0.0.1:31337/
+    friends forever!
 
 
 Nothing more nothing less. It's actually as easy as that.
@@ -255,7 +255,7 @@ The latest developer version of tomodachi is available at the GitHub repo https:
 
 Any questions?
 ==============
-What is the best way to run a tomodachi service?
+What is the best way to run a ``tomodachi`` service?
   There is no way to tell you how to orchestrate your infrastructure. Some people may run it containerized in a Docker environment, deployed via Terraform / Nomad / Kubernetes and some may run several services on the same environment, on the same machine. There may be best practices but theres no way telling you how to orchestrate your application environment.
 
 Are there any more example services?
