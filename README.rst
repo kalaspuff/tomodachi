@@ -58,6 +58,16 @@ virtualenv to avoid random packages into your base site-packages.
     local ~$ pip install tomodachi
 
 
+Getting started 🏃
+^^^^^^^^^^^^^^^^^^
+*Start off with* ``import tomodachi`` *and add a class decorated with* 
+``@tomodachi.service`` *and/or extended from the* ``tomodachi.Service`` *class. 
+Name your service class and then just add functions and triggers for how to 
+invoke  them, either by HTTP requests, event messages or by timestamps / 
+intervals.*
+
+
+
 Basic HTTP based service 🌟
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 *Code for a simple service which would service data over HTTP.*
@@ -65,6 +75,7 @@ Basic HTTP based service 🌟
 .. code:: python
 
     import tomodachi
+
 
     @tomodachi.service
     class Service(tomodachi.Service):
@@ -99,6 +110,7 @@ RabbitMQ or AWS SNS/SQS event based messaging service 📡
 .. code:: python
 
     import tomodachi
+
 
     @tomodachi.service
     class Service(tomodachi.Service):
@@ -191,6 +203,7 @@ for the microservice, ``service.py``.
 .. code:: python
 
     import tomodachi
+
 
     @tomodachi.service
     class Service(tomodachi.Service):
