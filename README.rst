@@ -59,8 +59,6 @@ virtualenv to avoid random packages into your base site-packages.
 
 .. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
 
-``- Building and running a microservice in 30 seconds.`` 👆
-
 
 Getting started 🏃
 ^^^^^^^^^^^^^^^^^^
