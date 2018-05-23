@@ -20,7 +20,7 @@ pycares==2.3.0
 pycodestyle==2.3.1
 py==1.5.3
 pyparsing==2.2.0
-pytest==3.5.1
+pytest==3.6.0
 pytest-cov==2.5.1
 python-dateutil==2.7.3
 pytz==2018.4
