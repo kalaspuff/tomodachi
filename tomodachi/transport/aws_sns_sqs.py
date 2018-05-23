@@ -154,7 +154,7 @@ class AWSSNSSQSTransport(Invoker):
                         if 'message' in _callback_kwargs and 'message' not in message:
                             kwargs['message'] = message
                 except Exception as e:
-                    # log message protocol exception
+                    logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.delete_message(cls, receipt_handle, queue_url, context)
                     elif message is False and message_uuid:
@@ -175,23 +175,25 @@ class AWSSNSSQSTransport(Invoker):
                     kwargs = {}
                     routine = func(*(obj,), **kwargs)
             except Exception as e:
+                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 if issubclass(e.__class__, (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException)):
                     if message_key:
                         del context['_aws_sns_sqs_received_messages'][message_key]
                     return
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
-                raise e
+                return
 
             if isinstance(routine, Awaitable):
                 try:
                     return_value = await routine
                 except Exception as e:
+                    logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                     if issubclass(e.__class__, (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException)):
                         if message_key:
                             del context['_aws_sns_sqs_received_messages'][message_key]
                         return
                     await cls.delete_message(cls, receipt_handle, queue_url, context)
-                    raise e
+                    return
             else:
                 return_value = routine
 

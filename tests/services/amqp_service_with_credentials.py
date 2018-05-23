@@ -9,7 +9,7 @@ from tomodachi.transport.amqp import amqp, amqp_publish
 
 
 @tomodachi.service
-class AMQPService(object):
+class AMQPService(tomodachi.Service):
     name = 'test_amqp'
     log_level = 'INFO'
     message_protocol = JsonBase

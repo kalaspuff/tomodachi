@@ -93,10 +93,7 @@ class CLI:
                 index = args.index('-l') if '-l' in args else args.index('--log')
                 args.pop(index)
                 if len(args) > index:
-                    try:
-                        log_level = getattr(logging, args.pop(index).upper())
-                    except AttributeError:
-                        pass
+                    log_level = getattr(logging, args.pop(index).upper(), None) or log_level
 
             logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=log_level)
             logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')

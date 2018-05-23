@@ -8,7 +8,7 @@ from tomodachi.transport.http import http, http_error
 
 
 @tomodachi.service
-class HttpService(object):
+class HttpService(tomodachi.Service):
     name = 'test_http'
     options = {
         'http': {

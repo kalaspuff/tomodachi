@@ -6,7 +6,7 @@ import tomodachi
 
 
 @tomodachi.service
-class LoggingService(object):
+class LoggingService(tomodachi.Service):
     name = 'test_logging'
     log_path = '/tmp/7815c7d6-5637-4bfd-ad76-324f4329a6b8.log'
 

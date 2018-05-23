@@ -1,10 +1,10 @@
 aioamqp==0.10.0
-aiobotocore==0.6.0
+aiobotocore==0.8.0
 aiodns==1.1.1
 aiohttp==3.2.1
 async-timeout==2.0.1
 attrs==18.1.0
-botocore==1.8.21
+botocore==1.10.12
 cchardet==2.1.1
 chardet==3.0.4
 codecov==2.0.15
@@ -12,7 +12,7 @@ colorama==0.3.9
 coverage==4.5.1
 docutils==0.14
 jmespath==0.9.3
-multidict==4.1.0
+multidict==4.3.0
 mypy==0.600
 packaging==17.1
 protobuf==3.5.2.post1
@@ -20,9 +20,9 @@ pycares==2.3.0
 pycodestyle==2.3.1
 py==1.5.3
 pyparsing==2.2.0
-pytest==3.5.1
+pytest==3.6.0
 pytest-cov==2.5.1
-python-dateutil==2.7.2
+python-dateutil==2.7.3
 pytz==2018.4
 requests==2.18.4
 six==1.11.0

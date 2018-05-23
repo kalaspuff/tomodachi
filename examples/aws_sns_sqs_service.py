@@ -7,7 +7,7 @@ from tomodachi.protocol import JsonBase
 
 
 @tomodachi.service
-class ExampleAWSSNSSQSService(object):
+class ExampleAWSSNSSQSService(tomodachi.Service):
     name = 'example_aws_sns_sqs_service'
     log_level = 'INFO'
     uuid = os.environ.get('SERVICE_UUID')
