@@ -57,11 +57,7 @@ virtualenv to avoid random packages into your base site-packages.
 
     local ~$ pip install tomodachi
 
-
-Building and running a microservice in 30 seconds
--------------------------------------------------
-
-.. image:: https://github.com/kalaspuff/tomodachi/raw/feature/docs/docs/assets/microservice-in-30-seconds-white.gif
+.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
 
 
 Getting started 🏃
