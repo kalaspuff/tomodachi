@@ -9,7 +9,7 @@ import inspect
 import uuid
 import colorama
 from logging.handlers import WatchedFileHandler
-from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt, Awaitable  # noqa
+from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt, Awaitable, Mapping, Iterable  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs, WSMsgType
 from aiohttp.web_fileresponse import FileResponse
@@ -221,21 +221,23 @@ class HttpTransport(Invoker):
 
             status = 200
             headers = None
-
             if isinstance(return_value, dict):
                 body = return_value.get('body')
                 _status = return_value.get('status')  # type: Optional[SupportsInt]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
-                if return_value.get('headers'):
-                    headers = CIMultiDict(return_value.get('headers'))
+                _returned_headers = return_value.get('headers')
+                if _returned_headers:
+                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str]]]
+                    headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
                 _status = return_value[0]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
                 body = return_value[1]
                 if len(return_value) > 2:
-                    headers = CIMultiDict(return_value[2])
+                    returned_headers = return_value[2]
+                    headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, web.Response):
                 return return_value
             else:
@@ -319,15 +321,18 @@ class HttpTransport(Invoker):
                 _status = return_value.get('status')  # type: Optional[SupportsInt]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
-                if return_value.get('headers'):
-                    headers = CIMultiDict(return_value.get('headers'))
+                _returned_headers = return_value.get('headers')
+                if _returned_headers:
+                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str]]]
+                    headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
                 _status = return_value[0]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
                 body = return_value[1]
                 if len(return_value) > 2:
-                    headers = CIMultiDict(return_value[2])
+                    returned_headers = return_value[2]
+                    headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, web.Response):
                 return return_value
             else:
