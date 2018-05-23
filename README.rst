@@ -57,6 +57,8 @@ virtualenv to avoid random packages into your base site-packages.
 
     local ~$ pip install tomodachi
 
+.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
+
 
 Getting started 🏃
 ^^^^^^^^^^^^^^^^^^
