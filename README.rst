@@ -47,6 +47,9 @@ Usage
       --production           disable restart on file changes
 
 
+.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
+
+
 How do I use this? (simple install using ``pip``)
 -------------------------------------------------
 Preferrably installation should be done via ``pip`` to get the cli alias set
@@ -56,8 +59,6 @@ virtualenv to avoid random packages into your base site-packages.
 .. code:: bash
 
     local ~$ pip install tomodachi
-
-.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
 
 
 Getting started 🏃
