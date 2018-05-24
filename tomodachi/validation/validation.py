@@ -26,7 +26,7 @@ def validate_field_regex(value: str, pattern_str: str) -> None:
         raise RegexMissmatchException(value=value, pattern=pattern_str)
 
 
-def validate_length(obj: Union[List, str], min_length: int=-1, max_length: int=-1) -> None:
+def validate_field_length(obj: Union[List, str], min_length: int=-1, max_length: int=-1) -> None:
     if min_length != -1:
         if len(obj) < min_length:
             raise TooSmallException(obj=obj, min_length=min_length)
