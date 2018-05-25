@@ -21,8 +21,8 @@ use of any type of transport layer available.
 *Tomodachi* [**友達**] *means friends – a suitable name for microservices working
 together.* 😻 👬 👭 👫 😻
 
-
 | **Please note: this is a work in progress.**
+
 ``tomodachi`` is still a highly experimental project with an unregular release
 schedule.
 
@@ -127,7 +127,7 @@ RabbitMQ or AWS SNS/SQS event based messaging service 📡
 
 
 Scheduling, inter-communication between services, etc. ⚡️
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 There are other examples available with examples of how to use services with self-invoking
 methods called on a specified interval or at specific times / days. Inter-communication
 between different services may be established using a pub-sub type with messages over AMQP
