@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.11.3 (2018-05-25)
+-------------------
+- Added additional function for message validation functionality.
+  (github: **smaaland**)
+
+- Updated documentation and examples.
+
+
 0.11.2 (2018-05-19)
 -------------------
 - Improved base documentation.
