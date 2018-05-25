@@ -1,1 +1,1 @@
-tomodachi==0.11.2
+tomodachi==0.11.3
