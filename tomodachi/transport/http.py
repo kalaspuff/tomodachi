@@ -130,20 +130,6 @@ class DynamicResource(web_urldispatcher.DynamicResource):
         self._formatter = ''
 
 
-class UrlDispatcher(web_urldispatcher.UrlDispatcher):
-    def add_pattern_route(self, method: str, pattern: str, handler: Callable, *, name: Optional[str]=None, expect_handler: Optional[Callable]=None) -> web_urldispatcher.ResourceRoute:
-        try:
-            compiled_pattern = re.compile(pattern)
-        except re.error as exc:
-            raise ValueError(
-                "Bad pattern '{}': {}".format(pattern, exc)) from None
-        resource = DynamicResource(compiled_pattern, name=name)
-        self.register_resource(resource)
-        if method == 'GET':
-            resource.add_route('HEAD', handler, expect_handler=expect_handler)
-        return resource.add_route(method, handler, expect_handler=expect_handler)
-
-
 class Response(object):
     def __init__(self, *, body: Optional[str]=None, status: int=200, reason: Optional[str]=None, headers: Optional[Union[Dict, CIMultiDict, CIMultiDictProxy]]=None, content_type: Optional[str]=None, charset: Optional[str]=None) -> None:
         if headers is None:
@@ -608,9 +594,19 @@ class HttpTransport(Invoker):
 
                 return middleware_handler
 
-            app = web.Application(loop=loop, router=UrlDispatcher(), middlewares=[middleware], client_max_size=(1024 ** 2) * 100)
+            app = web.Application(middlewares=[middleware], client_max_size=(1024 ** 2) * 100)
+            app._set_loop(None)
             for method, pattern, handler in context.get('_http_routes', []):
-                app.router.add_pattern_route(method.upper(), pattern, handler)
+                try:
+                    compiled_pattern = re.compile(pattern)
+                except re.error as exc:
+                    raise ValueError(
+                        "Bad pattern '{}': {}".format(pattern, exc)) from None
+                resource = DynamicResource(compiled_pattern)
+                app.router.register_resource(resource)
+                if method.upper() == 'GET':
+                    resource.add_route('HEAD', handler, expect_handler=None)
+                resource.add_route(method.upper(), handler, expect_handler=None)
 
             port = context.get('options', {}).get('http', {}).get('port', 9700)
             host = context.get('options', {}).get('http', {}).get('host', '0.0.0.0')
