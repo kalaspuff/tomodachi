@@ -73,6 +73,9 @@ class ServiceImporter(object):
                 if service_import_name and str(e) == "Parent module '{}' not loaded, cannot perform relative import".format(service_import_name):
                     logging.getLogger('import').warning('Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(file_path.rsplit('/', 2)[1]))
                     raise ServicePackageError from e
+                if str(e) == "Parent module '' not loaded, cannot perform relative import":
+                    logging.getLogger('import').warning('Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(file_path.rsplit('/', 2)[1]))
+                    raise ServicePackageError from e
                 raise e
         except (ImportError, ModuleNotFoundError) as e:  # noqa
             if file_name.endswith('.py.py'):
