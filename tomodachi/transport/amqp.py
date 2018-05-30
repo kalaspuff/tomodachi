@@ -151,7 +151,7 @@ class AmqpTransport(Invoker):
                         if 'message' in _callback_kwargs and 'message' not in message:
                             kwargs['message'] = message
                 except Exception as e:
-                    # log message protocol exception
+                    logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.channel.basic_client_ack(delivery_tag)
                     elif message is False and message_uuid:
@@ -172,25 +172,27 @@ class AmqpTransport(Invoker):
                     kwargs = {}
                     routine = func(*(obj,), **kwargs)
             except Exception as e:
+                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 if issubclass(e.__class__, (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException)):
                     if message_key:
                         del context['_amqp_received_messages'][message_key]
                     await cls.channel.basic_client_nack(delivery_tag)
                     return
                 await cls.channel.basic_client_ack(delivery_tag)
-                raise e
+                return
 
             if isinstance(routine, Awaitable):
                 try:
                     return_value = await routine
                 except Exception as e:
+                    logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                     if issubclass(e.__class__, (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException)):
                         if message_key:
                             del context['_amqp_received_messages'][message_key]
                         await cls.channel.basic_client_nack(delivery_tag)
                         return
                     await cls.channel.basic_client_ack(delivery_tag)
-                    raise e
+                    return
             else:
                 return_value = routine
 

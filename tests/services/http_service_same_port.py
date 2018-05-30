@@ -4,7 +4,7 @@ from tomodachi.transport.http import http
 
 
 @tomodachi.service
-class HttpServiceOne(object):
+class HttpServiceOne(tomodachi.Service):
     name = 'test_http1'
     options = {
         'http': {
@@ -18,7 +18,7 @@ class HttpServiceOne(object):
 
 
 @tomodachi.service
-class HttpServiceTwo(object):
+class HttpServiceTwo(tomodachi.Service):
     name = 'test_http2'
     options = {
         'http': {

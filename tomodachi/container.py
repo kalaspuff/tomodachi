@@ -3,7 +3,6 @@ import asyncio
 import sys
 import logging
 import re
-import traceback
 import types
 import uuid
 from types import ModuleType, TracebackType
@@ -38,10 +37,7 @@ class ServiceContainer(object):
         if not self.configuration:
             return
         for k, v in self.configuration.items():
-            try:
-                instance_value = getattr(instance, k)
-            except AttributeError:
-                instance_value = None
+            instance_value = getattr(instance, k, None)
             if not instance_value:
                 setattr(instance, k, v)
 
@@ -75,23 +71,14 @@ class ServiceContainer(object):
 
                 self.setup_configuration(instance)
 
-                try:
-                    if not instance.uuid:
-                        instance.uuid = str(uuid.uuid4())
-                except AttributeError:
+                if not getattr(instance, 'uuid', None):
                     instance.uuid = str(uuid.uuid4())
 
                 service_name = getattr(instance, 'name', getattr(cls, 'name', None))
                 if not service_name:
                     continue
 
-                try:
-                    log_level = instance.log_level
-                except AttributeError:
-                    try:
-                        log_level = cls.log_level
-                    except AttributeError:
-                        log_level = 'INFO'
+                log_level = getattr(instance, 'log_level', None) or getattr(cls, 'log_level', None) or 'INFO'
 
                 def invoker_function_sorter(m: str) -> int:
                     for i, line in enumerate(inspect.getsourcelines(self.module_import)[0]):
@@ -115,11 +102,8 @@ class ServiceContainer(object):
                 except AttributeError:
                     pass
 
-                try:
-                    getattr(instance, '_started_service')
+                if getattr(instance, '_started_service', None):
                     services_started.add((service_name, instance, log_level))
-                except AttributeError:
-                    pass
 
         if services_started:
             try:
@@ -138,13 +122,10 @@ class ServiceContainer(object):
                         raise exception[0]
 
                 for name, instance, log_level in services_started:
-                    try:
-                        for registry in instance.discovery:
-                            registered_services.add(instance)
-                            if getattr(registry, '_register_service', None):
-                                await registry._register_service(instance)
-                    except AttributeError:
-                        pass
+                    for registry in getattr(instance, 'discovery', []):
+                        registered_services.add(instance)
+                        if getattr(registry, '_register_service', None):
+                            await registry._register_service(instance)
 
                     started_futures.add(getattr(instance, '_started_service', None))
                     stop_futures.add(getattr(instance, '_stop_service', None))
@@ -154,11 +135,7 @@ class ServiceContainer(object):
                 self.logger.warning('Failed to start service')
                 started_futures = set()
                 self.stop_service()
-                try:
-                    if not getattr(e, '_log_level') or getattr(e, '_log_level') in ['DEBUG']:
-                        traceback.print_exception(e.__class__, e, e.__traceback__)
-                except AttributeError:
-                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
 
             if started_futures and any(started_futures):
                 await asyncio.wait([asyncio.ensure_future(func()) for func in started_futures if func])

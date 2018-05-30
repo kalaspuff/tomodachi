@@ -18,11 +18,12 @@ install:
     - travis_retry pip install -Ur requirements.txt
     - pip freeze
 script:
-    - pycodestyle --ignore E501 .
+    - pycodestyle --ignore E501 --exclude proto_build .
     - travis_retry py.test --cov=./ tests/
     - tomodachi run tests/run_example_service.py
     - python tomodachi.py -v
     - python tomodachi.py --dependency-versions
     - mypy ./
+    - python setup.py check -r -s
 after_success:
     - codecov

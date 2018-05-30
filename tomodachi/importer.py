@@ -24,10 +24,10 @@ class ServiceImporter(object):
             try:
                 spec = importlib.util.find_spec('.{}'.format(file_path.rsplit('/', 1)[1])[:-3], package=os.path.dirname(file_path).rsplit('/', 1)[1])  # type: Any
                 if not spec:
-                    #  package name already taken, imported service not part of a package
+                    # package name already taken, imported service not part of a package
                     spec = importlib.util.spec_from_file_location(file_name, file_path)
             except AttributeError as e:
-                #  package name already taken, imported service not part of a package
+                # package name already taken, imported service not part of a package
                 try:
                     spec = importlib.util.spec_from_file_location(file_name, file_path)
                 except Exception:

@@ -10,7 +10,7 @@ data_uuid = str(uuid.uuid4())
 
 
 @tomodachi.service
-class AWSSNSSQSService(object):
+class AWSSNSSQSService(tomodachi.Service):
     name = 'test_amqp'
     log_level = 'INFO'
     options = {

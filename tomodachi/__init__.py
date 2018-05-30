@@ -1,7 +1,10 @@
 from typing import Any
+from types import LambdaType
+import inspect
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 try:
     import tomodachi.helpers.logging
+    from tomodachi.invoker import decorator
     from tomodachi.transport.amqp import (amqp,
                                           amqp_publish)
     from tomodachi.transport.aws_sns_sqs import (aws_sns_sqs,
@@ -21,7 +24,7 @@ try:
 except Exception:
     pass
 
-__all__ = ['service', '__version__', '__version_info__',
+__all__ = ['service', 'Service', '__version__', '__version_info__',
            'amqp', 'amqp_publish',
            'aws_sns_sqs', 'aws_sns_sqs_publish',
            'http', 'http_error', 'http_static', 'websocket', 'HttpResponse', 'HttpException',
@@ -37,3 +40,9 @@ def service(cls: Any) -> Any:
     if not getattr(cls, 'log_setup', None):
         cls.log_setup = tomodachi.helpers.logging.log_setup
     return cls
+
+
+class Service(object):
+    TOMODACHI_SERVICE_CLASS = True
+    log = tomodachi.helpers.logging.log
+    log_setup = tomodachi.helpers.logging.log_setup

@@ -7,7 +7,7 @@ from tomodachi.protocol.json_base import JsonBase
 
 
 @tomodachi.service
-class AutoClosingService(object):
+class AutoClosingService(tomodachi.Service):
     name = 'test_auto_closing'
     discovery = [DummyRegistry]
     message_protocol = JsonBase

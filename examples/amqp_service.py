@@ -7,7 +7,7 @@ from tomodachi.protocol import JsonBase
 
 
 @tomodachi.service
-class ExampleAmqpService(object):
+class ExampleAmqpService(tomodachi.Service):
     name = 'example_amqp_service'
     log_level = 'INFO'
     uuid = os.environ.get('SERVICE_UUID')

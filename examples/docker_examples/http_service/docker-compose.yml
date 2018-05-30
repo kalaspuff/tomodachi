@@ -1,0 +1,8 @@
+version: '2.3'
+
+services:
+  tomodachi-example:
+    image: tomodachi-example
+    build: .
+    ports:
+      - 31337:80
