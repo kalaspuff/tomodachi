@@ -1,6 +1,7 @@
 import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
+from .code import test_func
 
 
 @tomodachi.service
@@ -26,6 +27,7 @@ class DummyService(object):
     stop = False
 
     async def _start_service(self) -> None:
+        test_func()
         self.start = True
 
     async def _started_service(self) -> None:
