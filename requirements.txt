@@ -11,6 +11,7 @@ codecov==2.0.15
 colorama==0.3.9
 coverage==4.5.1
 docutils==0.14
+execnet==1.5.0
 jmespath==0.9.3
 multidict==4.3.0
 mypy==0.600
@@ -22,6 +23,8 @@ py==1.5.3
 pyparsing==2.2.0
 pytest==3.6.0
 pytest-cov==2.5.1
+pytest-forked==0.2
+pytest-xdist==1.22.0
 python-dateutil==2.7.3
 pytz==2018.4
 readme-renderer==21.0

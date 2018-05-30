@@ -43,7 +43,7 @@ clean:
 
 tests:
 	if [[ ! "${PYTEST_INSTALLED}" ]]; then make development; fi
-	PYTHONPATH=. py.test tests/
+	PYTHONPATH=. py.test -n auto tests/
 	PYTHONPATH=. python tomodachi.py run tests/run_example_service.py
 	PYTHONPATH=. python setup.py check -r -s
 
