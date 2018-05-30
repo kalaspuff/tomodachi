@@ -5,7 +5,6 @@ import importlib
 import logging
 import datetime
 import uvloop
-import traceback
 import os
 import multidict  # noqa
 import yarl  # noqa
@@ -72,7 +71,7 @@ class ServiceLauncher(object):
                     try:
                         ServiceImporter.import_service_file(file)
                     except (SyntaxError, IndentationError) as e:
-                        traceback.print_exception(e.__class__, e, e.__traceback__)
+                        logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                         logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
                         cls.restart_services = False
                         return
@@ -88,7 +87,7 @@ class ServiceLauncher(object):
                                 if m == module_name or (len(m) > len(file) and module_name_full_path.endswith(m)):
                                     ServiceImporter.import_module(file)
                         except (SyntaxError, IndentationError) as e:
-                            traceback.print_exception(e.__class__, e, e.__traceback__)
+                            logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                             logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
                             cls.restart_services = False
                             return
@@ -100,7 +99,7 @@ class ServiceLauncher(object):
 
         cls.restart_services = True
         init_modules = [m for m in sys.modules.keys()]
-        safe_modules = ['typing', 'importlib.util', 'time', 'logging', 're', 'traceback', 'types', 'inspect', 'functools']
+        safe_modules = ['typing', 'importlib.util', 'time', 'logging', 're', 'traceback', 'types', 'inspect', 'functools', 'google.protobuf']
 
         restarting = False
         while cls.restart_services:
@@ -122,8 +121,10 @@ class ServiceLauncher(object):
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
                     raise exception[0]
+            except tomodachi.importer.ServicePackageError as e:
+                pass
             except Exception as e:
-                traceback.print_exception(e.__class__, e, e.__traceback__)
+                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 if restarting:
                     logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
                     logging.getLogger('watcher.restart').warning('Trying again in 1.5 seconds')

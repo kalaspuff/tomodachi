@@ -7,7 +7,7 @@ from tomodachi.transport.schedule import schedule, heartbeat
 
 
 @tomodachi.service
-class SchedulerService(object):
+class SchedulerService(tomodachi.Service):
     name = 'test_schedule'
     uuid = None
     closer = asyncio.Future()  # type: Any

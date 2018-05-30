@@ -2,14 +2,14 @@ import asyncio
 import os
 import signal
 import tomodachi
-from typing import Any, Dict, Tuple, Callable  # noqa
+from typing import Any, Dict, Tuple, Callable, Union  # noqa
 from aiohttp import web
 from tomodachi.transport.http import http, http_error, http_static, websocket, Response
 from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
 @tomodachi.service
-class HttpService(object):
+class HttpService(tomodachi.Service):
     name = 'test_http'
     discovery = [DummyRegistry]
     options = {
@@ -78,13 +78,13 @@ class HttpService(object):
         raise Exception('test')
 
     @http('GET', r'/test-weird-content-type/?')
-    async def test_weird_content_type(self, request: web.Request) -> Response:
+    async def test_weird_content_type(self, request: web.Request) -> web.Response:
         return web.Response(body='test', status=200, headers={
             'Content-Type': 'text/plain; '
         })
 
     @http('GET', r'/test-charset/?')
-    async def test_charset(self, request: web.Request) -> Response:
+    async def test_charset(self, request: web.Request) -> web.Response:
         return web.Response(body='test', status=200, headers={
             'Content-Type': 'text/plain; charset=utf-8'
         })
@@ -121,11 +121,11 @@ class HttpService(object):
 
     @http('GET', r'/forwarded-for/?')
     async def forwarded_for(self, request: web.Request) -> str:
-        return request.request_ip
+        return str(request.request_ip) if request.request_ip else ''
 
     @http('GET', r'/authorization/?')
     async def authorization(self, request: web.Request) -> str:
-        return request.auth.login if request.auth else ''
+        return str(request.auth.login) if request.auth else ''
 
     @http_static('../static_files', r'/static/')
     async def static_files_filename_append(self) -> None:
@@ -145,7 +145,7 @@ class HttpService(object):
 
     @websocket(r'/websocket-data')
     async def websocket_data(self, websocket: web.WebSocketResponse) -> Callable:
-        async def _receive(data):
+        async def _receive(data: Union[str, bytes]) -> None:
             self.websocket_received_data = data
 
         return _receive

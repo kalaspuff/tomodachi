@@ -97,3 +97,7 @@ ENV/
 
 # credentials
 examples/configs/*credentials.json
+
+# VS Code
+.vscode
+*.code-workspace

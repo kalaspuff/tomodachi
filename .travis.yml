@@ -3,13 +3,13 @@ sudo: required
 python:
     - 3.5.3
     - 3.5.4
-    - 3.5
-    - 3.5-dev # 3.5 development branch
+    - 3.5.5
     - 3.6.0
     - 3.6.1
     - 3.6.2
     - 3.6.3
-    - 3.6
+    - 3.6.4
+    - 3.6.5
     - 3.6-dev # 3.6 development branch
 services:
     - rabbitmq
@@ -18,11 +18,12 @@ install:
     - travis_retry pip install -Ur requirements.txt
     - pip freeze
 script:
-    - pycodestyle --ignore E501 .
+    - pycodestyle --ignore E501 --exclude proto_build .
     - travis_retry py.test -n auto --cov=./ tests/
     - tomodachi run tests/run_example_service.py
     - python tomodachi.py -v
     - python tomodachi.py --dependency-versions
     - mypy ./
+    - python setup.py check -r -s
 after_success:
     - codecov

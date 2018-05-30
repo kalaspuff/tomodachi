@@ -1,14 +1,14 @@
 import os
 import asyncio
 import tomodachi
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Union
 from aiohttp import web
 from tomodachi import http, http_error, http_static, websocket, HttpResponse
 from tomodachi.discovery import DummyRegistry
 
 
 @tomodachi.service
-class ExampleHttpService(object):
+class ExampleHttpService(tomodachi.Service):
     name = 'example_http_service'
     log_level = 'DEBUG'
     uuid = os.environ.get('SERVICE_UUID')
@@ -30,7 +30,6 @@ class ExampleHttpService(object):
     @http('GET', r'/example/?')
     async def example(self, request: web.Request) -> str:
         await asyncio.sleep(1)
-        asdf
         return '友達'  # tomodachi
 
     @http('GET', r'/example/(?P<id>[^/]+?)/?')
@@ -51,7 +50,7 @@ class ExampleHttpService(object):
         # Called when a websocket client is connected
         self.log('websocket client connected')
 
-        async def _receive(data) -> None:
+        async def _receive(data: Union[str, bytes]) -> None:
             # Called when the websocket receives data
             self.log('websocket data received: {}'.format(data))
             await websocket.send_str('response')

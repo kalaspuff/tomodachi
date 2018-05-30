@@ -4,7 +4,7 @@ from tomodachi.protocol.json_base import JsonBase
 
 
 @tomodachi.service
-class DummyService(object):
+class DummyService(tomodachi.Service):
     name = 'test_dummy'
     discovery = [DummyRegistry]
     message_protocol = JsonBase

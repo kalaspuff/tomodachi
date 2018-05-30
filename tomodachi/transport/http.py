@@ -1,7 +1,6 @@
 import re
 import asyncio
 import logging
-import traceback
 import time
 import ipaddress
 import os
@@ -10,7 +9,7 @@ import inspect
 import uuid
 import colorama
 from logging.handlers import WatchedFileHandler
-from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt, Awaitable  # noqa
+from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt, Awaitable, Mapping, Iterable  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
 from aiohttp import web, web_server, web_protocol, web_urldispatcher, hdrs, WSMsgType
 from aiohttp.web_fileresponse import FileResponse
@@ -131,20 +130,6 @@ class DynamicResource(web_urldispatcher.DynamicResource):
         self._formatter = ''
 
 
-class UrlDispatcher(web_urldispatcher.UrlDispatcher):
-    def add_pattern_route(self, method: str, pattern: str, handler: Callable, *, name: Optional[str]=None, expect_handler: Optional[Callable]=None) -> web_urldispatcher.ResourceRoute:
-        try:
-            compiled_pattern = re.compile(pattern)
-        except re.error as exc:
-            raise ValueError(
-                "Bad pattern '{}': {}".format(pattern, exc)) from None
-        resource = DynamicResource(compiled_pattern, name=name)
-        self.register_resource(resource)
-        if method == 'GET':
-            resource.add_route('HEAD', handler, expect_handler=expect_handler)
-        return resource.add_route(method, handler, expect_handler=expect_handler)
-
-
 class Response(object):
     def __init__(self, *, body: Optional[str]=None, status: int=200, reason: Optional[str]=None, headers: Optional[Union[Dict, CIMultiDict, CIMultiDictProxy]]=None, content_type: Optional[str]=None, charset: Optional[str]=None) -> None:
         if headers is None:
@@ -180,8 +165,7 @@ class Response(object):
             try:
                 body_value = body.encode(charset.lower())
             except (ValueError, LookupError, UnicodeEncodeError) as e:
-                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 raise web.HTTPInternalServerError() from e
         elif self._body:
             body_value = self._body.encode() if not isinstance(self._body, bytes) else self._body
@@ -223,21 +207,23 @@ class HttpTransport(Invoker):
 
             status = 200
             headers = None
-
             if isinstance(return_value, dict):
                 body = return_value.get('body')
                 _status = return_value.get('status')  # type: Optional[SupportsInt]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
-                if return_value.get('headers'):
-                    headers = CIMultiDict(return_value.get('headers'))
+                _returned_headers = return_value.get('headers')
+                if _returned_headers:
+                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str]]]
+                    headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
                 _status = return_value[0]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
                 body = return_value[1]
                 if len(return_value) > 2:
-                    headers = CIMultiDict(return_value[2])
+                    returned_headers = return_value[2]
+                    headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, web.Response):
                 return return_value
             else:
@@ -321,15 +307,18 @@ class HttpTransport(Invoker):
                 _status = return_value.get('status')  # type: Optional[SupportsInt]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
-                if return_value.get('headers'):
-                    headers = CIMultiDict(return_value.get('headers'))
+                _returned_headers = return_value.get('headers')
+                if _returned_headers:
+                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str]]]
+                    headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
                 _status = return_value[0]
                 if _status and isinstance(_status, (int, str, bytes)):
                     status = int(_status)
                 body = return_value[1]
                 if len(return_value) > 2:
-                    headers = CIMultiDict(return_value[2])
+                    returned_headers = return_value[2]
+                    headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, web.Response):
                 return return_value
             else:
@@ -404,8 +393,7 @@ class HttpTransport(Invoker):
                 routine = func(*(obj, websocket,), **kwargs)
                 callback_functions = (await routine) if isinstance(routine, Awaitable) else routine  # type: Optional[Union[Tuple, Callable]]
             except Exception as e:
-                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 try:
                     await websocket.close()
                 except Exception:
@@ -449,15 +437,14 @@ class HttpTransport(Invoker):
                             try:
                                 await _receive_func(message.data)
                             except Exception as e:
-                                if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                                    traceback.print_exception(e.__class__, e, e.__traceback__)
+                                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                     elif message.type == WSMsgType.ERROR:
                         if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
                             ws_exception = websocket.exception()
                             if isinstance(ws_exception, (EofStream, RuntimeError)):
                                 pass
                             elif isinstance(ws_exception, Exception):
-                                traceback.print_exception(ws_exception.__class__, ws_exception, ws_exception.__traceback__)
+                                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(ws_exception)))
                             else:
                                 logging.getLogger('transport.http').warning('Websocket exception: "{}"'.format(ws_exception))
                     elif message.type == WSMsgType.CLOSED:
@@ -469,8 +456,7 @@ class HttpTransport(Invoker):
                     try:
                         await _close_func()
                     except Exception as e:
-                        if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                            traceback.print_exception(e.__class__, e, e.__traceback__)
+                        logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 try:
                     await websocket.close()
                 except Exception:
@@ -502,6 +488,7 @@ class HttpTransport(Invoker):
                 logging.getLogger('transport.http').warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             wfh.setLevel(logging.DEBUG)
+            logging.getLogger('transport.http').setLevel(logging.DEBUG)
             logging.getLogger('transport.http').info('Logging to "{}"'.format(access_log))
             logger_handler = wfh
             logging.getLogger('transport.http').addHandler(logger_handler)
@@ -554,8 +541,7 @@ class HttpTransport(Invoker):
                                 response.body = str(e).encode('utf-8')
                         except Exception as e:
                             error_handler = context.get('_http_error_handler', {}).get(500, None)
-                            if not context.get('log_level') or context.get('log_level') in ['DEBUG']:
-                                traceback.print_exception(e.__class__, e, e.__traceback__)
+                            logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                             if error_handler:
                                 response = await error_handler(request)
                                 response.headers[hdrs.SERVER] = server_header or ''
@@ -608,9 +594,19 @@ class HttpTransport(Invoker):
 
                 return middleware_handler
 
-            app = web.Application(loop=loop, router=UrlDispatcher(), middlewares=[middleware], client_max_size=(1024 ** 2) * 100)
+            app = web.Application(middlewares=[middleware], client_max_size=(1024 ** 2) * 100)
+            app._set_loop(None)
             for method, pattern, handler in context.get('_http_routes', []):
-                app.router.add_pattern_route(method.upper(), pattern, handler)
+                try:
+                    compiled_pattern = re.compile(pattern)
+                except re.error as exc:
+                    raise ValueError(
+                        "Bad pattern '{}': {}".format(pattern, exc)) from None
+                resource = DynamicResource(compiled_pattern)
+                app.router.register_resource(resource)
+                if method.upper() == 'GET':
+                    resource.add_route('HEAD', handler, expect_handler=None)
+                resource.add_route(method.upper(), handler, expect_handler=None)
 
             port = context.get('options', {}).get('http', {}).get('port', 9700)
             host = context.get('options', {}).get('http', {}).get('host', '0.0.0.0')
@@ -646,15 +642,9 @@ class HttpTransport(Invoker):
             setattr(obj, '_stop_service', stop_service)
 
             for method, pattern, handler in context.get('_http_routes', []):
-                try:
-                    for registry in obj.discovery:
-                        try:
-                            if getattr(registry, 'add_http_endpoint'):
-                                await registry.add_http_endpoint(obj, host, port, method, pattern)
-                        except AttributeError:
-                            pass
-                except AttributeError:
-                    pass
+                for registry in getattr(obj, 'discovery', []):
+                    if getattr(registry, 'add_http_endpoint', None):
+                        await registry.add_http_endpoint(obj, host, port, method, pattern)
 
             logging.getLogger('transport.http').info('Listening [http] on http://{}:{}/'.format('127.0.0.1' if host == '0.0.0.0' else host, port))
 
