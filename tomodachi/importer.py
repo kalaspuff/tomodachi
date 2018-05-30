@@ -56,9 +56,13 @@ class ServiceImporter(object):
             if not spec.loader:
                 raise OSError
             try:
+                if service_import:
+                    service_import_name = service_import.__name__[:-3] if service_import.__name__.endswith('.py') else service_import.__name__
+                else:
+                    service_import_name = ''
                 spec.loader.exec_module(service_import)
             except ImportError as e:
-                if service_import and str(e) == "No module named '{}'".format(service_import.__name__):
+                if service_import_name and str(e) == "No module named '{}'".format(service_import_name):
                     logging.getLogger('import').warning('Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(file_path.rsplit('/', 2)[1]))
                     raise ServicePackageError from e
                 if str(e) == 'attempted relative import with no known parent package':
@@ -66,7 +70,7 @@ class ServiceImporter(object):
                     raise ServicePackageError from e
                 raise e
             except SystemError as e:
-                if service_import and str(e) == "Parent module '{}' not loaded, cannot perform relative import".format(service_import.__name__):
+                if service_import_name and str(e) == "Parent module '{}' not loaded, cannot perform relative import".format(service_import_name):
                     logging.getLogger('import').warning('Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(file_path.rsplit('/', 2)[1]))
                     raise ServicePackageError from e
                 raise e
