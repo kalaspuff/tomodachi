@@ -15,6 +15,7 @@ python:
 services:
     - rabbitmq
 install:
+    - travis_retry pip install pycparser==2.18
     - travis_retry pip install -e .
     - travis_retry pip install -Ur requirements.txt
     - pip freeze
