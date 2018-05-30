@@ -3,7 +3,7 @@ from .relative_import.import_file import noop
 
 
 @tomodachi.service
-class RelativeService(object):
+class RelativeService(tomodachi.Service):
     name = 'test_relative'
 
     start = False

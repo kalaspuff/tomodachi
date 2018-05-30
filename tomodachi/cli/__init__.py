@@ -93,10 +93,7 @@ class CLI:
                 index = args.index('-l') if '-l' in args else args.index('--log')
                 args.pop(index)
                 if len(args) > index:
-                    try:
-                        log_level = getattr(logging, args.pop(index).upper())
-                    except AttributeError:
-                        pass
+                    log_level = getattr(logging, args.pop(index).upper(), None) or log_level
 
             logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=log_level)
             logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')
@@ -108,7 +105,7 @@ class CLI:
             opts, args = getopt.getopt(argv, "hlvV ", ['help', 'log', 'version', 'version', 'dependency-versions'])
         except getopt.GetoptError:
             self.help_command()
-        for opt, arg in opts:
+        for opt, _ in opts:
             if opt in ['-h', '--help']:
                 self.help_command()
             if opt in ['-v', '-V', '--version']:
@@ -116,7 +113,7 @@ class CLI:
             if opt in ['--dependency-versions']:
                 self.dependency_versions_command()
         if len(args):
-            if args[0] == 'run':
+            if args[0] in ('run', 'start'):
                 self.run_command(args[1:])
         self.help_command()
 

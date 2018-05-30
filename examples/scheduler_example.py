@@ -4,7 +4,7 @@ from tomodachi import schedule, minutely, hourly
 
 
 @tomodachi.service
-class SchedulerService(object):
+class SchedulerService(tomodachi.Service):
     name = 'example_scheduler_service'
     log_level = 'DEBUG'
     uuid = os.environ.get('SERVICE_UUID')

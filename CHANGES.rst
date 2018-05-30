@@ -1,6 +1,48 @@
 Changes
 =======
 
+0.11.3 (2018-05-25)
+-------------------
+- Added additional function for message validation functionality.
+  (github: **smaaland**)
+
+- Updated documentation and examples.
+
+
+0.11.2 (2018-05-19)
+-------------------
+- Improved base documentation.
+
+- Improved and updated examples.
+
+- Type hinting corrections for examples.
+
+
+0.11.1 (2018-05-18)
+-------------------
+- Decorators for invoker functions already decorated with for example
+  ``@tomodachi.http`` or ``@tomodachi.aws_sns_sqs`` is now easier to
+  implement using the ``@tomodachi.decorator`` decorator.
+
+- Added improved exception logging from HTTP and schedule invokers also
+  to the AWS SNS+SQS and AMQP endpoints. Unhandled exceptions are now
+  logged as ``logging.exception()`` to the ``'exception'`` logger.
+
+
+0.11.0 (2018-05-15)
+-------------------
+- Propagation of exceptions in invoked functions to be able to hook in
+  exception handlers into logging. (github: **0x1EE7**)
+
+
+0.10.2 (2018-05-15)
+-------------------
+- Encoding issue for Protocol Buffers messages solved.
+  (github: **smaaland**).
+
+- Support for ``aiobotocore`` 0.8.X+.
+
+
 0.10.1 (2018-04-26)
 -------------------
 - Fixes a bug for optional dependency ``protobuf``. ``message_protocol``

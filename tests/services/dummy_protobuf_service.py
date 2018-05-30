@@ -4,7 +4,7 @@ from tomodachi.protocol.protobuf_base import ProtobufBase
 
 
 @tomodachi.service
-class DummyService(object):
+class DummyService(tomodachi.Service):
     name = 'test_dummy_protobuf'
     discovery = [DummyRegistry]
     message_protocol = ProtobufBase

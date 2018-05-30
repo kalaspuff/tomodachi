@@ -9,7 +9,7 @@ from tomodachi.transport.aws_sns_sqs import aws_sns_sqs
 
 
 @tomodachi.service
-class AWSSNSSQSService(object):
+class AWSSNSSQSService(tomodachi.Service):
     name = 'test_aws_sns_sqs'
     log_level = 'INFO'
     discovery = [AWSSNSRegistration]
