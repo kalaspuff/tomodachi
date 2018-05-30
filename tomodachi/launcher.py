@@ -121,6 +121,8 @@ class ServiceLauncher(object):
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
                     raise exception[0]
+            except tomodachi.importer.ServicePackageError as e:
+                pass
             except Exception as e:
                 logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                 if restarting:

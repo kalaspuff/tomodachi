@@ -7,6 +7,10 @@ from types import ModuleType
 from typing import Any  # noqa
 
 
+class ServicePackageError(ImportError):
+    pass
+
+
 class ServiceImporter(object):
     @classmethod
     def import_service_file(cls, file_name: str) -> ModuleType:
@@ -42,7 +46,13 @@ class ServiceImporter(object):
                 pass
             if not spec.loader:
                 raise OSError
-            spec.loader.exec_module(service_import)
+            try:
+                spec.loader.exec_module(service_import)
+            except ImportError as e:
+                if str(e) == 'attempted relative import with no known parent package':
+                    logging.getLogger('import').warning('Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(file_path.rsplit('/', 2)[1]))
+                    raise ServicePackageError from e
+                raise e
         except (ImportError, ModuleNotFoundError) as e:  # noqa
             if file_name.endswith('.py.py'):
                 return cls.import_service_file(file_name[:-3])
