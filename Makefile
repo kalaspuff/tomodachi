@@ -45,6 +45,7 @@ tests:
 	if [[ ! "${PYTEST_INSTALLED}" ]]; then make development; fi
 	PYTHONPATH=. py.test tests/
 	PYTHONPATH=. python tomodachi.py run tests/run_example_service.py
+	PYTHONPATH=. python setup.py check -r -s
 
 _check_release:
 	if [[ "${RELEASED}" ]]; then echo "Version ${VERSION} is already released"; exit 1; fi

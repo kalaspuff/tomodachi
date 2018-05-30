@@ -24,5 +24,6 @@ script:
     - python tomodachi.py -v
     - python tomodachi.py --dependency-versions
     - mypy ./
+    - python setup.py check -r -s
 after_success:
     - codecov
