@@ -8,9 +8,9 @@ install_requires = [
     'aioamqp>=0.10.0, <0.11.0',
     'ujson>=1.35',
     'uvloop>=0.8.1',
-    'aiobotocore>=0.6.0, <0.9.0',
+    'aiobotocore>=0.6.0, <0.10.0',
     'tzlocal>=1.4',
-    'aiohttp>=3.0.5, <3.3.0',
+    'aiohttp>=3.0.5, <3.4.0',
     'yarl>=1.1.0',
     'colorama>=0.3.9, <0.4.0'
 ]
