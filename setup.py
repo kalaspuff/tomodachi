@@ -5,6 +5,7 @@ from setuptools import setup, find_packages
 import tomodachi.__version__
 
 install_requires = [
+    'pycparser=>2.18',
     'aioamqp>=0.10.0, <0.11.0',
     'ujson>=1.35',
     'uvloop>=0.8.1',
