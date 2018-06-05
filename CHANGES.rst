@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.12.0 (2018-05-31)
+-------------------
+- Improved handling of imports to allow relative imports in
+  services and to use better error messages if the parent
+  package is using a reserved name.
+
+- Preparations for ``aiohttp`` 3.3.x release which deprecates
+  some uses for custom router.
+
+- Preparations for upcoming Python 3.7 release.
+
+
 0.11.3 (2018-05-25)
 -------------------
 - Added additional function for message validation functionality.
