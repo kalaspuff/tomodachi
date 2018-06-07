@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.12.1 (2018-06-07)
+-------------------
+- Added complete support for ``aiohttp`` 3.3.x release and
+  ``aiobotocore`` 0.9.x releases.
+
+
 0.12.0 (2018-05-31)
 -------------------
 - Improved handling of imports to allow relative imports in
