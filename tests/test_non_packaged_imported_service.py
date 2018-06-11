@@ -80,11 +80,11 @@ def test_same_named_sub_service_without_py_ending(monkeypatch: Any, capsys: Any,
         services, future = start_service('tests/services/test/test', monkeypatch)
 
 
-def test_sub_service_with_init(monkeypatch: Any, capsys: Any, loop: Any) -> None:
+def test_sub_service_with_reserved_name(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     with pytest.raises(tomodachi.importer.ServicePackageError):
         services, future = start_service('tests/services/os/os.py', monkeypatch)
 
 
-def test_sub_service_with_init(monkeypatch: Any, capsys: Any, loop: Any) -> None:
+def test_sub_service_with_reserved_name_without_py_ending(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     with pytest.raises(tomodachi.importer.ServicePackageError):
         services, future = start_service('tests/services/os/os', monkeypatch)
