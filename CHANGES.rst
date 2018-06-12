@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.12.3 (2018-06-12)
+-------------------
+- Improved type hinting support.
+
+
 0.12.2 (2018-06-12)
 -------------------
 - Added stubs for type hinting via tools like ``mypy``.
