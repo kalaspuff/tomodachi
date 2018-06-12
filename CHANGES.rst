@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.12.2 (2018-06-12)
+-------------------
+- Added stubs for type hinting via tools like ``mypy``.
+
+
 0.12.1 (2018-06-07)
 -------------------
 - Added complete support for ``aiohttp`` 3.3.x release and
