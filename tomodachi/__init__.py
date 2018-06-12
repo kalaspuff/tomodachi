@@ -1,5 +1,4 @@
 from typing import Any
-from types import LambdaType
 import inspect
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 try:
