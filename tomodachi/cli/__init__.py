@@ -38,22 +38,22 @@ class CLI:
         try:
             import aiobotocore
             print('aiobotocore/{}'.format(aiobotocore.__version__))
-        except Exception:
+        except Exception:  # pragma: no cover
             print('aiobotocore failed to load')
         try:
             import botocore
             print('botocore/{}'.format(botocore.__version__))
-        except Exception:
+        except Exception:  # pragma: no cover
             print('botocore failed to load')
         try:
             import aiohttp
             print('aiohttp/{}'.format(aiohttp.__version__))
-        except Exception:
+        except Exception:  # pragma: no cover
             print('aiohttp failed to load')
         try:
             import aioamqp
             print('aioamqp/{}'.format(aioamqp.__version__))
-        except Exception:
+        except Exception:  # pragma: no cover
             print('aioamqp failed to load')
         sys.exit(0)
 
