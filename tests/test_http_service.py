@@ -48,7 +48,7 @@ def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any, loop: Any)
     loop.run_until_complete(future)
 
     out, err = capsys.readouterr()
-    assert 'address already in use' in err
+    assert 'address already in use' in err or 'address in use' in err
 
 
 def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
