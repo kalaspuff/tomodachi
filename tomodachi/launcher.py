@@ -154,9 +154,9 @@ class ServiceLauncher(object):
             if not watcher_future.done():
                 try:
                     watcher_future.set_result(None)
-                except RuntimeError:
+                except RuntimeError:  # pragma: no cover
                     watcher_future.cancel()
-                if not watcher_future.done():
+                if not watcher_future.done():  # pragma: no cover
                     try:
                         loop.run_until_complete(watcher_future)
                     except Exception:
