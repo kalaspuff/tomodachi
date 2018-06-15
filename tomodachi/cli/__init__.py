@@ -35,14 +35,26 @@ class CLI:
         sys.exit(0)
 
     def dependency_versions_command(self) -> None:
-        import aiobotocore
-        import botocore
-        import aiohttp
-        import aioamqp
-        print('aiobotocore/{}'.format(aiobotocore.__version__))
-        print('botocore/{}'.format(botocore.__version__))
-        print('aiohttp/{}'.format(aiohttp.__version__))
-        print('aioamqp/{}'.format(aioamqp.__version__))
+        try:
+            import aiobotocore
+            print('aiobotocore/{}'.format(aiobotocore.__version__))
+        except Exception:  # pragma: no cover
+            print('aiobotocore failed to load')
+        try:
+            import botocore
+            print('botocore/{}'.format(botocore.__version__))
+        except Exception:  # pragma: no cover
+            print('botocore failed to load')
+        try:
+            import aiohttp
+            print('aiohttp/{}'.format(aiohttp.__version__))
+        except Exception:  # pragma: no cover
+            print('aiohttp failed to load')
+        try:
+            import aioamqp
+            print('aioamqp/{}'.format(aioamqp.__version__))
+        except Exception:  # pragma: no cover
+            print('aioamqp failed to load')
         sys.exit(0)
 
     def run_command_usage(self) -> str:

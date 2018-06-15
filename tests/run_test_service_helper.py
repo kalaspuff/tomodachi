@@ -17,12 +17,12 @@ def start_service(filename: str, monkeypatch: Any=None) -> Tuple:
     def stop_services(loop: Any=None) -> None:
         if not loop:
             loop = asyncio.get_event_loop()
-        asyncio.wait([asyncio.ensure_future(_stop_services())])
+        asyncio.ensure_future(_stop_services())
 
     def force_stop_services(loop: Any=None) -> None:
         if not loop:
             loop = asyncio.get_event_loop()
-        asyncio.wait([asyncio.ensure_future(_force_stop_services())])
+        asyncio.ensure_future(_force_stop_services())
 
     async def _stop_services() -> None:
         service.stop_service()
