@@ -24,7 +24,7 @@ class HttpException(Exception):
         self._log_level = kwargs.get('log_level') if kwargs and kwargs.get('log_level') else 'INFO'
 
 
-class RequestHandler(web_protocol.RequestHandler):
+class RequestHandler(web_protocol.RequestHandler):  # type: ignore
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
@@ -110,7 +110,7 @@ class RequestHandler(web_protocol.RequestHandler):
         return resp
 
 
-class Server(web_server.Server):
+class Server(web_server.Server):  # type: ignore
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
@@ -122,7 +122,7 @@ class Server(web_server.Server):
             **self._kwargs)
 
 
-class DynamicResource(web_urldispatcher.DynamicResource):
+class DynamicResource(web_urldispatcher.DynamicResource):  # type: ignore
     def __init__(self, pattern: Any, *, name: Optional[str]=None) -> None:
         self._routes = []  # type: List
         self._name = name
@@ -214,7 +214,7 @@ class HttpTransport(Invoker):
                     status = int(_status)
                 _returned_headers = return_value.get('headers')
                 if _returned_headers:
-                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str]]]
+                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str, Any]]]
                     headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
                 _status = return_value[0]
@@ -309,7 +309,7 @@ class HttpTransport(Invoker):
                     status = int(_status)
                 _returned_headers = return_value.get('headers')
                 if _returned_headers:
-                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str]]]
+                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str, Any]]]
                     headers = CIMultiDict(returned_headers)
             elif isinstance(return_value, list) or isinstance(return_value, tuple):
                 _status = return_value[0]

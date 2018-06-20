@@ -1,6 +1,22 @@
 Changes
 =======
 
+0.12.3 (2018-06-12)
+-------------------
+- Improved type hinting support.
+
+
+0.12.2 (2018-06-12)
+-------------------
+- Added stubs for type hinting via tools like ``mypy``.
+
+
+0.12.1 (2018-06-07)
+-------------------
+- Added complete support for ``aiohttp`` 3.3.x release and
+  ``aiobotocore`` 0.9.x releases.
+
+
 0.12.0 (2018-05-31)
 -------------------
 - Improved handling of imports to allow relative imports in

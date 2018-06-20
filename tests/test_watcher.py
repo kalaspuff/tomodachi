@@ -51,9 +51,9 @@ def test_watcher_callback(loop: Any) -> None:
 
     watcher.watched_files = {'_test': 0}
     result = watcher.update_watched_files(reindex=True)
-    assert len(result.get('added')) == 2
-    assert len(result.get('removed')) == 1
-    assert len(result.get('updated')) == 0
+    assert len(result.get('added', 0)) == 2
+    assert len(result.get('removed', 0)) == 1
+    assert len(result.get('updated', 0)) == 0
 
     class Test():
         callbacks_run = {}  # type: Dict[int, bool]

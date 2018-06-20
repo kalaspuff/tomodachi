@@ -34,7 +34,7 @@ def test_merge_dicts() -> None:
 
 
 def test_parse_config_file() -> None:
-    result = parse_config_files('tests/configs/config_file.json')
+    result = parse_config_files(['tests/configs/config_file.json'])
     expected_result = {
         'options': {
             'http': {
