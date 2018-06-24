@@ -3,7 +3,7 @@ Changes
 
 0.12.4 (2018-06-24)
 -------------------
-- Updated `aioamqp` to the latest version with support for Python 3.7.
+- Updated ``aioamqp`` to the latest version with support for Python 3.7.
 
 - Updated service imports for improved Python 3.7 compatibility.
 
