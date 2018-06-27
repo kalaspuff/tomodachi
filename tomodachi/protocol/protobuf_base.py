@@ -21,6 +21,13 @@ class ProtobufBase(object):
 
     @classmethod
     async def build_message(cls, service: Any, topic: str, data: Any) -> str:
+        data_encoding = 'base64'
+        message_data = base64.b64encode(data.SerializeToString()).decode('ascii')
+
+        if len(message_data) > 60000:
+            message_data = base64.b64encode(zlib.compress(data.SerializeToString())).decode('ascii')
+            data_encoding = 'base64_gzip_proto'
+
         message = SNSSQSMessage()
         message.service.name = getattr(service, 'name', None)
         message.service.uuid = getattr(service, 'uuid', None)
@@ -29,8 +36,8 @@ class ProtobufBase(object):
         message.metadata.compatible_protocol_versions.extend(COMPATIBLE_PROTOCOL_VERSIONS)
         message.metadata.timestamp = time.time()
         message.metadata.topic = topic
-        message.metadata.data_encoding = 'base64'
-        message.data = base64.b64encode(data.SerializeToString()).decode('ascii')
+        message.metadata.data_encoding = data_encoding
+        message.data = message_data
         return base64.b64encode(message.SerializeToString()).decode('ascii')
 
     @classmethod
