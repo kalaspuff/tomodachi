@@ -2,6 +2,7 @@ import logging
 import uuid
 import time
 import base64
+import zlib
 from typing import Any, Dict, Tuple, Union
 
 from tomodachi.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
@@ -44,7 +45,11 @@ class ProtobufBase(object):
             return False, message_uuid, timestamp
 
         obj = proto_class()
-        obj.ParseFromString(base64.b64decode(message.data))
+
+        if message.metadata.data_encoding == 'base64':
+            obj.ParseFromString(base64.b64decode(message.data))
+        elif message.metadata.data_encoding == 'base64_gzip_proto':
+            obj.ParseFromString(zlib.decompress(base64.b64decode(message.data)))
 
         if validator is not None:
             try:
