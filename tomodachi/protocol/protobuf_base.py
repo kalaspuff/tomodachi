@@ -2,6 +2,7 @@ import logging
 import uuid
 import time
 import base64
+import zlib
 from typing import Any, Dict, Tuple, Union
 
 from tomodachi.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
@@ -20,6 +21,13 @@ class ProtobufBase(object):
 
     @classmethod
     async def build_message(cls, service: Any, topic: str, data: Any) -> str:
+        data_encoding = 'base64'
+        message_data = base64.b64encode(data.SerializeToString()).decode('ascii')
+
+        if len(message_data) > 60000:
+            message_data = base64.b64encode(zlib.compress(data.SerializeToString())).decode('ascii')
+            data_encoding = 'base64_gzip_proto'
+
         message = SNSSQSMessage()
         message.service.name = getattr(service, 'name', None)
         message.service.uuid = getattr(service, 'uuid', None)
@@ -28,8 +36,8 @@ class ProtobufBase(object):
         message.metadata.compatible_protocol_versions.extend(COMPATIBLE_PROTOCOL_VERSIONS)
         message.metadata.timestamp = time.time()
         message.metadata.topic = topic
-        message.metadata.data_encoding = 'base64'
-        message.data = base64.b64encode(data.SerializeToString()).decode('ascii')
+        message.metadata.data_encoding = data_encoding
+        message.data = message_data
         return base64.b64encode(message.SerializeToString()).decode('ascii')
 
     @classmethod
@@ -44,7 +52,11 @@ class ProtobufBase(object):
             return False, message_uuid, timestamp
 
         obj = proto_class()
-        obj.ParseFromString(base64.b64decode(message.data))
+
+        if message.metadata.data_encoding == 'base64':
+            obj.ParseFromString(base64.b64decode(message.data))
+        elif message.metadata.data_encoding == 'base64_gzip_proto':
+            obj.ParseFromString(zlib.decompress(base64.b64decode(message.data)))
 
         if validator is not None:
             try:
