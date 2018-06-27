@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.12.5 (2018-06-27)
+-------------------
+- Messages via SNS+SQS or AMQP over 60000 bytes as ProtoBuf will now be sent 
+  in a gzipped base64 encoded format to allow for larger limits and lower 
+  potential SNS costs due to multiplexed messaging. (github: **smaaland**)
+
+
 0.12.4 (2018-06-24)
 -------------------
 - Updated ``aioamqp`` to the latest version with support for Python 3.7.
