@@ -247,7 +247,7 @@ Nothing more nothing less. It's actually as easy as that.
 
 Requirements 👍
 ---------------
-* Python_ 3.5.3+, 3.6+
+* Python_ 3.5.3+, 3.6+, 3.7+
 * aiohttp_
 * aiobotocore_
 * aioamqp_
