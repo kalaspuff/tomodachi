@@ -20,7 +20,7 @@ packaging==17.1
 protobuf==3.6.0
 pycares==2.3.0
 pycodestyle==2.3.1
-py==1.5.3
+py==1.5.4
 pyparsing==2.2.0
 pytest==3.6.2
 pytest-cov==2.5.1
@@ -33,5 +33,5 @@ requests==2.19.1
 six==1.11.0
 tzlocal==1.5.1
 ujson==1.35
-uvloop==0.10.1
+uvloop==0.10.2
 yarl==1.2.6

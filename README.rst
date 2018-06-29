@@ -187,7 +187,7 @@ for the microservice, ``service.py``.
 
 .. code:: dockerfile
 
-    FROM kalaspuff/python-nginx-proxy:1.1.0
+    FROM kalaspuff/python-nginx-proxy:1.1.1
     WORKDIR /
     RUN apt-get -y update \
         && apt-get install -y build-essential=12.3 \
