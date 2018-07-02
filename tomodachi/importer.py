@@ -48,7 +48,9 @@ class ServiceImporter(object):
             except ModuleNotFoundError as e:  # noqa
                 file_path_package_name = file_path[:-3] if file_path.endswith('.py') else file_path
                 if str(e) == "__path__ attribute not found on '{}' while trying to find '{}'".format(file_path_package_name.rsplit('/', 2)[1], '.'.join(file_path_package_name.rsplit('/', 2)[1:])):
-                    # ModuleNotFoundError: __path__ attribute not found on 'os' while trying to find 'os.code'
+                    logging.getLogger('import').warning('Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(file_path.rsplit('/', 2)[1]))
+                    raise ServicePackageError from e
+                if str(e) == "module '{}' has no attribute '__path__'".format(file_path_package_name.rsplit('/', 2)[1], '.'.join(file_path_package_name.rsplit('/', 2)[1:])):
                     logging.getLogger('import').warning('Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(file_path.rsplit('/', 2)[1]))
                     raise ServicePackageError from e
                 raise e
