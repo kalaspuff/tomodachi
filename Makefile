@@ -3,6 +3,7 @@ ifndef VERBOSE
 .SILENT:
 endif
 
+SHELL := /bin/bash
 VERSION=`python tomodachi/__version__.py`
 RELEASED := $(shell git tag | grep ^${VERSION}$$)
 PYTEST_INSTALLED := $(shell pip freeze |grep pytest==)
