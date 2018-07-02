@@ -1,4 +1,4 @@
-FROM kalaspuff/python-nginx-proxy:1.1.1
+FROM kalaspuff/python-nginx-proxy:1.2.0
 
 WORKDIR /
 
