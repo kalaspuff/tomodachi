@@ -5,6 +5,7 @@ from setuptools import setup, find_packages
 import tomodachi.__version__
 
 install_requires = [
+    'pycparser>=2.18',
     'aioamqp>=0.10.0, <0.12.0',
     'ujson>=1.35',
     'uvloop>=0.8.1',
@@ -32,6 +33,7 @@ classifiers = [
     'Programming Language :: Python :: 3 :: Only',
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
     'License :: OSI Approved :: MIT License',
     'Development Status :: 2 - Pre-Alpha',
     'Topic :: Software Development :: Libraries :: Application Frameworks',

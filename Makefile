@@ -26,14 +26,13 @@ install:
 	pip install -U .
 
 development:
-	pip install -r requirements-dev.txt
 	pip install -r requirements.txt
 
 uninstall:
 	pip uninstall -y tomodachi
 
 lint:
-	pycodestyle --ignore E501 --exclude proto_build .
+	pycodestyle --ignore E501 --exclude proto_build,build .
 	mypy ./
 	@echo "ok"
 

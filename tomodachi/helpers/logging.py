@@ -3,7 +3,7 @@ from logging.handlers import WatchedFileHandler
 from typing import Optional, Union, Any
 
 
-def log_setup(service: Any, name: Optional[str]=None, level: Optional[Union[str, int]]=None, formatter: Optional[Union[logging.Formatter, str, bool]]=True, filename: Optional[str]=None) -> logging.Logger:
+def log_setup(service: Any, name: Optional[str] = None, level: Optional[Union[str, int]] = None, formatter: Optional[Union[logging.Formatter, str, bool]] = True, filename: Optional[str] = None) -> logging.Logger:
     if not name:
         name = 'log.{}'.format(service.name)
     if not filename:

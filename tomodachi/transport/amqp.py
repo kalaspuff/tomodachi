@@ -49,7 +49,7 @@ class AmqpTransport(Invoker):
     transport = None  # type: Any
 
     @classmethod
-    async def publish(cls, service: Any, data: Any, routing_key: str='', exchange_name: str='', wait: bool=True) -> None:
+    async def publish(cls, service: Any, data: Any, routing_key: str = '', exchange_name: str = '', wait: bool = True) -> None:
         if not cls.channel:
             await cls.connect(cls, service, service.context)
         exchange_name = exchange_name or cls.exchange_name or 'amq.topic'
@@ -114,7 +114,7 @@ class AmqpTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, exchange_name: str='', competing: Optional[bool]=None, queue_name: Optional[str]=None) -> Any:
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]] = None, exchange_name: str = '', competing: Optional[bool] = None, queue_name: Optional[str] = None) -> Any:
         async def handler(payload: Any, delivery_tag: Any) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
             values = inspect.getfullargspec(func)
@@ -264,9 +264,9 @@ class AmqpTransport(Invoker):
         channel = await cls.connect(cls, obj, context)
 
         async def _subscribe() -> None:
-            async def declare_queue(routing_key: str, func: Callable, exchange_name: str='', exchange_type: str='topic', queue_name: Optional[str]=None,
-                                    passive: bool=False, durable: bool=True, exclusive: bool=False, auto_delete: bool=False,
-                                    competing_consumer: Optional[bool]=None) -> Optional[str]:
+            async def declare_queue(routing_key: str, func: Callable, exchange_name: str = '', exchange_type: str = 'topic', queue_name: Optional[str] = None,
+                                    passive: bool = False, durable: bool = True, exclusive: bool = False, auto_delete: bool = False,
+                                    competing_consumer: Optional[bool] = None) -> Optional[str]:
                 try:
                     if exchange_name and exchange_name != 'amq.topic':
                         await channel.exchange_declare(exchange_name=exchange_name, type_name=exchange_type, passive=False, durable=True, auto_delete=False)

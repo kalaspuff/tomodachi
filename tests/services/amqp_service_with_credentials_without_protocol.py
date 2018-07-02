@@ -30,7 +30,7 @@ class AWSSNSSQSService(tomodachi.Service):
                 self.closer.set_result(None)
 
     @amqp('test.raw.topic')
-    async def test(self, value: Any, default_value: bool=True) -> None:
+    async def test(self, value: Any, default_value: bool = True) -> None:
         if value == self.data_uuid:
             self.test_topic_data_received = default_value
             self.test_topic_data = value

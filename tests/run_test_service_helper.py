@@ -7,19 +7,19 @@ from tomodachi.container import ServiceContainer
 from tomodachi.importer import ServiceImporter
 
 
-def start_service(filename: str, monkeypatch: Any=None) -> Tuple:
+def start_service(filename: str, monkeypatch: Any = None) -> Tuple:
     if monkeypatch:
         monkeypatch.setattr(logging.root, 'handlers', [])
 
     loop = asyncio.get_event_loop()  # type: Any
     service = None  # type: Any
 
-    def stop_services(loop: Any=None) -> None:
+    def stop_services(loop: Any = None) -> None:
         if not loop:
             loop = asyncio.get_event_loop()
         asyncio.ensure_future(_stop_services())
 
-    def force_stop_services(loop: Any=None) -> None:
+    def force_stop_services(loop: Any = None) -> None:
         if not loop:
             loop = asyncio.get_event_loop()
         asyncio.ensure_future(_force_stop_services())
