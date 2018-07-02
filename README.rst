@@ -1,4 +1,4 @@
-``tomodachi`` - a lightweight microservices library with asyncio
+``tomodachi`` - a lightweight microservices library on Python asyncio
 ================================================================
   A Python 3 microservice library / framework using asyncio (async / await) with
   HTTP, websockets, RabbitMQ / AMQP and AWS SNS+SQS built-in support for event based
