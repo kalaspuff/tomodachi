@@ -1,10 +1,18 @@
 Changes
 =======
 
+0.12.6 (2018-07-02)
+-------------------
+- Additional compatibility for Python 3.7 support including CI testing for
+  Python 3.7.
+
+- Improved linting for type hinted functions.
+
+
 0.12.5 (2018-06-27)
 -------------------
-- Messages via SNS+SQS or AMQP over 60000 bytes as ProtoBuf will now be sent 
-  in a gzipped base64 encoded format to allow for larger limits and lower 
+- Messages via SNS+SQS or AMQP over 60000 bytes as ProtoBuf will now be sent
+  in a gzipped base64 encoded format to allow for larger limits and lower
   potential SNS costs due to multiplexed messaging. (github: **smaaland**)
 
 
