@@ -1,5 +1,6 @@
 language: python
-sudo: required
+sudo: true
+dist: xenial
 python:
     - 3.5.3
     - 3.5.4
@@ -10,6 +11,8 @@ python:
     - 3.6.3
     - 3.6.4
     - 3.6.5
+    - 3.6.6
+    - 3.7.0
     - 3.6-dev # 3.6 development branch
     - 3.7-dev # 3.7 development branch
 services:
