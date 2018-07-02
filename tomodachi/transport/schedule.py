@@ -13,7 +13,7 @@ from tomodachi.helpers.crontab import get_next_datetime
 class Scheduler(Invoker):
     close_waiter = None
 
-    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None, immediately: Optional[bool]=False) -> Any:
+    async def schedule_handler(cls: Any, obj: Any, context: Dict, func: Any, interval: Optional[Union[str, int]] = None, timestamp: Optional[str] = None, timezone: Optional[str] = None, immediately: Optional[bool] = False) -> Any:
         async def handler() -> None:
             values = inspect.getfullargspec(func)
             kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
@@ -38,7 +38,7 @@ class Scheduler(Invoker):
         return _func
 
     @classmethod
-    def next_call_at(cls, current_time: float, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None) -> int:
+    def next_call_at(cls, current_time: float, interval: Optional[Union[str, int]] = None, timestamp: Optional[str] = None, timezone: Optional[str] = None) -> int:
         if not timezone:
             tz = tzlocal.get_localzone()
         else:
@@ -145,7 +145,7 @@ class Scheduler(Invoker):
 
         return int(current_time + 60 * 60 * 24 * 365 * 100)
 
-    def get_timezone(cls: Any, timezone: Optional[str]=None) -> Optional[str]:
+    def get_timezone(cls: Any, timezone: Optional[str] = None) -> Optional[str]:
         if timezone:
             tz_aliases = {
                 ('+00:00', '-00:00', '00:00', '0000', 'GMT +0000', 'GMT +00:00', 'GMT -00', 'GMT +00', 'GMT -0', 'GMT +0'): 'GMT0',
@@ -185,7 +185,7 @@ class Scheduler(Invoker):
 
         return timezone
 
-    async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, func: Callable, interval: Optional[Union[str, int]]=None, timestamp: Optional[str]=None, timezone: Optional[str]=None, immediately: Optional[bool]=False) -> None:
+    async def start_schedule_loop(cls: Any, obj: Any, context: Dict, handler: Callable, func: Callable, interval: Optional[Union[str, int]] = None, timestamp: Optional[str] = None, timezone: Optional[str] = None, immediately: Optional[bool] = False) -> None:
         timezone = cls.get_timezone(timezone)
 
         if not cls.close_waiter:

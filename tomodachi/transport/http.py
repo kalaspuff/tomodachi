@@ -31,7 +31,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]]=False) -> str:
+    def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]] = False) -> str:
         if status is False:
             status = text
         status_code = str(status) if status else None
@@ -56,7 +56,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
         return str(text) if text else ''
 
-    def handle_error(self, request: Any, status: int=500, exc: Any=None, message: Optional[str]=None) -> web.Response:
+    def handle_error(self, request: Any, status: int = 500, exc: Any = None, message: Optional[str] = None) -> web.Response:
         """Handle errors.
 
         Returns HTTP response with specific status code. Logs additional
@@ -123,7 +123,7 @@ class Server(web_server.Server):  # type: ignore
 
 
 class DynamicResource(web_urldispatcher.DynamicResource):  # type: ignore
-    def __init__(self, pattern: Any, *, name: Optional[str]=None) -> None:
+    def __init__(self, pattern: Any, *, name: Optional[str] = None) -> None:
         self._routes = []  # type: List
         self._name = name
         self._pattern = pattern
@@ -131,7 +131,7 @@ class DynamicResource(web_urldispatcher.DynamicResource):  # type: ignore
 
 
 class Response(object):
-    def __init__(self, *, body: Optional[str]=None, status: int=200, reason: Optional[str]=None, headers: Optional[Union[Dict, CIMultiDict, CIMultiDictProxy]]=None, content_type: Optional[str]=None, charset: Optional[str]=None) -> None:
+    def __init__(self, *, body: Optional[str] = None, status: int = 200, reason: Optional[str] = None, headers: Optional[Union[Dict, CIMultiDict, CIMultiDictProxy]] = None, content_type: Optional[str] = None, charset: Optional[str] = None) -> None:
         if headers is None:
             headers = CIMultiDict()
         elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
@@ -146,7 +146,7 @@ class Response(object):
 
         self.missing_content_type = hdrs.CONTENT_TYPE not in headers and not content_type and not charset
 
-    def get_aiohttp_response(self, context: Dict, default_charset: Optional[str]=None, default_content_type: Optional[str]=None) -> web.Response:
+    def get_aiohttp_response(self, context: Dict, default_charset: Optional[str] = None, default_content_type: Optional[str] = None) -> web.Response:
         if self.missing_content_type:
             self.charset = default_charset
             self.content_type = default_content_type

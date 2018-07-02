@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Callable
 
 
 class Watcher(object):
-    def __init__(self, root: Optional[List]=None, configuration: Optional[Dict]=None) -> None:
+    def __init__(self, root: Optional[List] = None, configuration: Optional[Dict] = None) -> None:
         self.watched_files = {}  # type: Dict[str, float]
         self.root = []  # type: List[str]
         self.ignored_dirs = ['__pycache__', '.git', '.svn', '__ignored__', '__temporary__', '__tmp__']
@@ -29,7 +29,7 @@ class Watcher(object):
 
         self.update_watched_files()
 
-    def update_watched_files(self, reindex: bool=False) -> Dict:
+    def update_watched_files(self, reindex: bool = False) -> Dict:
         watched_files = {}
         if not self.watched_files or reindex:
             for r in self.root:
@@ -56,7 +56,7 @@ class Watcher(object):
         self.watched_files = watched_files
         return {}
 
-    async def watch(self, loop: asyncio.AbstractEventLoop=None, callback_func: Optional[Callable]=None) -> Any:
+    async def watch(self, loop: asyncio.AbstractEventLoop = None, callback_func: Optional[Callable] = None) -> Any:
         _loop = asyncio.get_event_loop() if not loop else loop  # type: Any
 
         async def _watch_loop() -> None:

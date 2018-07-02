@@ -25,7 +25,7 @@ class ServiceLauncher(object):
     services = set()  # type: set
 
     @classmethod
-    def run_until_complete(cls, service_files: Union[List, set], configuration: Optional[Dict]=None, watcher: Optional[tomodachi.watcher.Watcher]=None) -> None:
+    def run_until_complete(cls, service_files: Union[List, set], configuration: Optional[Dict] = None, watcher: Optional[tomodachi.watcher.Watcher] = None) -> None:
         def stop_services() -> None:
             asyncio.ensure_future(_stop_services())
 

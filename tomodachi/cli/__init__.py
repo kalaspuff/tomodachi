@@ -130,7 +130,7 @@ class CLI:
         self.help_command()
 
 
-def cli_entrypoint(argv: Optional[List[str]]=None) -> None:
+def cli_entrypoint(argv: Optional[List[str]] = None) -> None:
     if argv is None:
         argv = sys.argv
     CLI().main(argv[1:])

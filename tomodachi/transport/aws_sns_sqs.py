@@ -44,7 +44,7 @@ class AWSSNSSQSTransport(Invoker):
     close_waiter = None
 
     @classmethod
-    async def publish(cls, service: Any, data: Any, topic: str, wait: bool=True) -> None:
+    async def publish(cls, service: Any, data: Any, topic: str, wait: bool = True) -> None:
         message_protocol = getattr(service, 'message_protocol', None)
 
         payload = data
@@ -101,7 +101,7 @@ class AWSSNSSQSTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('aws_sns_sqs', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]]=None, competing: Optional[bool]=None, queue_name: Optional[str]=None, **kwargs: Any) -> Any:
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]] = None, competing: Optional[bool] = None, queue_name: Optional[str] = None, **kwargs: Any) -> Any:
         parser_kwargs = kwargs
         message_protocol = context.get('message_protocol')
         # Validate the parser kwargs if there is a validation function in the
@@ -111,7 +111,7 @@ class AWSSNSSQSTransport(Invoker):
             if protocol_kwargs_validation_func:
                 protocol_kwargs_validation_func(**parser_kwargs)
 
-        async def handler(payload: Optional[str], receipt_handle: Optional[str]=None, queue_url: Optional[str]=None) -> Any:
+        async def handler(payload: Optional[str], receipt_handle: Optional[str] = None, queue_url: Optional[str] = None) -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
                 return
@@ -431,7 +431,7 @@ class AWSSNSSQSTransport(Invoker):
 
         return None
 
-    async def subscribe_topics(cls: Any, topic_arn_list: List, queue_arn: str, queue_url: str, context: Dict, queue_policy: Optional[Dict]=None) -> List:
+    async def subscribe_topics(cls: Any, topic_arn_list: List, queue_arn: str, queue_url: str, context: Dict, queue_policy: Optional[Dict] = None) -> List:
         if not cls.clients or not cls.clients.get('sns'):
             cls.create_client(cls, 'sns', context)
         client = cls.clients.get('sns')
@@ -646,7 +646,7 @@ class AWSSNSSQSTransport(Invoker):
         async def _subscribe() -> None:
             cls.close_waiter = asyncio.Future()
 
-            async def setup_queue(topic: str, func: Callable, queue_name: Optional[str]=None, competing_consumer: Optional[bool]=None) -> str:
+            async def setup_queue(topic: str, func: Callable, queue_name: Optional[str] = None, competing_consumer: Optional[bool] = None) -> str:
                 _uuid = obj.uuid
 
                 if queue_name and competing_consumer is False:

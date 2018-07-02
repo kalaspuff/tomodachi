@@ -13,7 +13,7 @@ from tomodachi.config import merge_dicts
 
 
 class ServiceContainer(object):
-    def __init__(self, module_import: ModuleType, configuration: Optional[Dict]=None) -> None:
+    def __init__(self, module_import: ModuleType, configuration: Optional[Dict] = None) -> None:
         self.module_import = module_import
 
         self.file_path = module_import.__file__
