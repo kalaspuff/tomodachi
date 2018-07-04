@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.12.7 (2018-07-04)
+-------------------
+- Fixed an issue for using ProtoBuf in development as hot-reloading didn't
+  work as expected. (github: **smaaland**)
+
+
 0.12.6 (2018-07-02)
 -------------------
 - Additional compatibility for Python 3.7 support including CI testing for
