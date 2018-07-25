@@ -1,6 +1,15 @@
 Changes
 =======
 
+0.13.0 (2018-07-25)
+-------------------
+- Restructured base message protocols for both JSON and ProtoBuf. JSON
+  protocol is now called ``tomodachi-json-base--1.0.0`` (earlier
+  ``json_base-wip``) and the ProtoBuf protocol is now referred to as
+  ``tomodachi-protobuf-base--1.0.0``. Updated proto files are not
+  compatible with earlier protocol ``protobuf_base-wip``.
+
+
 0.12.7 (2018-07-04)
 -------------------
 - Fixed an issue for using ProtoBuf in development as hot-reloading didn't
