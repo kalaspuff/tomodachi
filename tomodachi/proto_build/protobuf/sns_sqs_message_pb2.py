@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/sns_sqs_message.proto',
   package='proto',
   syntax='proto3',
-  serialized_pb=_b('\n\x1eprotobuf/sns_sqs_message.proto\x12\x05proto\"%\n\x07Service\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"\x99\x01\n\x08Metadata\x12\x14\n\x0cmessage_uuid\x18\x01 \x01(\t\x12\x18\n\x10protocol_version\x18\x02 \x01(\t\x12$\n\x1c\x63ompatible_protocol_versions\x18\x03 \x03(\t\x12\x11\n\ttimestamp\x18\x04 \x01(\x01\x12\r\n\x05topic\x18\x05 \x01(\t\x12\x15\n\rdata_encoding\x18\x06 \x01(\t\"a\n\rSNSSQSMessage\x12\x1f\n\x07service\x18\x01 \x01(\x0b\x32\x0e.proto.Service\x12!\n\x08metadata\x18\x02 \x01(\x0b\x32\x0f.proto.Metadata\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\tb\x06proto3')
+  serialized_pb=_b('\n\x1eprotobuf/sns_sqs_message.proto\x12\x05proto\"%\n\x07Service\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"s\n\x08Metadata\x12\x14\n\x0cmessage_uuid\x18\x01 \x01(\t\x12\x18\n\x10protocol_version\x18\x02 \x01(\t\x12\x11\n\ttimestamp\x18\x03 \x01(\x01\x12\r\n\x05topic\x18\x04 \x01(\t\x12\x15\n\rdata_encoding\x18\x05 \x01(\t\"a\n\rSNSSQSMessage\x12\x1f\n\x07service\x18\x01 \x01(\x0b\x32\x0e.proto.Service\x12!\n\x08metadata\x18\x02 \x01(\x0b\x32\x0f.proto.Metadata\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\x62\x06proto3')
 )
 
 
@@ -85,29 +85,22 @@ _METADATA = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='compatible_protocol_versions', full_name='proto.Metadata.compatible_protocol_versions', index=2,
-      number=3, type=9, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='timestamp', full_name='proto.Metadata.timestamp', index=3,
-      number=4, type=1, cpp_type=5, label=1,
+      name='timestamp', full_name='proto.Metadata.timestamp', index=2,
+      number=3, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='topic', full_name='proto.Metadata.topic', index=4,
-      number=5, type=9, cpp_type=9, label=1,
+      name='topic', full_name='proto.Metadata.topic', index=3,
+      number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='data_encoding', full_name='proto.Metadata.data_encoding', index=5,
-      number=6, type=9, cpp_type=9, label=1,
+      name='data_encoding', full_name='proto.Metadata.data_encoding', index=4,
+      number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -124,8 +117,8 @@ _METADATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=81,
-  serialized_end=234,
+  serialized_start=80,
+  serialized_end=195,
 )
 
 
@@ -152,8 +145,8 @@ _SNSSQSMESSAGE = _descriptor.Descriptor(
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='proto.SNSSQSMessage.data', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
+      number=3, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
@@ -169,8 +162,8 @@ _SNSSQSMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=236,
-  serialized_end=333,
+  serialized_start=197,
+  serialized_end=294,
 )
 
 _SNSSQSMESSAGE.fields_by_name['service'].message_type = _SERVICE

@@ -35,15 +35,6 @@ def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
         assert timestamp >= t1
         assert timestamp <= t2
 
-        tmp_message = ujson.loads(json_message)
-        tmp_message['metadata']['compatible_protocol_versions'] = 'non-compatible'
-        json_message = ujson.dumps(tmp_message)
-        result, message_uuid, timestamp = await instance.message_protocol.parse_message(json_message)
-        assert result is False
-        assert message_uuid[0:36] == instance.uuid
-        assert timestamp >= t1
-        assert timestamp <= t2
-
     loop.run_until_complete(_async())
 
     os.kill(os.getpid(), signal.SIGINT)
@@ -90,24 +81,15 @@ def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
         protobuf_message = await instance.message_protocol.build_message(instance, 'topic', data)
         t2 = time.time()
         result, message_uuid, timestamp = await instance.message_protocol.parse_message(protobuf_message, Person)
+        assert type(result.get('data')) is Person
         assert result.get('data') == data
-        assert result.get('metadata', {}).get('data_encoding') == 'base64'
+        assert result.get('metadata', {}).get('data_encoding') == 'proto'
         assert result.get('data') == data
         assert result.get('data').name == data.name
         assert result.get('data').id == data.id
         assert len(MessageToJson(result.get('data'))) == len(MessageToJson(data))
         assert MessageToJson(result.get('data')) == MessageToJson(data)
         assert len(message_uuid) == 73
-        assert message_uuid[0:36] == instance.uuid
-        assert timestamp >= t1
-        assert timestamp <= t2
-
-        tmp_message = SNSSQSMessage()
-        tmp_message.ParseFromString(base64.b64decode(protobuf_message))
-        tmp_message.metadata.compatible_protocol_versions.pop()
-        tmp_message.metadata.compatible_protocol_versions.append('non-compatible')
-        result, message_uuid, timestamp = await instance.message_protocol.parse_message(base64.b64encode(tmp_message.SerializeToString()), Person)
-        assert result is False
         assert message_uuid[0:36] == instance.uuid
         assert timestamp >= t1
         assert timestamp <= t2
@@ -127,11 +109,14 @@ def test_protobuf_base_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) 
         data = Person()
         data.name = 'John Doe'
         data.id = '12'
-        json_message = await instance.message_protocol.build_message(instance, 'topic', data)
-        await instance.message_protocol.parse_message(json_message)
+        protobuf_message = await instance.message_protocol.build_message(instance, 'topic', data)
+        result, message_uuid, timestamp = await instance.message_protocol.parse_message(protobuf_message)
+        assert type(result.get('data')) is not Person
+        assert type(result.get('data')) is bytes
+        assert result.get('data') != data
+        assert result.get('data') == b'\n\x0212"\x08John Doe'
 
-    with pytest.raises(TypeError):
-        loop.run_until_complete(_async())
+    loop.run_until_complete(_async())
 
     os.kill(os.getpid(), signal.SIGINT)
     loop.run_until_complete(future)
