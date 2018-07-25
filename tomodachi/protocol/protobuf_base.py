@@ -7,8 +7,7 @@ from typing import Any, Dict, Tuple, Union
 
 from tomodachi.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
 
-PROTOCOL_VERSION = 'protobuf_base-wip'
-COMPATIBLE_PROTOCOL_VERSIONS = ['protobuf_base-wip']
+PROTOCOL_VERSION = 'tomodachi-protobuf-base--1.0.0'
 
 
 class ProtobufBase(object):
@@ -21,42 +20,50 @@ class ProtobufBase(object):
 
     @classmethod
     async def build_message(cls, service: Any, topic: str, data: Any) -> str:
-        data_encoding = 'base64'
-        message_data = base64.b64encode(data.SerializeToString()).decode('ascii')
+        message_data = data.SerializeToString()
 
+        data_encoding = 'proto'
         if len(message_data) > 60000:
-            message_data = base64.b64encode(zlib.compress(data.SerializeToString())).decode('ascii')
-            data_encoding = 'base64_gzip_proto'
+            message_data = zlib.compress(data.SerializeToString())
+            data_encoding = 'gzip_proto'
 
         message = SNSSQSMessage()
         message.service.name = getattr(service, 'name', None)
         message.service.uuid = getattr(service, 'uuid', None)
         message.metadata.message_uuid = '{}.{}'.format(getattr(service, 'uuid', ''), str(uuid.uuid4()))
         message.metadata.protocol_version = PROTOCOL_VERSION
-        message.metadata.compatible_protocol_versions.extend(COMPATIBLE_PROTOCOL_VERSIONS)
         message.metadata.timestamp = time.time()
         message.metadata.topic = topic
         message.metadata.data_encoding = data_encoding
         message.data = message_data
+
         return base64.b64encode(message.SerializeToString()).decode('ascii')
 
     @classmethod
-    async def parse_message(cls, payload: str, proto_class: Any, validator: Any = None) -> Union[Dict, Tuple]:
+    async def parse_message(cls, payload: str, proto_class: Any = None, validator: Any = None) -> Union[Dict, Tuple]:
         message = SNSSQSMessage()
         message.ParseFromString(base64.b64decode(payload))
 
         message_uuid = message.metadata.message_uuid
         timestamp = message.metadata.timestamp
 
-        if PROTOCOL_VERSION not in message.metadata.compatible_protocol_versions:
-            return False, message_uuid, timestamp
+        raw_data = None
+        obj = None
 
-        obj = proto_class()
-
-        if message.metadata.data_encoding == 'base64':
-            obj.ParseFromString(base64.b64decode(message.data))
-        elif message.metadata.data_encoding == 'base64_gzip_proto':
-            obj.ParseFromString(zlib.decompress(base64.b64decode(message.data)))
+        if not proto_class:
+            raw_data = message.data
+        else:
+            obj = proto_class()
+            if message.metadata.data_encoding == 'proto':
+                obj.ParseFromString(message.data)
+            elif message.metadata.data_encoding == 'base64':  # deprecated
+                obj.ParseFromString(base64.b64decode(message.data))
+            elif message.metadata.data_encoding == 'gzip_proto':
+                obj.ParseFromString(zlib.decompress(message.data))
+            elif message.metadata.data_encoding == 'base64_gzip_proto':  # deprecated
+                obj.ParseFromString(zlib.decompress(base64.b64decode(message.data)))
+            elif message.metadata.data_encoding == 'raw':
+                raw_data = message.data
 
         if validator is not None:
             try:
@@ -78,10 +85,9 @@ class ProtobufBase(object):
             'metadata': {
                 'message_uuid': message.metadata.message_uuid,
                 'protocol_version': message.metadata.protocol_version,
-                'compatible_protocol_versions': message.metadata.compatible_protocol_versions,
                 'timestamp': message.metadata.timestamp,
                 'topic': message.metadata.topic,
                 'data_encoding': message.metadata.data_encoding
             },
-            'data': obj
+            'data': raw_data if raw_data is not None else obj
         }, message_uuid, timestamp
