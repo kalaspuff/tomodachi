@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.13.1 (2018-08-01)
+-------------------
+- Fixes bug with type hinting reporting 'error: Module has no
+  attribute "decorator"' when applying a ``@tomodachi.decorator``
+  decorator.
+
+
 0.13.0 (2018-07-25)
 -------------------
 - Restructured base message protocols for both JSON and ProtoBuf. JSON
