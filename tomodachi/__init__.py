@@ -36,6 +36,7 @@ except Exception:  # pragma: no cover
     pass
 
 __all__ = ['service', 'Service', '__version__', '__version_info__',
+           'decorator',
            'amqp', 'amqp_publish',
            'aws_sns_sqs', 'aws_sns_sqs_publish',
            'http', 'http_error', 'http_static', 'websocket', 'HttpResponse', 'HttpException',
