@@ -178,7 +178,7 @@ def test_protobuf_object_validation_function(monkeypatch: Any, capsys: Any, loop
     instance = services.get('test_dummy_protobuf')
 
     def test_validator(person: Person) -> None:
-        validate_field_regex(person.name, '^[a-zA-Z ]+$')
+        validate_field_regex(person.name, r'^[a-zA-Z ]+$')
 
     async def _async() -> None:
         data = Person()
@@ -202,7 +202,7 @@ def test_protobuf_object_static_validation_function(monkeypatch: Any, capsys: An
     instance = services.get('test_dummy_protobuf')
 
     def test_static_validator(person: Person) -> None:
-        validate_field_regex(person.name, '^[a-zA-Z ]+$')
+        validate_field_regex(person.name, r'^[a-zA-Z ]+$')
 
     async def _async() -> None:
         data = Person()
@@ -227,7 +227,7 @@ def test_protobuf_object_validation_function_fail(monkeypatch: Any, capsys: Any,
     instance = services.get('test_dummy_protobuf')
 
     def test_validator(person: Person) -> None:
-        validate_field_regex(person.name, '^(#?[a-fA-F0-9]{6}|)$')
+        validate_field_regex(person.name, r'^(#?[a-fA-F0-9]{6}|)$')
 
     async def _async() -> None:
         data = Person()
@@ -252,7 +252,7 @@ def test_protobuf_object_static_validation_function_fail(monkeypatch: Any, capsy
     instance = services.get('test_dummy_protobuf')
 
     def test_static_validator(person: Person) -> None:
-        validate_field_regex(person.name, '^(#?[a-fA-F0-9]{6}|)$')
+        validate_field_regex(person.name, r'^(#?[a-fA-F0-9]{6}|)$')
 
     async def _async() -> None:
         data = Person()
