@@ -33,5 +33,5 @@ requests==2.19.1
 six==1.11.0
 tzlocal==1.5.1
 ujson==1.35
-uvloop==0.11.0
+uvloop==0.11.1
 yarl==1.2.6
