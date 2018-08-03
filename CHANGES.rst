@@ -3,8 +3,8 @@ Changes
 
 0.13.2 (2018-08-03)
 -------------------
-- Correction regarding type hinting as to where a `bytes` value
-  could be used as the HTTP body in `Response` objects.
+- Correction regarding type hinting as to where a ``bytes`` value
+  could be used as the HTTP body in ``Response`` objects.
 
 
 0.13.1 (2018-08-01)
