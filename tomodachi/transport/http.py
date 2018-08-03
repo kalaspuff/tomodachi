@@ -131,7 +131,7 @@ class DynamicResource(web_urldispatcher.DynamicResource):  # type: ignore
 
 
 class Response(object):
-    def __init__(self, *, body: Optional[str] = None, status: int = 200, reason: Optional[str] = None, headers: Optional[Union[Dict, CIMultiDict, CIMultiDictProxy]] = None, content_type: Optional[str] = None, charset: Optional[str] = None) -> None:
+    def __init__(self, *, body: Optional[Union[bytes, str]] = None, status: int = 200, reason: Optional[str] = None, headers: Optional[Union[Dict, CIMultiDict, CIMultiDictProxy]] = None, content_type: Optional[str] = None, charset: Optional[str] = None) -> None:
         if headers is None:
             headers = CIMultiDict()
         elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
