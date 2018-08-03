@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.13.3 (2018-08-03)
+-------------------
+- RST correction from last release.
+
+
 0.13.2 (2018-08-03)
 -------------------
 - Correction regarding type hinting as to where a ``bytes`` value
