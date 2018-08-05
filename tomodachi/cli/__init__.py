@@ -125,7 +125,7 @@ class CLI:
             if opt in ['--dependency-versions']:
                 self.dependency_versions_command()
         if len(args):
-            if args[0] in ('run', 'start'):
+            if args[0] in ('run', 'start', 'go'):
                 self.run_command(args[1:])
         self.help_command()
 
