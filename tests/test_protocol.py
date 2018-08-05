@@ -10,7 +10,7 @@ from google.protobuf.json_format import MessageToJson
 
 from proto_build.message_pb2 import Person
 from run_test_service_helper import start_service
-from tomodachi.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
+from tomodachi.protocol.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
 from tomodachi.validation.validation import validate_field_regex, \
     RegexMissmatchException
 

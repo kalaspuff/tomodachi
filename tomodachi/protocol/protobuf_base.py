@@ -5,7 +5,7 @@ import base64
 import zlib
 from typing import Any, Dict, Tuple, Union
 
-from tomodachi.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
+from tomodachi.protocol.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
 
 PROTOCOL_VERSION = 'tomodachi-protobuf-base--1.0.0'
 
