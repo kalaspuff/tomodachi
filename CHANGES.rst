@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.13.4 (2018-08-06)
+-------------------
+- Added type hinting stubs for ProtoBuf ``_pb2.py`` file to allow
+  ``mypy`` to validate functions utilizing the generated protobuf
+  files.
+
+
 0.13.3 (2018-08-03)
 -------------------
 - RST correction from last release.
