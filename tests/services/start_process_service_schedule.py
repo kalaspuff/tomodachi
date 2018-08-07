@@ -23,6 +23,7 @@ class SchedulerService(tomodachi.Service):
 
     async def _started_service(self) -> None:
         self.function_order.append('_started_service')
+
         async def _async() -> None:
             async def sleep_and_kill() -> None:
                 await asyncio.sleep(12.0)
