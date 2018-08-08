@@ -1,6 +1,17 @@
 Changes
 =======
 
+0.13.5 (2018-08-08)
+-------------------
+- Fixes an issue which caused HTTP invoker functions to be accessible
+  before the bootstrapper function ``_start_service()`` had been
+  completed. Now ``_start_service()`` is called first, followed by
+  activation of the invoker functions (``@http``, ``@schedule``,
+  ``@aws_sns_sqs``, ``@amqp``, etc.) and then lastly the
+  ``_started_service()`` function will be called, announcing that the
+  service is now up and running.
+
+
 0.13.4 (2018-08-06)
 -------------------
 - Added type hinting stubs for ProtoBuf ``_pb2.py`` file to allow
