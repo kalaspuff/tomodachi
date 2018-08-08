@@ -7,7 +7,7 @@ from tomodachi.container import ServiceContainer
 from tomodachi.importer import ServiceImporter
 
 
-def start_service(filename: str, monkeypatch: Any = None) -> Tuple:
+def start_service(filename: str, monkeypatch: Any = None, wait: bool = True) -> Tuple:
     if monkeypatch:
         monkeypatch.setattr(logging.root, 'handlers', [])
 
@@ -49,7 +49,8 @@ def start_service(filename: str, monkeypatch: Any = None) -> Tuple:
                 raise
 
         future = asyncio.ensure_future(_async())
-        loop.run_until_complete(asyncio.wait([service.started_waiter]))
+        if wait:
+            loop.run_until_complete(asyncio.wait([service.started_waiter]))
     except Exception:
         for signame in ('SIGINT', 'SIGTERM'):
             loop.remove_signal_handler(getattr(signal, signame))
@@ -59,7 +60,14 @@ def start_service(filename: str, monkeypatch: Any = None) -> Tuple:
         raise
 
     services = {}
-    for service_name, instance, log_level in service.started_waiter.result():
-        services[service_name] = instance
+    if wait:
+        for service_name, instance, log_level in service.started_waiter.result():
+            services[service_name] = instance
+    else:
+        def get_services():
+            loop.run_until_complete(asyncio.wait([service.started_waiter]))
+            return {service_name: instance for service_name, instance, log_level in service.started_waiter.result()}
+
+        return get_services, future
 
     return services, future
