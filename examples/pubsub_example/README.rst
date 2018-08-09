@@ -22,8 +22,8 @@ Preferrably set up a configuration file with your AWS credentials or manually ch
         "options": {
             "aws": {
                 "region_name": "eu-west-1",
-                "aws_access_key_id": "AKIAXE2KODGEP8JJ6LZC",
-                "aws_secret_access_key": "abtst2t32a84MJsA53gIKDR.CX55o2gNDsS/00f",
+                "aws_access_key_id": "AKIFAKEKEYNOTREALZ35",
+                "aws_secret_access_key": "abtst2/Passw0rdSup3rS3creT.5o2gNDsS/00f",
             },
             "aws_sns_sqs": {
                 "queue_name_prefix": "tomodachi-",
