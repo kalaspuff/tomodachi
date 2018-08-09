@@ -13,7 +13,7 @@ class ServiceB(tomodachi.Service):
         'aws_sns_sqs': {
             'region_name': None,  # specify AWS region (example: 'eu-west-1')
             'aws_access_key_id': None,  # specify AWS access key (example: 'AKIAXNTIENCJIY2STOCI')
-            'aws_secret_access_key': None  # specify AWS secret key (example: 'f7sha92hNotarealsecretkeyn29ShnSYQi3nzgA')
+            'aws_secret_access_key': None  # specify AWS secret key
         },
         'aws_endpoint_urls': {
             'sns': None,  # For example 'http://localhost:4575' if localstack is used for testing
