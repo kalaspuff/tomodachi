@@ -1,4 +1,5 @@
 import tomodachi
+import uuid
 from typing import Any
 from tomodachi import schedule, aws_sns_sqs_publish
 from tomodachi.protocol import JsonBase
