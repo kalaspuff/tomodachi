@@ -17,7 +17,7 @@ Preferrably set up a configuration file with your AWS credentials or manually ch
 **Example** ``aws_sns_sqs_credentials.json``
 
 .. code:: json
-    
+
     {
         "options": {
             "aws": {
@@ -28,7 +28,7 @@ Preferrably set up a configuration file with your AWS credentials or manually ch
             "aws_sns_sqs": {
                 "queue_name_prefix": "tomodachi-",
                 "topic_prefix": "tomodachi-"
-            },
+            }
         }
     }
 
@@ -36,11 +36,11 @@ Preferrably set up a configuration file with your AWS credentials or manually ch
 **Run the examples by starting the three services in different shells and watch the output.**
 
 .. code:: bash
-    
+
     $ tomodachi run examples/pubsub_example/service_send_message.py -c aws_sns_sqs_credentials.json
 
 .. code:: bash
-    
+
     $ tomodachi run examples/pubsub_example/service_a.py -c aws_sns_sqs_credentials.json
 
 .. code:: bash

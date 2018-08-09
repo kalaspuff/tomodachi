@@ -1,15 +1,12 @@
-import os
 import tomodachi
-from typing import Any, Dict
-from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
+from typing import Any
+from tomodachi import aws_sns_sqs
 from tomodachi.protocol import JsonBase
 
 
 @tomodachi.service
 class ServiceB(tomodachi.Service):
     name = 'example_service_b'
-    log_level = 'INFO'
-    uuid = os.environ.get('SERVICE_UUID')
     message_protocol = JsonBase
 
     options = {
