@@ -1,6 +1,5 @@
-import os
 import tomodachi
-from typing import Any, Dict
+from typing import Any
 from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.protocol import JsonBase
 
@@ -8,8 +7,6 @@ from tomodachi.protocol import JsonBase
 @tomodachi.service
 class ServiceA(tomodachi.Service):
     name = 'example_service_a'
-    log_level = 'INFO'
-    uuid = os.environ.get('SERVICE_UUID')
     message_protocol = JsonBase
 
     options = {
@@ -27,6 +24,7 @@ class ServiceA(tomodachi.Service):
     @aws_sns_sqs('example-pubsub-new-message', competing=True)
     async def new_message(self, data: Any) -> None:
         self.log('Received data (function: new_message) - "{}"'.format(data))
+
         callback_data = 'message received: "{}"'.format(data)
         await aws_sns_sqs_publish(self, callback_data, topic='example-pubsub-callback', wait=True)
 
