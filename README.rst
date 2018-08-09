@@ -133,6 +133,10 @@ methods called on a specified interval or at specific times / days. Inter-commun
 between different services may be established using a pub-sub type with messages over AMQP
 or AWS SNS+SQS which is natively supported.
 
+See a more comprehensive example involving multiple services publishing and subcribing on 
+topics using AWS SNS+SQS in the 
+`pubsub-examples <https://github.com/kalaspuff/tomodachi/blob/master/examples/pubsub_example>`_ folder.
+
 
 Run the service 😎
 ------------------
