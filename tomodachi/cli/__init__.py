@@ -10,6 +10,14 @@ from tomodachi.watcher import Watcher
 from tomodachi.config import parse_config_files
 
 
+try:
+    if ModuleNotFoundError:
+        pass
+except Exception:
+    class ModuleNotFoundError(ImportError):
+        pass
+
+
 class CLI:
     def help_command_usage(self) -> str:
         return ('Usage: tomodachi.py subcommand [options] [args]\n'
