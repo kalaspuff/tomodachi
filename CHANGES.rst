@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.13.7 (2018-08-10)
+-------------------
+- Correction for non-defined exception in Python 3.5.
+
+
 0.13.6 (2018-08-10)
 -------------------
 - Improved error handling if strict tomodachi dependencies fail to
