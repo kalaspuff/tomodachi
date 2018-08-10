@@ -6,6 +6,9 @@ Changes
 - Improved error handling if strict tomodachi dependencies fail to
   load, for example if an installed dependency is corrupt or missing.
 
+- Added additional examples to repository with a demo of pub-sub
+  communication.
+
 
 0.13.5 (2018-08-08)
 -------------------
