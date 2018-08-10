@@ -6,6 +6,7 @@ try:
     from tomodachi.invoker import decorator
 except Exception:  # pragma: no cover
     pass
+
 try:
     from tomodachi.transport.amqp import (amqp,
                                           amqp_publish)

@@ -35,27 +35,95 @@ class CLI:
         sys.exit(0)
 
     def dependency_versions_command(self) -> None:
+        self.test_dependencies(fail_on_errors=False, output_versions=True)
+        sys.exit(0)
+
+    def test_dependencies(self, fail_on_errors: bool = True, output_versions: bool = False) -> None:
+        errors = False
+
         try:
             import aiobotocore
-            print('aiobotocore/{}'.format(aiobotocore.__version__))
-        except Exception:  # pragma: no cover
-            print('aiobotocore failed to load')
+            if output_versions:
+                print('aiobotocore/{}'.format(aiobotocore.__version__))
+        except ModuleNotFoundError as e:  # pragma: no cover
+            errors = True
+            print('Dependency failure: aiobotocore failed to load (error: "{}")'.format(str(e)))
+        except Exception as e:  # pragma: no cover
+            errors = True
+            print('Dependency failure: aiobotocore failed to load (error: "{}")'.format(str(e)))
+            logging.exception('')
+            print('')
+
         try:
             import botocore
-            print('botocore/{}'.format(botocore.__version__))
-        except Exception:  # pragma: no cover
-            print('botocore failed to load')
+            if output_versions:
+                print('botocore/{}'.format(botocore.__version__))
+        except ModuleNotFoundError as e:  # pragma: no cover
+            errors = True
+            print('Dependency failure: botocore failed to load (error: "{}")'.format(str(e)))
+        except Exception as e:  # pragma: no cover
+            errors = True
+            print('Dependency failure: botocore failed to load (error: "{}")'.format(str(e)))
+            logging.exception('')
+            print('')
+
         try:
             import aiohttp
-            print('aiohttp/{}'.format(aiohttp.__version__))
-        except Exception:  # pragma: no cover
-            print('aiohttp failed to load')
+            if output_versions:
+                print('aiohttp/{}'.format(aiohttp.__version__))
+        except ModuleNotFoundError as e:  # pragma: no cover
+            errors = True
+            print('Dependency failure: aiohttp failed to load (error: "{}")'.format(str(e)))
+        except Exception as e:  # pragma: no cover
+            errors = True
+            print('Dependency failure: aiohttp failed to load (error: "{}")'.format(str(e)))
+            logging.exception('')
+            print('')
+
         try:
             import aioamqp
-            print('aioamqp/{}'.format(aioamqp.__version__))
-        except Exception:  # pragma: no cover
-            print('aioamqp failed to load')
-        sys.exit(0)
+            if output_versions:
+                print('aioamqp/{}'.format(aioamqp.__version__))
+        except ModuleNotFoundError as e:  # pragma: no cover
+            errors = True
+            print('Dependency failure: aioamqp failed to load (error: "{}")'.format(str(e)))
+        except Exception as e:  # pragma: no cover
+            errors = True
+            print('Dependency failure: aioamqp failed to load (error: "{}")'.format(str(e)))
+            logging.exception('')
+            print('')
+
+        try:
+            # Optional
+            import google.protobuf
+            if output_versions:
+                print('protobuf/{}'.format(google.protobuf.__version__))
+        except ModuleNotFoundError as e:  # pragma: no cover
+            pass
+        except Exception as e:  # pragma: no cover
+            pass
+
+        if not errors:
+            try:
+                import tomodachi.invoker
+                import tomodachi.helpers.logging
+                import tomodachi.transport.amqp
+                import tomodachi.transport.aws_sns_sqs
+                import tomodachi.transport.http
+                import tomodachi.transport.schedule
+            except Exception as e:  # pragma: no cover
+                errors = True
+                print('Dependency failure: tomodachi essentials failed to load (error: "{}")'.format(str(e)))
+                logging.exception('')
+                print('')
+
+        if errors:
+            if fail_on_errors:
+                logging.getLogger('exception').warning('Unable to initialize dependencies')
+                logging.getLogger('exception').warning('Error: See above exceptions and traceback')
+                sys.exit(1)
+            else:
+                print('There were errors - see above for exceptions and traceback')
 
     def run_command_usage(self) -> str:
         return 'Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--production]'
@@ -109,6 +177,9 @@ class CLI:
 
             logging.basicConfig(format='%(asctime)s (%(name)s): %(message)s', level=log_level)
             logging.Formatter(fmt='%(asctime)s.%(msecs).03d', datefmt='%Y-%m-%d %H:%M:%S')
+
+            self.test_dependencies()
+
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(0)
 
