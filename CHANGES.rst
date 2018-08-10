@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.13.6 (2018-08-10)
+-------------------
+- Improved error handling if strict tomodachi dependencies fail to
+  load, for example if an installed dependency is corrupt or missing.
+
+
 0.13.5 (2018-08-08)
 -------------------
 - Fixes an issue which caused HTTP invoker functions to be accessible
