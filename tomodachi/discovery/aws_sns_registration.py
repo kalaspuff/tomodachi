@@ -3,6 +3,11 @@ from typing import Any, Dict  # noqa
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs_publish
 
 
+# An example discovery class which would send a message over AWS SNS on the topic
+# 'services-registration-register' containing the newly started service-name and
+# the HTTP endpoitns that it's listening on. Likewise it also tries to "deregister"
+# by sending a message on the 'services-registration-deregister' when shutting
+# down.
 class AWSSNSRegistration(object):
     http_endpoints = {}  # type: Dict
 
