@@ -114,7 +114,16 @@ class AmqpTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]] = None, exchange_name: str = '', competing: Optional[bool] = None, queue_name: Optional[str] = None) -> Any:
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]] = None, exchange_name: str = '', competing: Optional[bool] = None, queue_name: Optional[str] = None, **kwargs: Any) -> Any:
+        parser_kwargs = kwargs
+        message_protocol = context.get('message_protocol')
+
+        # Validate the parser kwargs if there is a validation function in the protocol
+        if message_protocol:
+            protocol_kwargs_validation_func = getattr(message_protocol, 'validate', None)
+            if protocol_kwargs_validation_func:
+                protocol_kwargs_validation_func(**parser_kwargs)
+
         async def handler(payload: Any, delivery_tag: Any) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
             values = inspect.getfullargspec(func)
@@ -132,7 +141,10 @@ class AmqpTransport(Invoker):
                 try:
                     parse_message_func = getattr(message_protocol, 'parse_message', None)
                     if parse_message_func:
-                        message, message_uuid, timestamp = await parse_message_func(payload)
+                        if len(parser_kwargs):
+                            message, message_uuid, timestamp = await parse_message_func(payload, **parser_kwargs)
+                        else:
+                            message, message_uuid, timestamp = await parse_message_func(payload)
                     if message_uuid:
                         if not context.get('_amqp_received_messages'):
                             context['_amqp_received_messages'] = {}

@@ -104,8 +104,8 @@ class AWSSNSSQSTransport(Invoker):
     async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]] = None, competing: Optional[bool] = None, queue_name: Optional[str] = None, **kwargs: Any) -> Any:
         parser_kwargs = kwargs
         message_protocol = context.get('message_protocol')
-        # Validate the parser kwargs if there is a validation function in the
-        # protocol
+
+        # Validate the parser kwargs if there is a validation function in the protocol
         if message_protocol:
             protocol_kwargs_validation_func = getattr(message_protocol, 'validate', None)
             if protocol_kwargs_validation_func:
