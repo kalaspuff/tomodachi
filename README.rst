@@ -133,9 +133,44 @@ methods called on a specified interval or at specific times / days. Inter-commun
 between different services may be established using a pub-sub type with messages over AMQP
 or AWS SNS+SQS which is natively supported.
 
-See a more comprehensive example involving multiple services publishing and subcribing on 
-topics using AWS SNS+SQS in the 
+See a more comprehensive example involving multiple services publishing and subcribing on
+topics using AWS SNS+SQS in the
 `pubsub-examples <https://github.com/kalaspuff/tomodachi/blob/master/examples/pubsub_example>`_ folder.
+
+
+Available built-ins used as endpoints 🎯
+----------------------------------------
+There are several built-in ways to invoke your microservice methods in which the most common ones are either directly via HTTP or via event based messaging (for example AMQP or AWS SNS+SQS). Here's a list of the currently available built-ins you may use to decorate your service functions.
+Here's a short run-down of the available decorators.
+
+``@tomodachi.amqp(routing_key, exchange_name='amq.topic', competing=None, queue_name=None, **kwargs)``
+  This would set up the method to be called whenever a AMQP / RabbitMQ message is sent for the specified ``routing_key``, by default the ``'amq.topic'`` topic exchange would be used, it may also be overridden by setting the ``options.amqp.exchange_name`` dict value for the service class. The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message. Unless ``queue_name`` is specified an auto generated queue name will be used. Additional prefixes to both ``routing_key`` and ``queue_name`` can be assigned by setting the ``options.amqp.routing_key_prefix`` and ``options.amqp.queue_name_prefix`` dict values. Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument.
+
+``@tomodachi.aws_sns_sqs(topic, competing=None, queue_name=None, **kwargs)``
+  This would set up an SQS queue, subscribing to messages on the SNS topic ``topic``, whereafter it will start consuming messages from the queue. The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message. Unless ``queue_name`` is specified an auto generated queue name will be used. Additional prefixes to both ``topic`` and ``queue_name`` can be assigned by setting the ``options.aws_sns_sqs.topic_prefix`` and ``options.aws_sns_sqs.queue_name_prefix`` dict values.  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument.
+
+``@tomodachi.http(method, url)``
+  Sets up an HTTP endpoint for the specified ``method`` (``GET``, ``PUT``, ``POST``, ``DELETE``) on the regexp ``url``.
+
+``@tomodachi.http_static(path, url)``
+  Sets up an HTTP endpoint for static content available as ``GET`` / ``HEAD`` from the ``path`` on disk on the base regexp ``url``.
+
+``@tomodachi.websocket(url)``
+  Sets up a websocket endpoint on the regexp ``url``. The invoked function is called upon websocket connection and should return a two value tuple containing callables for a function receiving frames (first callable) and a function called on websocket close (second callable).
+
+``@tomodachi.http_error(status_code)``
+  A function which will be called if the HTTP request would result in a 4XX ``status_code``. You may use this for example to set up a custom handler on 404 Not Found or 403 Forbidden responses.
+
+``@tomodachi.schedule(interval=None, timestamp=None, timezone=None, immediately=False)``
+  A scheduled function invoked on either a specified ``interval`` (you may use the popular cron notation as a str for fine-grained interval or specify an integer value of seconds) or a specific ``timestamp``. The ``timezone`` will default to your local time unless explicitly stated. When using an integer ``interval`` you may also specify wether the function should be called ``immediately`` on service start or wait the full ``interval`` seconds before its first invokation.
+
+``@tomodachi.heartbeat``
+  A scheduled function which will be invoked every second.
+
+``@tomodachi.minutely``, ``@tomodachi.hourly``, ``@tomodachi.daily``, ``@tomodachi.monthly``
+  A scheduled function which will be invoked once every minute / hour / day / month.
+
+You may also extend the functionality by building your own transports for your endpoints. The invokers themselves should extend the class ``tomodachi.invoker.Invoker``.
 
 
 Run the service 😎

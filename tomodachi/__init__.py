@@ -22,6 +22,7 @@ try:
                                           http_error,
                                           http_static,
                                           websocket,
+                                          ws,
                                           HttpException,
                                           Response as HttpResponse)
 except Exception:  # pragma: no cover
@@ -40,7 +41,7 @@ __all__ = ['service', 'Service', '__version__', '__version_info__',
            'decorator',
            'amqp', 'amqp_publish',
            'aws_sns_sqs', 'aws_sns_sqs_publish',
-           'http', 'http_error', 'http_static', 'websocket', 'HttpResponse', 'HttpException',
+           'http', 'http_error', 'http_static', 'websocket', 'ws', 'HttpResponse', 'HttpException',
            'schedule', 'heartbeat', 'minutely', 'hourly', 'daily', 'monthly']
 
 CLASS_ATTRIBUTE = 'TOMODACHI_SERVICE_CLASS'
