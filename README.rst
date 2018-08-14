@@ -254,8 +254,8 @@ Available built-ins used as endpoints 🚀
 There are several built-in ways to invoke your microservice methods in which the most common ones are either directly via HTTP or via event based messaging (for example AMQP or AWS SNS+SQS). Here's a list of the currently available built-ins you may use to decorate your service functions.
 Here's a short run-down of the available decorators.
 
-- HTTP endpoints
-^^^^^^^^^^^^^^^^
+HTTP endpoints:
+^^^^^^^^^^^^^^^
 ``@tomodachi.http(method, url)``
   Sets up an **HTTP endpoint** for the specified ``method`` (``GET``, ``PUT``, ``POST``, ``DELETE``) on the regexp ``url``.
 
@@ -269,8 +269,8 @@ Here's a short run-down of the available decorators.
   A function which will be called if the **HTTP request would result in a 4XX ``status_code``. You may use this for example to set up a custom handler on 404 Not Found or 403 Forbidden responses.
 
 
-- AWS SNS+SQS messaging
-^^^^^^^^^^^^^^^^^^^^^^^
+AWS SNS+SQS messaging:
+^^^^^^^^^^^^^^^^^^^^^^
 ``@tomodachi.aws_sns_sqs(topic, competing=None, queue_name=None, **kwargs)``
   This would set up an **AWS SQS queue**, subscribing to messages on the **AWS SNS topic** ``topic``, whereafter it will start consuming messages from the queue.
 
@@ -281,8 +281,8 @@ Here's a short run-down of the available decorators.
   Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument.
 
 
-- AMQP messaging (RabbitMQ)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AMQP messaging (RabbitMQ):
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 ``@tomodachi.amqp(routing_key, exchange_name='amq.topic', competing=None, queue_name=None, **kwargs)``
   Sets up the method to be called whenever a **AMQP / RabbitMQ message is received** for the specified ``routing_key``. By default the ``'amq.topic'`` topic exchange would be used, it may also be overridden by setting the ``options.amqp.exchange_name`` dict value for the service class.
 
@@ -293,8 +293,8 @@ Here's a short run-down of the available decorators.
   Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument.
 
 
-- Scheduled functions / cron
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Scheduled functions / cron:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ``@tomodachi.schedule(interval=None, timestamp=None, timezone=None, immediately=False)``
   A **scheduled function** invoked on either a specified ``interval`` (you may use the popular cron notation as a str for fine-grained interval or specify an integer value of seconds) or a specific ``timestamp``. The ``timezone`` will default to your local time unless explicitly stated.
 
