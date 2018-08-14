@@ -285,7 +285,7 @@ HTTP endpoints:
   Sets up a **websocket endpoint** on the regexp ``url``. The invoked function is called upon websocket connection and should return a two value tuple containing callables for a function receiving frames (first callable) and a function called on websocket close (second callable).
 
 ``@tomodachi.http_error(status_code)``
-  A function which will be called if the **HTTP request would result in a 4XX** ``status_code``. You may use this for example to set up a custom handler on 404 Not Found or 403 Forbidden responses.
+  A function which will be called if the **HTTP request would result in a 4XX** ``status_code``. You may use this for example to set up a custom handler on "404 Not Found" or "403 Forbidden" responses.
 
 
 AWS SNS+SQS messaging:
