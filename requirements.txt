@@ -17,7 +17,7 @@ jmespath==0.9.3
 multidict==4.3.1
 mypy==0.620
 packaging==17.1
-protobuf==3.6.0
+protobuf==3.6.1
 pycares==2.3.0
 pycodestyle==2.4.0
 py==1.5.4
