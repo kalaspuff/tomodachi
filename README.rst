@@ -21,10 +21,17 @@ use of any type of transport layer available.
 *Tomodachi* [**友達**] *means friends – a suitable name for microservices working
 together.* 😻 👬 👭 👫 😻
 
-| **Please note: this is a work in progress.**
+- `How to use tomodachi <#usage>`_
+- `Installation <#how-do-i-use-this-simple-install-using-pip>`_
+- `Getting started / example services <#getting-started->`_
+- `Running microservices in Docker <#example-of-tomodachi-service-containerized-in-docker->`_
+- `Defining endpoints <#available-built-ins-used-as-endpoints->`_
 
-``tomodachi`` is still a highly experimental project with an unregular release
-schedule.
+  - `HTTP endpoints <#http-endpoints>`_
+  - `AWS SNS+SQS messaging <#aws-snssqs-messaging>`_
+  - `AMQP / RabbitMQ messaging <#amqp-messaging-rabbitmq>`_
+  - `Scheduled functions <#scheduled-functions--cron>`_
+- `Requirements <#requirements->`_
 
 
 Usage
@@ -48,6 +55,12 @@ Usage
 
 
 .. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
+
+| **Please note: this is a work in progress.**
+
+``tomodachi`` is still a highly experimental project with an unregular release
+schedule.
+
 
 
 How do I use this? (simple install using ``pip``)
