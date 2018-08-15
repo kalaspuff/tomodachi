@@ -50,6 +50,8 @@ def log(service: Any, *args: Any, **kwargs: Any) -> None:
     if len(args) == 2:
         if type(args[0]) is int:
             log_level = args[0]
+        elif type(args[0]) is str and str(args[0]) in ('NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'):
+            log_level = getattr(logging, str(args[0]))
         else:
             log_name = args[0]
         log_message = args[1]
