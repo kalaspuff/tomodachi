@@ -5,7 +5,7 @@ from run_test_service_helper import start_service
 
 
 def test_start_process_http_early_request(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    func, future = start_service('tests/services/start_process_service_http.py', monkeypatch, wait=False)
+    func, future = start_service('tests/services/start_process_service_http_1.py', monkeypatch, wait=False)
     port = 53251
 
     async def _async(loop: Any) -> None:

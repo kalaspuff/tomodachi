@@ -7,7 +7,7 @@ from tomodachi.protocol.json_base import JsonBase
 
 
 @tomodachi.service
-class AutoClosingService(object):
+class AutoClosingService(tomodachi.Service):
     name = 'test_auto_closing'
     discovery = [DummyRegistry]
     message_protocol = JsonBase
@@ -17,12 +17,15 @@ class AutoClosingService(object):
     stop = False
 
     async def _start_service(self) -> None:
+        self.log('_start_service() function called')
         self.start = True
 
     async def _started_service(self) -> None:
+        self.log('_started_service() function called')
         self.started = True
         await asyncio.sleep(0.1)
         os.kill(os.getpid(), signal.SIGTERM)
 
     async def _stop_service(self) -> None:
+        self.log('_stop_service() function called')
         self.stop = True

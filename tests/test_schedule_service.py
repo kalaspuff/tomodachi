@@ -17,7 +17,7 @@ def test_schedule_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
         seconds = instance.seconds_triggered
         third_seconds_triggered = instance.third_seconds_triggered
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(1.5)
 
         assert instance.seconds_triggered > seconds
         assert instance.third_seconds_triggered == third_seconds_triggered
