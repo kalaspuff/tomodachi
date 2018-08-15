@@ -58,19 +58,28 @@ def log(service: Any, *args: Any, **kwargs: Any) -> None:
         log_level = int(args[1]) if type(args[1]) is int else getattr(logging, str(args[1]))
         log_message = args[2]
 
-    if kwargs.get('level'):
+    if 'level' in kwargs:
         log_level = 0
         log_level_value = kwargs.pop('level', 0)
         if type(log_level_value) is int:
             log_level = int(log_level_value)
         else:
             log_level = int(getattr(logging, str(log_level_value)))
-    if kwargs.get('name'):
+    if 'lvl' in kwargs:
+        log_level = 0
+        log_level_value = kwargs.pop('lvl', 0)
+        if type(log_level_value) is int:
+            log_level = int(log_level_value)
+        else:
+            log_level = int(getattr(logging, str(log_level_value)))
+    if 'name' in kwargs:
         log_name = kwargs.pop('name', None)
-    if kwargs.get('msg'):
+    if 'msg' in kwargs:
         log_message = kwargs.pop('msg', None)
-    if kwargs.get('message'):
+    if 'message' in kwargs:
         log_message = kwargs.pop('message', None)
+    if 'msg' in kwargs:
+        log_message = kwargs.pop('msg', None)
 
     if not log_level:
         log_level = logging.INFO
@@ -78,4 +87,4 @@ def log(service: Any, *args: Any, **kwargs: Any) -> None:
     logger = logging.getLogger(log_name)
 
     if log_message:
-        logger.log(level=log_level, msg=str(log_message), **kwargs)
+        logger.log(log_level, str(log_message), **kwargs)
