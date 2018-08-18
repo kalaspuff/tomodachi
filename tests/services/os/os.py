@@ -5,7 +5,7 @@ from .code import test_func
 
 
 @tomodachi.service
-class DummyService(object):
+class DummyService(tomodachi.Service):
     name = 'test_dummy'
     discovery = [DummyRegistry]
     message_protocol = JsonBase
