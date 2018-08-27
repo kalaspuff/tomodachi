@@ -4,7 +4,7 @@ import signal
 import tomodachi
 from typing import Any, Dict, Tuple, Callable, Union  # noqa
 from aiohttp import web
-from tomodachi.transport.http import http, http_error, http_static, websocket, Response
+from tomodachi.transport.http import http, http_error, http_static, websocket, Response, RequestHandler
 from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
@@ -121,11 +121,11 @@ class HttpService(tomodachi.Service):
 
     @http('GET', r'/forwarded-for/?')
     async def forwarded_for(self, request: web.Request) -> str:
-        return str(request.request_ip) if request.request_ip else ''
+        return RequestHandler.get_request_ip(request) or ''
 
     @http('GET', r'/authorization/?')
     async def authorization(self, request: web.Request) -> str:
-        return str(request.auth.login) if request.auth else ''
+        return request._cache.get('auth').login if request._cache.get('auth') else ''
 
     @http_static('../static_files', r'/static/')
     async def static_files_filename_append(self) -> None:
