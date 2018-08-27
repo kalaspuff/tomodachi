@@ -28,7 +28,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore
 
     @staticmethod
     def get_request_ip(request: Any, context: Optional[Dict] = None) -> Optional[str]:
@@ -114,12 +114,14 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
         headers[hdrs.CONTENT_LENGTH] = str(len(msg))
         headers[hdrs.SERVER] = self._server_header or ''
-        resp = web.Response(status=status, text=msg, headers=headers)   # type: web.Response
-        resp.force_close()
+        resp = web.Response(status=status,  # type: ignore
+                            text=msg,
+                            headers=headers)  # type: web.Response
+        resp.force_close()  # type: ignore
 
         # some data already got sent, connection is broken
         if request.writer.output_size > 0 or self.transport is None:
-            self.force_close()
+            self.force_close()  # type: ignore
         elif self.transport is not None:
             request_ip = RequestHandler.get_request_ip(request, None)
             if not request_ip:
@@ -142,7 +144,7 @@ class Server(web_server.Server):  # type: ignore
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore
 
     def __call__(self) -> RequestHandler:
         return RequestHandler(
@@ -194,13 +196,18 @@ class Response(object):
                 body_value = body.encode(charset.lower())
             except (ValueError, LookupError, UnicodeEncodeError) as e:
                 logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
-                raise web.HTTPInternalServerError() from e
+                raise web.HTTPInternalServerError() from e  # type: ignore
         elif self._body:
             body_value = self._body.encode() if not isinstance(self._body, bytes) else self._body
         else:
             body_value = b''
 
-        response = web.Response(body=body_value, status=self._status, reason=self._reason, headers=self._headers, content_type=self.content_type, charset=self.charset)   # type: web.Response
+        response = web.Response(body=body_value,  # type: ignore
+                                status=self._status,
+                                reason=self._reason,
+                                headers=self._headers,
+                                content_type=self.content_type,
+                                charset=self.charset)   # type: web.Response
         return response
 
 
@@ -294,14 +301,15 @@ class HttpTransport(Invoker):
 
             try:
                 if os.path.isdir(filepath) or not os.path.exists(filepath):
-                    raise web.HTTPNotFound()
+                    raise web.HTTPNotFound()  # type: ignore
 
                 pathlib.Path(filepath).open('r')
 
-                response = FileResponse(filepath)  # type: web.Response
+                response = FileResponse(path=filepath,  # type: ignore
+                                        chunk_size=256 * 1024)  # type: web.Response
                 return response
             except PermissionError as e:
-                raise web.HTTPForbidden()
+                raise web.HTTPForbidden()  # type: ignore
 
         context['_http_routes'] = context.get('_http_routes', [])
         context['_http_routes'].append(('GET', pattern, handler))
@@ -372,7 +380,7 @@ class HttpTransport(Invoker):
         access_log = context.get('options', {}).get('http', {}).get('access_log', True)
 
         async def _func(obj: Any, request: web.Request) -> None:
-            websocket = web.WebSocketResponse()
+            websocket = web.WebSocketResponse()  # type: ignore
 
             request_ip = RequestHandler.get_request_ip(request, context)
             try:
@@ -543,7 +551,8 @@ class HttpTransport(Invoker):
 
                         if access_log:
                             timer = time.time()
-                        response = web.Response(status=503)  # type: web.Response
+                        response = web.Response(status=503,  # type: ignore
+                                                headers={})  # type: web.Response
                         try:
                             response = await handler(request)
                             response.headers[hdrs.SERVER] = server_header or ''
@@ -563,12 +572,13 @@ class HttpTransport(Invoker):
                                 response = await error_handler(request)
                                 response.headers[hdrs.SERVER] = server_header or ''
                             else:
-                                response = web.HTTPInternalServerError()
+                                response = web.HTTPInternalServerError()  # type: ignore
                                 response.headers[hdrs.SERVER] = server_header or ''
                                 response.body = b''
                         finally:
                             if not request.transport:
-                                response = web.Response(status=499)
+                                response = web.Response(status=499,  # type: ignore
+                                                        headers={})  # type: web.Response
                                 response._eof_sent = True
 
                             if access_log:
@@ -611,8 +621,9 @@ class HttpTransport(Invoker):
 
                 return middleware_handler
 
-            app = web.Application(middlewares=[middleware], client_max_size=(1024 ** 2) * 100)
-            app._set_loop(None)
+            app = web.Application(middlewares=[middleware],  # type: ignore
+                                  client_max_size=(1024 ** 2) * 100)  # type: web.Application
+            app._set_loop(None)  # type: ignore
             for method, pattern, handler in context.get('_http_routes', []):
                 try:
                     compiled_pattern = re.compile(pattern)
@@ -620,10 +631,10 @@ class HttpTransport(Invoker):
                     raise ValueError(
                         "Bad pattern '{}': {}".format(pattern, exc)) from None
                 resource = DynamicResource(compiled_pattern)
-                app.router.register_resource(resource)
+                app.router.register_resource(resource)  # type: ignore
                 if method.upper() == 'GET':
-                    resource.add_route('HEAD', handler, expect_handler=None)
-                resource.add_route(method.upper(), handler, expect_handler=None)
+                    resource.add_route('HEAD', handler, expect_handler=None)  # type: ignore
+                resource.add_route(method.upper(), handler, expect_handler=None)  # type: ignore
 
             port = context.get('options', {}).get('http', {}).get('port', 9700)
             host = context.get('options', {}).get('http', {}).get('host', '0.0.0.0')
