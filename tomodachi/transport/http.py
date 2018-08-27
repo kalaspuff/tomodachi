@@ -28,7 +28,33 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore
+
+    @staticmethod
+    def get_request_ip(request: Any, context: Optional[Dict] = None) -> Optional[str]:
+        if request._cache.get('request_ip'):
+            return str(request._cache.get('request_ip', ''))
+
+        if request.transport:
+            if not context:
+                context = {}
+            real_ip_header = context.get('options', {}).get('http', {}).get('real_ip_header', 'X-Forwarded-For')
+            real_ip_from = context.get('options', {}).get('http', {}).get('real_ip_from', [])
+            if isinstance(real_ip_from, str):
+                real_ip_from = [real_ip_from]
+
+            peername = request.transport.get_extra_info('peername')
+            request_ip = None
+            if peername:
+                request_ip, _ = peername
+            if real_ip_header and real_ip_from and request.headers.get(real_ip_header) and request_ip and len(real_ip_from):
+                if any([ipaddress.ip_address(request_ip) in ipaddress.ip_network(cidr) for cidr in real_ip_from]):
+                    request_ip = request.headers.get(real_ip_header).split(',')[0].strip().split(' ')[0].strip()
+
+            request._cache['request_ip'] = request_ip
+            return request_ip
+
+        return None
 
     @staticmethod
     def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]] = False) -> str:
@@ -64,14 +90,15 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
         if self.transport is None:
             # client has been disconnected during writing.
             if self._access_log:
+                request_ip = RequestHandler.get_request_ip(request, None)
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
                 logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" - {} "{}" -'.format(
                     RequestHandler.colorize_status('http', 499),
                     RequestHandler.colorize_status(499),
-                    request.request_ip,
-                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                    request_ip or '',
+                    '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
                     request.method,
                     request.path,
                     '?{}'.format(request.query_string) if request.query_string else '',
@@ -87,23 +114,26 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
         headers[hdrs.CONTENT_LENGTH] = str(len(msg))
         headers[hdrs.SERVER] = self._server_header or ''
-        resp = web.Response(status=status, text=msg, headers=headers)
-        resp.force_close()
+        resp = web.Response(status=status,  # type: ignore
+                            text=msg,
+                            headers=headers)  # type: web.Response
+        resp.force_close()  # type: ignore
 
         # some data already got sent, connection is broken
         if request.writer.output_size > 0 or self.transport is None:
-            self.force_close()
+            self.force_close()  # type: ignore
         elif self.transport is not None:
-            peername = request.transport.get_extra_info('peername')
-            request_ip = None
-            if peername:
-                request_ip, _ = peername
+            request_ip = RequestHandler.get_request_ip(request, None)
+            if not request_ip:
+                peername = request.transport.get_extra_info('peername')
+                if peername:
+                    request_ip, _ = peername
             if self._access_log:
                 logging.getLogger('transport.http').info('[{}] [{}] {} {} "INVALID" {} - "" -'.format(
                     RequestHandler.colorize_status('http', status),
                     RequestHandler.colorize_status(status),
-                    request.request_ip if getattr(request, 'request_ip', None) else (request_ip or ''),
-                    '"{}"'.format(request.auth.login.replace('"', '')) if getattr(request, 'auth', None) and request.auth and getattr(request.auth, 'login', None) else '-',
+                    request_ip or '',
+                    '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
                     len(msg)
                 ))
 
@@ -114,7 +144,7 @@ class Server(web_server.Server):  # type: ignore
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop('server_header', None) if kwargs else None
         self._access_log = kwargs.pop('access_log', None) if kwargs else None
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore
 
     def __call__(self) -> RequestHandler:
         return RequestHandler(
@@ -166,13 +196,19 @@ class Response(object):
                 body_value = body.encode(charset.lower())
             except (ValueError, LookupError, UnicodeEncodeError) as e:
                 logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
-                raise web.HTTPInternalServerError() from e
+                raise web.HTTPInternalServerError() from e  # type: ignore
         elif self._body:
             body_value = self._body.encode() if not isinstance(self._body, bytes) else self._body
         else:
             body_value = b''
 
-        return web.Response(body=body_value, status=self._status, reason=self._reason, headers=self._headers, content_type=self.content_type, charset=self.charset)
+        response = web.Response(body=body_value,  # type: ignore
+                                status=self._status,
+                                reason=self._reason,
+                                headers=self._headers,
+                                content_type=self.content_type,
+                                charset=self.charset)   # type: web.Response
+        return response
 
 
 class HttpTransport(Invoker):
@@ -265,12 +301,15 @@ class HttpTransport(Invoker):
 
             try:
                 if os.path.isdir(filepath) or not os.path.exists(filepath):
-                    raise web.HTTPNotFound()
+                    raise web.HTTPNotFound()  # type: ignore
 
                 pathlib.Path(filepath).open('r')
-                return FileResponse(filepath)
+
+                response = FileResponse(path=filepath,  # type: ignore
+                                        chunk_size=256 * 1024)  # type: web.Response
+                return response
             except PermissionError as e:
-                raise web.HTTPForbidden()
+                raise web.HTTPForbidden()  # type: ignore
 
         context['_http_routes'] = context.get('_http_routes', [])
         context['_http_routes'].append(('GET', pattern, handler))
@@ -341,10 +380,12 @@ class HttpTransport(Invoker):
         access_log = context.get('options', {}).get('http', {}).get('access_log', True)
 
         async def _func(obj: Any, request: web.Request) -> None:
-            websocket = web.WebSocketResponse()
+            websocket = web.WebSocketResponse()  # type: ignore
+
+            request_ip = RequestHandler.get_request_ip(request, context)
             try:
-                request.is_websocket = True
-                request.websocket_uuid = str(uuid.uuid4())
+                request._cache['is_websocket'] = True
+                request._cache['websocket_uuid'] = str(uuid.uuid4())
 
                 await websocket.prepare(request)
             except Exception:
@@ -356,11 +397,11 @@ class HttpTransport(Invoker):
                 if access_log:
                     logging.getLogger('transport.http').info('[{}] {} {} "CANCELLED {}{}" {} "{}" {}'.format(
                         RequestHandler.colorize_status('websocket', 101),
-                        request.request_ip,
-                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                        request_ip,
+                        '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
                         request.path,
                         '?{}'.format(request.query_string) if request.query_string else '',
-                        request.websocket_uuid,
+                        request._cache.get('websocket_uuid', ''),
                         request.headers.get('User-Agent', '').replace('"', ''),
                         '-'
                     ))
@@ -373,11 +414,11 @@ class HttpTransport(Invoker):
             if access_log:
                 logging.getLogger('transport.http').info('[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
                     RequestHandler.colorize_status('websocket', 101),
-                    request.request_ip,
-                    '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                    request_ip,
+                    '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
                     request.path,
                     '?{}'.format(request.query_string) if request.query_string else '',
-                    request.websocket_uuid,
+                    request._cache.get('websocket_uuid', ''),
                     request.headers.get('User-Agent', '').replace('"', ''),
                     '-'
                 ))
@@ -407,12 +448,12 @@ class HttpTransport(Invoker):
                 if access_log:
                     logging.getLogger('transport.http').info('[{}] {} {} "{} {}{}" {} "{}" {}'.format(
                         RequestHandler.colorize_status('websocket', 500),
-                        request.request_ip,
-                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                        request_ip,
+                        '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
                         RequestHandler.colorize_status('ERROR', 500),
                         request.path,
                         '?{}'.format(request.query_string) if request.query_string else '',
-                        request.websocket_uuid,
+                        request._cache.get('websocket_uuid', ''),
                         request.headers.get('User-Agent', '').replace('"', ''),
                         '-'
                     ))
@@ -498,35 +539,20 @@ class HttpTransport(Invoker):
 
             logging.getLogger('aiohttp.access').setLevel(logging.WARNING)
 
-            real_ip_header = context.get('options', {}).get('http', {}).get('real_ip_header', 'X-Forwarded-For')
-            real_ip_from = context.get('options', {}).get('http', {}).get('real_ip_from', [])
-            if isinstance(real_ip_from, str):
-                real_ip_from = [real_ip_from]
-
             async def middleware(app: web.Application, handler: Callable) -> Callable:
                 async def middleware_handler(request: web.Request) -> web.Response:
                     async def func() -> web.Response:
-                        if request.transport:
-                            peername = request.transport.get_extra_info('peername')
-                            request_ip = None
-                            if peername:
-                                request_ip, _ = peername
-                            if request.headers.get(real_ip_header) and request_ip and len(real_ip_from):
-                                if any([ipaddress.ip_address(request_ip) in ipaddress.ip_network(cidr) for cidr in real_ip_from]):
-                                    request_ip = request.headers.get(real_ip_header).split(',')[0].strip().split(' ')[0].strip()
-                            request.request_ip = request_ip
-
-                        request.auth = None
-                        request.is_websocket = False
+                        request_ip = RequestHandler.get_request_ip(request, context)
                         if request.headers.get('Authorization'):
                             try:
-                                request.auth = BasicAuth.decode(request.headers.get('Authorization'))
+                                request._cache['auth'] = BasicAuth.decode(request.headers.get('Authorization'))
                             except ValueError:
                                 pass
 
                         if access_log:
                             timer = time.time()
-                        response = None
+                        response = web.Response(status=503,  # type: ignore
+                                                headers={})  # type: web.Response
                         try:
                             response = await handler(request)
                             response.headers[hdrs.SERVER] = server_header or ''
@@ -546,12 +572,13 @@ class HttpTransport(Invoker):
                                 response = await error_handler(request)
                                 response.headers[hdrs.SERVER] = server_header or ''
                             else:
-                                response = web.HTTPInternalServerError()
+                                response = web.HTTPInternalServerError()  # type: ignore
                                 response.headers[hdrs.SERVER] = server_header or ''
                                 response.body = b''
                         finally:
                             if not request.transport:
-                                response = web.Response(status=499)
+                                response = web.Response(status=499,  # type: ignore
+                                                        headers={})  # type: web.Response
                                 response._eof_sent = True
 
                             if access_log:
@@ -560,13 +587,13 @@ class HttpTransport(Invoker):
                                 if isinstance(request.version, HttpVersion):
                                     version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
 
-                                if not request.is_websocket:
+                                if not request._cache.get('is_websocket'):
                                     status_code = response.status if response is not None else 500
                                     logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
                                         RequestHandler.colorize_status('http', status_code),
                                         RequestHandler.colorize_status(status_code),
-                                        request.request_ip,
-                                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                                        request_ip,
+                                        '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
                                         request.method,
                                         request.path,
                                         '?{}'.format(request.query_string) if request.query_string else '',
@@ -579,11 +606,11 @@ class HttpTransport(Invoker):
                                 else:
                                     logging.getLogger('transport.http').info('[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
                                         RequestHandler.colorize_status('websocket', 101),
-                                        request.request_ip,
-                                        '"{}"'.format(request.auth.login.replace('"', '')) if request.auth and getattr(request.auth, 'login', None) else '-',
+                                        request_ip,
+                                        '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
                                         request.path,
                                         '?{}'.format(request.query_string) if request.query_string else '',
-                                        request.websocket_uuid,
+                                        request._cache.get('websocket_uuid', ''),
                                         request.headers.get('User-Agent', '').replace('"', ''),
                                         '{0:.5f}s'.format(round(request_time, 5))
                                     ))
@@ -594,8 +621,9 @@ class HttpTransport(Invoker):
 
                 return middleware_handler
 
-            app = web.Application(middlewares=[middleware], client_max_size=(1024 ** 2) * 100)
-            app._set_loop(None)
+            app = web.Application(middlewares=[middleware],  # type: ignore
+                                  client_max_size=(1024 ** 2) * 100)  # type: web.Application
+            app._set_loop(None)  # type: ignore
             for method, pattern, handler in context.get('_http_routes', []):
                 try:
                     compiled_pattern = re.compile(pattern)
@@ -603,10 +631,10 @@ class HttpTransport(Invoker):
                     raise ValueError(
                         "Bad pattern '{}': {}".format(pattern, exc)) from None
                 resource = DynamicResource(compiled_pattern)
-                app.router.register_resource(resource)
+                app.router.register_resource(resource)  # type: ignore
                 if method.upper() == 'GET':
-                    resource.add_route('HEAD', handler, expect_handler=None)
-                resource.add_route(method.upper(), handler, expect_handler=None)
+                    resource.add_route('HEAD', handler, expect_handler=None)  # type: ignore
+                resource.add_route(method.upper(), handler, expect_handler=None)  # type: ignore
 
             port = context.get('options', {}).get('http', {}).get('port', 9700)
             host = context.get('options', {}).get('http', {}).get('host', '0.0.0.0')
