@@ -15,7 +15,7 @@ docutils==0.14
 execnet==1.5.0
 jmespath==0.9.3
 multidict==4.4.1
-mypy==0.620
+mypy==0.630
 packaging==17.1
 protobuf==3.6.1
 pycares==2.3.0
