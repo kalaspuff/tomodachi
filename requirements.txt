@@ -28,7 +28,7 @@ pytest-forked==0.2
 pytest-xdist==1.23.0
 python-dateutil==2.7.3
 pytz==2018.5
-readme-renderer==21.0
+readme-renderer==22.0
 requests==2.19.1
 six==1.11.0
 tzlocal==1.5.1
