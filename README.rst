@@ -334,7 +334,7 @@ Scheduled functions / cron:
 
 Requirements 👍
 ---------------
-* Python_ 3.5.3+, 3.6+, 3.7+
+* Python_ (``3.5.3+``, ``3.6+``, ``3.7+``)
 * aiohttp_
 * aiobotocore_
 * aioamqp_
