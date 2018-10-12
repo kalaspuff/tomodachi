@@ -13,7 +13,7 @@ install_requires = [
     'tzlocal>=1.4',
     'aiohttp>=3.0.5, <3.5.0',
     'yarl>=1.1.0',
-    'colorama>=0.3.9, <0.4.0'
+    'colorama>=0.3.9, <0.5.0'
 ]
 
 PY_VER = sys.version_info
