@@ -29,7 +29,7 @@ pytest-xdist==1.23.2
 python-dateutil==2.7.3
 pytz==2018.5
 readme-renderer==22.0
-requests==2.19.1
+requests==2.20.0
 six==1.11.0
 tzlocal==1.5.1
 ujson==1.35
