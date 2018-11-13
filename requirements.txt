@@ -10,7 +10,7 @@ cchardet==2.1.4
 chardet==3.0.4
 codecov==2.0.15
 colorama==0.4.0
-coverage==4.5.1
+coverage==4.5.2
 docutils==0.14
 execnet==1.5.0
 jmespath==0.9.3
