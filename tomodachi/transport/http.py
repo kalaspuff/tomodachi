@@ -260,7 +260,7 @@ class HttpTransport(Invoker):
                 if len(return_value) > 2:
                     returned_headers = return_value[2]
                     headers = CIMultiDict(returned_headers)
-            elif isinstance(return_value, web.Response):
+            elif isinstance(return_value, web.Response) or isinstance(return_value, web.FileResponse):
                 return return_value
             else:
                 if return_value is None:
