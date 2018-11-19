@@ -1,0 +1,41 @@
+<html>
+<body>
+    <pre id="#websocket-log"></pre>
+
+    <script>
+        wsStart = function (wsLocation) {
+            var element = document.getElementById('#websocket-log');
+
+            var ws = new WebSocket(wsLocation);
+            var connected = false;
+            ws.onopen = function () {
+                connected = true;
+                console.log('websocket open');
+                element.append('websocket opened\n');
+
+                console.log('sending data: hello');
+                element.append('sending data: hello\n');
+                ws.send('hello');
+            };
+            ws.onclose = function () {
+                if (connected) {
+                    console.log('websocket closed');
+                    element.append('websocket closed\n');
+                }
+                setTimeout(function () {
+                    console.log('reconnecting');
+                    element.append('reconnecting\n');
+                    wsStart(wsLocation);
+                }, 1000);
+            };
+            ws.onmessage = function (event) {
+                console.log('websocket received data: ' + event.data);
+                element.append('websocket received data: ' + event.data + '\n');
+            };
+        };
+
+        var wsLocation = 'ws://127.0.0.1:4711/websocket';
+        wsStart(wsLocation);
+    </script>
+</body>
+</html>
