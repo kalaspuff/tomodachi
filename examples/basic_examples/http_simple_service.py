@@ -59,6 +59,7 @@ class ExampleHttpService(tomodachi.Service):
             # Called when the websocket is closed by the other end
             self.log('websocket closed')
 
+        # Receiving function and closure function returned as tuple
         return _receive, _close
 
     @http_error(status_code=404)
