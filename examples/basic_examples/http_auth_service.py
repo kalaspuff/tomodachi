@@ -10,7 +10,7 @@ from tomodachi import http, HttpResponse
 @tomodachi.decorator
 async def require_auth_token(instance: Any, request: web.Request) -> Any:
     post_body = await request.read() if request.body_exists else None
-    if post_body.decode() != instance.allowed_token:
+    if not post_body or post_body.decode() != instance.allowed_token:
         return HttpResponse(body='Invalid token', status=403)
 
 
