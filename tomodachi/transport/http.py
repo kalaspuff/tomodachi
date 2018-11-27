@@ -212,12 +212,13 @@ class Response(object):
 
 
 class HttpTransport(Invoker):
-    async def request_handler(cls: Any, obj: Any, context: Dict, func: Any, method: str, url: str) -> Any:
+    async def request_handler(cls: Any, obj: Any, context: Dict, func: Any, method: str, url: str, quiet_access: bool = False) -> Any:
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
         default_content_type = context.get('options', {}).get('http', {}).get('content_type', 'text/plain')
         default_charset = context.get('options', {}).get('http', {}).get('charset', 'utf-8')
+        context['quiet_access'] = quiet_access
 
         if default_content_type is not None and ";" in default_content_type:
             # for backwards compability
@@ -589,20 +590,23 @@ class HttpTransport(Invoker):
 
                                 if not request._cache.get('is_websocket'):
                                     status_code = response.status if response is not None else 500
-                                    logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                        RequestHandler.colorize_status('http', status_code),
-                                        RequestHandler.colorize_status(status_code),
-                                        request_ip,
-                                        '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
-                                        request.method,
-                                        request.path,
-                                        '?{}'.format(request.query_string) if request.query_string else '',
-                                        ' {}'.format(version_string) if version_string else '',
-                                        response.content_length if response is not None and response.content_length is not None else '-',
-                                        request.content_length if request.content_length is not None else '-',
-                                        request.headers.get('User-Agent', '').replace('"', ''),
-                                        '{0:.5f}s'.format(round(request_time, 5))
-                                    ))
+                                    if status_code >= 200 and status_code <= 299 and context.get('quiet_access', False):
+                                        pass
+                                    else:
+                                        logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
+                                            RequestHandler.colorize_status('http', status_code),
+                                            RequestHandler.colorize_status(status_code),
+                                            request_ip,
+                                            '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
+                                            request.method,
+                                            request.path,
+                                            '?{}'.format(request.query_string) if request.query_string else '',
+                                            ' {}'.format(version_string) if version_string else '',
+                                            response.content_length if response is not None and response.content_length is not None else '-',
+                                            request.content_length if request.content_length is not None else '-',
+                                            request.headers.get('User-Agent', '').replace('"', ''),
+                                            '{0:.5f}s'.format(round(request_time, 5))
+                                        ))
                                 else:
                                     logging.getLogger('transport.http').info('[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
                                         RequestHandler.colorize_status('websocket', 101),
