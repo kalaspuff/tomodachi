@@ -275,8 +275,8 @@ Here's a short run-down of the available decorators.
 
 HTTP endpoints:
 ^^^^^^^^^^^^^^^
-``@tomodachi.http(method, url)``
-  Sets up an **HTTP endpoint** for the specified ``method`` (``GET``, ``PUT``, ``POST``, ``DELETE``) on the regexp ``url``.
+``@tomodachi.http(method, url, quiet_access=False)``
+  Sets up an **HTTP endpoint** for the specified ``method`` (``GET``, ``PUT``, ``POST``, ``DELETE``) on the regexp ``url``. Optionally specify ``quiet_access``, not logging any successful calls to the endpoint.
 
 ``@tomodachi.http_static(path, url)``
   Sets up an **HTTP endpoint for static content** available as ``GET`` / ``HEAD`` from the ``path`` on disk on the base regexp ``url``.
