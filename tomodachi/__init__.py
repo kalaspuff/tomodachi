@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import inspect
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 try:
@@ -38,13 +38,14 @@ except Exception:  # pragma: no cover
     pass
 
 __all__ = ['service', 'Service', '__version__', '__version_info__',
-           'decorator',
+           'decorator', 'set_instance', 'get_instance'
            'amqp', 'amqp_publish',
            'aws_sns_sqs', 'aws_sns_sqs_publish',
            'http', 'http_error', 'http_static', 'websocket', 'ws', 'HttpResponse', 'HttpException',
            'schedule', 'heartbeat', 'minutely', 'hourly', 'daily', 'monthly']
 
 CLASS_ATTRIBUTE = 'TOMODACHI_SERVICE_CLASS'
+_instances = {}
 
 
 def service(cls: Any) -> Any:
@@ -60,3 +61,19 @@ class Service(object):
     TOMODACHI_SERVICE_CLASS = True
     log = tomodachi.helpers.logging.log
     log_setup = tomodachi.helpers.logging.log_setup
+
+
+def set_instance(name: str, instance: Any) -> None:
+    _instances[name] = instance
+
+
+def get_instance(name: Optional[str] = None) -> Any:
+    if name is None:
+        for k, v in _instances.items():
+            name = k
+            break
+
+    if name is not None:
+        return _instances.get(name)
+
+    return None
