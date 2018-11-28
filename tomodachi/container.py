@@ -5,6 +5,7 @@ import logging
 import re
 import types
 import uuid
+import tomodachi
 from types import ModuleType, TracebackType
 from typing import Dict, Optional, Any
 from tomodachi import CLASS_ATTRIBUTE
@@ -77,6 +78,8 @@ class ServiceContainer(object):
                 service_name = getattr(instance, 'name', getattr(cls, 'name', None))
                 if not service_name:
                     continue
+
+                tomodachi.set_service(service_name, instance)
 
                 log_level = getattr(instance, 'log_level', None) or getattr(cls, 'log_level', None) or 'INFO'
 

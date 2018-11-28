@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import inspect
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 try:
@@ -38,13 +38,15 @@ except Exception:  # pragma: no cover
     pass
 
 __all__ = ['service', 'Service', '__version__', '__version_info__',
-           'decorator',
+           'decorator', 'set_service', 'get_service', 'get_instance',
            'amqp', 'amqp_publish',
            'aws_sns_sqs', 'aws_sns_sqs_publish',
            'http', 'http_error', 'http_static', 'websocket', 'ws', 'HttpResponse', 'HttpException',
            'schedule', 'heartbeat', 'minutely', 'hourly', 'daily', 'monthly']
 
 CLASS_ATTRIBUTE = 'TOMODACHI_SERVICE_CLASS'
+_services = {}
+_current_service = {}
 
 
 def service(cls: Any) -> Any:
@@ -60,3 +62,25 @@ class Service(object):
     TOMODACHI_SERVICE_CLASS = True
     log = tomodachi.helpers.logging.log
     log_setup = tomodachi.helpers.logging.log_setup
+
+
+def set_service(name: str, instance: Any) -> None:
+    _services[name] = instance
+    _current_service[0] = instance
+
+
+def get_service(name: Optional[str] = None) -> Any:
+    if name is None:
+        if _current_service and len(_current_service):
+            return _current_service[0]
+
+        for k, v in _services.items():
+            name = k
+            break
+
+    return _services.get(name)
+
+
+def get_instance(name: Optional[str] = None) -> Any:
+    # alias for tomodachi.get_service()
+    return get_service(name)
