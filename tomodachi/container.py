@@ -79,7 +79,7 @@ class ServiceContainer(object):
                 if not service_name:
                     continue
 
-                tomodachi.set_instance(service_name, instance)
+                tomodachi.set_service(service_name, instance)
 
                 log_level = getattr(instance, 'log_level', None) or getattr(cls, 'log_level', None) or 'INFO'
 

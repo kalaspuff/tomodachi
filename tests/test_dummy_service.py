@@ -17,8 +17,9 @@ def test_dummy_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     assert instance.stop is False
 
     assert tomodachi.get_instance() == instance
-    assert tomodachi.get_instance('test_dummy') == instance
-    assert tomodachi.get_instance('test_dummy_nonexistant') == None
+    assert tomodachi.get_service() == instance
+    assert tomodachi.get_service('test_dummy') == instance
+    assert tomodachi.get_service('test_dummy_nonexistant') == None
 
     os.kill(os.getpid(), signal.SIGINT)
     loop.run_until_complete(future)
