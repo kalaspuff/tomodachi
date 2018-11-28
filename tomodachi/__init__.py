@@ -46,6 +46,7 @@ __all__ = ['service', 'Service', '__version__', '__version_info__',
 
 CLASS_ATTRIBUTE = 'TOMODACHI_SERVICE_CLASS'
 _services = {}
+_current_service = None
 
 
 def service(cls: Any) -> Any:
@@ -65,18 +66,19 @@ class Service(object):
 
 def set_service(name: str, instance: Any) -> None:
     _services[name] = instance
+    _current_service = instance
 
 
 def get_service(name: Optional[str] = None) -> Any:
     if name is None:
+        if _current_service is not None:
+            return _current_service
+
         for k, v in _services.items():
             name = k
             break
 
-    if name is not None:
-        return _services.get(name)
-
-    return None
+    return _services.get(name)
 
 
 def get_instance(name: Optional[str] = None) -> Any:
