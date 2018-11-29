@@ -276,7 +276,7 @@ class HttpTransport(Invoker):
         else:
             context['_http_routes'].append((method.upper(), pattern, handler))
 
-        start_func = cls.start_server(obj, context)
+        start_func = cls.start_server(obj, context, ignore_logging)
         return (await start_func) if start_func else None
 
     async def static_request_handler(cls: Any, obj: Any, context: Dict, func: Any, path: str, base_url: str) -> Any:
