@@ -334,8 +334,8 @@ def test_access_log(monkeypatch: Any, loop: Any) -> None:
                 assert '[http] [200] 127.0.0.1 - "GET /test HTTP/1.1" 4 -' in content
                 assert '[http] [404] 127.0.0.1 - "GET /404 HTTP/1.1" 8 -' in content
                 assert '[http] [200] 127.0.0.1 - "GET /test_ignore_all HTTP/1.1" 8 -' not in content
-                assert '[http] [200] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8 -' not in content
-                assert '[http] [201] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8' in content
+                assert '[http] [200] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8 0' not in content
+                assert '[http] [201] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8 0' in content
 
         async with aiohttp.ClientSession(loop=loop) as client:
             await client.post('http://127.0.0.1:{}/zero-post'.format(port), data=b'')
