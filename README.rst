@@ -330,8 +330,8 @@ Scheduled functions / cron:
 *You may also extend the functionality by building your own transports for your endpoints. The invokers themselves should extend the class* ``tomodachi.invoker.Invoker``.
 
 
-Decorated functions 🎄
-----------------------
+Decorated functions using ``@tomodachi.decorator`` 🎄
+-----------------------------------------------------
 Invoker functions can of course be decorated using custom functionality. For ease of use you can then in turn decorate your decorator with the the built-in ``@tomodachi.decorator`` to ease development.
 If the decorator would return anything else than ``True`` or ``None`` (or not specifying any return statement) the invoked function will *not* be called and instead the returned value will be used, for example as an HTTP response.
 
