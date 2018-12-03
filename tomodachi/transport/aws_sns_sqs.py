@@ -15,6 +15,7 @@ from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match, Awa
 from tomodachi.invoker import Invoker
 
 DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'
+MESSAGE_PROTOCOL_DEFAULT = 'e6fb6007-cf15-4cfd-af2e-1d1683374e70'
 
 
 class AWSSNSSQSException(Exception):
@@ -44,8 +45,8 @@ class AWSSNSSQSTransport(Invoker):
     close_waiter = None
 
     @classmethod
-    async def publish(cls, service: Any, data: Any, topic: str, wait: bool = True) -> None:
-        message_protocol = getattr(service, 'message_protocol', None)
+    async def publish(cls, service: Any, data: Any, topic: str, wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT) -> None:
+        message_protocol = getattr(service, 'message_protocol', None) if message_protocol == MESSAGE_PROTOCOL_DEFAULT else message_protocol
 
         payload = data
         if message_protocol:
@@ -101,9 +102,9 @@ class AWSSNSSQSTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('aws_sns_sqs', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]] = None, competing: Optional[bool] = None, queue_name: Optional[str] = None, **kwargs: Any) -> Any:
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, topic: str, callback_kwargs: Optional[Union[list, set, tuple]] = None, competing: Optional[bool] = None, queue_name: Optional[str] = None, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT, **kwargs: Any) -> Any:
         parser_kwargs = kwargs
-        message_protocol = context.get('message_protocol')
+        message_protocol = context.get('message_protocol') if message_protocol == MESSAGE_PROTOCOL_DEFAULT else message_protocol
 
         # Validate the parser kwargs if there is a validation function in the protocol
         if message_protocol:

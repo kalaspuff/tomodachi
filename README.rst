@@ -297,7 +297,7 @@ AWS SNS+SQS messaging:
 
   Unless ``queue_name`` is specified an auto generated queue name will be used. Additional prefixes to both ``topic`` and ``queue_name`` can be assigned by setting the ``options.aws_sns_sqs.topic_prefix`` and ``options.aws_sns_sqs.queue_name_prefix`` dict values.
 
-  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument.
+  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_protocol`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
 
   If you're utilizing ``from tomodachi.protocol import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_protocol`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages.
 
@@ -310,7 +310,7 @@ AMQP messaging (RabbitMQ):
 
   Unless ``queue_name`` is specified an auto generated queue name will be used. Additional prefixes to both ``routing_key`` and ``queue_name`` can be assigned by setting the ``options.amqp.routing_key_prefix`` and ``options.amqp.queue_name_prefix`` dict values.
 
-  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument.
+  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_protocol`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
 
   If you're utilizing ``from tomodachi.protocol import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_protocol`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages.
 
