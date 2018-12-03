@@ -300,7 +300,7 @@ class HttpTransport(Invoker):
             filepath = '{}{}'.format(path, filename)
 
             try:
-                if os.path.commonprefix((os.path.realpath(filepath), path)) != path or os.path.isdir(filepath) or not os.path.exists(filepath):
+                if os.path.commonprefix((os.path.realpath(filepath), os.path.realpath(path))) != os.path.realpath(path) or os.path.isdir(filepath) or not os.path.exists(filepath):
                     raise web.HTTPNotFound()  # type: ignore
 
                 pathlib.Path(filepath).open('r')
