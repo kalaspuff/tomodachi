@@ -133,7 +133,6 @@ RabbitMQ or AWS SNS/SQS event based messaging service 📡
 
     import tomodachi
 
-
     @tomodachi.service
     class Service(tomodachi.Service):
         name = 'example'
@@ -229,7 +228,6 @@ for the microservice, ``service.py``.
 .. code:: python
 
     import tomodachi
-
 
     @tomodachi.service
     class Service(tomodachi.Service):
@@ -330,6 +328,35 @@ Scheduled functions / cron:
 
 
 *You may also extend the functionality by building your own transports for your endpoints. The invokers themselves should extend the class* ``tomodachi.invoker.Invoker``.
+
+
+Decorated functions 🎄
+----------------------
+Invoker functions can of course be decorated using custom functionality. For ease of use you can then in turn decorate your decorator with the the built-in ``@tomodachi.decorator`` to ease development.
+If the decorator would return anything else than ``True`` or ``None`` (or not specifying any return statement) the invoked function will *not* be called and instead the returned value will be used, for example as an HTTP response.
+
+.. code:: python
+
+    import tomodachi
+
+    @tomodachi.decorator
+    async def require_csrf(instance, request):
+        token = request.headers.get("X-CSRF-Token")
+        if not token or token != request.cookies.get('csrftoken'):
+            return {
+                'body': 'Invalid CSRF token',
+                'status': 403
+            }
+
+    @tomodachi.service
+    class Service(tomodachi.Service):
+        name = 'example'
+
+        @tomodachi.http('POST', r'/create')
+        @require_csrf
+        async def create_data(self, request):
+            # Do magic here!
+            return 'OK'
 
 
 Requirements 👍
