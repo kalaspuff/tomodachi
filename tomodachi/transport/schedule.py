@@ -234,7 +234,7 @@ class Scheduler(Invoker):
                     if too_many_tasks and len(tasks) >= 15:
                         await asyncio.sleep(1)
                         continue
-                    if len(tasks) < 10:
+                    if too_many_tasks and len(tasks) < 10:
                         logging.getLogger('transport.schedule').info('Tasks within threshold for function "{}" - resumed'.format(func.__name__))
                         threshold = 20
                     too_many_tasks = False
