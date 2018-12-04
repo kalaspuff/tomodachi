@@ -594,7 +594,7 @@ class HttpTransport(Invoker):
                                 status_code = response.status if response is not None else 500
                                 try:
                                     ignore_logging = handler.ignore_logging
-                                except Exception:
+                                except AttributeError:
                                     ignore_logging = False
                                 if ignore_logging is True:
                                     pass
