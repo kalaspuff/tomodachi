@@ -9,8 +9,8 @@ Changes
 
 0.14.0 (2018-12-04)
 -------------------
-- Added the posibility of specifying ``message_protocol`` for
-  AMQP / SNS+SQS enveloping per function, so that it's posible to
+- Added the possibility of specifying ``message_protocol`` for
+  AMQP / SNS+SQS enveloping per function, so that it's possible to
   use both raw data and enveloped data within the same function
   without having to build fallback enveloping functionality.
 
