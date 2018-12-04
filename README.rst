@@ -401,6 +401,9 @@ Are there any more example services?
 Why should I use this?
   ``tomodachi`` is a perfect place to start when experimenting with your architecture or trying out a concept for a new service. It may not have all the features you desire and it may never do, but I believe it's great for bootstrapping microservices in async Python.
 
+I have some great additions!
+  Sweet! Please send me a PR with your ideas. Get started at the short `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
+
 Should I run this in production?
   Yes? No? There are some projects that already have live versions in production. The library is provided as is with an unregular release schedule. It's all still highly experimental and it depends on other experimental projects, so you have to be in charge here and decide for yourself. Let me know if you do however!
 
