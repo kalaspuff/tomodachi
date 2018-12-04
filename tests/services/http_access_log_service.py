@@ -30,6 +30,18 @@ class HttpService(tomodachi.Service):
     async def test(self, request: web.Request) -> str:
         return 'test'
 
+    @http('GET', r'/test_ignore_all', ignore_logging=True)
+    async def test_ignore_all(self, request: web.Request) -> str:
+        return 'test'
+
+    @http('POST', r'/test_ignore_one', ignore_logging=[200])
+    async def test_ignore_one(self, request: web.Request) -> tomodachi.HttpResponse:
+        test = await request.text()
+        if test == '200':
+            return tomodachi.HttpResponse(body='test-200', status=200)
+        else:
+            return tomodachi.HttpResponse(body='test-201', status=201)
+
     @http_error(status_code=404)
     async def test_404(self, request: web.Request) -> str:
         return 'test 404'

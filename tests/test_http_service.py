@@ -297,6 +297,29 @@ def test_access_log(monkeypatch: Any, loop: Any) -> None:
 
     async def _async(loop: Any) -> None:
         async with aiohttp.ClientSession(loop=loop) as client:
+            await client.get('http://127.0.0.1:{}/test_ignore_all'.format(port))
+            with open(log_path) as file:
+                content = file.read()
+                assert '[http] [200] 127.0.0.1 - "GET /test_ignore_all HTTP/1.1" 8 -' not in content
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.post('http://127.0.0.1:{}/test_ignore_one'.format(port), data='200')
+            assert await response.read() == b'test-200'
+            with open(log_path) as file:
+                content = file.read()
+                assert '[http] [200] 127.0.0.1 - "GET /test_ignore_all HTTP/1.1" 8 -' not in content
+                assert '[http] [200] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8 -' not in content
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.post('http://127.0.0.1:{}/test_ignore_one'.format(port))
+            assert await response.read() == b'test-201'
+            with open(log_path) as file:
+                content = file.read()
+                assert '[http] [200] 127.0.0.1 - "GET /test_ignore_all HTTP/1.1" 8 -' not in content
+                assert '[http] [200] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8 0' not in content
+                assert '[http] [201] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8 0' in content
+
+        async with aiohttp.ClientSession(loop=loop) as client:
             await client.get('http://127.0.0.1:{}/test'.format(port))
             with open(log_path) as file:
                 content = file.read()

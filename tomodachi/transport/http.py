@@ -212,7 +212,7 @@ class Response(object):
 
 
 class HttpTransport(Invoker):
-    async def request_handler(cls: Any, obj: Any, context: Dict, func: Any, method: str, url: str) -> Any:
+    async def request_handler(cls: Any, obj: Any, context: Dict, func: Any, method: str, url: str, ignore_logging: Union[bool, List[int], Tuple[int]] = False) -> Any:
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
@@ -270,16 +270,17 @@ class HttpTransport(Invoker):
             return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset).get_aiohttp_response(context)
 
         context['_http_routes'] = context.get('_http_routes', [])
+        route_context = {'ignore_logging': ignore_logging}
         if isinstance(method, list) or isinstance(method, tuple):
             for m in method:
-                context['_http_routes'].append((m.upper(), pattern, handler))
+                context['_http_routes'].append((m.upper(), pattern, handler, route_context))
         else:
-            context['_http_routes'].append((method.upper(), pattern, handler))
+            context['_http_routes'].append((method.upper(), pattern, handler, route_context))
 
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
-    async def static_request_handler(cls: Any, obj: Any, context: Dict, func: Any, path: str, base_url: str) -> Any:
+    async def static_request_handler(cls: Any, obj: Any, context: Dict, func: Any, path: str, base_url: str, ignore_logging: Union[bool, List[int], Tuple[int]] = False) -> Any:
         if '?P<filename>' not in base_url:
             pattern = r'^{}(?P<filename>.+?)$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
         else:
@@ -311,8 +312,9 @@ class HttpTransport(Invoker):
             except PermissionError as e:
                 raise web.HTTPForbidden()  # type: ignore
 
+        route_context = {'ignore_logging': ignore_logging}
         context['_http_routes'] = context.get('_http_routes', [])
-        context['_http_routes'].append(('GET', pattern, handler))
+        context['_http_routes'].append(('GET', pattern, handler, route_context))
 
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
@@ -340,7 +342,6 @@ class HttpTransport(Invoker):
 
             status = int(status_code)
             headers = None
-
             if isinstance(return_value, dict):
                 body = return_value.get('body')
                 _status = return_value.get('status')  # type: Optional[SupportsInt]
@@ -589,20 +590,26 @@ class HttpTransport(Invoker):
 
                             if not request._cache.get('is_websocket'):
                                 status_code = response.status if response is not None else 500
-                                logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                    RequestHandler.colorize_status('http', status_code),
-                                    RequestHandler.colorize_status(status_code),
-                                    request_ip,
-                                    '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
-                                    request.method,
-                                    request.path,
-                                    '?{}'.format(request.query_string) if request.query_string else '',
-                                    ' {}'.format(version_string) if version_string else '',
-                                    response.content_length if response is not None and response.content_length is not None else '-',
-                                    request.content_length if request.content_length is not None else '-',
-                                    request.headers.get('User-Agent', '').replace('"', ''),
-                                    '{0:.5f}s'.format(round(request_time, 5))
-                                ))
+                                ignore_logging = getattr(handler, 'ignore_logging', False)
+                                if ignore_logging is True:
+                                    pass
+                                elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
+                                    pass
+                                else:
+                                    logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
+                                        RequestHandler.colorize_status('http', status_code),
+                                        RequestHandler.colorize_status(status_code),
+                                        request_ip,
+                                        '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
+                                        request.method,
+                                        request.path,
+                                        '?{}'.format(request.query_string) if request.query_string else '',
+                                        ' {}'.format(version_string) if version_string else '',
+                                        response.content_length if response is not None and response.content_length is not None else '-',
+                                        request.content_length if request.content_length is not None else '-',
+                                        request.headers.get('User-Agent', '').replace('"', ''),
+                                        '{0:.5f}s'.format(round(request_time, 5))
+                                    ))
                             else:
                                 logging.getLogger('transport.http').info('[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
                                     RequestHandler.colorize_status('websocket', 101),
@@ -625,12 +632,14 @@ class HttpTransport(Invoker):
             app = web.Application(middlewares=[middleware],  # type: ignore
                                   client_max_size=(1024 ** 2) * 100)  # type: web.Application
             app._set_loop(None)  # type: ignore
-            for method, pattern, handler in context.get('_http_routes', []):
+            for method, pattern, handler, route_context in context.get('_http_routes', []):
                 try:
                     compiled_pattern = re.compile(pattern)
                 except re.error as exc:
                     raise ValueError(
                         "Bad pattern '{}': {}".format(pattern, exc)) from None
+                ignore_logging = route_context.get('ignore_logging', False)
+                setattr(handler, 'ignore_logging', ignore_logging)
                 resource = DynamicResource(compiled_pattern)
                 app.router.register_resource(resource)  # type: ignore
                 if method.upper() == 'GET':
@@ -670,7 +679,7 @@ class HttpTransport(Invoker):
 
             setattr(obj, '_stop_service', stop_service)
 
-            for method, pattern, handler in context.get('_http_routes', []):
+            for method, pattern, handler, route_context in context.get('_http_routes', []):
                 for registry in getattr(obj, 'discovery', []):
                     if getattr(registry, 'add_http_endpoint', None):
                         await registry.add_http_endpoint(obj, host, port, method, pattern)
