@@ -1,6 +1,35 @@
 Changes
 =======
 
+0.14.0 (2018-12-04)
+-------------------
+- Added the posibility of specifying ``message_protocol`` for
+  AMQP / SNS+SQS enveloping per function, so that it's posible to
+  use both raw data and enveloped data within the same function
+  without having to build fallback enveloping functionality.
+
+- Added documentation for ``@tomodachi.decorator``, describing
+  how to easily write decorators to use with service invoker
+  functions.
+
+- Added ``ignore_logging`` keyword argument to HTTP invoker
+  decorator, which may ignore access logging for either specific
+  status codes or everything (except ``500`` statuses).
+  (github: **justcallmelarry**)
+
+- New function ``tomodachi.get_service()`` or
+  ``tomodachi.get_service(service_name)`` available to get the
+  service instance object from wherever in the running service,
+  much like ``asyncio.get_event_loop()``.
+
+- Updated examples.
+
+- Fixes issue which caused ``aiohttp`` ``FileResponse``
+  responses to raise an internal exception.
+
+- Added support for ``aiohttp`` 3.4.x.
+
+
 0.13.7 (2018-08-10)
 -------------------
 - Correction for non-defined exception in Python 3.5.
