@@ -11,8 +11,9 @@ Changes
 -------------------
 - Added the possibility of specifying ``message_protocol`` for
   AMQP / SNS+SQS enveloping per function, so that it's possible to
-  use both raw data and enveloped data within the same function
-  without having to build fallback enveloping functionality.
+  use both (for example) raw data and enveloped data within the
+  same function without having to build fallback enveloping
+  functionality.
 
 - Added documentation for ``@tomodachi.decorator``, describing
   how to easily write decorators to use with service invoker
