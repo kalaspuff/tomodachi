@@ -161,7 +161,7 @@ class DynamicResource(web_urldispatcher.DynamicResource):  # type: ignore
 
 
 class Response(object):
-    def __init__(self, *, body: Optional[Union[bytes, str]] = None, status: int = 200, reason: Optional[str] = None, headers: Optional[Union[Dict, CIMultiDict, CIMultiDictProxy]] = None, content_type: Optional[str] = None, charset: Optional[str] = None, **kwargs: Any) -> None:
+    def __init__(self, *, body: Optional[Union[bytes, str]] = None, status: int = 200, reason: Optional[str] = None, headers: Optional[Union[Dict, CIMultiDict, CIMultiDictProxy]] = None, content_type: Optional[str] = None, charset: Optional[str] = None) -> None:
         if headers is None:
             headers = CIMultiDict()
         elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
@@ -171,7 +171,6 @@ class Response(object):
         self._status = status
         self._reason = reason
         self._headers = headers
-        self._ignore_logging = kwargs.pop('ignore_logging') if kwargs else False
         self.content_type = content_type if hdrs.CONTENT_TYPE not in headers else None
         self.charset = charset if hdrs.CONTENT_TYPE not in headers else None
 
@@ -244,7 +243,6 @@ class HttpTransport(Invoker):
 
             status = 200
             headers = None
-            ignore_logging = False
             if isinstance(return_value, dict):
                 body = return_value.get('body')
                 _status = return_value.get('status')  # type: Optional[SupportsInt]
@@ -269,7 +267,7 @@ class HttpTransport(Invoker):
                     return_value = ''
                 body = return_value
 
-            return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset, ignore_logging=ignore_logging).get_aiohttp_response(context)
+            return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset).get_aiohttp_response(context)
 
         context['_http_routes'] = context.get('_http_routes', [])
         kwargs = {'ignore_logging': ignore_logging}
@@ -343,7 +341,6 @@ class HttpTransport(Invoker):
 
             status = int(status_code)
             headers = None
-            ignore_logging = False
             if isinstance(return_value, dict):
                 body = return_value.get('body')
                 _status = return_value.get('status')  # type: Optional[SupportsInt]
@@ -368,7 +365,7 @@ class HttpTransport(Invoker):
                     return_value = ''
                 body = return_value
 
-            return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset, ignore_logging=ignore_logging).get_aiohttp_response(context)
+            return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset).get_aiohttp_response(context)
 
         context['_http_error_handler'] = context.get('_http_error_handler', {})
         context['_http_error_handler'][int(status_code)] = handler
