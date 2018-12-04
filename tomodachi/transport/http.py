@@ -270,17 +270,17 @@ class HttpTransport(Invoker):
             return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset).get_aiohttp_response(context)
 
         context['_http_routes'] = context.get('_http_routes', [])
-        kwargs = {'ignore_logging': ignore_logging}
+        route_context = {'ignore_logging': ignore_logging}
         if isinstance(method, list) or isinstance(method, tuple):
             for m in method:
-                context['_http_routes'].append((m.upper(), pattern, handler, kwargs))
+                context['_http_routes'].append((m.upper(), pattern, handler, route_context))
         else:
-            context['_http_routes'].append((method.upper(), pattern, handler, kwargs))
+            context['_http_routes'].append((method.upper(), pattern, handler, route_context))
 
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
-    async def static_request_handler(cls: Any, obj: Any, context: Dict, func: Any, path: str, base_url: str) -> Any:
+    async def static_request_handler(cls: Any, obj: Any, context: Dict, func: Any, path: str, base_url: str, ignore_logging: Union[bool, List[int], Tuple[int]] = False) -> Any:
         if '?P<filename>' not in base_url:
             pattern = r'^{}(?P<filename>.+?)$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', base_url)))
         else:
@@ -312,8 +312,9 @@ class HttpTransport(Invoker):
             except PermissionError as e:
                 raise web.HTTPForbidden()  # type: ignore
 
+        route_context = {'ignore_logging': ignore_logging}
         context['_http_routes'] = context.get('_http_routes', [])
-        context['_http_routes'].append(('GET', pattern, handler, {}))
+        context['_http_routes'].append(('GET', pattern, handler, route_context))
 
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
@@ -589,10 +590,7 @@ class HttpTransport(Invoker):
 
                             if not request._cache.get('is_websocket'):
                                 status_code = response.status if response is not None else 500
-                                try:
-                                    ignore_logging = handler.ignore_logging
-                                except AttributeError:
-                                    ignore_logging = False
+                                ignore_logging = getattr(handler, 'ignore_logging', False)
                                 if ignore_logging is True:
                                     pass
                                 elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
@@ -634,14 +632,14 @@ class HttpTransport(Invoker):
             app = web.Application(middlewares=[middleware],  # type: ignore
                                   client_max_size=(1024 ** 2) * 100)  # type: web.Application
             app._set_loop(None)  # type: ignore
-            for method, pattern, handler, kwargs in context.get('_http_routes', []):
+            for method, pattern, handler, route_context in context.get('_http_routes', []):
                 try:
                     compiled_pattern = re.compile(pattern)
                 except re.error as exc:
                     raise ValueError(
                         "Bad pattern '{}': {}".format(pattern, exc)) from None
-                ignore_logging = kwargs.get('ignore_logging', False)
-                handler.ignore_logging = ignore_logging
+                ignore_logging = route_context.get('ignore_logging', False)
+                setattr(handler, 'ignore_logging', ignore_logging)
                 resource = DynamicResource(compiled_pattern)
                 app.router.register_resource(resource)  # type: ignore
                 if method.upper() == 'GET':
