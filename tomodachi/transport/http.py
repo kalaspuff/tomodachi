@@ -679,7 +679,7 @@ class HttpTransport(Invoker):
 
             setattr(obj, '_stop_service', stop_service)
 
-            for method, pattern, handler, kwargs in context.get('_http_routes', []):
+            for method, pattern, handler, route_context in context.get('_http_routes', []):
                 for registry in getattr(obj, 'discovery', []):
                     if getattr(registry, 'add_http_endpoint', None):
                         await registry.add_http_endpoint(obj, host, port, method, pattern)
