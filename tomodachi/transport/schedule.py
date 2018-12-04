@@ -230,11 +230,13 @@ class Scheduler(Invoker):
                             logging.getLogger('transport.schedule').warning('Too many scheduled tasks ({}) for function "{}"'.format(threshold, func.__name__))
                             threshold = threshold * 2
                         await asyncio.sleep(1)
+                        current_time = time.time()
                         continue
                     if too_many_tasks and len(tasks) >= 15:
                         await asyncio.sleep(1)
+                        current_time = time.time()
                         continue
-                    if too_many_tasks and len(tasks) < 10:
+                    if too_many_tasks and len(tasks) < 15:
                         logging.getLogger('transport.schedule').info('Tasks within threshold for function "{}" - resumed'.format(func.__name__))
                         threshold = 20
                     too_many_tasks = False
