@@ -62,6 +62,10 @@ Usage
 
 - `Requirements <#requirements->`_
 
+- `Questions <#any-questions>`_
+
+- `Contributions <#contributions>`_
+
 
 | **Please note: this is a work in progress.**
 
@@ -415,3 +419,14 @@ Who built this and why?
 
 * https://github.com/kalaspuff
 * https://www.linkedin.com/in/carloscaraaro/
+
+
+Contributions
+=============
+Please help out to add features that you deem are missing and/or fix
+bugs in the repo.
+
+To add a PR, for the repository, commit your changes to your own clone
+and make a PR on GitHub for your clone against master branch.
+
+Read more in the `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
