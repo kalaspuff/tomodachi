@@ -200,6 +200,7 @@ class Scheduler(Invoker):
             tasks = []  # type: List
             current_time = time.time()
             too_many_tasks = False
+            threshold = 20
             run_immediately = immediately
             while not cls.close_waiter.done():
                 try:
@@ -224,11 +225,18 @@ class Scheduler(Invoker):
                     next_call_at = None
                     tasks = [task for task in tasks if not task.done()]
                     if len(tasks) >= 20:
-                        if not too_many_tasks:
+                        if not too_many_tasks and len(tasks) >= threshold:
                             too_many_tasks = True
-                            logging.getLogger('transport.schedule').warning('Too many scheduled tasks (20) for function "{}"'.format(func.__name__))
+                            logging.getLogger('transport.schedule').warning('Too many scheduled tasks ({}) for function "{}"'.format(threshold, func.__name__))
+                            threshold = threshold * 2
                         await asyncio.sleep(1)
                         continue
+                    if too_many_tasks and len(tasks) >= 15:
+                        await asyncio.sleep(1)
+                        continue
+                    if too_many_tasks and len(tasks) < 10:
+                        logging.getLogger('transport.schedule').info('Tasks within threshold for function "{}" - resumed'.format(func.__name__))
+                        threshold = 20
                     too_many_tasks = False
                     tasks.append(asyncio.ensure_future(asyncio.shield(handler())))
                 except Exception as e:

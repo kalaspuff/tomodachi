@@ -303,7 +303,7 @@ class HttpTransport(Invoker):
             filepath = '{}{}'.format(path, filename)
 
             try:
-                if os.path.isdir(filepath) or not os.path.exists(filepath):
+                if os.path.commonprefix((os.path.realpath(filepath), os.path.realpath(path))) != os.path.realpath(path) or os.path.isdir(filepath) or not os.path.exists(filepath):
                     raise web.HTTPNotFound()  # type: ignore
 
                 pathlib.Path(filepath).open('r')
@@ -542,93 +542,88 @@ class HttpTransport(Invoker):
 
             logging.getLogger('aiohttp.access').setLevel(logging.WARNING)
 
-            async def middleware(app: web.Application, handler: Callable) -> Callable:
-                async def middleware_handler(request: web.Request) -> web.Response:
-                    async def func() -> web.Response:
-                        request_ip = RequestHandler.get_request_ip(request, context)
-                        if request.headers.get('Authorization'):
-                            try:
-                                request._cache['auth'] = BasicAuth.decode(request.headers.get('Authorization'))
-                            except ValueError:
-                                pass
+            @web.middleware
+            async def middleware(request: web.Request, handler: Callable) -> web.Response:
+                async def func() -> web.Response:
+                    request_ip = RequestHandler.get_request_ip(request, context)
+                    if request.headers.get('Authorization'):
+                        try:
+                            request._cache['auth'] = BasicAuth.decode(request.headers.get('Authorization'))
+                        except ValueError:
+                            pass
+
+                    if access_log:
+                        timer = time.time()
+                    response = web.Response(status=503,  # type: ignore
+                                            headers={})  # type: web.Response
+                    try:
+                        response = await handler(request)
+                        response.headers[hdrs.SERVER] = server_header or ''
+                    except web.HTTPException as e:
+                        error_handler = context.get('_http_error_handler', {}).get(e.status, None)
+                        if error_handler:
+                            response = await error_handler(request)
+                            response.headers[hdrs.SERVER] = server_header or ''
+                        else:
+                            response = e
+                            response.headers[hdrs.SERVER] = server_header or ''
+                            response.body = str(e).encode('utf-8')
+                    except Exception as e:
+                        error_handler = context.get('_http_error_handler', {}).get(500, None)
+                        logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
+                        if error_handler:
+                            response = await error_handler(request)
+                            response.headers[hdrs.SERVER] = server_header or ''
+                        else:
+                            response = web.HTTPInternalServerError()  # type: ignore
+                            response.headers[hdrs.SERVER] = server_header or ''
+                            response.body = b''
+                    finally:
+                        if not request.transport:
+                            response = web.Response(status=499,  # type: ignore
+                                                    headers={})  # type: web.Response
+                            response._eof_sent = True
 
                         if access_log:
-                            timer = time.time()
-                        response = web.Response(status=503,  # type: ignore
-                                                headers={})  # type: web.Response
-                        try:
-                            response = await handler(request)
-                            response.headers[hdrs.SERVER] = server_header or ''
-                        except web.HTTPException as e:
-                            error_handler = context.get('_http_error_handler', {}).get(e.status, None)
-                            if error_handler:
-                                response = await error_handler(request)
-                                response.headers[hdrs.SERVER] = server_header or ''
+                            request_time = time.time() - timer
+                            version_string = None
+                            if isinstance(request.version, HttpVersion):
+                                version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
+
+                            if not request._cache.get('is_websocket'):
+                                status_code = response.status if response is not None else 500
+                                logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
+                                    RequestHandler.colorize_status('http', status_code),
+                                    RequestHandler.colorize_status(status_code),
+                                    request_ip,
+                                    '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
+                                    request.method,
+                                    request.path,
+                                    '?{}'.format(request.query_string) if request.query_string else '',
+                                    ' {}'.format(version_string) if version_string else '',
+                                    response.content_length if response is not None and response.content_length is not None else '-',
+                                    request.content_length if request.content_length is not None else '-',
+                                    request.headers.get('User-Agent', '').replace('"', ''),
+                                    '{0:.5f}s'.format(round(request_time, 5))
+                                ))
                             else:
-                                response = e
-                                response.headers[hdrs.SERVER] = server_header or ''
-                                response.body = str(e).encode('utf-8')
-                        except Exception as e:
-                            error_handler = context.get('_http_error_handler', {}).get(500, None)
-                            logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
-                            if error_handler:
-                                response = await error_handler(request)
-                                response.headers[hdrs.SERVER] = server_header or ''
-                            else:
-                                response = web.HTTPInternalServerError()  # type: ignore
-                                response.headers[hdrs.SERVER] = server_header or ''
-                                response.body = b''
-                        finally:
-                            if not request.transport:
-                                response = web.Response(status=499,  # type: ignore
-                                                        headers={})  # type: web.Response
-                                response._eof_sent = True
+                                logging.getLogger('transport.http').info('[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
+                                    RequestHandler.colorize_status('websocket', 101),
+                                    request_ip,
+                                    '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
+                                    request.path,
+                                    '?{}'.format(request.query_string) if request.query_string else '',
+                                    request._cache.get('websocket_uuid', ''),
+                                    request.headers.get('User-Agent', '').replace('"', ''),
+                                    '{0:.5f}s'.format(round(request_time, 5))
+                                ))
 
-                            if access_log:
-                                request_time = time.time() - timer
-                                version_string = None
-                                if isinstance(request.version, HttpVersion):
-                                    version_string = 'HTTP/{}.{}'.format(request.version.major, request.version.minor)
+                        if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
+                            raise response
 
-                                if not request._cache.get('is_websocket'):
-                                    status_code = response.status if response is not None else 500
-                                    ignore_logging = None
-                                    if ignore_logging is True:
-                                        pass
-                                    elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
-                                        pass
-                                    else:
-                                        logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                            RequestHandler.colorize_status('http', status_code),
-                                            RequestHandler.colorize_status(status_code),
-                                            request_ip,
-                                            '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
-                                            request.method,
-                                            request.path,
-                                            '?{}'.format(request.query_string) if request.query_string else '',
-                                            ' {}'.format(version_string) if version_string else '',
-                                            response.content_length if response is not None and response.content_length is not None else '-',
-                                            request.content_length if request.content_length is not None else '-',
-                                            request.headers.get('User-Agent', '').replace('"', ''),
-                                            '{0:.5f}s'.format(round(request_time, 5))
-                                        ))
-                                else:
-                                    logging.getLogger('transport.http').info('[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
-                                        RequestHandler.colorize_status('websocket', 101),
-                                        request_ip,
-                                        '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
-                                        request.path,
-                                        '?{}'.format(request.query_string) if request.query_string else '',
-                                        request._cache.get('websocket_uuid', ''),
-                                        request.headers.get('User-Agent', '').replace('"', ''),
-                                        '{0:.5f}s'.format(round(request_time, 5))
-                                    ))
+                        return response
 
-                            return response
-
-                    return await asyncio.shield(func())
-
-                return middleware_handler
+                return await asyncio.shield(func())
 
             app = web.Application(middlewares=[middleware],  # type: ignore
                                   client_max_size=(1024 ** 2) * 100)  # type: web.Application

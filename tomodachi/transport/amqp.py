@@ -9,6 +9,8 @@ import inspect
 from typing import Any, Dict, Union, Optional, Callable, Match, Awaitable
 from tomodachi.invoker import Invoker
 
+MESSAGE_PROTOCOL_DEFAULT = '2594418c-5771-454a-a7f9-8f83ae82812a'
+
 
 class AmqpException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -49,12 +51,12 @@ class AmqpTransport(Invoker):
     transport = None  # type: Any
 
     @classmethod
-    async def publish(cls, service: Any, data: Any, routing_key: str = '', exchange_name: str = '', wait: bool = True) -> None:
+    async def publish(cls, service: Any, data: Any, routing_key: str = '', exchange_name: str = '', wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT) -> None:
         if not cls.channel:
             await cls.connect(cls, service, service.context)
         exchange_name = exchange_name or cls.exchange_name or 'amq.topic'
 
-        message_protocol = getattr(service, 'message_protocol', None)
+        message_protocol = getattr(service, 'message_protocol', None) if message_protocol == MESSAGE_PROTOCOL_DEFAULT else message_protocol
 
         payload = data
         if message_protocol:
@@ -114,9 +116,9 @@ class AmqpTransport(Invoker):
             return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('queue_name_prefix'), queue_name)
         return queue_name
 
-    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]] = None, exchange_name: str = '', competing: Optional[bool] = None, queue_name: Optional[str] = None, **kwargs: Any) -> Any:
+    async def subscribe_handler(cls: Any, obj: Any, context: Dict, func: Any, routing_key: str, callback_kwargs: Optional[Union[list, set, tuple]] = None, exchange_name: str = '', competing: Optional[bool] = None, queue_name: Optional[str] = None, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT, **kwargs: Any) -> Any:
         parser_kwargs = kwargs
-        message_protocol = context.get('message_protocol')
+        message_protocol = context.get('message_protocol') if message_protocol == MESSAGE_PROTOCOL_DEFAULT else message_protocol
 
         # Validate the parser kwargs if there is a validation function in the protocol
         if message_protocol:
@@ -133,7 +135,6 @@ class AmqpTransport(Invoker):
                 _callback_kwargs = {k: None for k in _callback_kwargs if k != 'self'}
             kwargs = {k: v for k, v in _callback_kwargs.items()}
 
-            message_protocol = context.get('message_protocol')
             message = payload
             message_uuid = None
             message_key = None

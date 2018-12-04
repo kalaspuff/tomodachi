@@ -133,7 +133,6 @@ RabbitMQ or AWS SNS/SQS event based messaging service 📡
 
     import tomodachi
 
-
     @tomodachi.service
     class Service(tomodachi.Service):
         name = 'example'
@@ -230,7 +229,6 @@ for the microservice, ``service.py``.
 
     import tomodachi
 
-
     @tomodachi.service
     class Service(tomodachi.Service):
         name = 'example'
@@ -298,7 +296,7 @@ AWS SNS+SQS messaging:
 
   Unless ``queue_name`` is specified an auto generated queue name will be used. Additional prefixes to both ``topic`` and ``queue_name`` can be assigned by setting the ``options.aws_sns_sqs.topic_prefix`` and ``options.aws_sns_sqs.queue_name_prefix`` dict values.
 
-  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument.
+  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_protocol`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
 
   If you're utilizing ``from tomodachi.protocol import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_protocol`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages.
 
@@ -311,7 +309,7 @@ AMQP messaging (RabbitMQ):
 
   Unless ``queue_name`` is specified an auto generated queue name will be used. Additional prefixes to both ``routing_key`` and ``queue_name`` can be assigned by setting the ``options.amqp.routing_key_prefix`` and ``options.amqp.queue_name_prefix`` dict values.
 
-  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument.
+  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_protocol`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
 
   If you're utilizing ``from tomodachi.protocol import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_protocol`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages.
 
@@ -331,6 +329,35 @@ Scheduled functions / cron:
 
 
 *You may also extend the functionality by building your own transports for your endpoints. The invokers themselves should extend the class* ``tomodachi.invoker.Invoker``.
+
+
+Decorated functions using ``@tomodachi.decorator`` 🎄
+-----------------------------------------------------
+Invoker functions can of course be decorated using custom functionality. For ease of use you can then in turn decorate your decorator with the the built-in ``@tomodachi.decorator`` to ease development.
+If the decorator would return anything else than ``True`` or ``None`` (or not specifying any return statement) the invoked function will *not* be called and instead the returned value will be used, for example as an HTTP response.
+
+.. code:: python
+
+    import tomodachi
+
+    @tomodachi.decorator
+    async def require_csrf(instance, request):
+        token = request.headers.get("X-CSRF-Token")
+        if not token or token != request.cookies.get('csrftoken'):
+            return {
+                'body': 'Invalid CSRF token',
+                'status': 403
+            }
+
+    @tomodachi.service
+    class Service(tomodachi.Service):
+        name = 'example'
+
+        @tomodachi.http('POST', r'/create')
+        @require_csrf
+        async def create_data(self, request):
+            # Do magic here!
+            return 'OK'
 
 
 Requirements 👍
