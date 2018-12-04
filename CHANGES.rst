@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.14.1 (2018-12-04)
+-------------------
+- Fixes an issue which caused scheduled functions to spam output
+  on computer sleep when developing locally.
+
+
 0.14.0 (2018-12-04)
 -------------------
 - Added the posibility of specifying ``message_protocol`` for
