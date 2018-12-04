@@ -592,20 +592,29 @@ class HttpTransport(Invoker):
 
                             if not request._cache.get('is_websocket'):
                                 status_code = response.status if response is not None else 500
-                                logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                    RequestHandler.colorize_status('http', status_code),
-                                    RequestHandler.colorize_status(status_code),
-                                    request_ip,
-                                    '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
-                                    request.method,
-                                    request.path,
-                                    '?{}'.format(request.query_string) if request.query_string else '',
-                                    ' {}'.format(version_string) if version_string else '',
-                                    response.content_length if response is not None and response.content_length is not None else '-',
-                                    request.content_length if request.content_length is not None else '-',
-                                    request.headers.get('User-Agent', '').replace('"', ''),
-                                    '{0:.5f}s'.format(round(request_time, 5))
-                                ))
+                                try:
+                                    ignore_logging = handler.ignore_logging
+                                except Exception:
+                                    ignore_logging = False
+                                if ignore_logging is True:
+                                    pass
+                                elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
+                                    pass
+                                else:
+                                    logging.getLogger('transport.http').info('[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
+                                        RequestHandler.colorize_status('http', status_code),
+                                        RequestHandler.colorize_status(status_code),
+                                        request_ip,
+                                        '"{}"'.format(request._cache['auth'].login.replace('"', '')) if request._cache.get('auth') and getattr(request._cache.get('auth'), 'login', None) else '-',
+                                        request.method,
+                                        request.path,
+                                        '?{}'.format(request.query_string) if request.query_string else '',
+                                        ' {}'.format(version_string) if version_string else '',
+                                        response.content_length if response is not None and response.content_length is not None else '-',
+                                        request.content_length if request.content_length is not None else '-',
+                                        request.headers.get('User-Agent', '').replace('"', ''),
+                                        '{0:.5f}s'.format(round(request_time, 5))
+                                    ))
                             else:
                                 logging.getLogger('transport.http').info('[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
                                     RequestHandler.colorize_status('websocket', 101),
