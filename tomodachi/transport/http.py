@@ -540,7 +540,7 @@ class HttpTransport(Invoker):
             logging.getLogger('aiohttp.access').setLevel(logging.WARNING)
 
             @web.middleware
-            async def middleware(request: web.Request, handler: Callable) -> Callable:
+            async def middleware(request: web.Request, handler: Callable) -> web.Response:
                 async def func() -> web.Response:
                     request_ip = RequestHandler.get_request_ip(request, context)
                     if request.headers.get('Authorization'):
