@@ -212,6 +212,7 @@ class Scheduler(Invoker):
                             next_call_at = cls.next_call_at(current_time, interval, timestamp, timezone)
                             if prev_call_at and prev_call_at == next_call_at:
                                 next_call_at = None
+                                await asyncio.sleep(1)
                                 continue
                         sleep_diff = int(current_time + 1) - actual_time + 0.001
                         if sleep_diff > 0:
@@ -231,16 +232,19 @@ class Scheduler(Invoker):
                             threshold = threshold * 2
                         await asyncio.sleep(1)
                         current_time = time.time()
+                        next_call_at = cls.next_call_at(current_time + 10, interval, timestamp, timezone)
                         continue
                     if too_many_tasks and len(tasks) >= 15:
                         await asyncio.sleep(1)
                         current_time = time.time()
+                        next_call_at = cls.next_call_at(current_time + 10, interval, timestamp, timezone)
                         continue
                     if too_many_tasks and len(tasks) < 15:
                         logging.getLogger('transport.schedule').info('Tasks within threshold for function "{}" - resumed'.format(func.__name__))
                         threshold = 20
                     too_many_tasks = False
                     tasks.append(asyncio.ensure_future(asyncio.shield(handler())))
+                    current_time = time.time()
                 except Exception as e:
                     logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                     await asyncio.sleep(1)
