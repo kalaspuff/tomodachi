@@ -22,7 +22,7 @@ pycares==2.3.0
 pycodestyle==2.4.0
 py==1.7.0
 pyparsing==2.3.0
-pytest==4.0.1
+pytest==4.0.2
 pytest-cov==2.6.0
 pytest-forked==0.2
 pytest-xdist==1.24.1
