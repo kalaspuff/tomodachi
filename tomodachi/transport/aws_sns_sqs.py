@@ -41,6 +41,7 @@ class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
 
 class AWSSNSSQSTransport(Invoker):
     clients = None
+    clients_creation_time = None
     topics = {}  # type: Dict[str, str]
     close_waiter = None
 
@@ -213,6 +214,7 @@ class AWSSNSSQSTransport(Invoker):
 
         if not cls.clients:
             cls.clients = {}
+            cls.clients_creation_time = {}
         loop = asyncio.get_event_loop()
         session = aiobotocore.get_session(loop=loop)
 
@@ -233,7 +235,10 @@ class AWSSNSSQSTransport(Invoker):
             context.get('options', {}).get('aws_endpoint_urls', {}).get(name)
 
         try:
+            if cls.clients_creation_time.get(name) and cls.clients_creation_time[name] + 30 > time.time():
+                return
             cls.clients[name] = session.create_client(name, region_name=region_name, aws_secret_access_key=aws_secret_access_key, aws_access_key_id=aws_access_key_id, endpoint_url=endpoint_url)
+            cls.clients_creation_time[name] = time.time()
         except (botocore.exceptions.PartialCredentialsError, botocore.exceptions.NoRegionError) as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Invalid credentials [{}] to AWS ({})'.format(name, error_message))
