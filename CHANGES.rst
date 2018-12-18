@@ -1,6 +1,16 @@
 Changes
 =======
 
+0.14.2 (2018-12-19)
+-------------------
+- Solves an issue which caused SNS / SQS invoked functions to
+  never resume the ReceiveMessage API calls on connection failure,
+  resulting in log output saying "Session closed" and requiring
+  the service to be restarted.
+
+- Added support for ``aiobotocore`` 0.10.x.
+
+
 0.14.1 (2018-12-04)
 -------------------
 - Fixes an issue which caused scheduled functions to spam output
