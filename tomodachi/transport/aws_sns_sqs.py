@@ -292,7 +292,7 @@ class AWSSNSSQSTransport(Invoker):
                     if getattr(task, '_coro', None):
                         task = task._coro
                     await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
-                except:
+                except Exception:
                     pass
                 cls.create_client(cls, 'sns', context)
                 if retry >= 3:
@@ -332,7 +332,7 @@ class AWSSNSSQSTransport(Invoker):
                         if getattr(task, '_coro', None):
                             task = task._coro
                         await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
-                    except:
+                    except Exception:
                         pass
                     cls.create_client(cls, 'sqs', context)
                     if retry >= 3:
@@ -540,7 +540,7 @@ class AWSSNSSQSTransport(Invoker):
                         if getattr(task, '_coro', None):
                             task = task._coro
                         await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
-                    except:
+                    except Exception:
                         pass
                     cls.create_client(cls, 'sqs', context)
                     client = cls.clients.get('sqs')
