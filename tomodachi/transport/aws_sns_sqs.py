@@ -282,6 +282,13 @@ class AWSSNSSQSTransport(Invoker):
                 response = await asyncio.wait_for(client.publish(TopicArn=topic_arn, Message=message), timeout=30)
             except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
                 await asyncio.sleep(1)
+                try:
+                    task = client.close()
+                    if getattr(task, '_coro', None):
+                        task = task._coro
+                    await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
+                except:
+                    pass
                 cls.create_client(cls, 'sns', context)
                 if retry >= 3:
                     raise e
@@ -315,6 +322,13 @@ class AWSSNSSQSTransport(Invoker):
                     await asyncio.wait_for(client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30)
                 except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
                     await asyncio.sleep(1)
+                    try:
+                        task = client.close()
+                        if getattr(task, '_coro', None):
+                            task = task._coro
+                        await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
+                    except:
+                        pass
                     cls.create_client(cls, 'sqs', context)
                     if retry >= 3:
                         raise e
@@ -516,6 +530,13 @@ class AWSSNSSQSTransport(Invoker):
                         error_message = str(e) if e and str(e) not in ['', 'None'] else 'Server disconnected'
                         logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({}) - reconnecting'.format(error_message))
                     await asyncio.sleep(1)
+                    try:
+                        task = client.close()
+                        if getattr(task, '_coro', None):
+                            task = task._coro
+                        await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
+                    except:
+                        pass
                     cls.create_client(cls, 'sqs', context)
                     client = cls.clients.get('sqs')
                     continue
@@ -541,9 +562,10 @@ class AWSSNSSQSTransport(Invoker):
                             pass
                         await asyncio.sleep(20)
                         continue
+                    if not is_disconnected:
+                        logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
                     if isinstance(e, (asyncio.TimeoutError, aiohttp.client_exceptions.ClientConnectorError)):
                         is_disconnected = True
-                    logging.getLogger('transport.aws_sns_sqs').warning('Unable to receive message from queue [sqs] on AWS ({})'.format(error_message))
                     await asyncio.sleep(1)
                     continue
                 except Exception as e:
