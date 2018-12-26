@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.14.3 (2018-12-26)
+-------------------
+- Added support for ``aiohttp`` 3.5.x.
+
+
 0.14.2 (2018-12-19)
 -------------------
 - Solves an issue which caused SNS / SQS invoked functions to
