@@ -42,8 +42,8 @@ classifiers = [
 
 setup(name='tomodachi',
       version=tomodachi.__version__,
-      description=('Python 3 microservice library / framework using asyncio with HTTP, '
-                   'websockets, RabbitMQ / AMQP and AWS SNS+SQS support.'),
+      description=('Python 3 microservice library on asyncio with HTTP, '
+                   'websockets, RabbitMQ and AWS SNS+SQS.'),
       long_description='\n\n'.join((read('README.rst'), read('CHANGES.rst'))),
       classifiers=classifiers,
       author='Carl Oscar Aaro',
