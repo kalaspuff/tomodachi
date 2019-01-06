@@ -40,8 +40,8 @@ class Watcher(object):
         self.update_watched_files()
 
     def update_watched_files(self, reindex: bool = False) -> Dict:
-        watched_files: Dict[str, float] = {}
-        watched_files_crc: Dict[str, str] = {}
+        watched_files = {}  # type: Dict[str, float]
+        watched_files_crc = {}  # type: Dict[str, str]
         if not self.watched_files or reindex:
             for r in self.root:
                 for root, dirs, files in os.walk(r, topdown=True):
