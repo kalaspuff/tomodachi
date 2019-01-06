@@ -8,6 +8,21 @@ from tomodachi.transport.http import http, http_error, http_static, websocket, R
 from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
+async def middleware_function(func: Callable, service: Any, request: web.Request) -> Any:
+    if request.headers.get('X-Use-Middleware') == 'Set':
+        service.middleware_called = True
+
+    if request.headers.get('X-Use-Middleware') == 'Before':
+        return 'before'
+
+    return_value = await func()
+
+    if request.headers.get('X-Use-Middleware') == 'After':
+        return 'after'
+
+    return return_value
+
+
 @tomodachi.service
 class HttpService(tomodachi.Service):
     name = 'test_http'
@@ -21,7 +36,10 @@ class HttpService(tomodachi.Service):
     }
     uuid = None
     closer = asyncio.Future()  # type: Any
+    http_middleware = [middleware_function]
     slow_request = False
+    middleware_called = False
+    function_triggered = False
     websocket_connected = False
     websocket_received_data = None
 
@@ -33,6 +51,11 @@ class HttpService(tomodachi.Service):
     @http('GET', r'/test/(?P<id>[^/]+?)/?')
     async def test_with_id(self, request: web.Request, id: str) -> str:
         return 'test {}'.format(id)
+
+    @http('GET', r'/middleware-before/?')
+    async def middleware_before(self, request: web.Request) -> str:
+        self.function_triggered = True
+        return 'test'
 
     @http('GET', r'/slow/?')
     async def test_slow(self, request: web.Request) -> str:

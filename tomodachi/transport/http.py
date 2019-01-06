@@ -250,7 +250,7 @@ class HttpTransport(Invoker):
                         func = routine_func
 
                     middleware: Callable = middlewares[idx]
-                    return await middleware(func, request, obj)
+                    return await middleware(func, obj, request)
 
                 return_value = await middleware_bubble()
             else:
@@ -368,7 +368,7 @@ class HttpTransport(Invoker):
                         func = routine_func
 
                     middleware: Callable = middlewares[idx]
-                    return await middleware(func, request, obj)
+                    return await middleware(func, obj, request)
 
                 return_value = await middleware_bubble()
             else:

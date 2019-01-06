@@ -224,6 +224,25 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
             assert await response.text() == ''
 
         async with aiohttp.ClientSession(loop=loop) as client:
+            assert instance.middleware_called is False
+            response = await client.get('http://127.0.0.1:{}/test'.format(port), headers={'X-Use-Middleware': 'Set'})
+            assert response.status == 200
+            assert await response.text() == 'test'
+            assert instance.middleware_called is True
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            assert instance.function_triggered is False
+            response = await client.get('http://127.0.0.1:{}/middleware-before'.format(port), headers={'X-Use-Middleware': 'Before'})
+            assert response.status == 200
+            assert await response.text() == 'before'
+            assert instance.function_triggered is False
+
+            response = await client.get('http://127.0.0.1:{}/middleware-before'.format(port), headers={'X-Use-Middleware': 'After'})
+            assert response.status == 200
+            assert await response.text() == 'after'
+            assert instance.function_triggered is True
+
+        async with aiohttp.ClientSession(loop=loop) as client:
             f = pathlib.Path('{}/tests/static_files/image.png'.format(os.path.realpath(os.getcwd()))).open('r')
             ct, encoding = mimetypes.guess_type(str(f.name))
 

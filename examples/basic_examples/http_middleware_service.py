@@ -7,7 +7,7 @@ from tomodachi import http, http_error, http_static, websocket, HttpResponse
 from tomodachi.discovery import DummyRegistry
 
 
-async def middleware_function(func: Callable, request: web.Request, service: Any) -> Any:
+async def middleware_function(func: Callable, service: Any, request: web.Request) -> Any:
     # Functionality before function is called
     service.log('middleware before')
 
