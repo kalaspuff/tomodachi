@@ -1,13 +1,23 @@
 import asyncio
 import os
 import sys
+import zlib
 import logging
 from typing import Any, Dict, List, Optional, Callable
+
+
+def crc(file_path: str) -> str:
+    prev = 0
+    for line in open(file_path, 'rb'):
+        prev = zlib.crc32(line, prev)
+
+    return '%X' % (prev & 0xFFFFFFFF)
 
 
 class Watcher(object):
     def __init__(self, root: Optional[List] = None, configuration: Optional[Dict] = None) -> None:
         self.watched_files = {}  # type: Dict[str, float]
+        self.watched_files_crc = {}  # type: Dict[str, str]
         self.root = []  # type: List[str]
         self.ignored_dirs = ['__pycache__', '.git', '.svn', '__ignored__', '__temporary__', '__tmp__']
         self.watched_file_endings = ['.py', '.json', '.yml', '.html', '.phtml']
@@ -30,7 +40,8 @@ class Watcher(object):
         self.update_watched_files()
 
     def update_watched_files(self, reindex: bool = False) -> Dict:
-        watched_files = {}
+        watched_files: Dict[str, float] = {}
+        watched_files_crc: Dict[str, str] = {}
         if not self.watched_files or reindex:
             for r in self.root:
                 for root, dirs, files in os.walk(r, topdown=True):
@@ -39,21 +50,30 @@ class Watcher(object):
                         file_path = os.path.join(root, file)
                         _dir = os.path.dirname(file_path)
                         if _dir not in self.ignored_dirs and not any([os.path.join(root, _dir).endswith('/{}'.format(ignored_dir)) or '/{}/'.format(ignored_dir) in os.path.join(root, _dir) for ignored_dir in self.ignored_dirs]) and any([file.endswith(ending) for ending in self.watched_file_endings]) and '/.' not in file_path:
-                            watched_files[(file_path)] = os.path.getmtime(file_path)
+                            watched_files[file_path] = os.path.getmtime(file_path)
+                            watched_files_crc[file_path] = crc(file_path) if watched_files[file_path] != self.watched_files.get(file_path) else self.watched_files_crc.get(file_path, '')
         else:
             for file_path, mtime in self.watched_files.items():
                 try:
                     watched_files[file_path] = os.path.getmtime(file_path)
+                    watched_files_crc[file_path] = crc(file_path) if watched_files[file_path] != self.watched_files.get(file_path) else self.watched_files_crc.get(file_path, '')
                 except FileNotFoundError:
                     pass
+
+        if self.watched_files and self.watched_files != watched_files and self.watched_files_crc == watched_files_crc:
+            self.watched_files = watched_files
 
         if self.watched_files and self.watched_files != watched_files:
             added = [k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1):] for k in watched_files.keys() if k not in self.watched_files.keys()]
             removed = [k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1):] for k in self.watched_files.keys() if k not in watched_files.keys()]
             updated = [k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1):] for k in watched_files.keys() if k in self.watched_files.keys() and self.watched_files[k] != watched_files[k]]
             self.watched_files = watched_files
+            self.watched_files_crc = watched_files_crc
             return {'added': added, 'removed': removed, 'updated': updated}
+
         self.watched_files = watched_files
+        self.watched_files_crc = watched_files_crc
+
         return {}
 
     async def watch(self, loop: asyncio.AbstractEventLoop = None, callback_func: Optional[Callable] = None) -> Any:
