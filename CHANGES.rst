@@ -1,6 +1,20 @@
 Changes
 =======
 
+0.14.4 (2019-01-06)
+-------------------
+- Service classes may now use ``http_middleware`` which is a list
+  of functions to be run on all HTTP calls and may change the
+  behaviour before or after the invoked function is called, either
+  preventing the function from being called or modifying the
+  response values. An example has been added to the examples
+  directory.
+
+- The auto-reloader on code changes will now only reload if a
+  the files content has actually changed and not when the file 
+  was written to disk without changes.
+
+
 0.14.3 (2018-12-26)
 -------------------
 - Added support for ``aiohttp`` 3.5.x.
