@@ -50,6 +50,7 @@ def test_watcher_callback(loop: Any) -> None:
     assert result == {}
 
     watcher.watched_files = {'_test': 0}
+    watcher.watched_files_crc = {'_test': ''}
     result = watcher.update_watched_files(reindex=True)
     assert len(result.get('added', 0)) == 2
     assert len(result.get('removed', 0)) == 1
@@ -72,6 +73,7 @@ def test_watcher_callback(loop: Any) -> None:
             task.cancel()
 
             watcher.watched_files = {'_test': 0}
+            watcher.watched_files_crc = {'_test': ''}
             task = await watcher.watch(callback_func=cb2)
             await asyncio.sleep(1.0)
             task.cancel()
