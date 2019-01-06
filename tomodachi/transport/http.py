@@ -227,7 +227,7 @@ class HttpTransport(Invoker):
             except IndexError:
                 pass
 
-        async def handler(request: web.Request) -> web.Response:
+        async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             result = compiled_pattern.match(request.path)
             values = inspect.getfullargspec(func)
             kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
@@ -235,8 +235,26 @@ class HttpTransport(Invoker):
                 for k, v in result.groupdict().items():
                     kwargs[k] = v
 
-            routine = func(*(obj, request,), **kwargs)
-            return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
+            async def routine_func() -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
+                routine = func(*(obj, request,), **kwargs)
+                return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
+                return return_value
+
+            middlewares: List[Callable] = context.get('http_middleware', [])
+            if middlewares:
+                async def middleware_bubble(idx: int = 0) -> Any:
+                    async def func() -> Any:
+                        return await middleware_bubble(idx + 1)
+
+                    if middlewares and len(middlewares) <= idx + 1:
+                        func = routine_func
+
+                    middleware: Callable = middlewares[idx]
+                    return await middleware(func, request, obj)
+
+                return_value = await middleware_bubble()
+            else:
+                return_value = await routine_func()
 
             if isinstance(return_value, Response):
                 return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
@@ -334,8 +352,27 @@ class HttpTransport(Invoker):
         async def handler(request: web.Request) -> web.Response:
             values = inspect.getfullargspec(func)
             kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
-            routine = func(*(obj, request,), **kwargs)
-            return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
+
+            async def routine_func() -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
+                routine = func(*(obj, request,), **kwargs)
+                return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
+                return return_value
+
+            middlewares: List[Callable] = context.get('http_middleware', [])
+            if int(status_code) in (404,) and middlewares:
+                async def middleware_bubble(idx: int = 0) -> Any:
+                    async def func() -> Any:
+                        return await middleware_bubble(idx + 1)
+
+                    if middlewares and len(middlewares) <= idx + 1:
+                        func = routine_func
+
+                    middleware: Callable = middlewares[idx]
+                    return await middleware(func, request, obj)
+
+                return_value = await middleware_bubble()
+            else:
+                return_value = await routine_func()
 
             if isinstance(return_value, Response):
                 return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
