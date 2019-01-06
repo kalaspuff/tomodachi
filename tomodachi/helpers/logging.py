@@ -3,6 +3,10 @@ from logging.handlers import WatchedFileHandler
 from typing import Optional, Union, Any
 
 
+class CustomServiceLogHandler(WatchedFileHandler):
+    pass
+
+
 def log_setup(service: Any, name: Optional[str] = None, level: Optional[Union[str, int]] = None, formatter: Optional[Union[logging.Formatter, str, bool]] = True, filename: Optional[str] = None) -> logging.Logger:
     if not name:
         name = 'log.{}'.format(service.name)
@@ -15,9 +19,9 @@ def log_setup(service: Any, name: Optional[str] = None, level: Optional[Union[st
     if level and type(level) is str:
         level = getattr(logging, str(level))
 
-    if not [x for x in logger.handlers if isinstance(x, WatchedFileHandler) and (level is None or level == x.level)]:
+    if not [x for x in logger.handlers if isinstance(x, CustomServiceLogHandler) and (level is None or level == x.level)]:
         try:
-            wfh = WatchedFileHandler(filename=filename)
+            wfh = CustomServiceLogHandler(filename=filename)
         except FileNotFoundError as e:
             logging.getLogger('logging').warning('Unable to use file for logging - invalid path ("{}")'.format(filename))
             raise e
