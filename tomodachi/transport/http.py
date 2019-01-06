@@ -240,7 +240,7 @@ class HttpTransport(Invoker):
                 return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
                 return return_value
 
-            middlewares: List[Callable] = context.get('http_middleware', [])
+            middlewares = context.get('http_middleware', [])  # type: List[Callable]
             if middlewares:
                 async def middleware_bubble(idx: int = 0) -> Any:
                     async def func() -> Any:
@@ -358,7 +358,7 @@ class HttpTransport(Invoker):
                 return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
                 return return_value
 
-            middlewares: List[Callable] = context.get('http_middleware', [])
+            middlewares = context.get('http_middleware', [])  # type: List[Callable]
             if int(status_code) in (404,) and middlewares:
                 async def middleware_bubble(idx: int = 0) -> Any:
                     async def func() -> Any:
