@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.14.5 (2019-01-09)
+-------------------
+- Added the support of middlewares to inject additional arguments
+  and keywords arguments or overriding existing keyword arguments
+  of the invoked function.
+
+
 0.14.4 (2019-01-06)
 -------------------
 - Service classes may now use ``http_middleware`` which is a list
@@ -11,7 +18,7 @@ Changes
   directory.
 
 - The auto-reloader on code changes will now only reload if a
-  the files content has actually changed and not when the file 
+  the files content has actually changed and not when the file
   was written to disk without changes.
 
 
