@@ -13,6 +13,7 @@ import inspect
 from botocore.parsers import ResponseParserError
 from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match, Awaitable
 from tomodachi.invoker import Invoker
+from tomodachi.helpers.dict import merge_dicts
 
 DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'
 MESSAGE_PROTOCOL_DEFAULT = 'e6fb6007-cf15-4cfd-af2e-1d1683374e70'
@@ -165,29 +166,16 @@ class AWSSNSSQSTransport(Invoker):
                         await cls.delete_message(cls, receipt_handle, queue_url, context)
                     return
 
-            try:
-                if not message_protocol and len(values.args[1:]):
-                    routine = func(*(obj, message))
-                elif len(kwargs):
-                    routine = func(*(obj,), **kwargs)
-                elif len(values.args[1:]):
-                    kwargs = {}
-                    routine = func(*(obj, message), **kwargs)
-                else:
-                    kwargs = {}
-                    routine = func(*(obj,), **kwargs)
-            except Exception as e:
-                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
-                if issubclass(e.__class__, (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException)):
-                    if message_key:
-                        del context['_aws_sns_sqs_received_messages'][message_key]
-                    return
-                await cls.delete_message(cls, receipt_handle, queue_url, context)
-                return
-
-            if isinstance(routine, Awaitable):
+            async def routine_func(*a: Any, **kw: Any) -> Any:
                 try:
-                    return_value = await routine
+                    if not message_protocol and len(values.args[1:]):
+                        routine = func(*(obj, message, *a))
+                    elif len(merge_dicts(kwargs, kw)):
+                        routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
+                    elif len(values.args[1:]):
+                        routine = func(*(obj, message, *a), **kw)
+                    else:
+                        routine = func(*(obj, *a), **kw)
                 except Exception as e:
                     logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                     if issubclass(e.__class__, (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException)):
@@ -196,10 +184,39 @@ class AWSSNSSQSTransport(Invoker):
                         return
                     await cls.delete_message(cls, receipt_handle, queue_url, context)
                     return
-            else:
-                return_value = routine
 
-            await cls.delete_message(cls, receipt_handle, queue_url, context)
+                if isinstance(routine, Awaitable):
+                    try:
+                        return_value = await routine
+                    except Exception as e:
+                        logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
+                        if issubclass(e.__class__, (AWSSNSSQSInternalServiceError, AWSSNSSQSInternalServiceErrorException, AWSSNSSQSInternalServiceException)):
+                            if message_key:
+                                del context['_aws_sns_sqs_received_messages'][message_key]
+                            return
+                        await cls.delete_message(cls, receipt_handle, queue_url, context)
+                        return
+                else:
+                    return_value = routine
+
+                await cls.delete_message(cls, receipt_handle, queue_url, context)
+                return return_value
+
+            middlewares = context.get('message_middleware', [])  # type: List[Callable]
+            if middlewares:
+                async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
+                    async def func(*a: Any, **kw: Any) -> Any:
+                        return await middleware_bubble(idx + 1, *a, **kw)
+
+                    if middlewares and len(middlewares) <= idx + 1:
+                        func = routine_func
+
+                    middleware = middlewares[idx]  # type: Callable
+                    return await middleware(func, obj, message, *ma, **mkw)
+
+                return_value = await middleware_bubble()
+            else:
+                return_value = await routine_func()
 
             return return_value
 
