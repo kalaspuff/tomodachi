@@ -6,7 +6,7 @@ import re
 import binascii
 import asyncio
 import inspect
-from typing import Any, Dict, Union, Optional, Callable, Match, Awaitable
+from typing import Any, Dict, Union, Optional, Callable, Match, Awaitable, List
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.dict import merge_dicts
 
