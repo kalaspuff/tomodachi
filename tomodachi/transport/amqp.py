@@ -8,6 +8,7 @@ import asyncio
 import inspect
 from typing import Any, Dict, Union, Optional, Callable, Match, Awaitable
 from tomodachi.invoker import Invoker
+from tomodachi.helpers.dict import merge_dicts
 
 MESSAGE_PROTOCOL_DEFAULT = '2594418c-5771-454a-a7f9-8f83ae82812a'
 
@@ -133,7 +134,7 @@ class AmqpTransport(Invoker):
                 _callback_kwargs = {k: values.defaults[i - len(values.args) + 1] if values.defaults and i >= len(values.args) - len(values.defaults) - 1 else None for i, k in enumerate(values.args[1:])} if values.args and len(values.args) > 1 else {}
             else:
                 _callback_kwargs = {k: None for k in _callback_kwargs if k != 'self'}
-            kwargs = {k: v for k, v in _callback_kwargs.items()}
+            kwargs = {k: v for k, v in _callback_kwargs.items()}  # type: Dict[str, Any]
 
             message = payload
             message_uuid = None
@@ -173,30 +174,16 @@ class AmqpTransport(Invoker):
                         await cls.channel.basic_client_ack(delivery_tag)
                     return
 
-            try:
-                if not message_protocol and len(values.args[1:]):
-                    routine = func(*(obj, message))
-                elif len(kwargs):
-                    routine = func(*(obj,), **kwargs)
-                elif len(values.args[1:]):
-                    kwargs = {}
-                    routine = func(*(obj, message), **kwargs)
-                else:
-                    kwargs = {}
-                    routine = func(*(obj,), **kwargs)
-            except Exception as e:
-                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
-                if issubclass(e.__class__, (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException)):
-                    if message_key:
-                        del context['_amqp_received_messages'][message_key]
-                    await cls.channel.basic_client_nack(delivery_tag)
-                    return
-                await cls.channel.basic_client_ack(delivery_tag)
-                return
-
-            if isinstance(routine, Awaitable):
+            async def routine_func(*a: Any, **kw: Any) -> Any:
                 try:
-                    return_value = await routine
+                    if not message_protocol and len(values.args[1:]):
+                        routine = func(*(obj, message, *a))
+                    elif len(merge_dicts(kwargs, kw)):
+                        routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
+                    elif len(values.args[1:]):
+                        routine = func(*(obj, message, *a), **kw)
+                    else:
+                        routine = func(*(obj, *a), **kw)
                 except Exception as e:
                     logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
                     if issubclass(e.__class__, (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException)):
@@ -206,10 +193,40 @@ class AmqpTransport(Invoker):
                         return
                     await cls.channel.basic_client_ack(delivery_tag)
                     return
-            else:
-                return_value = routine
 
-            await cls.channel.basic_client_ack(delivery_tag)
+                if isinstance(routine, Awaitable):
+                    try:
+                        return_value = await routine
+                    except Exception as e:
+                        logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
+                        if issubclass(e.__class__, (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException)):
+                            if message_key:
+                                del context['_amqp_received_messages'][message_key]
+                            await cls.channel.basic_client_nack(delivery_tag)
+                            return
+                        await cls.channel.basic_client_ack(delivery_tag)
+                        return
+                else:
+                    return_value = routine
+
+                await cls.channel.basic_client_ack(delivery_tag)
+                return return_value
+
+            middlewares = context.get('message_middleware', [])  # type: List[Callable]
+            if middlewares:
+                async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
+                    async def func(*a: Any, **kw: Any) -> Any:
+                        return await middleware_bubble(idx + 1, *a, **kw)
+
+                    if middlewares and len(middlewares) <= idx + 1:
+                        func = routine_func
+
+                    middleware = middlewares[idx]  # type: Callable
+                    return await middleware(func, obj, message, *ma, **mkw)
+
+                return_value = await middleware_bubble()
+            else:
+                return_value = await routine_func()
 
             return return_value
 
