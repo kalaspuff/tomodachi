@@ -23,6 +23,7 @@ try:
                                           http_static,
                                           websocket,
                                           ws,
+                                          get_http_response_status,
                                           HttpException,
                                           Response as HttpResponse)
 except Exception:  # pragma: no cover
