@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.14.6 (2019-01-14)
+-------------------
+- Extended middleware functionality to also be available for
+  event based messaging (AMQP and SNS+SQS) as
+  ``message_middleware``.
+
+
 0.14.5 (2019-01-09)
 -------------------
 - Added the support of middlewares to inject additional arguments
