@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.14.7 (2019-01-21)
+-------------------
+- Added helper functions to be able to get the status code of
+  a HTTP response or on a raised exception during a HTTP request.
+  ``await tomodachi.get_http_response_status(value, request=request)`` or
+  ``await tomodachi.get_http_response_status(exception, request=request)``
+
+
 0.14.6 (2019-01-14)
 -------------------
 - Extended middleware functionality to also be available for
