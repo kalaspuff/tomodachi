@@ -364,7 +364,7 @@ class HttpTransport(Invoker):
 
         access_log = context.get('options', {}).get('http', {}).get('access_log', True)
 
-        async def _func(obj: Any, request: web.Request) -> None:
+        async def _func(obj: Any, request: web.Request, *a: Any, **kw: Any) -> None:
             websocket = web.WebSocketResponse()  # type: ignore
 
             request_ip = RequestHandler.get_request_ip(request, context)
@@ -416,7 +416,7 @@ class HttpTransport(Invoker):
                     kwargs[k] = v
 
             try:
-                routine = func(*(obj, websocket,), **kwargs)
+                routine = func(*(obj, websocket, *a), **merge_dicts(kwargs, kw))
                 callback_functions = (await routine) if isinstance(routine, Awaitable) else routine  # type: Optional[Union[Tuple, Callable]]
             except Exception as e:
                 logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
