@@ -213,7 +213,7 @@ class Response(object):
 
 
 class HttpTransport(Invoker):
-    async def request_handler(cls: Any, obj: Any, context: Dict, func: Any, method: str, url: str, ignore_logging: Union[bool, List[int], Tuple[int]] = False) -> Any:
+    async def request_handler(cls: Any, obj: Any, context: Dict, func: Any, method: str, url: str, ignore_logging: Union[bool, List[int], Tuple[int]] = False, pre_handler_func: Optional[Callable] = None) -> Any:
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
@@ -240,6 +240,9 @@ class HttpTransport(Invoker):
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
                 return return_value
+
+            if pre_handler_func:
+                await pre_handler_func(obj, request)
 
             middlewares = context.get('http_middleware', [])  # type: List[Callable]
             if middlewares:
@@ -364,14 +367,15 @@ class HttpTransport(Invoker):
 
         access_log = context.get('options', {}).get('http', {}).get('access_log', True)
 
-        async def _func(obj: Any, request: web.Request) -> None:
+        async def _pre_handler_func(obj: Any, request: web.Request) -> None:
+            request._cache['is_websocket'] = True
+            request._cache['websocket_uuid'] = str(uuid.uuid4())
+
+        async def _func(obj: Any, request: web.Request, *a: Any, **kw: Any) -> None:
             websocket = web.WebSocketResponse()  # type: ignore
 
             request_ip = RequestHandler.get_request_ip(request, context)
             try:
-                request._cache['is_websocket'] = True
-                request._cache['websocket_uuid'] = str(uuid.uuid4())
-
                 await websocket.prepare(request)
             except Exception:
                 try:
@@ -416,7 +420,7 @@ class HttpTransport(Invoker):
                     kwargs[k] = v
 
             try:
-                routine = func(*(obj, websocket,), **kwargs)
+                routine = func(*(obj, websocket, *a), **merge_dicts(kwargs, kw))
                 callback_functions = (await routine) if isinstance(routine, Awaitable) else routine  # type: Optional[Union[Tuple, Callable]]
             except Exception as e:
                 logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
@@ -493,7 +497,7 @@ class HttpTransport(Invoker):
                 except Exception:
                     pass
 
-        return await cls.request_handler(cls, obj, context, _func, 'GET', url)
+        return await cls.request_handler(cls, obj, context, _func, 'GET', url, pre_handler_func=_pre_handler_func)
 
     async def start_server(obj: Any, context: Dict) -> Optional[Callable]:
         if context.get('_http_server_started'):
@@ -678,6 +682,8 @@ async def resolve_response(value: Union[str, bytes, Dict, List, Tuple, web.Respo
         context = {}
     if isinstance(value, Response):
         return value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
+    if isinstance(value, web.FileResponse):
+        return value
 
     status = int(status_code) if status_code else (request is not None and request._cache.get('error_status_code', 200)) or 200
     headers = None
