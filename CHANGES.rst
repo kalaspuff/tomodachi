@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.14.8 (2019-01-28)
+-------------------
+- Fixes an issue when websockets were initiated together with an HTTP
+  middleware applying additional arguments and keywords.
+
+- Sets the ``request._cache['is_websocket']`` value before handing the
+  processing off to the middleware.
+
+- Fixes a bug causing ``aiohttp.web.FileResponse`` return values to not
+  show any content.
+
+
 0.14.7 (2019-01-21)
 -------------------
 - Added helper functions to be able to get the status code of
