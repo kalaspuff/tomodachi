@@ -51,7 +51,7 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @aws_sns_sqs('test-raw-topic', message_protocol=CustomProtocol)
+    @aws_sns_sqs('test-custom-topic', message_protocol=CustomProtocol)
     async def test(self, data: Any, protocol: Any, default_value: bool = True) -> None:
         if data == self.data_uuid and protocol == 'custom':
             self.test_topic_data_received = default_value
@@ -80,7 +80,7 @@ class AWSSNSSQSService(tomodachi.Service):
         for _ in range(30):
             if self.test_topic_data_received:
                 break
-            await publish(self.data_uuid, 'test-raw-topic')
+            await publish(self.data_uuid, 'test-custom-topic')
             await asyncio.sleep(0.1)
 
     def stop_service(self) -> None:

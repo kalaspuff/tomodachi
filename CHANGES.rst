@@ -1,6 +1,40 @@
 Changes
 =======
 
+0.14.8 (2019-01-28)
+-------------------
+- Fixes an issue when websockets were initiated together with an HTTP
+  middleware applying additional arguments and keywords.
+
+- Sets the ``request._cache['is_websocket']`` value before handing the
+  processing off to the middleware.
+
+- Fixes a bug causing ``aiohttp.web.FileResponse`` return values to not
+  show any content.
+
+
+0.14.7 (2019-01-21)
+-------------------
+- Added helper functions to be able to get the status code of
+  a HTTP response or on a raised exception during a HTTP request.
+  ``await tomodachi.get_http_response_status(value, request=request)`` or
+  ``await tomodachi.get_http_response_status(exception, request=request)``
+
+
+0.14.6 (2019-01-14)
+-------------------
+- Extended middleware functionality to also be available for
+  event based messaging (AMQP and SNS+SQS) as
+  ``message_middleware``.
+
+
+0.14.5 (2019-01-09)
+-------------------
+- Added the support of middlewares to inject additional arguments
+  and keywords arguments or overriding existing keyword arguments
+  of the invoked function.
+
+
 0.14.4 (2019-01-06)
 -------------------
 - Service classes may now use ``http_middleware`` which is a list
@@ -11,7 +45,7 @@ Changes
   directory.
 
 - The auto-reloader on code changes will now only reload if a
-  the files content has actually changed and not when the file 
+  the files content has actually changed and not when the file
   was written to disk without changes.
 
 

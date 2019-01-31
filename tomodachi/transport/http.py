@@ -17,6 +17,7 @@ from aiohttp.http import HttpVersion
 from aiohttp.helpers import BasicAuth
 from aiohttp.streams import EofStream
 from tomodachi.invoker import Invoker
+from tomodachi.helpers.dict import merge_dicts
 
 
 class HttpException(Exception):
@@ -212,7 +213,7 @@ class Response(object):
 
 
 class HttpTransport(Invoker):
-    async def request_handler(cls: Any, obj: Any, context: Dict, func: Any, method: str, url: str, ignore_logging: Union[bool, List[int], Tuple[int]] = False) -> Any:
+    async def request_handler(cls: Any, obj: Any, context: Dict, func: Any, method: str, url: str, ignore_logging: Union[bool, List[int], Tuple[int]] = False, pre_handler_func: Optional[Callable] = None) -> Any:
         pattern = r'^{}$'.format(re.sub(r'\$$', '', re.sub(r'^\^?(.*)$', r'\1', url)))
         compiled_pattern = re.compile(pattern)
 
@@ -235,57 +236,32 @@ class HttpTransport(Invoker):
                 for k, v in result.groupdict().items():
                     kwargs[k] = v
 
-            async def routine_func() -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
-                routine = func(*(obj, request,), **kwargs)
+            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
+                routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
                 return return_value
 
+            if pre_handler_func:
+                await pre_handler_func(obj, request)
+
             middlewares = context.get('http_middleware', [])  # type: List[Callable]
             if middlewares:
-                async def middleware_bubble(idx: int = 0) -> Any:
-                    async def func() -> Any:
-                        return await middleware_bubble(idx + 1)
+                async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
+                    async def func(*a: Any, **kw: Any) -> Any:
+                        return await middleware_bubble(idx + 1, *a, **kw)
 
                     if middlewares and len(middlewares) <= idx + 1:
                         func = routine_func
 
                     middleware = middlewares[idx]  # type: Callable
-                    return await middleware(func, obj, request)
+                    return await middleware(func, obj, request, *ma, **mkw)
 
                 return_value = await middleware_bubble()
             else:
                 return_value = await routine_func()
 
-            if isinstance(return_value, Response):
-                return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
-
-            status = 200
-            headers = None
-            if isinstance(return_value, dict):
-                body = return_value.get('body')
-                _status = return_value.get('status')  # type: Optional[SupportsInt]
-                if _status and isinstance(_status, (int, str, bytes)):
-                    status = int(_status)
-                _returned_headers = return_value.get('headers')
-                if _returned_headers:
-                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str, Any]]]
-                    headers = CIMultiDict(returned_headers)
-            elif isinstance(return_value, list) or isinstance(return_value, tuple):
-                _status = return_value[0]
-                if _status and isinstance(_status, (int, str, bytes)):
-                    status = int(_status)
-                body = return_value[1]
-                if len(return_value) > 2:
-                    returned_headers = return_value[2]
-                    headers = CIMultiDict(returned_headers)
-            elif isinstance(return_value, web.Response) or isinstance(return_value, web.FileResponse):
-                return return_value
-            else:
-                if return_value is None:
-                    return_value = ''
-                body = return_value
-
-            return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset).get_aiohttp_response(context)
+            response = await resolve_response(return_value, request=request, context=context, default_content_type=default_content_type, default_charset=default_charset)
+            return response
 
         context['_http_routes'] = context.get('_http_routes', [])
         route_context = {'ignore_logging': ignore_logging}
@@ -350,60 +326,34 @@ class HttpTransport(Invoker):
                 pass
 
         async def handler(request: web.Request) -> web.Response:
+            request._cache['error_status_code'] = status_code
+
             values = inspect.getfullargspec(func)
             kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
 
-            async def routine_func() -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
-                routine = func(*(obj, request,), **kwargs)
+            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
+                routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
                 return return_value
 
             middlewares = context.get('http_middleware', [])  # type: List[Callable]
             if int(status_code) in (404,) and middlewares:
-                async def middleware_bubble(idx: int = 0) -> Any:
-                    async def func() -> Any:
-                        return await middleware_bubble(idx + 1)
+                async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
+                    async def func(*a: Any, **kw: Any) -> Any:
+                        return await middleware_bubble(idx + 1, *a, **kw)
 
                     if middlewares and len(middlewares) <= idx + 1:
                         func = routine_func
 
                     middleware = middlewares[idx]  # type: Callable
-                    return await middleware(func, obj, request)
+                    return await middleware(func, obj, request, *ma, **mkw)
 
                 return_value = await middleware_bubble()
             else:
                 return_value = await routine_func()
 
-            if isinstance(return_value, Response):
-                return return_value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
-
-            status = int(status_code)
-            headers = None
-            if isinstance(return_value, dict):
-                body = return_value.get('body')
-                _status = return_value.get('status')  # type: Optional[SupportsInt]
-                if _status and isinstance(_status, (int, str, bytes)):
-                    status = int(_status)
-                _returned_headers = return_value.get('headers')
-                if _returned_headers:
-                    returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str, Any]]]
-                    headers = CIMultiDict(returned_headers)
-            elif isinstance(return_value, list) or isinstance(return_value, tuple):
-                _status = return_value[0]
-                if _status and isinstance(_status, (int, str, bytes)):
-                    status = int(_status)
-                body = return_value[1]
-                if len(return_value) > 2:
-                    returned_headers = return_value[2]
-                    headers = CIMultiDict(returned_headers)
-            elif isinstance(return_value, web.Response):
-                return return_value
-            else:
-                if return_value is None:
-                    return_value = ''
-                body = return_value
-
-            return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset).get_aiohttp_response(context)
+            response = await resolve_response(return_value, request=request, context=context, status_code=status_code, default_content_type=default_content_type, default_charset=default_charset)
+            return response
 
         context['_http_error_handler'] = context.get('_http_error_handler', {})
         context['_http_error_handler'][int(status_code)] = handler
@@ -417,14 +367,15 @@ class HttpTransport(Invoker):
 
         access_log = context.get('options', {}).get('http', {}).get('access_log', True)
 
-        async def _func(obj: Any, request: web.Request) -> None:
+        async def _pre_handler_func(obj: Any, request: web.Request) -> None:
+            request._cache['is_websocket'] = True
+            request._cache['websocket_uuid'] = str(uuid.uuid4())
+
+        async def _func(obj: Any, request: web.Request, *a: Any, **kw: Any) -> None:
             websocket = web.WebSocketResponse()  # type: ignore
 
             request_ip = RequestHandler.get_request_ip(request, context)
             try:
-                request._cache['is_websocket'] = True
-                request._cache['websocket_uuid'] = str(uuid.uuid4())
-
                 await websocket.prepare(request)
             except Exception:
                 try:
@@ -469,7 +420,7 @@ class HttpTransport(Invoker):
                     kwargs[k] = v
 
             try:
-                routine = func(*(obj, websocket,), **kwargs)
+                routine = func(*(obj, websocket, *a), **merge_dicts(kwargs, kw))
                 callback_functions = (await routine) if isinstance(routine, Awaitable) else routine  # type: Optional[Union[Tuple, Callable]]
             except Exception as e:
                 logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
@@ -546,7 +497,7 @@ class HttpTransport(Invoker):
                 except Exception:
                     pass
 
-        return await cls.request_handler(cls, obj, context, _func, 'GET', url)
+        return await cls.request_handler(cls, obj, context, _func, 'GET', url, pre_handler_func=_pre_handler_func)
 
     async def start_server(obj: Any, context: Dict) -> Optional[Callable]:
         if context.get('_http_server_started'):
@@ -724,6 +675,56 @@ class HttpTransport(Invoker):
             logging.getLogger('transport.http').info('Listening [http] on http://{}:{}/'.format('127.0.0.1' if host == '0.0.0.0' else host, port))
 
         return _start_server
+
+
+async def resolve_response(value: Union[str, bytes, Dict, List, Tuple, web.Response, Response], request: Optional[web.Request] = None, context: Dict = None, status_code: Optional[Union[str, int]] = None, default_content_type: Optional[str] = None, default_charset: Optional[str] = None) -> web.Response:
+    if not context:
+        context = {}
+    if isinstance(value, Response):
+        return value.get_aiohttp_response(context, default_content_type=default_content_type, default_charset=default_charset)
+    if isinstance(value, web.FileResponse):
+        return value
+
+    status = int(status_code) if status_code else (request is not None and request._cache.get('error_status_code', 200)) or 200
+    headers = None
+    if isinstance(value, dict):
+        body = value.get('body')
+        _status = value.get('status')  # type: Optional[SupportsInt]
+        if _status and isinstance(_status, (int, str, bytes)):
+            status = int(_status)
+        _returned_headers = value.get('headers')
+        if _returned_headers:
+            returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str, Any]]]
+            headers = CIMultiDict(returned_headers)
+    elif isinstance(value, list) or isinstance(value, tuple):
+        _status = value[0]
+        if _status and isinstance(_status, (int, str, bytes)):
+            status = int(_status)
+        body = value[1]
+        if len(value) > 2:
+            returned_headers = value[2]
+            headers = CIMultiDict(returned_headers)
+    elif isinstance(value, web.Response):
+        return value
+    else:
+        if value is None:
+            value = ''
+        body = value
+
+    return Response(body=body, status=status, headers=headers, content_type=default_content_type, charset=default_charset).get_aiohttp_response(context)
+
+
+async def get_http_response_status(value: Union[str, bytes, Dict, List, Tuple, web.Response, Response, Exception], request: Optional[web.Request] = None, verify_transport: bool = True) -> Optional[int]:
+    if isinstance(value, Exception) or isinstance(value, web.HTTPException):
+        status_code = int(getattr(value, 'status', 500)) if value is not None else 500
+        return status_code
+    else:
+        response = await resolve_response(value, request=request)
+        status_code = int(response.status) if response is not None else 500
+        if verify_transport and request is not None and request.transport is None:
+            return 499
+        else:
+            return status_code
 
 
 http = HttpTransport.decorator(HttpTransport.request_handler)
