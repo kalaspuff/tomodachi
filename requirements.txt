@@ -26,7 +26,7 @@ pytest==4.0.2
 pytest-cov==2.6.1
 pytest-forked==1.0.1
 pytest-xdist==1.26.1
-python-dateutil==2.7.5
+python-dateutil==2.8.0
 pytz==2018.9
 readme-renderer==24.0
 requests==2.20.1
