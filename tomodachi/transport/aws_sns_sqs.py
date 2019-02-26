@@ -47,14 +47,14 @@ class AWSSNSSQSTransport(Invoker):
     close_waiter = None
 
     @classmethod
-    async def publish(cls, service: Any, data: Any, topic: str, wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT) -> None:
+    async def publish(cls, service: Any, data: Any, topic: str, wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT, **kwargs: Any) -> None:
         message_protocol = getattr(service, 'message_protocol', None) if message_protocol == MESSAGE_PROTOCOL_DEFAULT else message_protocol
 
         payload = data
         if message_protocol:
             build_message_func = getattr(message_protocol, 'build_message', None)
             if build_message_func:
-                payload = await build_message_func(service, topic, data)
+                payload = await build_message_func(service, topic, data, **kwargs)
 
         topic_arn = await cls.create_topic(cls, topic, service.context)
 

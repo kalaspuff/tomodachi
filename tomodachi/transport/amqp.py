@@ -52,7 +52,7 @@ class AmqpTransport(Invoker):
     transport = None  # type: Any
 
     @classmethod
-    async def publish(cls, service: Any, data: Any, routing_key: str = '', exchange_name: str = '', wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT) -> None:
+    async def publish(cls, service: Any, data: Any, routing_key: str = '', exchange_name: str = '', wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT, **kwargs: Any) -> None:
         if not cls.channel:
             await cls.connect(cls, service, service.context)
         exchange_name = exchange_name or cls.exchange_name or 'amq.topic'
@@ -63,7 +63,7 @@ class AmqpTransport(Invoker):
         if message_protocol:
             build_message_func = getattr(message_protocol, 'build_message', None)
             if build_message_func:
-                payload = await build_message_func(service, routing_key, data)
+                payload = await build_message_func(service, routing_key, data, **kwargs)
 
         async def _publish_message() -> None:
             success = False
