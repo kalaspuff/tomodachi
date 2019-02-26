@@ -90,7 +90,8 @@ class AmqpTransport(Invoker):
     def get_routing_key_without_prefix(cls, topic: str, context: Dict) -> str:
         if context.get('options', {}).get('amqp', {}).get('routing_key_prefix'):
             if topic.startswith(context.get('options', {}).get('amqp', {}).get('routing_key_prefix')):
-                return topic[len(context.get('options', {}).get('amqp', {}).get('routing_key_prefix')): ]
+                prefix_length = len(context.get('options', {}).get('amqp', {}).get('routing_key_prefix', ''))
+                return topic[prefix_length:]
         return topic
 
     @classmethod

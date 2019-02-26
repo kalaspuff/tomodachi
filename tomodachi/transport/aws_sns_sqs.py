@@ -77,7 +77,8 @@ class AWSSNSSQSTransport(Invoker):
     def get_topic_name_without_prefix(cls, topic: str, context: Dict) -> str:
         if context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix'):
             if topic.startswith(context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix')):
-                return topic[len(context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix')): ]
+                prefix_length = len(context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix', ''))
+                return topic[prefix_length:]
         return topic
 
     @classmethod
