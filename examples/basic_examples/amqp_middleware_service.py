@@ -6,7 +6,7 @@ from tomodachi.discovery import DummyRegistry
 from tomodachi.protocol import JsonBase
 
 
-async def middleware_function(func: Callable, service: Any, message: Any, *args: Any, **kwargs: Any) -> Any:
+async def middleware_function(func: Callable, service: Any, message: Any, routing_key: str, *args: Any, **kwargs: Any) -> Any:
     # Functionality before function is called
     service.log('middleware before')
 
