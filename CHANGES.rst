@@ -1,6 +1,20 @@
 Changes
 =======
 
+0.15.0 (2019-02-27)
+-------------------
+- ``message_middleware`` will now receive four arguments instead of the
+  earlier three.
+  ``func: Callable, service: Any, message: Any, topic: str`` for SNS and
+  ``func: Callable, service: Any, message: Any, route_key: str`` for
+  AMQP. If you are using middlewares for messaging you will most likely
+  need to update these.
+
+- Additional kwargs may be passed into the ``aws_sns_sqs_publish`` and
+  ``amqp_publish`` functions and will be forwarded to the
+  ``message_protocol`` ``build_message`` function.
+
+
 0.14.8 (2019-01-28)
 -------------------
 - Fixes an issue when websockets were initiated together with an HTTP

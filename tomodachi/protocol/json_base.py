@@ -10,7 +10,7 @@ PROTOCOL_VERSION = 'tomodachi-json-base--1.0.0'
 
 class JsonBase(object):
     @classmethod
-    async def build_message(cls, service: Any, topic: str, data: Any) -> str:
+    async def build_message(cls, service: Any, topic: str, data: Any, **kwargs: Any) -> str:
         data_encoding = 'raw'
         if len(ujson.dumps(data)) >= 60000:
             data = base64.b64encode(zlib.compress(ujson.dumps(data).encode('utf-8'))).decode('utf-8')
@@ -34,7 +34,7 @@ class JsonBase(object):
         return ujson.dumps(message)
 
     @classmethod
-    async def parse_message(cls, payload: str) -> Union[Dict, Tuple]:
+    async def parse_message(cls, payload: str, **kwargs: Any) -> Union[Dict, Tuple]:
         message = ujson.loads(payload)
 
         protocol_version = message.get('metadata', {}).get('protocol_version')

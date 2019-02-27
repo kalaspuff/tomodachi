@@ -19,7 +19,7 @@ class ProtobufBase(object):
             raise Exception('proto_class is not a GeneratedProtocolMessageType')
 
     @classmethod
-    async def build_message(cls, service: Any, topic: str, data: Any) -> str:
+    async def build_message(cls, service: Any, topic: str, data: Any, **kwargs: Any) -> str:
         message_data = data.SerializeToString()
 
         data_encoding = 'proto'
@@ -40,7 +40,7 @@ class ProtobufBase(object):
         return base64.b64encode(message.SerializeToString()).decode('ascii')
 
     @classmethod
-    async def parse_message(cls, payload: str, proto_class: Any = None, validator: Any = None) -> Union[Dict, Tuple]:
+    async def parse_message(cls, payload: str, proto_class: Any = None, validator: Any = None, **kwargs: Any) -> Union[Dict, Tuple]:
         message = SNSSQSMessage()
         message.ParseFromString(base64.b64decode(payload))
 
