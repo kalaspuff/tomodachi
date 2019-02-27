@@ -74,6 +74,18 @@ class AWSSNSSQSTransport(Invoker):
         return topic
 
     @classmethod
+    def get_topic_name_without_prefix(cls, topic: str, context: Dict) -> str:
+        if context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix'):
+            if topic.startswith(context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix')):
+                prefix_length = len(context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix', ''))
+                return topic[prefix_length:]
+        return topic
+
+    @classmethod
+    def get_topic_from_arn(cls, topic: str) -> str:
+        return topic.rsplit(':')[-1]
+
+    @classmethod
     def decode_topic(cls, encoded_topic: str) -> str:
         def decode(match: Match) -> str:
             return binascii.unhexlify(match.group(1).encode('utf-8')).decode('utf-8')
@@ -114,7 +126,7 @@ class AWSSNSSQSTransport(Invoker):
             if protocol_kwargs_validation_func:
                 protocol_kwargs_validation_func(**parser_kwargs)
 
-        async def handler(payload: Optional[str], receipt_handle: Optional[str] = None, queue_url: Optional[str] = None) -> Any:
+        async def handler(payload: Optional[str], receipt_handle: Optional[str] = None, queue_url: Optional[str] = None, message_topic: str = '') -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
                 return
@@ -212,7 +224,7 @@ class AWSSNSSQSTransport(Invoker):
                         func = routine_func
 
                     middleware = middlewares[idx]  # type: Callable
-                    return await middleware(func, obj, message, *ma, **mkw)
+                    return await middleware(func, obj, message, message_topic, *ma, **mkw)
 
                 return_value = await middleware_bubble()
             else:
@@ -531,9 +543,9 @@ class AWSSNSSQSTransport(Invoker):
         start_waiter = asyncio.Future()  # type: asyncio.Future
 
         async def receive_messages() -> None:
-            def callback(payload: Optional[str], receipt_handle: Optional[str], queue_url: Optional[str]) -> Callable:
+            def callback(payload: Optional[str], receipt_handle: Optional[str], queue_url: Optional[str], message_topic: str) -> Callable:
                 async def _callback() -> None:
-                    await handler(payload, receipt_handle, queue_url)
+                    await handler(payload, receipt_handle, queue_url, message_topic)
                 return _callback
 
             client = cls.clients.get('sqs')
@@ -604,6 +616,7 @@ class AWSSNSSQSTransport(Invoker):
                         receipt_handle = message.get('ReceiptHandle')
                         try:
                             message_body = ujson.loads(message.get('Body'))
+                            message_topic = cls.get_topic_name_without_prefix(cls.decode_topic(cls.get_topic_from_arn(message_body.get('TopicArn'))), context) if message_body.get('TopicArn') else ''
                         except ValueError:
                             # Malformed SQS message, not in SNS format and should be discarded
                             await cls.delete_message(cls, receipt_handle, queue_url, context)
@@ -611,7 +624,7 @@ class AWSSNSSQSTransport(Invoker):
                             continue
 
                         payload = message_body.get('Message')
-                        futures.append(callback(payload, receipt_handle, queue_url))
+                        futures.append(callback(payload, receipt_handle, queue_url, message_topic))
                     if futures:
                         await asyncio.wait([asyncio.ensure_future(asyncio.shield(func())) for func in futures if func])
 

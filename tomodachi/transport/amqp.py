@@ -87,6 +87,14 @@ class AmqpTransport(Invoker):
         return routing_key
 
     @classmethod
+    def get_routing_key_without_prefix(cls, topic: str, context: Dict) -> str:
+        if context.get('options', {}).get('amqp', {}).get('routing_key_prefix'):
+            if topic.startswith(context.get('options', {}).get('amqp', {}).get('routing_key_prefix')):
+                prefix_length = len(context.get('options', {}).get('amqp', {}).get('routing_key_prefix', ''))
+                return topic[prefix_length:]
+        return topic
+
+    @classmethod
     def decode_routing_key(cls, encoded_routing_key: str) -> str:
         def decode(match: Match) -> str:
             return binascii.unhexlify(match.group(1).encode('utf-8')).decode('utf-8')
@@ -127,7 +135,7 @@ class AmqpTransport(Invoker):
             if protocol_kwargs_validation_func:
                 protocol_kwargs_validation_func(**parser_kwargs)
 
-        async def handler(payload: Any, delivery_tag: Any) -> Any:
+        async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
             values = inspect.getfullargspec(func)
             if not _callback_kwargs:
@@ -222,7 +230,7 @@ class AmqpTransport(Invoker):
                         func = routine_func
 
                     middleware = middlewares[idx]  # type: Callable
-                    return await middleware(func, obj, message, *ma, **mkw)
+                    return await middleware(func, obj, message, routing_key, *ma, **mkw)
 
                 return_value = await middleware_bubble()
             else:
@@ -345,7 +353,7 @@ class AmqpTransport(Invoker):
             def callback(routing_key: str, handler: Callable) -> Callable:
                 async def _callback(self: Any, body: bytes, envelope: Any, properties: Any) -> None:
                     # await channel.basic_reject(delivery_tag, requeue=True)
-                    await asyncio.shield(handler(body.decode(), envelope.delivery_tag))
+                    await asyncio.shield(handler(body.decode(), envelope.delivery_tag, routing_key))
                 return _callback
 
             for routing_key, exchange_name, competing, queue_name, func, handler in context.get('_amqp_subscribers', []):
