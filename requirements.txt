@@ -19,7 +19,7 @@ multidict==4.5.2
 mypy==0.670
 packaging==19.0
 protobuf==3.7.0
-pycares==2.4.0
+pycares==3.0.0
 pycodestyle==2.5.0
 py==1.8.0
 pyparsing==2.3.1
