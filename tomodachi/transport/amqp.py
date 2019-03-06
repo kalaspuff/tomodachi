@@ -225,14 +225,15 @@ class AmqpTransport(Invoker):
             middlewares = context.get('message_middleware', [])  # type: List[Callable]
             if middlewares:
                 async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
-                    async def func(*a: Any, **kw: Any) -> Any:
+                    @functools.wraps(func)
+                    async def _func(*a: Any, **kw: Any) -> Any:
                         return await middleware_bubble(idx + 1, *a, **kw)
 
                     if middlewares and len(middlewares) <= idx + 1:
-                        func = routine_func
+                        _func = routine_func
 
                     middleware = middlewares[idx]  # type: Callable
-                    return await middleware(func, obj, message, routing_key, *ma, **mkw)
+                    return await middleware(_func, obj, message, routing_key, *ma, **mkw)
 
                 return_value = await middleware_bubble()
             else:
