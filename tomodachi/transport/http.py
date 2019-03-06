@@ -8,6 +8,7 @@ import pathlib
 import inspect
 import uuid
 import colorama
+import functools
 from logging.handlers import WatchedFileHandler
 from typing import Any, Dict, List, Tuple, Union, Optional, Callable, SupportsInt, Awaitable, Mapping, Iterable  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -236,6 +237,7 @@ class HttpTransport(Invoker):
                 for k, v in result.groupdict().items():
                     kwargs[k] = v
 
+            @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
