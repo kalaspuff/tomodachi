@@ -6,6 +6,7 @@ import re
 import binascii
 import asyncio
 import inspect
+import functools
 from typing import Any, Dict, Union, Optional, Callable, Match, Awaitable, List
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.dict import merge_dicts
@@ -182,6 +183,7 @@ class AmqpTransport(Invoker):
                         await cls.channel.basic_client_ack(delivery_tag)
                     return
 
+            @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
                 try:
                     if not message_protocol and len(values.args[1:]):
