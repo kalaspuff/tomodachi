@@ -10,6 +10,7 @@ import binascii
 import ujson
 import uuid
 import inspect
+import functools
 from botocore.parsers import ResponseParserError
 from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match, Awaitable
 from tomodachi.invoker import Invoker
@@ -178,6 +179,7 @@ class AWSSNSSQSTransport(Invoker):
                         await cls.delete_message(cls, receipt_handle, queue_url, context)
                     return
 
+            @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
                 try:
                     if not message_protocol and len(values.args[1:]):
