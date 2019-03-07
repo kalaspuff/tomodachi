@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.15.1 (2019-03-07)
+-------------------
+- Middlewares first argument ``func: Callable`` will now be wrapped with
+  the endpoint function, using ``@functools.wraps``, so that signatures
+  and keywords may be inspected and applied accordingly.
+  (github: **0x1EE7**)
+
+
 0.15.0 (2019-02-27)
 -------------------
 - ``message_middleware`` will now receive four arguments instead of the
