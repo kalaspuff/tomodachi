@@ -6,6 +6,7 @@ from typing import Callable, List, Any, Dict
 async def execute_middlewares(func: Callable, routine_func: Callable, middlewares: List, *args: Any) -> Any:
     if middlewares:
         middleware_context: Dict = {}
+
         async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
             @functools.wraps(func)
             async def _func(*a: Any, **kw: Any) -> Any:
