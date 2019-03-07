@@ -1,6 +1,17 @@
 Changes
 =======
 
+0.16.0 (2019-03-07)
+-------------------
+- Refactored all internal middleware functionality to use the same base
+  function for executing middlewares.
+
+- A middleware context will be passed into the middlewares as
+  the optional fifth argument, a ``dict`` that will live within the
+  middleware excecution and may pass data along from middleware to
+  middleware.
+
+
 0.15.1 (2019-03-07)
 -------------------
 - Middlewares first argument ``func: Callable`` will now be wrapped with
