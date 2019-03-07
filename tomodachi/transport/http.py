@@ -249,14 +249,15 @@ class HttpTransport(Invoker):
             middlewares = context.get('http_middleware', [])  # type: List[Callable]
             if middlewares:
                 async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
-                    async def func(*a: Any, **kw: Any) -> Any:
+                    @functools.wraps(func)
+                    async def _func(*a: Any, **kw: Any) -> Any:
                         return await middleware_bubble(idx + 1, *a, **kw)
 
                     if middlewares and len(middlewares) <= idx + 1:
-                        func = routine_func
+                        _func = routine_func
 
                     middleware = middlewares[idx]  # type: Callable
-                    return await middleware(func, obj, request, *ma, **mkw)
+                    return await middleware(_func, obj, request, *ma, **mkw)
 
                 return_value = await middleware_bubble()
             else:
@@ -333,6 +334,7 @@ class HttpTransport(Invoker):
             values = inspect.getfullargspec(func)
             kwargs = {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults):])} if values.defaults else {}
 
+            @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
@@ -341,14 +343,15 @@ class HttpTransport(Invoker):
             middlewares = context.get('http_middleware', [])  # type: List[Callable]
             if int(status_code) in (404,) and middlewares:
                 async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
-                    async def func(*a: Any, **kw: Any) -> Any:
+                    @functools.wraps(func)
+                    async def _func(*a: Any, **kw: Any) -> Any:
                         return await middleware_bubble(idx + 1, *a, **kw)
 
                     if middlewares and len(middlewares) <= idx + 1:
-                        func = routine_func
+                        _func = routine_func
 
                     middleware = middlewares[idx]  # type: Callable
-                    return await middleware(func, obj, request, *ma, **mkw)
+                    return await middleware(_func, obj, request, *ma, **mkw)
 
                 return_value = await middleware_bubble()
             else:
