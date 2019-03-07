@@ -1,13 +1,13 @@
 import os
 import asyncio
 import tomodachi
-from typing import Tuple, Callable, Union, Any
+from typing import Tuple, Callable, Union, Any, Dict
 from aiohttp import web
 from tomodachi import http, http_error, http_static, websocket, HttpResponse
 from tomodachi.discovery import DummyRegistry
 
 
-async def middleware_function(func: Callable, service: Any, request: web.Request, *args: Any, **kwargs: Any) -> Any:
+async def middleware_function(func: Callable, service: Any, request: web.Request, context: Dict, *args: Any, **kwargs: Any) -> Any:
     # Functionality before function is called
     service.log('middleware before')
 

@@ -19,6 +19,7 @@ from aiohttp.helpers import BasicAuth
 from aiohttp.streams import EofStream
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.dict import merge_dicts
+from tomodachi.helpers.middleware import execute_middlewares
 
 
 class HttpException(Exception):
@@ -246,23 +247,7 @@ class HttpTransport(Invoker):
             if pre_handler_func:
                 await pre_handler_func(obj, request)
 
-            middlewares = context.get('http_middleware', [])  # type: List[Callable]
-            if middlewares:
-                async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
-                    @functools.wraps(func)
-                    async def _func(*a: Any, **kw: Any) -> Any:
-                        return await middleware_bubble(idx + 1, *a, **kw)
-
-                    if middlewares and len(middlewares) <= idx + 1:
-                        _func = routine_func
-
-                    middleware = middlewares[idx]  # type: Callable
-                    return await middleware(_func, obj, request, *ma, **mkw)
-
-                return_value = await middleware_bubble()
-            else:
-                return_value = await routine_func()
-
+            return_value = await execute_middlewares(func, routine_func, context.get('http_middleware', []), *(obj, request))
             response = await resolve_response(return_value, request=request, context=context, default_content_type=default_content_type, default_charset=default_charset)
             return response
 
@@ -340,23 +325,7 @@ class HttpTransport(Invoker):
                 return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
                 return return_value
 
-            middlewares = context.get('http_middleware', [])  # type: List[Callable]
-            if int(status_code) in (404,) and middlewares:
-                async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
-                    @functools.wraps(func)
-                    async def _func(*a: Any, **kw: Any) -> Any:
-                        return await middleware_bubble(idx + 1, *a, **kw)
-
-                    if middlewares and len(middlewares) <= idx + 1:
-                        _func = routine_func
-
-                    middleware = middlewares[idx]  # type: Callable
-                    return await middleware(_func, obj, request, *ma, **mkw)
-
-                return_value = await middleware_bubble()
-            else:
-                return_value = await routine_func()
-
+            return_value = await execute_middlewares(func, routine_func, context.get('http_middleware', []), *(obj, request))
             response = await resolve_response(return_value, request=request, context=context, status_code=status_code, default_content_type=default_content_type, default_charset=default_charset)
             return response
 

@@ -8,7 +8,7 @@ from tomodachi.transport.http import http, http_error, http_static, websocket, R
 from tomodachi.discovery.dummy_registry import DummyRegistry
 
 
-async def middleware_function(func: Callable, service: Any, request: web.Request) -> Any:
+async def middleware_function(func: Callable, service: Any, request: web.Request, context: Dict, *args: Any, **kwargs: Any) -> Any:
     if request.headers.get('X-Use-Middleware') == 'Set':
         service.middleware_called = True
 
