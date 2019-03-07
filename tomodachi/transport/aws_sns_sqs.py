@@ -15,6 +15,7 @@ from botocore.parsers import ResponseParserError
 from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match, Awaitable
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.dict import merge_dicts
+from tomodachi.helpers.middleware import execute_middlewares
 
 DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'
 MESSAGE_PROTOCOL_DEFAULT = 'e6fb6007-cf15-4cfd-af2e-1d1683374e70'
@@ -216,23 +217,7 @@ class AWSSNSSQSTransport(Invoker):
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
                 return return_value
 
-            middlewares = context.get('message_middleware', [])  # type: List[Callable]
-            if middlewares:
-                async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
-                    @functools.wraps(func)
-                    async def _func(*a: Any, **kw: Any) -> Any:
-                        return await middleware_bubble(idx + 1, *a, **kw)
-
-                    if middlewares and len(middlewares) <= idx + 1:
-                        _func = routine_func
-
-                    middleware = middlewares[idx]  # type: Callable
-                    return await middleware(_func, obj, message, message_topic, *ma, **mkw)
-
-                return_value = await middleware_bubble()
-            else:
-                return_value = await routine_func()
-
+            return_value = await execute_middlewares(func, routine_func, context.get('message_middleware', []), *(obj, message, topic))
             return return_value
 
         context['_aws_sns_sqs_subscribers'] = context.get('_aws_sns_sqs_subscribers', [])

@@ -10,6 +10,7 @@ import functools
 from typing import Any, Dict, Union, Optional, Callable, Match, Awaitable, List
 from tomodachi.invoker import Invoker
 from tomodachi.helpers.dict import merge_dicts
+from tomodachi.helpers.middleware import execute_middlewares
 
 MESSAGE_PROTOCOL_DEFAULT = '2594418c-5771-454a-a7f9-8f83ae82812a'
 
@@ -222,23 +223,7 @@ class AmqpTransport(Invoker):
                 await cls.channel.basic_client_ack(delivery_tag)
                 return return_value
 
-            middlewares = context.get('message_middleware', [])  # type: List[Callable]
-            if middlewares:
-                async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
-                    @functools.wraps(func)
-                    async def _func(*a: Any, **kw: Any) -> Any:
-                        return await middleware_bubble(idx + 1, *a, **kw)
-
-                    if middlewares and len(middlewares) <= idx + 1:
-                        _func = routine_func
-
-                    middleware = middlewares[idx]  # type: Callable
-                    return await middleware(_func, obj, message, routing_key, *ma, **mkw)
-
-                return_value = await middleware_bubble()
-            else:
-                return_value = await routine_func()
-
+            return_value = await execute_middlewares(func, routine_func, context.get('message_middleware', []), *(obj, message, routing_key))
             return return_value
 
         exchange_name = exchange_name or context.get('options', {}).get('amqp', {}).get('exchange_name', 'amq.topic')
