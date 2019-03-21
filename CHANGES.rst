@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.16.1 (2019-03-21)
+-------------------
+- Bug fix for websocket handler functions signature inspection in
+  middlewares, which caused the function signature to return a
+  non-wrapped internal function.
+
+
 0.16.0 (2019-03-07)
 -------------------
 - Refactored all internal middleware functionality to use the same base
