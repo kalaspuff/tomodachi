@@ -345,6 +345,7 @@ class HttpTransport(Invoker):
             request._cache['is_websocket'] = True
             request._cache['websocket_uuid'] = str(uuid.uuid4())
 
+        @functools.wraps(func)
         async def _func(obj: Any, request: web.Request, *a: Any, **kw: Any) -> None:
             websocket = web.WebSocketResponse()  # type: ignore
 
