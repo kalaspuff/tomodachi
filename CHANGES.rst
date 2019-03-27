@@ -1,6 +1,16 @@
 Changes
 =======
 
+0.16.2 (2019-03-27)
+-------------------
+- Added keyword arguments for overriding the ``topic_prefix`` and
+  ``routing_key_prefix`` when publishing messages. Useful by for
+  example intermediaries that needs to publishing messages to
+  external services running on other environments, or services
+  that are otherwise confined to a prefix / environment but needs
+  to contact a core service, i.e. data collection, emails, etc.
+
+
 0.16.1 (2019-03-21)
 -------------------
 - Bug fix for websocket handler functions signature inspection in
