@@ -19,6 +19,7 @@ from tomodachi.helpers.middleware import execute_middlewares
 
 DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'
 MESSAGE_PROTOCOL_DEFAULT = 'e6fb6007-cf15-4cfd-af2e-1d1683374e70'
+MESSAGE_TOPIC_PREFIX = '09698c75-832b-470f-8e05-96d2dd8c4853'
 
 
 class AWSSNSSQSException(Exception):
@@ -49,7 +50,7 @@ class AWSSNSSQSTransport(Invoker):
     close_waiter = None
 
     @classmethod
-    async def publish(cls, service: Any, data: Any, topic: str, wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT, **kwargs: Any) -> None:
+    async def publish(cls, service: Any, data: Any, topic: str, wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX, **kwargs: Any) -> None:
         message_protocol = getattr(service, 'message_protocol', None) if message_protocol == MESSAGE_PROTOCOL_DEFAULT else message_protocol
 
         payload = data
@@ -58,7 +59,7 @@ class AWSSNSSQSTransport(Invoker):
             if build_message_func:
                 payload = await build_message_func(service, topic, data, **kwargs)
 
-        topic_arn = await cls.create_topic(cls, topic, service.context)
+        topic_arn = await cls.create_topic(cls, topic, service.context, topic_prefix)
 
         async def _publish_message() -> None:
             await cls.publish_message(cls, topic_arn, payload, service.context)
@@ -70,16 +71,18 @@ class AWSSNSSQSTransport(Invoker):
             loop.create_task(_publish_message())
 
     @classmethod
-    def get_topic_name(cls, topic: str, context: Dict) -> str:
-        if context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix'):
-            return '{}{}'.format(context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix'), topic)
+    def get_topic_name(cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX) -> str:
+        topic_prefix = context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix', '') if topic_prefix == MESSAGE_TOPIC_PREFIX else (topic_prefix or '')
+        if topic_prefix:
+            return '{}{}'.format(topic_prefix, topic)
         return topic
 
     @classmethod
-    def get_topic_name_without_prefix(cls, topic: str, context: Dict) -> str:
-        if context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix'):
-            if topic.startswith(context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix')):
-                prefix_length = len(context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix', ''))
+    def get_topic_name_without_prefix(cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX) -> str:
+        topic_prefix = context.get('options', {}).get('aws_sns_sqs', {}).get('topic_prefix', '') if topic_prefix == MESSAGE_TOPIC_PREFIX else (topic_prefix or '')
+        if topic_prefix:
+            if topic.startswith(topic_prefix):
+                prefix_length = len(topic_prefix)
                 return topic[prefix_length:]
         return topic
 
@@ -261,7 +264,7 @@ class AWSSNSSQSTransport(Invoker):
             logging.getLogger('transport.aws_sns_sqs').warning('Invalid credentials [{}] to AWS ({})'.format(name, error_message))
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get('log_level')) from e
 
-    async def create_topic(cls: Any, topic: str, context: Dict) -> str:
+    async def create_topic(cls: Any, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX) -> str:
         if not cls.topics:
             cls.topics = {}
         if cls.topics.get(topic):
@@ -274,7 +277,7 @@ class AWSSNSSQSTransport(Invoker):
         client = cls.clients.get('sns')
 
         try:
-            response = await asyncio.wait_for(client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context))), timeout=30)
+            response = await asyncio.wait_for(client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix))), timeout=30)
         except (botocore.exceptions.NoCredentialsError, aiohttp.client_exceptions.ClientOSError) as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to connect [sns] to AWS ({})'.format(error_message))

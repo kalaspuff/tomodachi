@@ -13,6 +13,7 @@ from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.middleware import execute_middlewares
 
 MESSAGE_PROTOCOL_DEFAULT = '2594418c-5771-454a-a7f9-8f83ae82812a'
+MESSAGE_ROUTING_KEY_PREFIX = '38f58822-25f6-458a-985c-52701d40dbbc'
 
 
 class AmqpException(Exception):
@@ -54,7 +55,7 @@ class AmqpTransport(Invoker):
     transport = None  # type: Any
 
     @classmethod
-    async def publish(cls, service: Any, data: Any, routing_key: str = '', exchange_name: str = '', wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT, **kwargs: Any) -> None:
+    async def publish(cls, service: Any, data: Any, routing_key: str = '', exchange_name: str = '', wait: bool = True, message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT, routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX, **kwargs: Any) -> None:
         if not cls.channel:
             await cls.connect(cls, service, service.context)
         exchange_name = exchange_name or cls.exchange_name or 'amq.topic'
@@ -71,7 +72,7 @@ class AmqpTransport(Invoker):
             success = False
             while not success:
                 try:
-                    await cls.channel.basic_publish(str.encode(payload), exchange_name, cls.encode_routing_key(cls.get_routing_key(routing_key, service.context)))
+                    await cls.channel.basic_publish(str.encode(payload), exchange_name, cls.encode_routing_key(cls.get_routing_key(routing_key, service.context, routing_key_prefix)))
                     success = True
                 except AssertionError as e:
                     await cls.connect(cls, service, service.context)
@@ -83,18 +84,20 @@ class AmqpTransport(Invoker):
             loop.create_task(_publish_message())
 
     @classmethod
-    def get_routing_key(cls, routing_key: str, context: Dict) -> str:
-        if context.get('options', {}).get('amqp', {}).get('routing_key_prefix'):
-            return '{}{}'.format(context.get('options', {}).get('amqp', {}).get('routing_key_prefix'), routing_key)
+    def get_routing_key(cls, routing_key: str, context: Dict, routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX) -> str:
+        routing_key_prefix = context.get('options', {}).get('amqp', {}).get('routing_key_prefix', '') if routing_key_prefix == MESSAGE_ROUTING_KEY_PREFIX else (routing_key_prefix or '')
+        if routing_key_prefix:
+            return '{}{}'.format(routing_key_prefix, routing_key)
         return routing_key
 
     @classmethod
-    def get_routing_key_without_prefix(cls, topic: str, context: Dict) -> str:
-        if context.get('options', {}).get('amqp', {}).get('routing_key_prefix'):
-            if topic.startswith(context.get('options', {}).get('amqp', {}).get('routing_key_prefix')):
-                prefix_length = len(context.get('options', {}).get('amqp', {}).get('routing_key_prefix', ''))
-                return topic[prefix_length:]
-        return topic
+    def get_routing_key_without_prefix(cls, routing_key: str, context: Dict, routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX) -> str:
+        routing_key_prefix = context.get('options', {}).get('amqp', {}).get('routing_key_prefix', '') if routing_key_prefix == MESSAGE_ROUTING_KEY_PREFIX else (routing_key_prefix or '')
+        if routing_key_prefix:
+            if routing_key.startswith(routing_key_prefix):
+                prefix_length = len(routing_key_prefix)
+                return routing_key[prefix_length:]
+        return routing_key
 
     @classmethod
     def decode_routing_key(cls, encoded_routing_key: str) -> str:
