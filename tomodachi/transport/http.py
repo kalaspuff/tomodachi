@@ -614,7 +614,8 @@ class HttpTransport(Invoker):
 
             try:
                 app.freeze()
-                server = await loop.create_server(Server(app._handle, request_factory=app._make_request, server_header=server_header or '', access_log=access_log, keepalive_timeout=0, tcp_keepalive=False), host, port)  # type: Any
+                server_task = loop.create_server(Server(app._handle, request_factory=app._make_request, server_header=server_header or '', access_log=access_log, keepalive_timeout=0, tcp_keepalive=False), host, port)  # type: ignore
+                server = await server_task  # type: ignore
             except OSError as e:
                 error_message = re.sub('.*: ', '', e.strerror)
                 logging.getLogger('transport.http').warning('Unable to bind service [http] to http://{}:{}/ ({})'.format('127.0.0.1' if host == '0.0.0.0' else host, port, error_message))
