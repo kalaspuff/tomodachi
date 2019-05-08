@@ -247,6 +247,8 @@ class AWSSNSSQSTransport(Invoker):
             aws_config_base.get('aws_secret_access_key', aws_config_base.get('secret_access_key'))
         aws_access_key_id = config_base.get('aws_access_key_id', config_base.get('access_key_id')) or \
             aws_config_base.get('aws_access_key_id', aws_config_base.get('access_key_id'))
+        aws_session_token = config_base.get('aws_session_token', config_base.get('session_token')) or \
+                aws_config_base.get('aws_session_token', aws_config_base.get('session_token'))
         endpoint_url = config_base.get('aws_endpoint_urls', config_base.get('endpoint_urls', {})).get(name) or \
             config_base.get('aws_{}_endpoint_url'.format(name), config_base.get('{}_endpoint_url'.format(name))) or \
             aws_config_base.get('aws_endpoint_urls', aws_config_base.get('endpoint_urls', {})).get(name) or \
@@ -257,7 +259,7 @@ class AWSSNSSQSTransport(Invoker):
         try:
             if cls.clients_creation_time.get(name) and cls.clients_creation_time[name] + 30 > time.time():
                 return
-            cls.clients[name] = session.create_client(name, region_name=region_name, aws_secret_access_key=aws_secret_access_key, aws_access_key_id=aws_access_key_id, endpoint_url=endpoint_url)
+            cls.clients[name] = session.create_client(name, region_name=region_name, aws_secret_access_key=aws_secret_access_key, aws_access_key_id=aws_access_key_id, aws_session_token=aws_session_token, endpoint_url=endpoint_url)
             cls.clients_creation_time[name] = time.time()
         except (botocore.exceptions.PartialCredentialsError, botocore.exceptions.NoRegionError) as e:
             error_message = str(e)
