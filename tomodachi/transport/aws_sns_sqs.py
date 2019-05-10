@@ -255,7 +255,7 @@ class AWSSNSSQSTransport(Invoker):
             context.get('options', {}).get('aws_endpoint_urls', {}).get(name)
         try:
             token = context['options']['aws_session_token']
-            aws_session_token = token.get_valid_token()
+            aws_session_token = token()
         except (AttributeError, KeyError):
             aws_session_token = None
 
