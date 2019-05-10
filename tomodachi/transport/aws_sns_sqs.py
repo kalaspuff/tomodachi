@@ -247,14 +247,17 @@ class AWSSNSSQSTransport(Invoker):
             aws_config_base.get('aws_secret_access_key', aws_config_base.get('secret_access_key'))
         aws_access_key_id = config_base.get('aws_access_key_id', config_base.get('access_key_id')) or \
             aws_config_base.get('aws_access_key_id', aws_config_base.get('access_key_id'))
-        aws_session_token = config_base.get('aws_session_token', config_base.get('session_token')) or \
-                aws_config_base.get('aws_session_token', aws_config_base.get('session_token'))
         endpoint_url = config_base.get('aws_endpoint_urls', config_base.get('endpoint_urls', {})).get(name) or \
             config_base.get('aws_{}_endpoint_url'.format(name), config_base.get('{}_endpoint_url'.format(name))) or \
             aws_config_base.get('aws_endpoint_urls', aws_config_base.get('endpoint_urls', {})).get(name) or \
             config_base.get('aws_endpoint_url', config_base.get('endpoint_url')) or \
             aws_config_base.get('aws_endpoint_url', aws_config_base.get('endpoint_url')) or \
             context.get('options', {}).get('aws_endpoint_urls', {}).get(name)
+        try:
+            token = context['options']['aws_session_token']
+            aws_session_token = token.get_valid_token()
+        except (AttributeError, KeyError):
+            aws_session_token = None
 
         try:
             if cls.clients_creation_time.get(name) and cls.clients_creation_time[name] + 30 > time.time():
