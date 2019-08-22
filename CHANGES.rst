@@ -1,6 +1,21 @@
 Changes
 =======
 
+0.16.3 (2019-08-23)
+-------------------
+- It's now possible to get the request object for websocket
+  handlers by adding a third argument to the invoker function.
+  ``(self, websocket, request)`` or by specifying ``request`` as
+  a keyword argument in the function signature. Using the request
+  object it's now possible to parse browser headers and other data
+  sent when first opening the websocket connction.
+
+- Updated packages for automated tests to verify that newer
+  dependencies still works correctly.
+
+- Updated the dependency on ``aioamqp`` to allow ``aioamqp==0.13.x``.
+
+
 0.16.2 (2019-03-27)
 -------------------
 - Added keyword arguments for overriding the ``topic_prefix`` and
