@@ -1,5 +1,5 @@
 pycparser==2.19
-aioamqp==0.12.0
+aioamqp==0.13.0
 aiobotocore==0.10.2
 aiodns==2.0.0
 aiohttp==3.5.4
