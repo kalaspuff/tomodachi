@@ -396,8 +396,7 @@ class HttpTransport(Invoker):
 
             if len(values.args) - (len(values.defaults) if values.defaults else 0) >= 3:
                 # If the function takes a third required argument the value will be filled with the request object
-                a = list(a)
-                a.append(request)
+                a = a + (request,)
             if 'request' in values.args and (len(values.args) - (len(values.defaults) if values.defaults else 0) < 3 or values.args[2] != 'request'):
                 kwargs['request'] = request
 
