@@ -42,6 +42,7 @@ class HttpService(tomodachi.Service):
     function_triggered = False
     websocket_connected = False
     websocket_received_data = None
+    websocket_header = None
 
     @http('GET', r'/test/?')
     async def test(self, request: web.Request) -> str:
@@ -165,6 +166,10 @@ class HttpService(tomodachi.Service):
     @websocket(r'/websocket-simple')
     async def websocket_simple(self, websocket: web.WebSocketResponse) -> None:
         self.websocket_connected = True
+
+    @websocket(r'/websocket-header')
+    async def websocket_with_header(self, websocket: web.WebSocketResponse, request: web.Request) -> None:
+        self.websocket_header = request.headers.get('User-Agent')
 
     @websocket(r'/websocket-data')
     async def websocket_data(self, websocket: web.WebSocketResponse) -> Callable:

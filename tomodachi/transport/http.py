@@ -394,6 +394,13 @@ class HttpTransport(Invoker):
                 for k, v in result.groupdict().items():
                     kwargs[k] = v
 
+            if len(values.args) - (len(values.defaults) if values.defaults else 0) >= 3:
+                # If the function takes a third required argument the value will be filled with the request object
+                a = list(a)
+                a.append(request)
+            if 'request' in values.args and (len(values.args) - (len(values.defaults) if values.defaults else 0) < 3 or values.args[2] != 'request'):
+                kwargs['request'] = request
+
             try:
                 routine = func(*(obj, websocket, *a), **merge_dicts(kwargs, kw))
                 callback_functions = (await routine) if isinstance(routine, Awaitable) else routine  # type: Optional[Union[Tuple, Callable]]

@@ -281,6 +281,14 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
                 await ws.close()
                 assert instance.websocket_connected is True
 
+        assert instance.websocket_header is None
+        async with aiohttp.ClientSession(loop=loop) as client:
+            async with client.ws_connect('http://127.0.0.1:{}/websocket-header'.format(port)) as ws:
+                await ws.close()
+                assert instance.websocket_header is not None
+                assert 'Python' in instance.websocket_header
+                assert 'aiohttp' in instance.websocket_header
+
         async with aiohttp.ClientSession(loop=loop) as client:
             async with client.ws_connect('http://127.0.0.1:{}/websocket-data'.format(port)) as ws:
                 data = '9e2546ef-7fe1-4f94-a3fc-5dc85a771a17'
