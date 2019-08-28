@@ -133,7 +133,10 @@ class AWSSNSSQSTransport(Invoker):
 
         async def handler(payload: Optional[str], receipt_handle: Optional[str] = None, queue_url: Optional[str] = None, message_topic: str = '') -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
-                await cls.delete_message(cls, receipt_handle, queue_url, context)
+                try:
+                    await cls.delete_message(cls, receipt_handle, queue_url, context)
+                except Exception:
+                    pass
                 return
 
             _callback_kwargs = callback_kwargs  # type: Any
@@ -342,6 +345,8 @@ class AWSSNSSQSTransport(Invoker):
 
         async def _delete_message() -> None:
             for retry in range(1, 4):
+                if not cls.clients or not cls.clients.get('sqs'):
+                    cls.create_client(cls, 'sqs', context)
                 client = cls.clients.get('sqs')
                 try:
                     await asyncio.wait_for(client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30)
