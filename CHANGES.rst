@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.16.4 (2019-08-28)
+-------------------
+- Fix for the the race condition causing ``delete_message`` to
+  raise an exception, when draining the SQS receive messages call,
+  while stopping the service.
+
+
 0.16.3 (2019-08-23)
 -------------------
 - It's now possible to get the request object for websocket
