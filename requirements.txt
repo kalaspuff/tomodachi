@@ -13,7 +13,7 @@ codecov==2.0.15
 colorama==0.4.1
 coverage==4.5.4
 docutils==0.15.2
-execnet==1.7.0
+execnet==1.7.1
 jmespath==0.9.4
 multidict==4.5.2
 mypy==0.720
