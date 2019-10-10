@@ -25,7 +25,7 @@ py==1.8.0
 pyparsing==2.4.2
 pytest==5.1.1
 pytest-cov==2.7.1
-pytest-forked==1.0.2
+pytest-forked==1.1.0
 pytest-xdist==1.29.0
 python-dateutil==2.8.0
 pytz==2019.2
