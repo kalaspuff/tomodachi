@@ -17,7 +17,7 @@ execnet==1.7.1
 jmespath==0.9.4
 multidict==4.5.2
 mypy==0.720
-packaging==19.1
+packaging==20.1
 protobuf==3.9.1
 pycares==3.0.0
 pycodestyle==2.5.0
