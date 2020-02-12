@@ -23,7 +23,8 @@ class Invoker(object):
                         if getattr(obj, "context", None):
                             cls.context[obj] = obj.context
                         else:
-                            cls.context[obj] = {i: getattr(obj, i) for i in dir(obj) if not callable(i) and not i.startswith("__") and not isinstance(getattr(obj, i), types.MethodType)}
+                            cls.context[obj] = {}
+                        cls.context[obj].update({i: getattr(obj, i) for i in dir(obj) if not callable(i) and not i.startswith("__") and not isinstance(getattr(obj, i), types.MethodType)})
                     context = cls.context[obj]
                     obj.context = context
                     start_func = await cls_func(cls, obj, context, func, *args, **kwargs)
