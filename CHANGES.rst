@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.16.5 (2020-02-12)
+-------------------
+- Bugfix for context reference mismatch when using custom
+  invocation decorators which could cause the provided
+  context variable to not include the correct information.
+
+
 0.16.4 (2019-08-28)
 -------------------
 - Fix for the the race condition causing ``delete_message`` to
