@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.16.6 (2020-02-25)
+-------------------
+- Removes the dependency on ``ujson``.
+
+
 0.16.5 (2020-02-12)
 -------------------
 - Bugfix for context reference mismatch when using custom
