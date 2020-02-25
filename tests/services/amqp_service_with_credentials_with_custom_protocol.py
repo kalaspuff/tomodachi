@@ -1,10 +1,11 @@
-import ujson
 import asyncio
+import json
 import os
 import signal
-import tomodachi
 import uuid
 from typing import Any, Dict, Tuple, Union
+
+import tomodachi
 from tomodachi.transport.amqp import amqp, amqp_publish
 
 data_uuid = str(uuid.uuid4())
@@ -17,11 +18,11 @@ class CustomProtocol(object):
             'protocol': 'custom',
             'data': data
         }
-        return ujson.dumps(message)
+        return json.dumps(message)
 
     @classmethod
     async def parse_message(cls, payload: str) -> Union[Dict, Tuple]:
-        message = ujson.loads(payload)
+        message = json.loads(payload)
         return message, None, None
 
 

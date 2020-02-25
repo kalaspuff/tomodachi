@@ -1,8 +1,8 @@
 import base64
+import json
 import os
 import signal
 import time
-import ujson
 from typing import Any
 
 import pytest
@@ -11,8 +11,7 @@ from google.protobuf.json_format import MessageToJson
 from proto_build.message_pb2 import Person
 from run_test_service_helper import start_service
 from tomodachi.protocol.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
-from tomodachi.validation.validation import validate_field_regex, \
-    RegexMissmatchException
+from tomodachi.validation.validation import RegexMissmatchException, validate_field_regex
 
 
 def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
@@ -28,8 +27,8 @@ def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
         result, message_uuid, timestamp = await instance.message_protocol.parse_message(json_message)
         assert result.get('data') == data
         assert result.get('metadata', {}).get('data_encoding') == 'raw'
-        assert len(ujson.dumps(result.get('data'))) == len(ujson.dumps(data))
-        assert ujson.dumps(result.get('data')) == ujson.dumps(data)
+        assert len(json.dumps(result.get('data'))) == len(json.dumps(data))
+        assert json.dumps(result.get('data')) == json.dumps(data)
         assert len(message_uuid) == 73
         assert message_uuid[0:36] == instance.uuid
         assert timestamp >= t1
@@ -48,15 +47,15 @@ def test_json_base_large_message(monkeypatch: Any, capsys: Any, loop: Any) -> No
 
     async def _async() -> None:
         data = ['item {}'.format(i) for i in range(1, 10000)]
-        assert len(ujson.dumps(data)) > 60000
+        assert len(json.dumps(data)) > 60000
         t1 = time.time()
         json_message = await instance.message_protocol.build_message(instance, 'topic', data)
-        assert len(ujson.dumps(json_message)) < 60000
+        assert len(json.dumps(json_message)) < 60000
         t2 = time.time()
         result, message_uuid, timestamp = await instance.message_protocol.parse_message(json_message)
         assert result.get('metadata', {}).get('data_encoding') == 'base64_gzip_json'
-        assert len(ujson.dumps(result.get('data'))) == len(ujson.dumps(data))
-        assert ujson.dumps(result.get('data')) == ujson.dumps(data)
+        assert len(json.dumps(result.get('data'))) == len(json.dumps(data))
+        assert json.dumps(result.get('data')) == json.dumps(data)
         assert len(message_uuid) == 73
         assert message_uuid[0:36] == instance.uuid
         assert timestamp >= t1
