@@ -1,8 +1,8 @@
-import ujson
-import uuid
-import time
-import zlib
 import base64
+import json
+import time
+import uuid
+import zlib
 from typing import Any, Dict, Tuple, Union
 
 PROTOCOL_VERSION = 'tomodachi-json-base--1.0.0'
@@ -12,8 +12,8 @@ class JsonBase(object):
     @classmethod
     async def build_message(cls, service: Any, topic: str, data: Any, **kwargs: Any) -> str:
         data_encoding = 'raw'
-        if len(ujson.dumps(data)) >= 60000:
-            data = base64.b64encode(zlib.compress(ujson.dumps(data).encode('utf-8'))).decode('utf-8')
+        if len(json.dumps(data)) >= 60000:
+            data = base64.b64encode(zlib.compress(json.dumps(data).encode('utf-8'))).decode('utf-8')
             data_encoding = 'base64_gzip_json'
 
         message = {
@@ -31,11 +31,11 @@ class JsonBase(object):
             },
             'data': data
         }
-        return ujson.dumps(message)
+        return json.dumps(message)
 
     @classmethod
     async def parse_message(cls, payload: str, **kwargs: Any) -> Union[Dict, Tuple]:
-        message = ujson.loads(payload)
+        message = json.loads(payload)
 
         protocol_version = message.get('metadata', {}).get('protocol_version')
         message_uuid = message.get('metadata', {}).get('message_uuid')
@@ -44,7 +44,7 @@ class JsonBase(object):
         if message.get('metadata', {}).get('data_encoding') == 'raw':
             data = message.get('data')
         elif message.get('metadata', {}).get('data_encoding') == 'base64_gzip_json':
-            data = ujson.loads(zlib.decompress(base64.b64decode(message.get('data').encode('utf-8'))).decode('utf-8'))
+            data = json.loads(zlib.decompress(base64.b64decode(message.get('data').encode('utf-8'))).decode('utf-8'))
 
         return {
             'service': {

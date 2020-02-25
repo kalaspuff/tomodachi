@@ -370,7 +370,6 @@ Requirements 👍
 * aiohttp_
 * aiobotocore_
 * aioamqp_
-* ujson_
 * uvloop_
 
 .. _Python: https://www.python.org
@@ -378,7 +377,6 @@ Requirements 👍
 .. _aiohttp: https://github.com/aio-libs/aiohttp
 .. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _aioamqp: https://github.com/Polyconseil/aioamqp
-.. _ujson: https://github.com/esnme/ultrajson
 .. _uvloop: https://github.com/MagicStack/uvloop
 
 

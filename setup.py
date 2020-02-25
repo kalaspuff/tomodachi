@@ -1,13 +1,14 @@
 #!/usr/bin/env python
-import sys
 import os
-from setuptools import setup, find_packages
+import sys
+
+from setuptools import find_packages, setup
+
 import tomodachi.__version__
 
 install_requires = [
     'pycparser>=2.18',
     'aioamqp>=0.10.0, <0.14.0',
-    'ujson>=1.35',
     'uvloop>=0.8.1',
     'aiobotocore>=0.6.0, <0.11.0',
     'tzlocal>=1.4',

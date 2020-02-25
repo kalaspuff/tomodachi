@@ -1,21 +1,23 @@
-import logging
 import asyncio
-import aiobotocore
-import botocore
-import aiohttp
-import time
-import hashlib
-import re
 import binascii
-import ujson
-import uuid
-import inspect
 import functools
+import hashlib
+import inspect
+import json
+import logging
+import re
+import time
+import uuid
+from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Tuple, Union
+
+import botocore
 from botocore.parsers import ResponseParserError
-from typing import Any, Dict, Union, Optional, Callable, List, Tuple, Match, Awaitable
-from tomodachi.invoker import Invoker
+
+import aiobotocore
+import aiohttp
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.middleware import execute_middlewares
+from tomodachi.invoker import Invoker
 
 DRAIN_MESSAGE_PAYLOAD = '__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__'
 MESSAGE_PROTOCOL_DEFAULT = 'e6fb6007-cf15-4cfd-af2e-1d1683374e70'
@@ -504,7 +506,7 @@ class AWSSNSSQSTransport(Invoker):
         try:
             # MessageRetentionPeriod (default 4 days, set to context value)
             # VisibilityTimeout (default 30 seconds)
-            response = await sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes={'Policy': ujson.dumps(queue_policy)})
+            response = await sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes={'Policy': json.dumps(queue_policy)})
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logging.getLogger('transport.aws_sns_sqs').warning('Unable to set queue attributes [sqs] on AWS ({})'.format(error_message))
@@ -611,7 +613,7 @@ class AWSSNSSQSTransport(Invoker):
                     for message in messages:
                         receipt_handle = message.get('ReceiptHandle')
                         try:
-                            message_body = ujson.loads(message.get('Body'))
+                            message_body = json.loads(message.get('Body'))
                             message_topic = cls.get_topic_name_without_prefix(cls.decode_topic(cls.get_topic_from_arn(message_body.get('TopicArn'))), context) if message_body.get('TopicArn') else ''
                         except ValueError:
                             # Malformed SQS message, not in SNS format and should be discarded
