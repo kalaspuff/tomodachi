@@ -1,12 +1,14 @@
-import os
 import asyncio
-import tomodachi
+import os
 import pathlib
 import uuid
-from aiohttp.web_fileresponse import FileResponse
-from typing import Tuple, Callable, Union
+from typing import Callable, Tuple, Union
+
 from aiohttp import web
-from tomodachi import http_error, http, http_static, websocket
+from aiohttp.web_fileresponse import FileResponse
+
+import tomodachi
+from tomodachi import http, http_error, http_static, websocket
 
 
 @tomodachi.service

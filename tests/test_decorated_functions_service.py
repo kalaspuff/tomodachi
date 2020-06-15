@@ -1,5 +1,7 @@
-import aiohttp
 from typing import Any
+
+import aiohttp
+
 from run_test_service_helper import start_service
 
 

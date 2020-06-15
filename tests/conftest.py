@@ -1,7 +1,8 @@
-import uvloop
 import asyncio
-import pytest
 from typing import Generator
+
+import pytest
+import uvloop
 
 
 @pytest.yield_fixture(scope='module')

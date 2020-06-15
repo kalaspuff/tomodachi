@@ -10,11 +10,11 @@ import time
 import uuid
 from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Tuple, Union
 
+import aiobotocore
+import aiohttp
 import botocore
 from botocore.parsers import ResponseParserError
 
-import aiobotocore
-import aiohttp
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
@@ -241,7 +241,7 @@ class AWSSNSSQSTransport(Invoker):
             cls.clients = {}
             cls.clients_creation_time = {}
         loop = asyncio.get_event_loop()
-        session = aiobotocore.get_session(loop=loop)
+        session = aiobotocore.get_session()
 
         config_base = context.get('options', {}).get('aws_sns_sqs', context.get('options', {}).get('aws', {}))
         aws_config_base = context.get('options', {}).get('aws', {})

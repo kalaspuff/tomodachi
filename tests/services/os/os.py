@@ -1,6 +1,7 @@
 import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.protocol.json_base import JsonBase
+
 from .code import test_func
 
 

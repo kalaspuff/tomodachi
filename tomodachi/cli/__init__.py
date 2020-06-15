@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-import os
-import sys
 import getopt
 import logging
+import os
+import sys
 from typing import List, Optional
+
 import tomodachi
+from tomodachi.config import parse_config_files
 from tomodachi.launcher import ServiceLauncher
 from tomodachi.watcher import Watcher
-from tomodachi.config import parse_config_files
-
 
 try:
     if ModuleNotFoundError:
@@ -212,4 +212,7 @@ class CLI:
 def cli_entrypoint(argv: Optional[List[str]] = None) -> None:
     if argv is None:
         argv = sys.argv
+        if argv[0].endswith('pytest'):
+            argv = ['tomodachi']
+
     CLI().main(argv[1:])

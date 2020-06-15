@@ -1,5 +1,6 @@
-import tomodachi
 from typing import Any
+
+import tomodachi
 from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.protocol import JsonBase
 

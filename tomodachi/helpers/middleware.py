@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Callable, List, Any, Dict
+from typing import Any, Callable, Dict, List
 
 
 async def execute_middlewares(func: Callable, routine_func: Callable, middlewares: List, *args: Any) -> Any:

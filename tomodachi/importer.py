@@ -1,9 +1,9 @@
-import os
-import sys
-import re
-import logging
 import importlib
 import importlib.util
+import logging
+import os
+import re
+import sys
 from types import ModuleType
 from typing import Any  # noqa
 

@@ -1,16 +1,17 @@
-import inspect
 import asyncio
-import sys
+import inspect
 import logging
 import re
+import sys
 import types
 import uuid
-import tomodachi
 from types import ModuleType, TracebackType
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
+
+import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
-from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
 from tomodachi.config import merge_dicts
+from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
 
 
 class ServiceContainer(object):

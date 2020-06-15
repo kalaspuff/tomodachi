@@ -1,7 +1,8 @@
 import asyncio
+import logging
 import os
 import signal
-import logging
+
 import tomodachi
 
 

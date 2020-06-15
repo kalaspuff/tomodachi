@@ -1,7 +1,8 @@
 import os
 import signal
-import tomodachi
 from typing import Any
+
+import tomodachi
 from run_test_service_helper import start_service
 
 
@@ -21,7 +22,10 @@ def test_dummy_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     assert tomodachi.get_service('test_dummy') == instance
     assert tomodachi.get_service('test_dummy_nonexistant') is None
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
     assert instance.stop is True
@@ -33,5 +37,8 @@ def test_dummy_service_without_py_ending(monkeypatch: Any, capsys: Any, loop: An
     instance = services.get('test_dummy')
     assert instance is not None
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)

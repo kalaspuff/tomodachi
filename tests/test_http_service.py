@@ -1,12 +1,14 @@
-import aiohttp
 import asyncio
-import pytest
-import os
 import logging
-import pathlib
 import mimetypes
+import os
+import pathlib
 from typing import Any
+
+import aiohttp
+import pytest
 from multidict import CIMultiDictProxy
+
 from run_test_service_helper import start_service
 
 

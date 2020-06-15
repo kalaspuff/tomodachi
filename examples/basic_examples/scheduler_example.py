@@ -1,6 +1,7 @@
 import os
+
 import tomodachi
-from tomodachi import schedule, minutely, hourly
+from tomodachi import hourly, minutely, schedule
 
 
 @tomodachi.service

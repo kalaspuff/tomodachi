@@ -1,6 +1,7 @@
 import os
 import signal
 from typing import Any
+
 from run_test_service_helper import start_service
 
 
@@ -15,7 +16,10 @@ def test_relative_import_service(monkeypatch: Any, capsys: Any, loop: Any) -> No
     assert instance.started is True
     assert instance.stop is False
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
     assert instance.stop is True
@@ -27,5 +31,8 @@ def test_relative_import_service_without_py_ending(monkeypatch: Any, capsys: Any
     instance = services.get('test_relative')
     assert instance is not None
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)

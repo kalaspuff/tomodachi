@@ -1,8 +1,9 @@
 import asyncio
 import os
 import signal
-import tomodachi
 from typing import Any
+
+import tomodachi
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.amqp import amqp
 

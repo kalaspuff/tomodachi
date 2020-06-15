@@ -1,7 +1,8 @@
 import datetime
-import pytz
-from typing import List, Tuple, Dict, Union, Optional, Any, SupportsInt  # noqa
 from calendar import monthrange
+from typing import Any, Dict, List, Optional, SupportsInt, Tuple, Union  # noqa
+
+import pytz
 
 cron_attributes = [
     ('minute', (0, 59), {}),

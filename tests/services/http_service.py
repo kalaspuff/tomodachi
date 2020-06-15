@@ -1,11 +1,13 @@
 import asyncio
 import os
 import signal
-import tomodachi
-from typing import Any, Dict, Tuple, Callable, Union  # noqa
+from typing import Any, Callable, Dict, Tuple, Union  # noqa
+
 from aiohttp import web
-from tomodachi.transport.http import http, http_error, http_static, websocket, Response, RequestHandler
+
+import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
+from tomodachi.transport.http import RequestHandler, Response, http, http_error, http_static, websocket
 
 
 async def middleware_function(func: Callable, service: Any, request: web.Request, context: Dict, *args: Any, **kwargs: Any) -> Any:

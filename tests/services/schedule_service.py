@@ -1,9 +1,10 @@
-import os
 import asyncio
+import os
 import signal
-import tomodachi
 from typing import Any  # noqa
-from tomodachi.transport.schedule import schedule, heartbeat
+
+import tomodachi
+from tomodachi.transport.schedule import heartbeat, schedule
 
 
 @tomodachi.service
