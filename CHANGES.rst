@@ -4,7 +4,7 @@ Changes
 0.17.0 (2020-06-16)
 -------------------
 - Proper support for Python 3.8. Now correctly handles
-  `CancelledError` exceptions that previously sent a lot of
+  ``CancelledError`` exceptions that previously sent a lot of
   unwanted output on service shutdown or restart.
 
 - Updated dependencies across the board, utilizing
