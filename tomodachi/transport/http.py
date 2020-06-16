@@ -23,6 +23,11 @@ from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
+try:
+    CancelledError = asyncio.exceptions.CancelledError
+except Exception as e:
+    CancelledError = Exception
+
 
 class HttpException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -245,6 +250,9 @@ class HttpTransport(Invoker):
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (await routine) if isinstance(routine, Awaitable) else routine  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
                 return return_value
+
+            if not context.get('_http_accept_new_requests'):
+                raise web.HTTPServiceUnavailable()
 
             if pre_handler_func:
                 await pre_handler_func(obj, request)
@@ -598,7 +606,17 @@ class HttpTransport(Invoker):
 
                         return response
 
-                return await asyncio.shield(func())
+                task = asyncio.ensure_future(asyncio.shield(func()))
+                context['_http_active_requests'] = context.get('_http_active_requests', set())
+                context['_http_active_requests'].add(task)
+                try:
+                    result = await task
+                except (Exception, CancelledError):
+                    context['_http_active_requests'].remove(task)
+                    raise
+                context['_http_active_requests'].remove(task)
+
+                return task.result()
 
             app = web.Application(middlewares=[middleware],  # type: ignore
                                   client_max_size=(1024 ** 2) * 100)  # type: web.Application
@@ -617,6 +635,7 @@ class HttpTransport(Invoker):
                     resource.add_route('HEAD', handler, expect_handler=None)  # type: ignore
                 resource.add_route(method.upper(), handler, expect_handler=None)  # type: ignore
 
+            context['_http_accept_new_requests'] = True
             port = context.get('options', {}).get('http', {}).get('port', 9700)
             host = context.get('options', {}).get('http', {}).get('host', '0.0.0.0')
 
@@ -625,6 +644,7 @@ class HttpTransport(Invoker):
                 server_task = loop.create_server(Server(app._handle, request_factory=app._make_request, server_header=server_header or '', access_log=access_log, keepalive_timeout=0, tcp_keepalive=False), host, port)  # type: ignore
                 server = await server_task  # type: ignore
             except OSError as e:
+                context['_http_accept_new_requests'] = False
                 error_message = re.sub('.*: ', '', e.strerror)
                 logging.getLogger('transport.http').warning('Unable to bind service [http] to http://{}:{}/ ({})'.format('127.0.0.1' if host == '0.0.0.0' else host, port, error_message))
                 raise HttpException(str(e), log_level=context.get('log_level')) from e
@@ -635,15 +655,38 @@ class HttpTransport(Invoker):
             stop_method = getattr(obj, '_stop_service', None)
 
             async def stop_service(*args: Any, **kwargs: Any) -> None:
+                context['_http_accept_new_requests'] = False
+                server.close()
                 if stop_method:
                     await stop_method(*args, **kwargs)
+
                 open_websockets = context.get('_http_open_websockets', [])[:]
-                for websocket in open_websockets:
+                if open_websockets:
+                    logging.getLogger('transport.http').info('Closing websocket connections')
+                    tasks = []
+                    for websocket in open_websockets:
+                        try:
+                            tasks.append(asyncio.ensure_future(websocket.close()))
+                        except Exception:
+                            pass
                     try:
-                        await websocket.close()
-                    except Exception:
+                        results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=10)
+                    except (Exception, asyncio.TimeoutError) as e:
                         pass
-                server.close()
+                    context['_http_open_websockets'] = []
+
+                active_requests = context.get('_http_active_requests', set())
+                if active_requests:
+                    termination_grace_period_seconds = context.get('options', {}).get('http', {}).get('termination_grace_period_seconds', 30)
+                    logging.getLogger('transport.http').info('Waiting for active requests to complete - grace period of {} seconds'.format(termination_grace_period_seconds))
+                    try:
+                        results = await asyncio.wait_for(asyncio.gather(*active_requests, return_exceptions=True), timeout=termination_grace_period_seconds)
+                        await asyncio.sleep(1)
+                    except (Exception, asyncio.TimeoutError) as e:
+                        logging.getLogger('transport.http').warning('All active requests did not gracefully finish their execution')
+                        pass
+                    context['_http_active_requests'] = set()
+
                 await app.shutdown()
                 if logger_handler:
                     logging.getLogger('transport.http').removeHandler(logger_handler)
