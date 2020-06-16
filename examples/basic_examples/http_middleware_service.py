@@ -1,9 +1,11 @@
-import os
 import asyncio
-import tomodachi
-from typing import Tuple, Callable, Union, Any, Dict
+import os
+from typing import Any, Callable, Dict, Tuple, Union
+
 from aiohttp import web
-from tomodachi import http, http_error, http_static, websocket, HttpResponse
+
+import tomodachi
+from tomodachi import HttpResponse, http, http_error, http_static, websocket
 from tomodachi.discovery import DummyRegistry
 
 

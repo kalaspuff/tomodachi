@@ -1,6 +1,6 @@
 import logging
 from logging.handlers import WatchedFileHandler
-from typing import Optional, Union, Any
+from typing import Any, Optional, Union
 
 
 class CustomServiceLogHandler(WatchedFileHandler):

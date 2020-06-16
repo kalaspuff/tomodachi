@@ -1,16 +1,17 @@
-import inspect
 import asyncio
-import sys
+import inspect
 import logging
 import re
+import sys
 import types
 import uuid
-import tomodachi
 from types import ModuleType, TracebackType
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional, cast
+
+import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
-from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
 from tomodachi.config import merge_dicts
+from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
 
 
 class ServiceContainer(object):
@@ -117,12 +118,12 @@ class ServiceContainer(object):
                     start_task_results = await asyncio.wait([asyncio.ensure_future(func()) for func in start_futures if func])
                     exception = [v.exception() for v in [value for value in start_task_results if value][0] if v.exception()]
                     if exception:
-                        raise exception[0]
+                        raise cast(Exception, exception[0])
                 if invoker_tasks:
                     task_results = await asyncio.wait([asyncio.ensure_future(func()) for func in (await asyncio.gather(*invoker_tasks)) if func])
                     exception = [v.exception() for v in [value for value in task_results if value][0] if v.exception()]
                     if exception:
-                        raise exception[0]
+                        raise cast(Exception, exception[0])
 
                 for name, instance, log_level in services_started:
                     for registry in getattr(instance, 'discovery', []):

@@ -8,9 +8,9 @@ import tomodachi.__version__
 
 install_requires = [
     'pycparser>=2.18',
-    'aioamqp>=0.10.0, <0.14.0',
+    'aioamqp>=0.10.0, <0.15.0',
     'uvloop>=0.8.1',
-    'aiobotocore>=0.6.0, <0.11.0',
+    'aiobotocore>=0.6.0, <=0.12.0',
     'tzlocal>=1.4',
     'aiohttp>=3.0.5, <3.6.0',
     'yarl>=1.1.0',
@@ -19,8 +19,8 @@ install_requires = [
 
 PY_VER = sys.version_info
 
-if not PY_VER >= (3, 5, 3):
-    raise RuntimeError("tomodachi doesn't support Python earlier than 3.5.3")
+if not PY_VER >= (3, 6, 1):
+    raise RuntimeError("tomodachi doesn't support Python earlier than 3.6.1")
 
 
 def read(f: str) -> str:
@@ -32,13 +32,14 @@ classifiers = [
     'Intended Audience :: System Administrators',
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3 :: Only',
-    'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
     'License :: OSI Approved :: MIT License',
-    'Development Status :: 3 - Alpha',
+    'Development Status :: 4 - Beta',
     'Topic :: Software Development :: Libraries :: Application Frameworks',
-    'Topic :: Software Development :: Libraries :: Python Modules'
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Typing :: Typed'
 ]
 
 setup(name='tomodachi',

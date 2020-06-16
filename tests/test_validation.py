@@ -1,9 +1,12 @@
 import pytest
 
-from tomodachi.validation.validation import validate_field_regex, \
-    RegexMissmatchException
-from tomodachi.validation.validation import validate_field_length, \
-    TooSmallException, TooLargeException
+from tomodachi.validation.validation import (
+    RegexMissmatchException,
+    TooLargeException,
+    TooSmallException,
+    validate_field_length,
+    validate_field_regex,
+)
 
 
 def test_regex_success() -> None:

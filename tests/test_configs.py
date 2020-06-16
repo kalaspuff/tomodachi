@@ -1,4 +1,5 @@
 from decimal import Decimal
+
 from tomodachi.config import merge_dicts, parse_config_files
 
 

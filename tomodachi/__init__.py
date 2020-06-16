@@ -1,6 +1,8 @@
-from typing import Any, Optional
 import inspect
+from typing import Any, Optional
+
 from tomodachi.__version__ import __version__, __version_info__  # noqa
+
 try:
     import tomodachi.helpers.logging
     from tomodachi.invoker import decorator

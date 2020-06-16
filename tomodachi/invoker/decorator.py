@@ -1,6 +1,6 @@
-from functools import wraps
-from typing import Any, Callable, Awaitable  # noqa
 import types
+from functools import wraps
+from typing import Any, Awaitable, Callable  # noqa
 
 
 class DecorationClass(object):

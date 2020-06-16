@@ -1,6 +1,7 @@
 import os
-import tomodachi
 from typing import Dict
+
+import tomodachi
 from tomodachi import aws_sns_sqs
 from tomodachi.protocol import JsonBase
 

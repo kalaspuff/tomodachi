@@ -46,6 +46,9 @@ coverage.xml
 .hypothesis/
 .pytest_cache
 
+# Temporary
+tmp/
+
 # Translations
 *.mo
 *.pot

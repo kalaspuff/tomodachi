@@ -1,9 +1,11 @@
 import os
 import signal
-import pytest
 from typing import Any
-from tomodachi.transport.aws_sns_sqs import AWSSNSSQSTransport, AWSSNSSQSException
+
+import pytest
+
 from run_test_service_helper import start_service
+from tomodachi.transport.aws_sns_sqs import AWSSNSSQSException, AWSSNSSQSTransport
 
 
 def test_topic_name(monkeypatch: Any) -> None:
@@ -59,7 +61,10 @@ def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -
     with pytest.raises(AWSSNSSQSException):
         loop.run_until_complete(AWSSNSSQSTransport.publish(instance, 'data', 'test-topic', wait=True))
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
     if not future.done():

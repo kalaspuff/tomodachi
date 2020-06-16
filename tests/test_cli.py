@@ -1,6 +1,8 @@
-import pytest
 import logging
 from typing import Any
+
+import pytest
+
 import tomodachi
 import tomodachi.cli
 

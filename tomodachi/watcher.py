@@ -1,9 +1,9 @@
 import asyncio
+import logging
 import os
 import sys
 import zlib
-import logging
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 
 def crc(file_path: str) -> str:

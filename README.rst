@@ -366,14 +366,14 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
 
 Requirements 👍
 ---------------
-* Python_ (``3.5.3+``, ``3.6+``, ``3.7+``)
+* Python_ (``3.6+``, ``3.7+``, ``3.8+``)
 * aiohttp_
 * aiobotocore_
 * aioamqp_
 * uvloop_
 
 .. _Python: https://www.python.org
-.. _asyncio: http://docs.python.org/3.5/library/asyncio.html
+.. _asyncio: http://docs.python.org/3.8/library/asyncio.html
 .. _aiohttp: https://github.com/aio-libs/aiohttp
 .. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _aioamqp: https://github.com/Polyconseil/aioamqp

@@ -1,9 +1,11 @@
 import asyncio
 import os
 import signal
-import tomodachi
 from typing import Any
+
 from aiohttp import web
+
+import tomodachi
 from tomodachi.transport.http import http
 
 

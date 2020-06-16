@@ -1,9 +1,10 @@
 import asyncio
 import os
 import signal
-import tomodachi
 import uuid
 from typing import Any
+
+import tomodachi
 from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish

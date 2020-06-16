@@ -1,9 +1,10 @@
 import asyncio
 import os
 import signal
-import tomodachi
 import uuid
 from typing import Any
+
+import tomodachi
 from tomodachi.protocol.json_base import JsonBase
 from tomodachi.transport.amqp import amqp, amqp_publish
 

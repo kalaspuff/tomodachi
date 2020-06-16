@@ -36,7 +36,10 @@ def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
 
     loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -63,7 +66,10 @@ def test_json_base_large_message(monkeypatch: Any, capsys: Any, loop: Any) -> No
 
     loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -95,7 +101,10 @@ def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
 
     loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -117,7 +126,10 @@ def test_protobuf_base_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) 
 
     loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -136,7 +148,10 @@ def test_protobuf_base_bad_proto_class(monkeypatch: Any, capsys: Any, loop: Any)
     with pytest.raises(AttributeError):
         loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -151,7 +166,10 @@ def test_protobuf_validation_no_proto_class(monkeypatch: Any, capsys: Any, loop:
     with pytest.raises(Exception):
         loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -166,7 +184,10 @@ def test_protobuf_validation_bad_proto_class(monkeypatch: Any, capsys: Any, loop
     with pytest.raises(Exception):
         loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -190,7 +211,10 @@ def test_protobuf_object_validation_function(monkeypatch: Any, capsys: Any, loop
 
     loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -215,7 +239,10 @@ def test_protobuf_object_static_validation_function(monkeypatch: Any, capsys: An
 
     loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -240,7 +267,10 @@ def test_protobuf_object_validation_function_fail(monkeypatch: Any, capsys: Any,
     with pytest.raises(RegexMissmatchException):
         loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)
 
 
@@ -266,5 +296,8 @@ def test_protobuf_object_static_validation_function_fail(monkeypatch: Any, capsy
     with pytest.raises(RegexMissmatchException):
         loop.run_until_complete(_async())
 
-    os.kill(os.getpid(), signal.SIGINT)
+    async def _async_kill():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    loop.create_task(_async_kill())
     loop.run_until_complete(future)

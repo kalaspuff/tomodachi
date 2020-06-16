@@ -1,21 +1,29 @@
 import asyncio
-import sys
-import signal
+import datetime
 import importlib
 import logging
-import datetime
-import uvloop
 import os
+import signal
+import sys
+from typing import Any, Dict, List, Optional, Union, cast
+
 import multidict  # noqa
+import uvloop
 import yarl  # noqa
-from typing import Dict, Union, Optional, Any, List
+
+import tomodachi.__version__
 import tomodachi.container
 import tomodachi.importer
 import tomodachi.invoker
-import tomodachi.__version__
 import tomodachi.watcher
 from tomodachi.container import ServiceContainer
 from tomodachi.importer import ServiceImporter
+
+try:
+    CancelledError = asyncio.exceptions.CancelledError  # type: ignore
+except Exception as e:
+    class CancelledError(Exception):  # type: ignore
+        pass
 
 
 class ServiceLauncher(object):
@@ -120,7 +128,7 @@ class ServiceLauncher(object):
                 result = loop.run_until_complete(asyncio.wait([asyncio.ensure_future(service.run_until_complete()) for service in cls.services]))
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
-                    raise exception[0]
+                    raise cast(Exception, exception[0])
             except tomodachi.importer.ServicePackageError as e:
                 pass
             except Exception as e:
@@ -159,5 +167,5 @@ class ServiceLauncher(object):
                 if not watcher_future.done():  # pragma: no cover
                     try:
                         loop.run_until_complete(watcher_future)
-                    except Exception:
+                    except (Exception, CancelledError):
                         pass

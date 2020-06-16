@@ -1,6 +1,7 @@
 import os
+from typing import Any, Callable, Dict
+
 import tomodachi
-from typing import Any, Dict, Callable
 from tomodachi import amqp, amqp_publish
 from tomodachi.discovery import DummyRegistry
 from tomodachi.protocol import JsonBase
