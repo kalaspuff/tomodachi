@@ -6,8 +6,8 @@
 import sys
 
 if __name__ == "__main__":
-    if not sys.version_info >= (3, 5):
-        print("tomodachi doesn't support Python earlier than 3.5")
+    if not sys.version_info >= (3, 6):
+        print("tomodachi doesn't support Python earlier than 3.6")
         sys.exit(1)
 
     import tomodachi.cli
