@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.17.1 (2020-06-16)
+-------------------
+- Updated generated proto class using protoc 3.12.2 for messages
+  using proto envelope, which should solve some deprecation
+  warnings.
+
+
 0.17.0 (2020-06-16)
 -------------------
 - Proper support for Python 3.8. Now correctly handles
