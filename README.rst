@@ -366,7 +366,7 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
 
 Requirements 👍
 ---------------
-* Python_ (``3.5.3+``, ``3.6+``, ``3.7+``, ``3.8+``)
+* Python_ (``3.6+``, ``3.7+``, ``3.8+``)
 * aiohttp_
 * aiobotocore_
 * aioamqp_

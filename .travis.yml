@@ -1,14 +1,14 @@
 language: python
 sudo: required
 python:
-    - 3.5.3
-    - 3.5.5
     - 3.6.1
     - 3.6.2
     - 3.6.3
     - 3.6.4
     - 3.6.5
     - 3.6.6
+    - 3.7.7
+    - 3.8.3
 services:
     - rabbitmq
 install:
