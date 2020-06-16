@@ -5,7 +5,7 @@ import logging
 import os
 import signal
 import sys
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 import multidict  # noqa
 import uvloop
@@ -20,9 +20,10 @@ from tomodachi.container import ServiceContainer
 from tomodachi.importer import ServiceImporter
 
 try:
-    CancelledError = asyncio.exceptions.CancelledError
+    CancelledError = asyncio.exceptions.CancelledError  # type: ignore
 except Exception as e:
-    CancelledError = Exception
+    class CancelledError(Exception):  # type: ignore
+        pass
 
 
 class ServiceLauncher(object):
@@ -127,7 +128,7 @@ class ServiceLauncher(object):
                 result = loop.run_until_complete(asyncio.wait([asyncio.ensure_future(service.run_until_complete()) for service in cls.services]))
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
-                    raise exception[0]
+                    raise cast(Exception, exception[0])
             except tomodachi.importer.ServicePackageError as e:
                 pass
             except Exception as e:

@@ -24,9 +24,10 @@ from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
 try:
-    CancelledError = asyncio.exceptions.CancelledError
+    CancelledError = asyncio.exceptions.CancelledError  # type: ignore
 except Exception as e:
-    CancelledError = Exception
+    class CancelledError(Exception):  # type: ignore
+        pass
 
 
 class HttpException(Exception):
@@ -117,7 +118,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
                     request.headers.get('User-Agent', '').replace('"', '')
                 ))
 
-        headers = {}
+        headers = CIMultiDict({})  # type: CIMultiDict
         headers[hdrs.CONTENT_TYPE] = 'text/plain; charset=utf-8'
 
         msg = '' if status == 500 or not message else message
@@ -649,7 +650,10 @@ class HttpTransport(Invoker):
                 logging.getLogger('transport.http').warning('Unable to bind service [http] to http://{}:{}/ ({})'.format('127.0.0.1' if host == '0.0.0.0' else host, port, error_message))
                 raise HttpException(str(e), log_level=context.get('log_level')) from e
 
-            port = int(server.sockets[0].getsockname()[1])
+            if server.sockets:
+                socket_address = server.sockets[0].getsockname()
+                if socket_address:
+                    port = int(socket_address[1])
             context['_http_port'] = port
 
             stop_method = getattr(obj, '_stop_service', None)

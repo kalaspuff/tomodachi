@@ -105,7 +105,8 @@ class CLI:
             # Optional
             import google.protobuf
             if output_versions:
-                print('protobuf/{}'.format(google.protobuf.__version__))
+                protobuf_version = google.protobuf.__version__.decode() if isinstance(google.protobuf.__version__, bytes) else str(google.protobuf.__version__)
+                print('protobuf/{}'.format(protobuf_version))
         except ModuleNotFoundError as e:  # pragma: no cover
             pass
         except Exception as e:  # pragma: no cover
