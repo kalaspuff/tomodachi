@@ -1,6 +1,27 @@
 Changes
 =======
 
+0.17.0 (2020-06-16)
+-------------------
+- Proper support for Python 3.8. Now correctly handles
+  `CancelledError` exceptions that previously sent a lot of
+  unwanted output on service shutdown or restart.
+
+- Updated dependencies across the board, utilizing
+  package versions that supports Python 3.8.
+
+- Dropped support for Python 3.5.
+
+- Now gracefully handles shutdown for HTTP based services,
+  by awaiting active requests and giving them time to finish.
+  By default the ongoing HTTP requests will have 30 seconds to
+  complete their work, which can also be configured via
+  ``options.http.termination_grace_period_seconds``.
+
+- Taking steps into making the codebase following more modern
+  patterns. Additional updates to be followed in a later release.
+
+
 0.16.6 (2020-02-25)
 -------------------
 - Removes the dependency on ``ujson``.
