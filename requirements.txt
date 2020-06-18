@@ -31,7 +31,7 @@ pytest-xdist==1.32.0
 python-dateutil==2.8.1
 pytz==2020.1
 readme-renderer==26.0
-requests==2.23.0
+requests==2.24.0
 six==1.15.0
 typing_extensions==3.7.4
 tzlocal==2.1
