@@ -22,7 +22,7 @@ packaging==20.4
 protobuf==3.12.2
 pycares==3.1.1
 pycodestyle==2.6.0
-py==1.8.2
+py==1.9.0
 pyparsing==2.4.7
 pytest==5.4.3
 pytest-cov==2.10.0
