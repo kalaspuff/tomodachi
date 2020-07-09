@@ -247,9 +247,12 @@ class AmqpTransport(Invoker):
         port = context.get('options', {}).get('amqp', {}).get('port', 5672)
         login = context.get('options', {}).get('amqp', {}).get('login', 'guest')
         password = context.get('options', {}).get('amqp', {}).get('password', 'guest')
+        virtualhost = context.get('options', {}).get('amqp', {}).get('virtualhost', '/')
+        ssl = context.get('options', {}).get('amqp', {}).get('ssl', False)
+        heartbeat = context.get('options', {}).get('amqp', {}).get('heartbeat', 60)
 
         try:
-            transport, protocol = await aioamqp.connect(host=host, port=port, login=login, password=password)
+            transport, protocol = await aioamqp.connect(host=host, port=port, login=login, password=password, virtualhost=virtualhost, ssl=ssl, heartbeat=heartbeat)
             cls.protocol = protocol
             cls.transport = transport
         except ConnectionRefusedError as e:
@@ -348,7 +351,6 @@ class AmqpTransport(Invoker):
                     # await channel.basic_reject(delivery_tag, requeue=True)
                     await asyncio.shield(handler(body.decode(), envelope.delivery_tag, routing_key))
                 return _callback
-
             for routing_key, exchange_name, competing, queue_name, func, handler in context.get('_amqp_subscribers', []):
                 queue_name = await declare_queue(routing_key, func, exchange_name=exchange_name, competing_consumer=competing, queue_name=queue_name)
                 await channel.basic_consume(callback(routing_key, handler), queue_name=queue_name)
