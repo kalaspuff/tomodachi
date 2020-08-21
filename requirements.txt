@@ -10,7 +10,7 @@ attrs==19.3.0
 botocore==1.15.15
 cchardet==2.1.6
 chardet==3.0.4
-codecov==2.1.7
+codecov==2.1.9
 colorama==0.4.3
 coverage==5.1
 docutils==0.15.2
