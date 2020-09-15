@@ -661,8 +661,7 @@ class HttpTransport(Invoker):
             async def stop_service(*args: Any, **kwargs: Any) -> None:
                 context['_http_accept_new_requests'] = False
                 server.close()
-                if stop_method:
-                    await stop_method(*args, **kwargs)
+                await server.wait_closed()
 
                 open_websockets = context.get('_http_open_websockets', [])[:]
                 if open_websockets:
@@ -695,6 +694,8 @@ class HttpTransport(Invoker):
                 if logger_handler:
                     logging.getLogger('transport.http').removeHandler(logger_handler)
                 await app.cleanup()
+                if stop_method:
+                    await stop_method(*args, **kwargs)
 
             setattr(obj, '_stop_service', stop_service)
 
