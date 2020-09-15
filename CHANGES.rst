@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.18.0 (2020-09-15)
+-------------------
+- Changed the order of when to execute the service's own
+  ``_stop_service()`` function, to always run after active HTTP
+  requests has finished executing, as well as awaiting ongoing AMQP
+  before finally running the user defined function.
+
+
 0.17.1 (2020-06-16)
 -------------------
 - Updated generated proto class using protoc 3.12.2 for messages
