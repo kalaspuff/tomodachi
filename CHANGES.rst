@@ -1,6 +1,16 @@
 Changes
 =======
 
+0.18.1 (2020-xx-xx)
+-------------------
+- Added SSL and virtualhost settings to AMQP transport, as well as
+  additional configuration options which can be passed via
+  ``options.amqp.virtualhost``, ``options.amqp.ssl`` and
+  ``options.amqp.heartbeat``. (github: **xdmiodz**)
+
+- Added support for ``aiohttp`` 3.6.x.
+
+
 0.18.0 (2020-09-15)
 -------------------
 - Changed the order of when to execute the service's own
