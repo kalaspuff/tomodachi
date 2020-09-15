@@ -12,7 +12,7 @@ install_requires = [
     'uvloop>=0.8.1',
     'aiobotocore>=0.6.0, <=0.12.0',
     'tzlocal>=1.4',
-    'aiohttp==3.6.2',
+    'aiohttp>=3.0.5, <3.7.0',
     'yarl>=1.1.0',
     'colorama>=0.3.9, <0.5.0'
 ]
