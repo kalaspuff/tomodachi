@@ -270,14 +270,14 @@ class AmqpTransport(Invoker):
             stop_method = getattr(obj, '_stop_service', None)
 
             async def stop_service(*args: Any, **kwargs: Any) -> None:
-                if stop_method:
-                    await stop_method(*args, **kwargs)
                 logging.getLogger('aioamqp.protocol').setLevel(logging.ERROR)
                 await cls.protocol.close()
                 cls.transport.close()
                 cls.channel = None
                 cls.transport = None
                 cls.protocol = None
+                if stop_method:
+                    await stop_method(*args, **kwargs)
 
             setattr(obj, '_stop_service', stop_service)
 
