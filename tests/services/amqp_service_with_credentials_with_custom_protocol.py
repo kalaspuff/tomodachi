@@ -14,10 +14,7 @@ data_uuid = str(uuid.uuid4())
 class CustomProtocol(object):
     @classmethod
     async def build_message(cls, service: Any, topic: str, data: Any) -> str:
-        message = {
-            'protocol': 'custom',
-            'data': data
-        }
+        message = {"protocol": "custom", "data": data}
         return json.dumps(message)
 
     @classmethod
@@ -28,14 +25,9 @@ class CustomProtocol(object):
 
 @tomodachi.service
 class AWSSNSSQSService(tomodachi.Service):
-    name = 'test_amqp'
-    log_level = 'INFO'
-    options = {
-        'amqp': {
-            'login': 'guest',
-            'password': 'guest'
-        }
-    }
+    name = "test_amqp"
+    log_level = "INFO"
+    options = {"amqp": {"login": "guest", "password": "guest"}}
     closer = asyncio.Future()  # type: Any
     test_topic_data_received = False
     test_topic_data = None
@@ -46,9 +38,9 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @amqp('test.custom.topic', message_protocol=CustomProtocol)
+    @amqp("test.custom.topic", message_protocol=CustomProtocol)
     async def test(self, data: Any, protocol: Any, default_value: bool = True) -> None:
-        if data == self.data_uuid and protocol == 'custom':
+        if data == self.data_uuid and protocol == "custom":
             self.test_topic_data_received = default_value
             self.test_topic_data = data
 
@@ -69,10 +61,11 @@ class AWSSNSSQSService(tomodachi.Service):
             if not task.done():
                 task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
+
         asyncio.ensure_future(_async())
 
         self.data_uuid = str(uuid.uuid4())
-        await publish(self.data_uuid, 'test.custom.topic')
+        await publish(self.data_uuid, "test.custom.topic")
 
     def stop_service(self) -> None:
         if not self.closer.done():

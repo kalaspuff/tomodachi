@@ -1,8 +1,8 @@
 [tool.black]
 line-length = 120
-target_version = ["py36", "py37", "py38", "py39"]
+target_version = ["py36", "py37", "py38"]
 include = '\.pyi?$'
-exclude = '\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/'
+exclude = '\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/|proto_build/|syntax_error_service\.py'
 
 [tool.isort]
 profile = "black"

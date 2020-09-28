@@ -2,8 +2,8 @@ import functools
 import types
 from typing import Any, Callable, Dict, List, Optional  # noqa
 
-FUNCTION_ATTRIBUTE = 'TOMODACHI_INVOKER'
-START_ATTRIBUTE = 'TOMODACHI_INVOKER_START'
+FUNCTION_ATTRIBUTE = "TOMODACHI_INVOKER"
+START_ATTRIBUTE = "TOMODACHI_INVOKER_START"
 
 
 class Invoker(object):
@@ -24,7 +24,15 @@ class Invoker(object):
                             cls.context[obj] = obj.context
                         else:
                             cls.context[obj] = {}
-                        cls.context[obj].update({i: getattr(obj, i) for i in dir(obj) if not callable(i) and not i.startswith("__") and not isinstance(getattr(obj, i), types.MethodType)})
+                        cls.context[obj].update(
+                            {
+                                i: getattr(obj, i)
+                                for i in dir(obj)
+                                if not callable(i)
+                                and not i.startswith("__")
+                                and not isinstance(getattr(obj, i), types.MethodType)
+                            }
+                        )
                     context = cls.context[obj]
                     obj.context = context
                     start_func = await cls_func(cls, obj, context, func, *args, **kwargs)
@@ -39,4 +47,5 @@ class Invoker(object):
                 return wrapper(func)
             else:
                 return wrapper
+
         return _wrapper

@@ -28,23 +28,44 @@ try:
 except Exception:  # pragma: no cover
     pass
 
-__all__ = ['service', 'Service', '__version__', '__version_info__',
-           'decorator', 'set_service', 'get_service', 'get_instance',
-           'amqp', 'amqp_publish',
-           'aws_sns_sqs', 'aws_sns_sqs_publish',
-           'http', 'http_error', 'http_static', 'websocket', 'ws', 'HttpResponse', 'HttpException',
-           'schedule', 'heartbeat', 'minutely', 'hourly', 'daily', 'monthly']
+__all__ = [
+    "service",
+    "Service",
+    "__version__",
+    "__version_info__",
+    "decorator",
+    "set_service",
+    "get_service",
+    "get_instance",
+    "amqp",
+    "amqp_publish",
+    "aws_sns_sqs",
+    "aws_sns_sqs_publish",
+    "http",
+    "http_error",
+    "http_static",
+    "websocket",
+    "ws",
+    "HttpResponse",
+    "HttpException",
+    "schedule",
+    "heartbeat",
+    "minutely",
+    "hourly",
+    "daily",
+    "monthly",
+]
 
-CLASS_ATTRIBUTE = 'TOMODACHI_SERVICE_CLASS'
+CLASS_ATTRIBUTE = "TOMODACHI_SERVICE_CLASS"
 _services = {}
 _current_service = {}
 
 
 def service(cls: Any) -> Any:
     setattr(cls, CLASS_ATTRIBUTE, True)
-    if not getattr(cls, 'log', None):
+    if not getattr(cls, "log", None):
         cls.log = tomodachi.helpers.logging.log
-    if not getattr(cls, 'log_setup', None):
+    if not getattr(cls, "log_setup", None):
         cls.log_setup = tomodachi.helpers.logging.log_setup
     return cls
 

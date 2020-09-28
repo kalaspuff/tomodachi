@@ -11,15 +11,10 @@ from tomodachi.transport.amqp import amqp, amqp_publish
 
 @tomodachi.service
 class AMQPService(tomodachi.Service):
-    name = 'test_amqp'
-    log_level = 'INFO'
+    name = "test_amqp"
+    log_level = "INFO"
     message_protocol = JsonBase
-    options = {
-        'amqp': {
-            'login': 'guest',
-            'password': 'guest'
-        }
-    }
+    options = {"amqp": {"login": "guest", "password": "guest"}}
     closer = asyncio.Future()  # type: Any
     test_topic_data_received = False
     test_topic_specified_queue_name_data_received = False
@@ -29,38 +24,42 @@ class AMQPService(tomodachi.Service):
     data_uuid = None
 
     def check_closer(self):
-        if self.test_topic_data_received and self.test_topic_specified_queue_name_data_received and self.test_topic_specified_queue_name_data_received:
+        if (
+            self.test_topic_data_received
+            and self.test_topic_specified_queue_name_data_received
+            and self.test_topic_specified_queue_name_data_received
+        ):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @amqp('test.topic')
+    @amqp("test.topic")
     async def test(self, data: Any, metadata: Any, service: Any) -> None:
         if data == self.data_uuid:
             self.test_topic_data_received = True
-            self.test_topic_metadata_topic = metadata.get('topic')
-            self.test_topic_service_uuid = service.get('uuid')
+            self.test_topic_metadata_topic = metadata.get("topic")
+            self.test_topic_service_uuid = service.get("uuid")
 
             self.check_closer()
 
-    @amqp('test.topic', queue_name='test-queue')
+    @amqp("test.topic", queue_name="test-queue")
     async def test_specified_queue_name(self, data: Any, metadata: Any, service: Any) -> None:
         if data == self.data_uuid:
             if self.test_topic_specified_queue_name_data_received:
-                raise Exception('test_topic_specified_queue_name_data_received already set')
+                raise Exception("test_topic_specified_queue_name_data_received already set")
             self.test_topic_specified_queue_name_data_received = True
 
             self.check_closer()
 
-    @amqp('test.topic', queue_name='test-queue')
+    @amqp("test.topic", queue_name="test-queue")
     async def test_specified_queue_name_again(self, data: Any, metadata: Any, service: Any) -> None:
         if data == self.data_uuid:
             if self.test_topic_specified_queue_name_data_received:
-                raise Exception('test_topic_specified_queue_name_data_received already set')
+                raise Exception("test_topic_specified_queue_name_data_received already set")
             self.test_topic_specified_queue_name_data_received = True
 
             self.check_closer()
 
-    @amqp('test.#')
+    @amqp("test.#")
     async def wildcard_topic(self, metadata: Any, data: Any) -> None:
         if data == self.data_uuid:
             self.wildcard_topic_data_received = True
@@ -82,10 +81,11 @@ class AMQPService(tomodachi.Service):
             if not task.done():
                 task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
+
         asyncio.ensure_future(_async())
 
         self.data_uuid = str(uuid.uuid4())
-        await publish(self.data_uuid, 'test.topic')
+        await publish(self.data_uuid, "test.topic")
 
     def stop_service(self) -> None:
         if not self.closer.done():

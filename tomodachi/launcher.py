@@ -22,6 +22,7 @@ from tomodachi.importer import ServiceImporter
 try:
     CancelledError = asyncio.exceptions.CancelledError  # type: ignore
 except Exception as e:
+
     class CancelledError(Exception):  # type: ignore
         pass
 
@@ -33,7 +34,12 @@ class ServiceLauncher(object):
     services = set()  # type: set
 
     @classmethod
-    def run_until_complete(cls, service_files: Union[List, set], configuration: Optional[Dict] = None, watcher: Optional[tomodachi.watcher.Watcher] = None) -> None:
+    def run_until_complete(
+        cls,
+        service_files: Union[List, set],
+        configuration: Optional[Dict] = None,
+        watcher: Optional[tomodachi.watcher.Watcher] = None,
+    ) -> None:
         def stop_services() -> None:
             asyncio.ensure_future(_stop_services())
 
@@ -51,19 +57,19 @@ class ServiceLauncher(object):
                 await cls._stopped_waiter
 
         def sigintHandler(*args: Any) -> None:
-            sys.stdout.write('\b\b\r')
+            sys.stdout.write("\b\b\r")
             sys.stdout.flush()
-            logging.getLogger('system').warning('Received <ctrl+c> interrupt [SIGINT]')
+            logging.getLogger("system").warning("Received <ctrl+c> interrupt [SIGINT]")
             cls.restart_services = False
 
         def sigtermHandler(*args: Any) -> None:
-            logging.getLogger('system').warning('Received termination signal [SIGTERM]')
+            logging.getLogger("system").warning("Received termination signal [SIGTERM]")
             cls.restart_services = False
 
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_event_loop()
 
-        for signame in ('SIGINT', 'SIGTERM'):
+        for signame in ("SIGINT", "SIGTERM"):
             loop.add_signal_handler(getattr(signal, signame), stop_services)
 
         signal.siginterrupt(signal.SIGTERM, False)
@@ -72,6 +78,7 @@ class ServiceLauncher(object):
         signal.signal(signal.SIGTERM, sigtermHandler)
 
         if watcher:
+
             async def _watcher_restart(updated_files: Union[List, set]) -> None:
                 cls.restart_services = True
 
@@ -79,77 +86,94 @@ class ServiceLauncher(object):
                     try:
                         ServiceImporter.import_service_file(file)
                     except (SyntaxError, IndentationError) as e:
-                        logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
-                        logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
+                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                        logging.getLogger("watcher.restart").warning("Service cannot restart due to errors")
                         cls.restart_services = False
                         return
 
                 pre_import_current_modules = [m for m in sys.modules.keys()]
                 cwd = os.getcwd()
                 for file in updated_files:
-                    if file.lower().endswith('.py'):
-                        module_name = file[:-3].replace('/', '.')
-                        module_name_full_path = '{}/{}'.format(os.path.realpath(cwd), file)[:-3].replace('/', '.')
+                    if file.lower().endswith(".py"):
+                        module_name = file[:-3].replace("/", ".")
+                        module_name_full_path = "{}/{}".format(os.path.realpath(cwd), file)[:-3].replace("/", ".")
                         try:
                             for m in pre_import_current_modules:
                                 if m == module_name or (len(m) > len(file) and module_name_full_path.endswith(m)):
                                     ServiceImporter.import_module(file)
                         except (SyntaxError, IndentationError) as e:
-                            logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
-                            logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
+                            logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                            logging.getLogger("watcher.restart").warning("Service cannot restart due to errors")
                             cls.restart_services = False
                             return
 
-                logging.getLogger('watcher.restart').warning('Restarting services')
+                logging.getLogger("watcher.restart").warning("Restarting services")
                 stop_services()
 
             watcher_future = loop.run_until_complete(watcher.watch(loop=loop, callback_func=_watcher_restart))
 
         cls.restart_services = True
         init_modules = [m for m in sys.modules.keys()]
-        safe_modules = ['typing', 'importlib.util', 'time', 'logging', 're', 'traceback', 'types', 'inspect', 'functools']
+        safe_modules = [
+            "typing",
+            "importlib.util",
+            "time",
+            "logging",
+            "re",
+            "traceback",
+            "types",
+            "inspect",
+            "functools",
+        ]
 
         restarting = False
         while cls.restart_services:
             if watcher:
-                print('---')
-                print('Starting services...')
+                print("---")
+                print("Starting services...")
                 print()
-                print('tomodachi/{}'.format(tomodachi.__version__))
-                print(datetime.datetime.now().strftime('%B %d, %Y - %H:%M:%S,%f'))
-                print('Quit services with <ctrl+c>.')
+                print("tomodachi/{}".format(tomodachi.__version__))
+                print(datetime.datetime.now().strftime("%B %d, %Y - %H:%M:%S,%f"))
+                print("Quit services with <ctrl+c>.")
 
             cls._close_waiter = asyncio.Future()
             cls._stopped_waiter = asyncio.Future()
             cls.restart_services = False
 
             try:
-                cls.services = set([ServiceContainer(ServiceImporter.import_service_file(file), configuration) for file in service_files])
-                result = loop.run_until_complete(asyncio.wait([asyncio.ensure_future(service.run_until_complete()) for service in cls.services]))
+                cls.services = set(
+                    [
+                        ServiceContainer(ServiceImporter.import_service_file(file), configuration)
+                        for file in service_files
+                    ]
+                )
+                result = loop.run_until_complete(
+                    asyncio.wait([asyncio.ensure_future(service.run_until_complete()) for service in cls.services])
+                )
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
                     raise cast(Exception, exception[0])
             except tomodachi.importer.ServicePackageError as e:
                 pass
             except Exception as e:
-                logging.getLogger('exception').exception('Uncaught exception: {}'.format(str(e)))
+                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                 if restarting:
-                    logging.getLogger('watcher.restart').warning('Service cannot restart due to errors')
-                    logging.getLogger('watcher.restart').warning('Trying again in 1.5 seconds')
+                    logging.getLogger("watcher.restart").warning("Service cannot restart due to errors")
+                    logging.getLogger("watcher.restart").warning("Trying again in 1.5 seconds")
                     loop.run_until_complete(asyncio.wait([asyncio.sleep(1.5)]))
                     if cls._close_waiter and not cls._close_waiter.done():
                         cls.restart_services = True
                     else:
-                        for signame in ('SIGINT', 'SIGTERM'):
+                        for signame in ("SIGINT", "SIGTERM"):
                             loop.remove_signal_handler(getattr(signal, signame))
                 else:
-                    for signame in ('SIGINT', 'SIGTERM'):
+                    for signame in ("SIGINT", "SIGTERM"):
                         loop.remove_signal_handler(getattr(signal, signame))
 
             current_modules = [m for m in sys.modules.keys()]
             for m in current_modules:
                 if m not in init_modules and m not in safe_modules:
-                    del(sys.modules[m])
+                    del sys.modules[m]
 
             importlib.reload(tomodachi.container)
             importlib.reload(tomodachi.invoker)

@@ -5,11 +5,11 @@ from run_test_service_helper import start_service
 
 
 def test_schedule_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service('tests/services/schedule_service.py', monkeypatch)
+    services, future = start_service("tests/services/schedule_service.py", monkeypatch)
 
     assert services is not None
     assert len(services) == 1
-    instance = services.get('test_schedule')
+    instance = services.get("test_schedule")
     assert instance is not None
 
     assert instance.uuid is not None

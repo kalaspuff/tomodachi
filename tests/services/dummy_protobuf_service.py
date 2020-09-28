@@ -5,20 +5,16 @@ from tomodachi.protocol.protobuf_base import ProtobufBase
 
 @tomodachi.service
 class DummyService(tomodachi.Service):
-    name = 'test_dummy_protobuf'
+    name = "test_dummy_protobuf"
     discovery = [DummyRegistry]
     message_protocol = ProtobufBase
     options = {
-        'aws_sns_sqs': {
-            'region_name': 'eu-west-1',
-            'aws_access_key_id': 'XXXXXXXXX',
-            'aws_secret_access_key': 'XXXXXXXXX'
+        "aws_sns_sqs": {
+            "region_name": "eu-west-1",
+            "aws_access_key_id": "XXXXXXXXX",
+            "aws_secret_access_key": "XXXXXXXXX",
         },
-        'amqp': {
-            'port': 54321,
-            'login': 'invalid',
-            'password': 'invalid'
-        }
+        "amqp": {"port": 54321, "login": "invalid", "password": "invalid"},
     }
 
     start = False

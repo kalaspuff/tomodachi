@@ -5,7 +5,7 @@ from typing import Any, Awaitable, Callable  # noqa
 
 class DecorationClass(object):
     def __getattribute__(self, name: str) -> Any:
-        if name == '__class__':
+        if name == "__class__":
             return types.FunctionType
         return super(DecorationClass, self).__getattribute__(name)
 
@@ -40,7 +40,7 @@ class DecorationClass(object):
         return return_value
 
     def __repr__(self) -> str:
-        return '<function {} at {}>'.format(self.__qualname__, hex(id(self)))
+        return "<function {} at {}>".format(self.__qualname__, hex(id(self)))
 
 
 def decorator(include_function: Any = False) -> Callable:
@@ -54,7 +54,9 @@ def decorator(include_function: Any = False) -> Callable:
             class_func = DecorationClass(func, decorator_func, include_function)
             wraps(func)(class_func)
             return class_func
+
         return _wrapper
+
     if fn:
         return _decorator(fn)
     return _decorator

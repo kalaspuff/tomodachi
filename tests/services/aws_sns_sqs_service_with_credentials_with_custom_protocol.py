@@ -14,10 +14,7 @@ data_uuid = str(uuid.uuid4())
 class CustomProtocol(object):
     @classmethod
     async def build_message(cls, service: Any, topic: str, data: Any) -> str:
-        message = {
-            'protocol': 'custom',
-            'data': data
-        }
+        message = {"protocol": "custom", "data": data}
         return json.dumps(message)
 
     @classmethod
@@ -28,20 +25,20 @@ class CustomProtocol(object):
 
 @tomodachi.service
 class AWSSNSSQSService(tomodachi.Service):
-    name = 'test_aws_sns_sqs'
-    log_level = 'INFO'
+    name = "test_aws_sns_sqs"
+    log_level = "INFO"
     options = {
-        'aws': {
-            'region_name': os.environ.get('TOMODACHI_TEST_AWS_REGION'),
-            'aws_access_key_id': os.environ.get('TOMODACHI_TEST_AWS_ACCESS_KEY_ID'),
-            'aws_secret_access_key': os.environ.get('TOMODACHI_TEST_AWS_ACCESS_SECRET'),
+        "aws": {
+            "region_name": os.environ.get("TOMODACHI_TEST_AWS_REGION"),
+            "aws_access_key_id": os.environ.get("TOMODACHI_TEST_AWS_ACCESS_KEY_ID"),
+            "aws_secret_access_key": os.environ.get("TOMODACHI_TEST_AWS_ACCESS_SECRET"),
         },
-        'aws_sns_sqs': {
-            'queue_name_prefix': os.environ.get('TOMODACHI_TEST_SQS_QUEUE_PREFIX'),
-            'topic_prefix': os.environ.get('TOMODACHI_TEST_SNS_TOPIC_PREFIX')
-        }
+        "aws_sns_sqs": {
+            "queue_name_prefix": os.environ.get("TOMODACHI_TEST_SQS_QUEUE_PREFIX"),
+            "topic_prefix": os.environ.get("TOMODACHI_TEST_SNS_TOPIC_PREFIX"),
+        },
     }
-    uuid = os.environ.get('TOMODACHI_TEST_SERVICE_UUID')
+    uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID")
     closer = asyncio.Future()  # type: Any
     test_topic_data_received = False
     test_topic_data = None
@@ -52,9 +49,9 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @aws_sns_sqs('test-custom-topic', message_protocol=CustomProtocol)
+    @aws_sns_sqs("test-custom-topic", message_protocol=CustomProtocol)
     async def test(self, data: Any, protocol: Any, default_value: bool = True) -> None:
-        if data == self.data_uuid and protocol == 'custom':
+        if data == self.data_uuid and protocol == "custom":
             self.test_topic_data_received = default_value
             self.test_topic_data = data
 
@@ -75,13 +72,14 @@ class AWSSNSSQSService(tomodachi.Service):
             if not task.done():
                 task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
+
         asyncio.ensure_future(_async())
 
         self.data_uuid = str(uuid.uuid4())
         for _ in range(30):
             if self.test_topic_data_received:
                 break
-            await publish(self.data_uuid, 'test-custom-topic')
+            await publish(self.data_uuid, "test-custom-topic")
             await asyncio.sleep(0.1)
 
     def stop_service(self) -> None:

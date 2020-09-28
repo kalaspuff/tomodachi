@@ -8,11 +8,11 @@ from tomodachi.watcher import Watcher
 
 def test_watcher_auto_root() -> None:
     watcher = Watcher()
-    assert watcher.root == [os.path.realpath(sys.argv[0].rsplit('/', 1)[0])]
+    assert watcher.root == [os.path.realpath(sys.argv[0].rsplit("/", 1)[0])]
 
 
 def test_watcher_empty_directory() -> None:
-    root_path = '{}/tests/watcher_root/empty'.format(os.path.realpath(os.getcwd()))
+    root_path = "{}/tests/watcher_root/empty".format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
     assert isinstance(watcher.watched_files, dict)
@@ -20,7 +20,7 @@ def test_watcher_empty_directory() -> None:
 
 
 def test_watcher_default_ignored_directory() -> None:
-    root_path = '{}/tests/watcher_root/__tmp__'.format(os.path.realpath(os.getcwd()))
+    root_path = "{}/tests/watcher_root/__tmp__".format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
     assert isinstance(watcher.watched_files, dict)
@@ -28,20 +28,22 @@ def test_watcher_default_ignored_directory() -> None:
 
 
 def test_watcher_configurable_ignored_directory() -> None:
-    root_path = '{}/tests/watcher_root/configurable_ignored'.format(os.path.realpath(os.getcwd()))
+    root_path = "{}/tests/watcher_root/configurable_ignored".format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
     assert isinstance(watcher.watched_files, dict)
     assert len(watcher.watched_files) == 1
 
-    watcher = Watcher(root=[root_path], configuration={'options': {'watcher': {'ignored_dirs': ['configurable_ignored']}}})
+    watcher = Watcher(
+        root=[root_path], configuration={"options": {"watcher": {"ignored_dirs": ["configurable_ignored"]}}}
+    )
     assert len(watcher.root) == 1
     assert isinstance(watcher.watched_files, dict)
     assert len(watcher.watched_files) == 0
 
 
 def test_watcher_callback(loop: Any) -> None:
-    root_path = '{}/tests/watcher_root'.format(os.path.realpath(os.getcwd()))
+    root_path = "{}/tests/watcher_root".format(os.path.realpath(os.getcwd()))
     watcher = Watcher(root=[root_path])
     assert len(watcher.root) == 1
     assert isinstance(watcher.watched_files, dict)
@@ -50,19 +52,18 @@ def test_watcher_callback(loop: Any) -> None:
     result = watcher.update_watched_files()
     assert result == {}
 
-    watcher.watched_files = {'_test': 0}
-    watcher.watched_files_crc = {'_test': ''}
+    watcher.watched_files = {"_test": 0}
+    watcher.watched_files_crc = {"_test": ""}
     result = watcher.update_watched_files(reindex=True)
-    assert len(result.get('added', 0)) == 2
-    assert len(result.get('removed', 0)) == 1
-    assert len(result.get('updated', 0)) == 0
+    assert len(result.get("added", 0)) == 2
+    assert len(result.get("removed", 0)) == 1
+    assert len(result.get("updated", 0)) == 0
 
-    class Test():
+    class Test:
         callbacks_run = {}  # type: Dict[int, bool]
 
         @classmethod
         async def _async(cls) -> None:
-
             async def cb1(updated_files: Union[List, set]) -> None:
                 cls.callbacks_run[1] = True
 
@@ -73,8 +74,8 @@ def test_watcher_callback(loop: Any) -> None:
             await asyncio.sleep(1.0)
             task.cancel()
 
-            watcher.watched_files = {'_test': 0}
-            watcher.watched_files_crc = {'_test': ''}
+            watcher.watched_files = {"_test": 0}
+            watcher.watched_files_crc = {"_test": ""}
             task = await watcher.watch(callback_func=cb2)
             await asyncio.sleep(1.0)
             task.cancel()
