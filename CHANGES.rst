@@ -10,6 +10,10 @@ Changes
 
 - Added support for ``aiohttp`` 3.6.x.
 
+- Updated identifiers for support of Python 3.9.
+
+- Refactoring and updates to code formatting, now using Black code style.
+
 
 0.18.0 (2020-09-15)
 -------------------
