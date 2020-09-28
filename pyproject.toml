@@ -7,5 +7,5 @@ exclude = '\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|b
 [tool.isort]
 profile = "black"
 line_length = 120
-known_first_party = "tomodachi"
+known_first_party = "tomodachi,run_test_service_helper,proto_build"
 skip = ".mypy_cache,__pycache__"
