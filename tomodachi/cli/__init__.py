@@ -114,8 +114,8 @@ class CLI:
 
         if not errors:
             try:
-                import tomodachi.invoker
                 import tomodachi.helpers.logging
+                import tomodachi.invoker
                 import tomodachi.transport.amqp
                 import tomodachi.transport.aws_sns_sqs
                 import tomodachi.transport.http
