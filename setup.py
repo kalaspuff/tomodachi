@@ -35,6 +35,7 @@ classifiers = [
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
     'License :: OSI Approved :: MIT License',
     'Development Status :: 4 - Beta',
     'Topic :: Software Development :: Libraries :: Application Frameworks',
