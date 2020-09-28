@@ -11,29 +11,23 @@ from tomodachi.transport.http import http
 
 @tomodachi.service
 class HttpService(tomodachi.Service):
-    name = 'test_http'
-    options = {
-        'http': {
-            'port': 53252,
-            'access_log': True,
-            'real_ip_from': '127.0.0.1'
-        }
-    }
+    name = "test_http"
+    options = {"http": {"port": 53252, "access_log": True, "real_ip_from": "127.0.0.1"}}
     uuid = None
     closer = asyncio.Future()  # type: Any
     function_order = []
 
-    @http('GET', r'/?')
+    @http("GET", r"/?")
     async def index(self, request: web.Request) -> str:
-        self.function_order.append('index')
-        return 'response'
+        self.function_order.append("index")
+        return "response"
 
     async def _start_service(self) -> None:
-        self.function_order.append('_start_service')
+        self.function_order.append("_start_service")
         await asyncio.sleep(4)
 
     async def _started_service(self) -> None:
-        self.function_order.append('_started_service')
+        self.function_order.append("_started_service")
 
         async def _async() -> None:
             async def sleep_and_kill() -> None:
@@ -46,12 +40,13 @@ class HttpService(tomodachi.Service):
             if not task.done():
                 task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
+
         asyncio.ensure_future(_async())
 
     def stop_service(self) -> None:
-        self.function_order.append('stop_service')
+        self.function_order.append("stop_service")
         if not self.closer.done():
             self.closer.set_result(None)
 
     async def _stop_service(self) -> None:
-        self.function_order.append('_stop_service')
+        self.function_order.append("_stop_service")

@@ -7,20 +7,16 @@ from .code import test_func
 
 @tomodachi.service
 class DummyService(tomodachi.Service):
-    name = 'test_dummy'
+    name = "test_dummy"
     discovery = [DummyRegistry]
     message_protocol = JsonBase
     options = {
-        'aws_sns_sqs': {
-            'region_name': 'eu-west-1',
-            'aws_access_key_id': 'XXXXXXXXX',
-            'aws_secret_access_key': 'XXXXXXXXX'
+        "aws_sns_sqs": {
+            "region_name": "eu-west-1",
+            "aws_access_key_id": "XXXXXXXXX",
+            "aws_secret_access_key": "XXXXXXXXX",
         },
-        'amqp': {
-            'port': 54321,
-            'login': 'invalid',
-            'password': 'invalid'
-        }
+        "amqp": {"port": 54321, "login": "invalid", "password": "invalid"},
     }
 
     start = False

@@ -12,14 +12,9 @@ data_uuid = str(uuid.uuid4())
 
 @tomodachi.service
 class AWSSNSSQSService(tomodachi.Service):
-    name = 'test_amqp'
-    log_level = 'INFO'
-    options = {
-        'amqp': {
-            'login': 'guest',
-            'password': 'guest'
-        }
-    }
+    name = "test_amqp"
+    log_level = "INFO"
+    options = {"amqp": {"login": "guest", "password": "guest"}}
     closer = asyncio.Future()  # type: Any
     test_topic_data_received = False
     test_topic_data = None
@@ -30,7 +25,7 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @amqp('test.raw.topic')
+    @amqp("test.raw.topic")
     async def test(self, value: Any, default_value: bool = True) -> None:
         if value == self.data_uuid:
             self.test_topic_data_received = default_value
@@ -53,10 +48,11 @@ class AWSSNSSQSService(tomodachi.Service):
             if not task.done():
                 task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
+
         asyncio.ensure_future(_async())
 
         self.data_uuid = str(uuid.uuid4())
-        await publish(self.data_uuid, 'test.raw.topic')
+        await publish(self.data_uuid, "test.raw.topic")
 
     def stop_service(self) -> None:
         if not self.closer.done():

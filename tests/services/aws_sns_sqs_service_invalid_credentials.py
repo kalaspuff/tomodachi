@@ -11,24 +11,24 @@ from tomodachi.transport.aws_sns_sqs import aws_sns_sqs
 
 @tomodachi.service
 class AWSSNSSQSService(tomodachi.Service):
-    name = 'test_aws_sns_sqs'
-    log_level = 'INFO'
+    name = "test_aws_sns_sqs"
+    log_level = "INFO"
     discovery = [AWSSNSRegistration]
     message_protocol = JsonBase
     options = {
-        'aws_sns_sqs': {
-            'region_name': 'eu-west-1',
-            'aws_access_key_id': 'XXXXXXXXX',
-            'aws_secret_access_key': 'XXXXXXXXX'
+        "aws_sns_sqs": {
+            "region_name": "eu-west-1",
+            "aws_access_key_id": "XXXXXXXXX",
+            "aws_secret_access_key": "XXXXXXXXX",
         }
     }
     closer = asyncio.Future()  # type: Any
 
-    @aws_sns_sqs('test-topic', ('data',))
+    @aws_sns_sqs("test-topic", ("data",))
     async def test(self, data: Any) -> None:
         pass
 
-    @aws_sns_sqs('test-topic#', ('metadata', 'data'))
+    @aws_sns_sqs("test-topic#", ("metadata", "data"))
     async def faked_wildcard_topic(self, metadata: Any, data: Any) -> None:
         pass
 
@@ -44,6 +44,7 @@ class AWSSNSSQSService(tomodachi.Service):
             if not task.done():
                 task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
+
         asyncio.ensure_future(_async())
 
     def stop_service(self) -> None:

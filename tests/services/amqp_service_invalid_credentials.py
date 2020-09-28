@@ -10,23 +10,17 @@ from tomodachi.transport.amqp import amqp
 
 @tomodachi.service
 class AMQPService(tomodachi.Service):
-    name = 'test_amqp'
-    log_level = 'INFO'
+    name = "test_amqp"
+    log_level = "INFO"
     message_protocol = JsonBase
-    options = {
-        'amqp': {
-            'port': 54321,
-            'login': 'invalid',
-            'password': 'invalid'
-        }
-    }
+    options = {"amqp": {"port": 54321, "login": "invalid", "password": "invalid"}}
     closer = asyncio.Future()  # type: Any
 
-    @amqp('test.topic', ('data',))
+    @amqp("test.topic", ("data",))
     async def test(self, data: Any) -> None:
         pass
 
-    @amqp('test.#', ('metadata', 'data'))
+    @amqp("test.#", ("metadata", "data"))
     async def wildcard_topic(self, metadata: Any, data: Any) -> None:
         pass
 
@@ -42,6 +36,7 @@ class AMQPService(tomodachi.Service):
             if not task.done():
                 task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
+
         asyncio.ensure_future(_async())
 
     def stop_service(self) -> None:

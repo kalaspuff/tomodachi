@@ -32,44 +32,38 @@ def count_invocations_4(self: Any, *args: Any, **kwargs: Any) -> None:
 @tomodachi.decorator
 def count_invocations_0(self: Any, *args: Any, **kwargs: Any) -> str:
     self.invocation_count += 1
-    return '0'
+    return "0"
 
 
 @tomodachi.service
 class HttpService(tomodachi.Service):
-    name = 'test_http'
-    options = {
-        'http': {
-            'port': None,
-            'access_log': True,
-            'real_ip_from': '127.0.0.1'
-        }
-    }
+    name = "test_http"
+    options = {"http": {"port": None, "access_log": True, "real_ip_from": "127.0.0.1"}}
     invocation_count = 0
     uuid = None
     closer = asyncio.Future()  # type: Any
 
-    @http('GET', r'/count/1/?')
+    @http("GET", r"/count/1/?")
     @count_invocations_1
     async def count_1(self, request: web.Request) -> str:
         return str(self.invocation_count)
 
-    @http('GET', r'/count/2/?')
+    @http("GET", r"/count/2/?")
     @count_invocations_2
     async def count_2(self, request: web.Request) -> str:
         return str(self.invocation_count)
 
-    @http('GET', r'/count/3/?')
+    @http("GET", r"/count/3/?")
     @count_invocations_3
     async def count_3(self, request: web.Request) -> str:
         return str(self.invocation_count)
 
-    @http('GET', r'/count/4/?')
+    @http("GET", r"/count/4/?")
     @count_invocations_4
     def count_4(self, request: web.Request) -> str:
         return str(self.invocation_count)
 
-    @http('GET', r'/count/0/?')
+    @http("GET", r"/count/0/?")
     @count_invocations_0
     async def count_0(self, request: web.Request) -> str:
         return str(self.invocation_count)
@@ -86,6 +80,7 @@ class HttpService(tomodachi.Service):
             if not task.done():
                 task.cancel()
             os.kill(os.getpid(), signal.SIGINT)
+
         asyncio.ensure_future(_async())
 
     def stop_service(self) -> None:

@@ -12,7 +12,7 @@ from tomodachi.importer import ServiceImporter
 
 def start_service(filename: str, monkeypatch: Any = None, wait: bool = True) -> Tuple:
     if monkeypatch:
-        monkeypatch.setattr(logging.root, 'handlers', [])
+        monkeypatch.setattr(logging.root, "handlers", [])
 
     loop = asyncio.get_event_loop()  # type: Any
     service = None  # type: Any
@@ -34,7 +34,7 @@ def start_service(filename: str, monkeypatch: Any = None, wait: bool = True) -> 
         if not service.started_waiter.done():
             service.started_waiter.set_result([])
 
-    for signame in ('SIGINT', 'SIGTERM'):
+    for signame in ("SIGINT", "SIGTERM"):
         loop.add_signal_handler(getattr(signal, signame), functools.partial(stop_services, loop))
 
     try:
@@ -55,7 +55,7 @@ def start_service(filename: str, monkeypatch: Any = None, wait: bool = True) -> 
         if wait:
             loop.run_until_complete(asyncio.wait([service.started_waiter]))
     except Exception:
-        for signame in ('SIGINT', 'SIGTERM'):
+        for signame in ("SIGINT", "SIGTERM"):
             loop.remove_signal_handler(getattr(signal, signame))
         loop = asyncio.get_event_loop()
         if service:
@@ -67,6 +67,7 @@ def start_service(filename: str, monkeypatch: Any = None, wait: bool = True) -> 
         for service_name, instance, log_level in service.started_waiter.result():
             services[service_name] = instance
     else:
+
         def get_services() -> Dict:
             loop.run_until_complete(asyncio.wait([service.started_waiter]))
             return {service_name: instance for service_name, instance, log_level in service.started_waiter.result()}
