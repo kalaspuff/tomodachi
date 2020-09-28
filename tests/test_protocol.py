@@ -122,7 +122,7 @@ def test_protobuf_base_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) 
         assert type(result.get('data')) is not Person
         assert type(result.get('data')) is bytes
         assert result.get('data') != data
-        assert result.get('data') == b'\n\x0212"\x08John Doe'
+        assert result.get('data') == b'\n\x0212\x12\x08John Doe'
 
     loop.run_until_complete(_async())
 

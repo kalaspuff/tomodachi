@@ -1,2 +1,11 @@
 [tool.black]
 line-length = 120
+target_version = ["py36", "py37", "py38", "py39"]
+include = '\.pyi?$'
+exclude = '\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/'
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = "tomodachi"
+skip = ".mypy_cache,__pycache__"

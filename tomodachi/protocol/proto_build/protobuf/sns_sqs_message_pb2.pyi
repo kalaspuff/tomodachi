@@ -12,7 +12,6 @@ from google.protobuf.message import (
 from typing import (
     Optional as typing___Optional,
     Text as typing___Text,
-    Union as typing___Union,
 )
 
 from typing_extensions import (
@@ -24,9 +23,6 @@ builtin___bool = bool
 builtin___bytes = bytes
 builtin___float = float
 builtin___int = int
-if sys.version_info < (3,):
-    builtin___buffer = buffer
-    builtin___unicode = unicode
 
 
 DESCRIPTOR: google___protobuf___descriptor___FileDescriptor = ...
@@ -41,12 +37,6 @@ class Service(google___protobuf___message___Message):
         name : typing___Optional[typing___Text] = None,
         uuid : typing___Optional[typing___Text] = None,
         ) -> None: ...
-    if sys.version_info >= (3,):
-        @classmethod
-        def FromString(cls, s: builtin___bytes) -> Service: ...
-    else:
-        @classmethod
-        def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> Service: ...
     def ClearField(self, field_name: typing_extensions___Literal[u"name",b"name",u"uuid",b"uuid"]) -> None: ...
 type___Service = Service
 
@@ -66,12 +56,6 @@ class Metadata(google___protobuf___message___Message):
         topic : typing___Optional[typing___Text] = None,
         data_encoding : typing___Optional[typing___Text] = None,
         ) -> None: ...
-    if sys.version_info >= (3,):
-        @classmethod
-        def FromString(cls, s: builtin___bytes) -> Metadata: ...
-    else:
-        @classmethod
-        def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> Metadata: ...
     def ClearField(self, field_name: typing_extensions___Literal[u"data_encoding",b"data_encoding",u"message_uuid",b"message_uuid",u"protocol_version",b"protocol_version",u"timestamp",b"timestamp",u"topic",b"topic"]) -> None: ...
 type___Metadata = Metadata
 
@@ -91,12 +75,6 @@ class SNSSQSMessage(google___protobuf___message___Message):
         metadata : typing___Optional[type___Metadata] = None,
         data : typing___Optional[builtin___bytes] = None,
         ) -> None: ...
-    if sys.version_info >= (3,):
-        @classmethod
-        def FromString(cls, s: builtin___bytes) -> SNSSQSMessage: ...
-    else:
-        @classmethod
-        def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> SNSSQSMessage: ...
     def HasField(self, field_name: typing_extensions___Literal[u"metadata",b"metadata",u"service",b"service"]) -> builtin___bool: ...
     def ClearField(self, field_name: typing_extensions___Literal[u"data",b"data",u"metadata",b"metadata",u"service",b"service"]) -> None: ...
 type___SNSSQSMessage = SNSSQSMessage
