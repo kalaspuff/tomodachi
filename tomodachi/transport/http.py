@@ -298,11 +298,11 @@ class HttpTransport(Invoker):
                     kwargs[k] = v
 
             @functools.wraps(func)
-            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
+            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (
                     (await routine) if isinstance(routine, Awaitable) else routine
-                )  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
+                )  # type: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
                 return return_value
 
             if not context.get("_http_accept_new_requests"):
@@ -357,7 +357,7 @@ class HttpTransport(Invoker):
         if not path.endswith("/"):
             path = "{}/".format(path)
 
-        async def handler(request: web.Request) -> web.Response:
+        async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             result = compiled_pattern.match(request.path)
             filename = result.groupdict()["filename"] if result else ""
             filepath = "{}{}".format(path, filename)
@@ -374,7 +374,7 @@ class HttpTransport(Invoker):
 
                 response = FileResponse(
                     path=filepath, chunk_size=256 * 1024  # type: ignore
-                )  # type: web.Response
+                )  # type: Union[web.Response, web.FileResponse]
                 return response
             except PermissionError as e:
                 raise web.HTTPForbidden()  # type: ignore
@@ -402,7 +402,7 @@ class HttpTransport(Invoker):
             except IndexError:
                 pass
 
-        async def handler(request: web.Request) -> web.Response:
+        async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             request._cache["error_status_code"] = status_code
 
             values = inspect.getfullargspec(func)
@@ -413,7 +413,7 @@ class HttpTransport(Invoker):
             )
 
             @functools.wraps(func)
-            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, Response]:
+            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (
                     (await routine) if isinstance(routine, Awaitable) else routine
@@ -642,8 +642,8 @@ class HttpTransport(Invoker):
             logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
             @web.middleware
-            async def middleware(request: web.Request, handler: Callable) -> web.Response:
-                async def func() -> web.Response:
+            async def middleware(request: web.Request, handler: Callable) -> Union[web.Response, web.FileResponse]:
+                async def func() -> Union[web.Response, web.FileResponse]:
                     request_ip = RequestHandler.get_request_ip(request, context)
                     if request.headers.get("Authorization"):
                         try:
@@ -655,7 +655,7 @@ class HttpTransport(Invoker):
                         timer = time.time()
                     response = web.Response(
                         status=503, headers={}  # type: ignore
-                    )  # type: web.Response
+                    )  # type: Union[web.Response, web.FileResponse]
                     try:
                         response = await handler(request)
                         response.headers[hdrs.SERVER] = server_header or ""
@@ -682,7 +682,7 @@ class HttpTransport(Invoker):
                         if not request.transport:
                             response = web.Response(
                                 status=499, headers={}  # type: ignore
-                            )  # type: web.Response
+                            )
                             response._eof_sent = True
 
                         if access_log:
@@ -862,13 +862,13 @@ class HttpTransport(Invoker):
 
 
 async def resolve_response(
-    value: Union[str, bytes, Dict, List, Tuple, web.Response, Response],
+    value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response],
     request: Optional[web.Request] = None,
     context: Dict = None,
     status_code: Optional[Union[str, int]] = None,
     default_content_type: Optional[str] = None,
     default_charset: Optional[str] = None,
-) -> web.Response:
+) -> Union[web.Response, web.FileResponse]:
     if not context:
         context = {}
     if isinstance(value, Response):
@@ -914,7 +914,7 @@ async def resolve_response(
 
 
 async def get_http_response_status(
-    value: Union[str, bytes, Dict, List, Tuple, web.Response, Response, Exception],
+    value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response, Exception],
     request: Optional[web.Request] = None,
     verify_transport: bool = True,
 ) -> Optional[int]:
