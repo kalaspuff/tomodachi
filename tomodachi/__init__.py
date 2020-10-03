@@ -1,10 +1,22 @@
 import inspect
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 
 try:
     import tomodachi.helpers.logging
+    import tomodachi.helpers.execution_context
+    from tomodachi.helpers.execution_context import (
+        set_service,
+        unset_service,
+        clear_services,
+        get_service,
+        get_instance,
+        set_execution_context,
+        get_execution_context,
+        increase_execution_context_value,
+        decrease_execution_context_value
+    )
     from tomodachi.invoker import decorator
 except Exception:  # pragma: no cover
     pass
@@ -35,6 +47,10 @@ __all__ = [
     "__version_info__",
     "decorator",
     "set_service",
+    "unset_service",
+    "clear_services",
+    "set_execution_context",
+    "get_execution_context",
     "get_service",
     "get_instance",
     "amqp",
@@ -57,8 +73,6 @@ __all__ = [
 ]
 
 CLASS_ATTRIBUTE = "TOMODACHI_SERVICE_CLASS"
-_services = {}
-_current_service = {}
 
 
 def service(cls: Any) -> Any:
@@ -74,25 +88,3 @@ class Service(object):
     TOMODACHI_SERVICE_CLASS = True
     log = tomodachi.helpers.logging.log
     log_setup = tomodachi.helpers.logging.log_setup
-
-
-def set_service(name: str, instance: Any) -> None:
-    _services[name] = instance
-    _current_service[0] = instance
-
-
-def get_service(name: Optional[str] = None) -> Any:
-    if name is None:
-        if _current_service and len(_current_service):
-            return _current_service[0]
-
-        for k, v in _services.items():
-            name = k
-            break
-
-    return _services.get(name)
-
-
-def get_instance(name: Optional[str] = None) -> Any:
-    # alias for tomodachi.get_service()
-    return get_service(name)

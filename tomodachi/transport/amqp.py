@@ -11,6 +11,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Union
 import aioamqp
 
 from tomodachi.helpers.dict import merge_dicts
+from tomodachi.helpers.execution_context import decrease_execution_context_value, increase_execution_context_value, set_execution_context
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
@@ -295,9 +296,13 @@ class AmqpTransport(Invoker):
                 await cls.channel.basic_client_ack(delivery_tag)
                 return return_value
 
+            increase_execution_context_value("amqp_current_tasks")
+            increase_execution_context_value("amqp_total_tasks")
             return_value = await execute_middlewares(
                 func, routine_func, context.get("message_middleware", []), *(obj, message, routing_key)
             )
+            decrease_execution_context_value("amqp_current_tasks")
+
             return return_value
 
         exchange_name = exchange_name or context.get("options", {}).get("amqp", {}).get("exchange_name", "amq.topic")
@@ -376,6 +381,13 @@ class AmqpTransport(Invoker):
         if context.get("_amqp_subscribed"):
             return None
         context["_amqp_subscribed"] = True
+
+        set_execution_context({
+            "amqp_enabled": True,
+            "amqp_current_tasks": 0,
+            "amqp_total_tasks": 0,
+            "aioamqp_version": aioamqp.__version__,
+        })
 
         cls.channel = None
         channel = await cls.connect(cls, obj, context)

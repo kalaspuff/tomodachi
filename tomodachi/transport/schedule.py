@@ -9,6 +9,7 @@ import pytz
 import tzlocal
 
 from tomodachi.helpers.crontab import get_next_datetime
+from tomodachi.helpers.execution_context import decrease_execution_context_value, increase_execution_context_value, set_execution_context
 from tomodachi.invoker import Invoker
 
 
@@ -32,12 +33,15 @@ class Scheduler(Invoker):
                 if values.defaults
                 else {}
             )
+            increase_execution_context_value("scheduled_functions_current_tasks")
+            increase_execution_context_value("scheduled_functions_total_tasks")
             try:
                 routine = func(*(obj,), **kwargs)
                 if isinstance(routine, Awaitable):
                     await routine
             except Exception as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+            decrease_execution_context_value("scheduled_functions_current_tasks")
 
         context["_schedule_scheduled_functions"] = context.get("_schedule_scheduled_functions", [])
         context["_schedule_scheduled_functions"].append((interval, timestamp, timezone, immediately, func, handler))
@@ -325,7 +329,15 @@ class Scheduler(Invoker):
                                 await asyncio.sleep(1)
                                 continue
                         sleep_diff = int(current_time + 1) - actual_time + 0.001
-                        if sleep_diff > 0:
+                        if next_call_at > time.time() + 8:
+                            sleep_diff = int((next_call_at - time.time()) / 3)
+                        if sleep_diff >= 2:
+                            sleep_task = asyncio.ensure_future(asyncio.sleep(sleep_diff))
+                            await asyncio.wait([sleep_task, cls.close_waiter], return_when=asyncio.FIRST_COMPLETED)
+                            if not sleep_task.done():
+                                sleep_task.cancel()
+                            current_time = time.time()
+                        else:
                             await asyncio.sleep(sleep_diff)
                         if next_call_at > time.time():
                             continue
@@ -334,7 +346,9 @@ class Scheduler(Invoker):
                         continue
                     prev_call_at = next_call_at
                     next_call_at = None
+
                     tasks = [task for task in tasks if not task.done()]
+
                     if len(tasks) >= 20:
                         if not too_many_tasks and len(tasks) >= threshold:
                             too_many_tasks = True
@@ -357,14 +371,39 @@ class Scheduler(Invoker):
                         )
                         threshold = 20
                     too_many_tasks = False
-                    tasks.append(asyncio.ensure_future(asyncio.shield(handler())))
+
                     current_time = time.time()
+                    task = asyncio.ensure_future(handler())
+                    if hasattr(task, "set_name"):
+                        task.set_name('{} : {}'.format(func.__name__, datetime.datetime.utcfromtimestamp(current_time).isoformat()))
+                    tasks.append(task)
                 except Exception as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     await asyncio.sleep(1)
 
             if tasks:
-                await asyncio.wait(tasks)
+                task_waiter = asyncio.ensure_future(asyncio.wait(tasks))
+                sleep_task = asyncio.ensure_future(asyncio.sleep(2))
+                await asyncio.wait([sleep_task, task_waiter], return_when=asyncio.FIRST_COMPLETED)
+                if not sleep_task.done():
+                    sleep_task.cancel()
+                for task in tasks:
+                    if task.done():
+                        continue
+                    task_name = task.get_name() if hasattr(task, "get_name") else func.__name__
+                    logging.getLogger("transport.schedule").warning("Awaiting task '{}' to finish execution".format(task_name))
+
+                while not task_waiter.done():
+                    sleep_task = asyncio.ensure_future(asyncio.sleep(10))
+                    await asyncio.wait([sleep_task, task_waiter], return_when=asyncio.FIRST_COMPLETED)
+                    if not sleep_task.done():
+                        sleep_task.cancel()
+                    for task in tasks:
+                        if task.done():
+                            continue
+                        task_name = task.get_name() if hasattr(task, "get_name") else func.__name__
+                        logging.getLogger("transport.schedule").warning("Still awaiting task '{}' to finish execution".format(task_name))
+
             if not stop_waiter.done():
                 stop_waiter.set_result(None)
 
@@ -404,6 +443,12 @@ class Scheduler(Invoker):
         if context.get("_schedule_loop_started"):
             return None
         context["_schedule_loop_started"] = True
+
+        set_execution_context({
+            "scheduled_functions_enabled": True,
+            "scheduled_functions_current_tasks": 0,
+            "scheduled_functions_total_tasks": 0,
+        })
 
         async def _schedule() -> None:
             cls.close_waiter = asyncio.Future()

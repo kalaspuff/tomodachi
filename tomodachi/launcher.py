@@ -3,12 +3,15 @@ import datetime
 import importlib
 import logging
 import os
+import platform
 import signal
 import sys
+import time
 from typing import Any, Dict, List, Optional, Union, cast
 
 import multidict  # noqa
-import uvloop
+import pytz
+import tzlocal
 import yarl  # noqa
 
 import tomodachi.__version__
@@ -66,7 +69,7 @@ class ServiceLauncher(object):
             logging.getLogger("system").warning("Received termination signal [SIGTERM]")
             cls.restart_services = False
 
-        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        logging.basicConfig(level=logging.DEBUG)
         loop = asyncio.get_event_loop()
 
         for signame in ("SIGINT", "SIGTERM"):
@@ -128,17 +131,65 @@ class ServiceLauncher(object):
 
         restarting = False
         while cls.restart_services:
+            try:
+                tz = tzlocal.get_localzone()
+                if not tz:
+                    tz = pytz.UTC
+            except Exception:
+                tz = pytz.UTC
+
+            init_timestamp = time.time()
+            init_timestamp_str = datetime.datetime.utcfromtimestamp(init_timestamp).isoformat() + 'Z'
+
+            process_id = os.getpid()
+
+            event_loop_alias = ''
+            event_loop_version = ''
+            try:
+                if 'uvloop.' in str(loop.__class__):
+                    event_loop_alias = 'uvloop'
+                    import uvloop
+                    event_loop_version = str(uvloop.__version__)
+                elif 'asyncio.' in str(loop.__class__):
+                    event_loop_alias = 'asyncio'
+                else:
+                    event_loop_alias = '{}.{}'.format(loop.__class__.__module__, loop.__class__.__name__)
+            except Exception:
+                event_loop_alias = str(loop)
+
+            tomodachi.set_execution_context({
+                "process_id": process_id,
+                "init_timestamp": init_timestamp_str,
+                "event_loop": event_loop_alias,
+            })
+            if event_loop_version:
+                tomodachi.set_execution_context({
+                    "event_loop_version": event_loop_version,
+                })
+
             if watcher:
+                init_local_datetime = datetime.datetime.fromtimestamp(init_timestamp) if tz is not pytz.UTC else datetime.datetime.utcfromtimestamp(init_timestamp)
+
                 print("---")
-                print("Starting services...")
+                print("Starting tomodachi services (pid: {}) ...".format(process_id))
+                for file in service_files:
+                    print("* {}".format(file))
+
                 print()
-                print("tomodachi/{}".format(tomodachi.__version__))
-                print(datetime.datetime.now().strftime("%B %d, %Y - %H:%M:%S,%f"))
-                print("Quit services with <ctrl+c>.")
+                print("Current version: tomodachi {} on Python {}".format(tomodachi.__version__, platform.python_version()))
+                print("Event loop implementation: {}{}".format(event_loop_alias, ' {}'.format(event_loop_version) if event_loop_version else ''))
+                print('Local time: {} {}'.format(init_local_datetime.strftime("%B %d, %Y - %H:%M:%S,%f"), str(tz)))
+                print('Timestamp in UTC: {}'.format(init_timestamp_str))
+                print()
+                print("File watcher is active - code changes will automatically restart services")
+                print("Quit running services with <ctrl+c>")
+                print()
 
             cls._close_waiter = asyncio.Future()
             cls._stopped_waiter = asyncio.Future()
             cls.restart_services = False
+
+            tomodachi.clear_services()
 
             try:
                 cls.services = set(

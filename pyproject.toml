@@ -1,6 +1,6 @@
 [tool.black]
 line-length = 120
-target_version = ["py36", "py37", "py38"]
+target_version = ["py37", "py38"]
 include = '\.pyi?$'
 exclude = '\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/|proto_build/|syntax_error_service\.py'
 

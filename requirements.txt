@@ -1,13 +1,13 @@
 pycparser==2.19
-aioamqp==0.13.0
-aiobotocore==0.12.0
+aioamqp==0.14.0
+aiobotocore==1.1.1
 aiodns==2.0.0
 aiohttp==3.6.2
 aioitertools==0.7.0
 async-generator==1.10
 async-timeout==3.0.1
 attrs==20.2.0
-botocore==1.15.15
+botocore==1.17.44
 cchardet==2.1.6
 chardet==3.0.4
 codecov==2.1.9
@@ -36,4 +36,5 @@ six==1.15.0
 typing_extensions==3.7.4.3
 tzlocal==2.1
 uvloop==0.14.0
+wrapt==1.12.1
 yarl==1.6.0

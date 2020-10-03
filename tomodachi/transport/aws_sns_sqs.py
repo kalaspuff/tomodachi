@@ -16,6 +16,7 @@ import botocore
 from botocore.parsers import ResponseParserError
 
 from tomodachi.helpers.dict import merge_dicts
+from tomodachi.helpers.execution_context import decrease_execution_context_value, increase_execution_context_value, set_execution_context
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
@@ -297,9 +298,13 @@ class AWSSNSSQSTransport(Invoker):
                 await cls.delete_message(cls, receipt_handle, queue_url, context)
                 return return_value
 
+            increase_execution_context_value("aws_sns_sqs_current_tasks")
+            increase_execution_context_value("aws_sns_sqs_total_tasks")
             return_value = await execute_middlewares(
                 func, routine_func, context.get("message_middleware", []), *(obj, message, topic)
             )
+            decrease_execution_context_value("aws_sns_sqs_current_tasks")
+
             return return_value
 
         context["_aws_sns_sqs_subscribers"] = context.get("_aws_sns_sqs_subscribers", [])
@@ -308,7 +313,7 @@ class AWSSNSSQSTransport(Invoker):
         start_func = cls.subscribe(cls, obj, context)
         return (await start_func) if start_func else None
 
-    def create_client(cls: Any, name: str, context: Dict) -> None:
+    async def create_client(cls: Any, name: str, context: Dict) -> None:
         logging.getLogger("botocore.vendored.requests.packages.urllib3.connectionpool").setLevel(logging.WARNING)
 
         if not cls.clients:
@@ -341,13 +346,18 @@ class AWSSNSSQSTransport(Invoker):
         try:
             if cls.clients_creation_time.get(name) and cls.clients_creation_time[name] + 30 > time.time():
                 return
-            cls.clients[name] = session.create_client(
+            create_client_func = session._create_client if hasattr(session, "_create_client") else session._create_client
+            client = create_client_func(
                 name,
                 region_name=region_name,
                 aws_secret_access_key=aws_secret_access_key,
                 aws_access_key_id=aws_access_key_id,
                 endpoint_url=endpoint_url,
             )
+            if isinstance(client, Awaitable):
+                cls.clients[name] = await client
+            else:
+                cls.clients[name] = client
             cls.clients_creation_time[name] = time.time()
         except (botocore.exceptions.PartialCredentialsError, botocore.exceptions.NoRegionError) as e:
             error_message = str(e)
@@ -367,7 +377,7 @@ class AWSSNSSQSTransport(Invoker):
                 return topic_arn
 
         if not cls.clients or not cls.clients.get("sns"):
-            cls.create_client(cls, "sns", context)
+            await cls.create_client(cls, "sns", context)
         client = cls.clients.get("sns")
 
         try:
@@ -405,7 +415,7 @@ class AWSSNSSQSTransport(Invoker):
 
     async def publish_message(cls: Any, topic_arn: str, message: Any, context: Dict) -> str:
         if not cls.clients or not cls.clients.get("sns"):
-            cls.create_client(cls, "sns", context)
+            await cls.create_client(cls, "sns", context)
 
         for retry in range(1, 4):
             client = cls.clients.get("sns")
@@ -420,7 +430,7 @@ class AWSSNSSQSTransport(Invoker):
                     await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
                 except Exception:
                     pass
-                cls.create_client(cls, "sns", context)
+                await cls.create_client(cls, "sns", context)
                 if retry >= 3:
                     raise e
                 continue
@@ -452,12 +462,12 @@ class AWSSNSSQSTransport(Invoker):
         if not receipt_handle:
             return
         if not cls.clients or not cls.clients.get("sqs"):
-            cls.create_client(cls, "sqs", context)
+            await cls.create_client(cls, "sqs", context)
 
         async def _delete_message() -> None:
             for retry in range(1, 4):
                 if not cls.clients or not cls.clients.get("sqs"):
-                    cls.create_client(cls, "sqs", context)
+                    await cls.create_client(cls, "sqs", context)
                 client = cls.clients.get("sqs")
                 try:
                     await asyncio.wait_for(
@@ -472,7 +482,7 @@ class AWSSNSSQSTransport(Invoker):
                         await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
                     except Exception:
                         pass
-                    cls.create_client(cls, "sqs", context)
+                    await cls.create_client(cls, "sqs", context)
                     if retry >= 3:
                         raise e
                     continue
@@ -494,7 +504,7 @@ class AWSSNSSQSTransport(Invoker):
 
     async def create_queue(cls: Any, queue_name: str, context: Dict) -> Tuple[str, str]:
         if not cls.clients or not cls.clients.get("sqs"):
-            cls.create_client(cls, "sqs", context)
+            await cls.create_client(cls, "sqs", context)
         client = cls.clients.get("sqs")
 
         try:
@@ -588,7 +598,7 @@ class AWSSNSSQSTransport(Invoker):
         cls: Any, topic: str, queue_arn: str, queue_url: str, context: Dict
     ) -> Optional[List]:
         if not cls.clients or not cls.clients.get("sns"):
-            cls.create_client(cls, "sns", context)
+            await cls.create_client(cls, "sns", context)
         client = cls.clients.get("sns")
 
         pattern = r"^arn:aws:sns:[^:]+:[^:]+:{}$".format(
@@ -637,11 +647,11 @@ class AWSSNSSQSTransport(Invoker):
         queue_policy: Optional[Dict] = None,
     ) -> List:
         if not cls.clients or not cls.clients.get("sns"):
-            cls.create_client(cls, "sns", context)
+            await cls.create_client(cls, "sns", context)
         client = cls.clients.get("sns")
 
         if not cls.clients or not cls.clients.get("sqs"):
-            cls.create_client(cls, "sqs", context)
+            await cls.create_client(cls, "sqs", context)
         sqs_client = cls.clients.get("sqs")
 
         if not queue_policy:
@@ -685,129 +695,151 @@ class AWSSNSSQSTransport(Invoker):
 
     async def consume_queue(cls: Any, obj: Any, context: Dict, handler: Callable, queue_url: str) -> None:
         if not cls.clients or not cls.clients.get("sqs"):
-            cls.create_client(cls, "sqs", context)
+            await cls.create_client(cls, "sqs", context)
 
         if not cls.close_waiter:
             cls.close_waiter = asyncio.Future()
+
         stop_waiter = asyncio.Future()  # type: asyncio.Future
         start_waiter = asyncio.Future()  # type: asyncio.Future
 
         async def receive_messages() -> None:
-            def callback(
-                payload: Optional[str], receipt_handle: Optional[str], queue_url: Optional[str], message_topic: str
-            ) -> Callable:
-                async def _callback() -> None:
-                    await handler(payload, receipt_handle, queue_url, message_topic)
-
-                return _callback
-
-            client = cls.clients.get("sqs")
-
             await start_waiter
-            is_disconnected = False
-            while not cls.close_waiter.done():
-                try:
-                    response = await asyncio.wait_for(
-                        client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10),
-                        timeout=30,
-                    )
-                    if is_disconnected:
-                        is_disconnected = False
-                        logging.getLogger("transport.aws_sns_sqs").warning("Reconnected - receiving messages")
-                except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
-                    if not is_disconnected:
-                        is_disconnected = True
-                        error_message = str(e) if e and str(e) not in ["", "None"] else "Server disconnected"
-                        logging.getLogger("transport.aws_sns_sqs").warning(
-                            "Unable to receive message from queue [sqs] on AWS ({}) - reconnecting".format(
-                                error_message
-                            )
-                        )
-                    await asyncio.sleep(1)
-                    try:
-                        task = client.close()
-                        if getattr(task, "_coro", None):
-                            task = task._coro
-                        await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
-                    except Exception:
-                        pass
-                    cls.create_client(cls, "sqs", context)
-                    client = cls.clients.get("sqs")
-                    continue
-                except ResponseParserError as e:
-                    if not is_disconnected:
-                        is_disconnected = True
-                        error_message = "Unable to parse response: the server was not able to produce a timely response to your request"
-                        logging.getLogger("transport.aws_sns_sqs").warning(
-                            "Unable to receive message from queue [sqs] on AWS ({}) - reconnecting".format(
-                                error_message
-                            )
-                        )
-                    await asyncio.sleep(1)
-                    continue
-                except (
-                    botocore.exceptions.ClientError,
-                    aiohttp.client_exceptions.ClientConnectorError,
-                    asyncio.TimeoutError,
-                ) as e:
-                    error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else "Network timeout"
-                    if "AWS.SimpleQueueService.NonExistentQueue" in error_message:
-                        if is_disconnected:
-                            is_disconnected = False
-                            logging.getLogger("transport.aws_sns_sqs").warning("Reconnected - receiving messages")
-                        try:
-                            context["_aws_sns_sqs_subscribed"] = False
-                            cls.topics = {}
-                            func = await cls.subscribe(cls, obj, context)
-                            await func()
-                        except Exception:
-                            pass
-                        await asyncio.sleep(20)
-                        continue
-                    if not is_disconnected:
-                        logging.getLogger("transport.aws_sns_sqs").warning(
-                            "Unable to receive message from queue [sqs] on AWS ({})".format(error_message)
-                        )
-                    if isinstance(e, (asyncio.TimeoutError, aiohttp.client_exceptions.ClientConnectorError)):
-                        is_disconnected = True
-                    await asyncio.sleep(1)
-                    continue
-                except Exception as e:
-                    error_message = str(e)
-                    logging.getLogger("transport.aws_sns_sqs").warning(
-                        "Unexpected error while receiving message from queue [sqs] on AWS ({})".format(error_message)
-                    )
-                    await asyncio.sleep(1)
-                    continue
 
-                messages = response.get("Messages", [])
-                if messages:
+            async def _receive_wrapper():
+                def callback(
+                    payload: Optional[str], receipt_handle: Optional[str], queue_url: Optional[str], message_topic: str
+                ) -> Callable:
+                    async def _callback() -> None:
+                        await handler(payload, receipt_handle, queue_url, message_topic)
+
+                    return _callback
+
+                client = cls.clients.get("sqs")
+                is_disconnected = False
+
+                while not cls.close_waiter.done():
                     futures = []
 
-                    for message in messages:
-                        receipt_handle = message.get("ReceiptHandle")
+                    try:
                         try:
-                            message_body = json.loads(message.get("Body"))
-                            message_topic = (
-                                cls.get_topic_name_without_prefix(
-                                    cls.decode_topic(cls.get_topic_from_arn(message_body.get("TopicArn"))), context
-                                )
-                                if message_body.get("TopicArn")
-                                else ""
+                            response = await asyncio.wait_for(
+                                client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10),
+                                timeout=30,
                             )
-                        except ValueError:
-                            # Malformed SQS message, not in SNS format and should be discarded
-                            await cls.delete_message(cls, receipt_handle, queue_url, context)
-                            logging.getLogger("transport.aws_sns_sqs").warning("Discarded malformed message")
+                            if is_disconnected:
+                                is_disconnected = False
+                                logging.getLogger("transport.aws_sns_sqs").warning("Reconnected - receiving messages")
+                        except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
+                            if not is_disconnected:
+                                is_disconnected = True
+                                error_message = str(e) if e and str(e) not in ["", "None"] else "Server disconnected"
+                                logging.getLogger("transport.aws_sns_sqs").warning(
+                                    "Unable to receive message from queue [sqs] on AWS ({}) - reconnecting".format(
+                                        error_message
+                                    )
+                                )
+                            await asyncio.sleep(1)
+                            try:
+                                task = client.close()
+                                if getattr(task, "_coro", None):
+                                    task = task._coro
+                                await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
+                            except Exception:
+                                pass
+                            await cls.create_client(cls, "sqs", context)
+                            client = cls.clients.get("sqs")
+                            continue
+                        except ResponseParserError as e:
+                            if not is_disconnected:
+                                is_disconnected = True
+                                error_message = "Unable to parse response: the server was not able to produce a timely response to your request"
+                                logging.getLogger("transport.aws_sns_sqs").warning(
+                                    "Unable to receive message from queue [sqs] on AWS ({}) - reconnecting".format(
+                                        error_message
+                                    )
+                                )
+                            await asyncio.sleep(1)
+                            continue
+                        except (
+                            botocore.exceptions.ClientError,
+                            aiohttp.client_exceptions.ClientConnectorError,
+                            asyncio.TimeoutError,
+                        ) as e:
+                            error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else "Network timeout"
+                            if "AWS.SimpleQueueService.NonExistentQueue" in error_message:
+                                if is_disconnected:
+                                    is_disconnected = False
+                                    logging.getLogger("transport.aws_sns_sqs").warning("Reconnected - receiving messages")
+                                try:
+                                    context["_aws_sns_sqs_subscribed"] = False
+                                    cls.topics = {}
+                                    func = await cls.subscribe(cls, obj, context)
+                                    await func()
+                                except Exception:
+                                    pass
+                                await asyncio.sleep(20)
+                                continue
+                            if not is_disconnected:
+                                logging.getLogger("transport.aws_sns_sqs").warning(
+                                    "Unable to receive message from queue [sqs] on AWS ({})".format(error_message)
+                                )
+                            if isinstance(e, (asyncio.TimeoutError, aiohttp.client_exceptions.ClientConnectorError)):
+                                is_disconnected = True
+                            await asyncio.sleep(1)
+                            continue
+                        except Exception as e:
+                            error_message = str(e)
+                            logging.getLogger("transport.aws_sns_sqs").warning(
+                                "Unexpected error while receiving message from queue [sqs] on AWS ({})".format(error_message)
+                            )
+                            await asyncio.sleep(1)
                             continue
 
-                        payload = message_body.get("Message")
-                        futures.append(callback(payload, receipt_handle, queue_url, message_topic))
-                    if futures:
-                        await asyncio.wait([asyncio.ensure_future(asyncio.shield(func())) for func in futures if func])
+                        messages = response.get("Messages", [])
+                        if not messages:
+                            continue
 
-            if not stop_waiter.done():
-                stop_waiter.set_result(None)
+                        for message in messages:
+                            receipt_handle = message.get("ReceiptHandle")
+                            try:
+                                message_body = json.loads(message.get("Body"))
+                                message_topic = (
+                                    cls.get_topic_name_without_prefix(
+                                        cls.decode_topic(cls.get_topic_from_arn(message_body.get("TopicArn"))), context
+                                    )
+                                    if message_body.get("TopicArn")
+                                    else ""
+                                )
+                            except ValueError:
+                                # Malformed SQS message, not in SNS format and should be discarded
+                                await cls.delete_message(cls, receipt_handle, queue_url, context)
+                                logging.getLogger("transport.aws_sns_sqs").warning("Discarded malformed message")
+                                continue
+
+                            payload = message_body.get("Message")
+                            futures.append(callback(payload, receipt_handle, queue_url, message_topic))
+                    except asyncio.CancelledError:
+                        continue
+
+                    if not futures:
+                        continue
+
+                    tasks = [asyncio.ensure_future(func()) for func in futures if func]
+                    try:
+                        await asyncio.shield(asyncio.wait(tasks))
+                    except asyncio.CancelledError:
+                        await asyncio.wait(tasks)
+                        await asyncio.sleep(1)
+
+                if not stop_waiter.done():
+                    stop_waiter.set_result(None)
+
+            finished, unfinished = await asyncio.wait([asyncio.ensure_future(_receive_wrapper()), cls.close_waiter], return_when=asyncio.FIRST_COMPLETED)
+            for task in unfinished:
+                task.cancel()
+
+            await asyncio.wait([task for task in unfinished if not task.cancelled()])
 
         loop = asyncio.get_event_loop()  # type: Any
 
@@ -815,52 +847,15 @@ class AWSSNSSQSTransport(Invoker):
 
         async def stop_service(*args: Any, **kwargs: Any) -> None:
             if not cls.close_waiter.done():
+                logging.getLogger("transport.aws_sns_sqs").warning("Draining message pool - awaiting running tasks")
                 cls.close_waiter.set_result(None)
-                logging.getLogger("transport.aws_sns_sqs").warning("Draining message pool - may take up to 30 seconds")
-
-                master_stop_time = time.time()
-                for _ in range(0, 100):
-                    tasks = []
-                    t = time.time()
-                    if stop_waiter.done():
-                        break
-                    try:
-                        for topic, topic_arn in cls.topics.items():
-                            tasks.append(
-                                asyncio.ensure_future(
-                                    cls.publish_message(cls, topic_arn, DRAIN_MESSAGE_PAYLOAD, context)
-                                )
-                            )
-                        if tasks:
-                            task_results = await asyncio.wait(tasks, timeout=35)
-                            exception = None
-                            for v in [value for value in task_results][0]:
-                                try:
-                                    if (v.exception() or v.cancelled()) and not exception:
-                                        exception = True
-                                        sleep_timer = (t + 30.0) - time.time()
-                                        if sleep_timer > 0.0:
-                                            logging.getLogger("transport.aws_sns_sqs").warning(
-                                                "Draining failed - please wait"
-                                            )
-                                            await asyncio.sleep(sleep_timer)
-                                except Exception:
-                                    pass
-                            if exception and not stop_waiter.done():
-                                stop_waiter.set_result(None)
-                    except Exception as e:
-                        pass
-
-                    if master_stop_time + 35.0 > time.time() and not stop_waiter.done():
-                        stop_waiter.set_result(None)
-
-                    await asyncio.sleep(0.2)
 
                 if not start_waiter.done():
                     start_waiter.set_result(None)
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
+
                 tasks = []
                 for _, client in cls.clients.items():
                     task = client.close()
@@ -905,6 +900,15 @@ class AWSSNSSQSTransport(Invoker):
 
         async def _subscribe() -> None:
             cls.close_waiter = asyncio.Future()
+
+            set_execution_context({
+                "aws_sns_sqs_enabled": True,
+                "aws_sns_sqs_current_tasks": 0,
+                "aws_sns_sqs_total_tasks": 0,
+                "aiobotocore_version": aiobotocore.__version__,
+                "aiohttp_version": aiohttp.__version__,
+                "botocore_version": botocore.__version__,
+            })
 
             async def setup_queue(
                 topic: str, func: Callable, queue_name: Optional[str] = None, competing_consumer: Optional[bool] = None

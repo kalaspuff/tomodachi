@@ -1,14 +1,20 @@
 Changes
 =======
 
-0.18.1 (2020-xx-xx)
+0.19.0 (2020-xx-xx)
 -------------------
+- Fixes a bug that could cause a termination signal to stop the service
+  in the middle of processing a message received via AWS SQS. The service
+  will now await currently executing tasks before finally shutting down.
+
 - Added SSL and virtualhost settings to AMQP transport, as well as
   additional configuration options which can be passed via
   ``options.amqp.virtualhost``, ``options.amqp.ssl`` and
   ``options.amqp.heartbeat``. (github: **xdmiodz**)
 
 - Added support for ``aiohttp`` 3.6.x.
+
+- Added support for ``aiobotocore`` 1.x.x.
 
 - Updated identifiers for support of Python 3.9.
 
