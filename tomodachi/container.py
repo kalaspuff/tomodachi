@@ -261,7 +261,9 @@ class ServiceContainer(object):
                             continue
 
                         self.logger.warning(
-                            "** Task '{}' from '{}' has not finished execution or has not been awaited".format(co_name, co_filename)
+                            "** Task '{}' from '{}' has not finished execution or has not been awaited".format(
+                                co_name, co_filename
+                            )
                         )
                     except Exception:
                         pass

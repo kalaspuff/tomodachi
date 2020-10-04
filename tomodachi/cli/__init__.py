@@ -201,9 +201,7 @@ class CLI:
         }
 
     def run_command_usage(self) -> str:
-        return (
-            "Usage: tomodachi run <service ...> [-c <config-file ...>] [--loop auto|asyncio|uvloop] [--production]"
-        )
+        return "Usage: tomodachi run <service ...> [-c <config-file ...>] [--loop auto|asyncio|uvloop] [--production]"
 
     def run_command(self, args: List[str]) -> None:
         if len(args) == 0:
@@ -287,7 +285,9 @@ class CLI:
 
     def main(self, argv: List[str]) -> None:
         try:
-            opts, args = getopt.getopt(argv, "hlvV ", ["help", "log", "version", "version", "dependency-versions", "dependencies", "deps"])
+            opts, args = getopt.getopt(
+                argv, "hlvV ", ["help", "log", "version", "version", "dependency-versions", "dependencies", "deps"]
+            )
         except getopt.GetoptError as e:
             self.help_command()
         for opt, _ in opts:

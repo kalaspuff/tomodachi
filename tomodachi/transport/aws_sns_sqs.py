@@ -364,9 +364,7 @@ class AWSSNSSQSTransport(Invoker):
         try:
             if cls.clients_creation_time.get(name) and cls.clients_creation_time[name] + 30 > time.time():
                 return
-            create_client_func = (
-                session._create_client if hasattr(session, "_create_client") else session.create_client
-            )
+            create_client_func = session._create_client if hasattr(session, "_create_client") else session.create_client
             client = create_client_func(
                 name,
                 region_name=region_name,
