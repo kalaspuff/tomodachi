@@ -71,7 +71,11 @@ class ServiceLauncher(object):
             cls.restart_services = False
 
         logging.basicConfig(level=logging.DEBUG)
+
         loop = asyncio.get_event_loop()
+        if loop and loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
         for signame in ("SIGINT", "SIGTERM"):
             loop.add_signal_handler(getattr(signal, signame), stop_services)
