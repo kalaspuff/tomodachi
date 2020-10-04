@@ -12,13 +12,33 @@ Changes
   ``options.amqp.virtualhost``, ``options.amqp.ssl`` and
   ``options.amqp.heartbeat``. (github: **xdmiodz**)
 
+- The event loop that the process will execute on can now be specified
+  on startup using ``--loop [auto|asyncio|uvloop]``, currently the `auto`
+  (or `default`) value will use Python's builtin `asyncio` event loop.
+
+- ``uvloop`` is now an optional installed package.
+
+- More verbose output when waiting for active tasks during termination.
+
+- Added ``tomodachi.get_execution_context()`` that holds metadata about
+  the service execution that can be used for debugging purposes or be
+  sent to application monitoring platforms such as Sentry.
+
+- Refactoring and updates to code formatting, now using Black code style.
+
+- Updated startup output with additional information about the running
+  process, including versions, etc.
+
 - Added support for ``aiohttp`` 3.6.x.
 
 - Added support for ``aiobotocore`` 1.x.x.
 
+- Added ``aiodns`` as an optional installation, as it's recommended for
+  running DNS resolution on the event loop when using ``aiohttp``.
+
 - Updated identifiers for support of Python 3.9.
 
-- Refactoring and updates to code formatting, now using Black code style.
+- Dropped support for Python 3.6.
 
 
 0.18.0 (2020-09-15)
