@@ -309,6 +309,7 @@ class Scheduler(Invoker):
 
         async def schedule_loop() -> None:
             await start_waiter
+
             next_call_at = None
             prev_call_at = None
             tasks = []  # type: List
@@ -316,6 +317,8 @@ class Scheduler(Invoker):
             too_many_tasks = False
             threshold = 20
             run_immediately = immediately
+            sleep_task: asyncio.Future
+
             while not cls.close_waiter.done():
                 try:
                     if not run_immediately:
@@ -375,7 +378,7 @@ class Scheduler(Invoker):
                     current_time = time.time()
                     task = asyncio.ensure_future(handler())
                     if hasattr(task, "set_name"):
-                        task.set_name('{} : {}'.format(func.__name__, datetime.datetime.utcfromtimestamp(current_time).isoformat()))
+                        getattr(task, "set_name")('{} : {}'.format(func.__name__, datetime.datetime.utcfromtimestamp(current_time).isoformat()))
                     tasks.append(task)
                 except Exception as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
@@ -390,7 +393,7 @@ class Scheduler(Invoker):
                 for task in tasks:
                     if task.done():
                         continue
-                    task_name = task.get_name() if hasattr(task, "get_name") else func.__name__
+                    task_name = getattr(task, "get_name")() if hasattr(task, "get_name") else func.__name__
                     logging.getLogger("transport.schedule").warning("Awaiting task '{}' to finish execution".format(task_name))
 
                 while not task_waiter.done():
@@ -401,7 +404,7 @@ class Scheduler(Invoker):
                     for task in tasks:
                         if task.done():
                             continue
-                        task_name = task.get_name() if hasattr(task, "get_name") else func.__name__
+                        task_name = getattr(task, "get_name")() if hasattr(task, "get_name") else func.__name__
                         logging.getLogger("transport.schedule").warning("Still awaiting task '{}' to finish execution".format(task_name))
 
             if not stop_waiter.done():

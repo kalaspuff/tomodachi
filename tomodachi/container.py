@@ -226,8 +226,8 @@ class ServiceContainer(object):
             tasks = [task for task in asyncio.all_tasks()]
             for task in tasks:
                 try:
-                    co_filename = task.get_coro().cr_code.co_filename if hasattr(task, 'get_coro') else task._coro.cr_code.co_filename
-                    co_name = task.get_coro().cr_code.co_name if hasattr(task, 'get_coro') else task._coro.cr_code.co_name
+                    co_filename = task.get_coro().cr_code.co_filename if hasattr(task, 'get_coro') else task._coro.cr_code.co_filename  # type: ignore
+                    co_name = task.get_coro().cr_code.co_name if hasattr(task, 'get_coro') else task._coro.cr_code.co_name  # type: ignore
 
                     if '/tomodachi/watcher.py' in co_filename and co_name == '_watch_loop':
                         continue

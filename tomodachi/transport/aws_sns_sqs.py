@@ -675,6 +675,9 @@ class AWSSNSSQSTransport(Invoker):
         if not queue_policy:
             queue_policy = cls.generate_queue_policy(queue_arn, topic_arn_list, context)
 
+        if not queue_policy or not isinstance(queue_policy, dict):
+            raise Exception('SQS policy is invalid')
+
         current_queue_policy = {}
         try:
             response = await sqs_client.get_queue_attributes(
@@ -699,7 +702,6 @@ class AWSSNSSQSTransport(Invoker):
                 raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
 
         subscription_arn_list = []
-
 
         for topic_arn in topic_arn_list:
             try:
@@ -736,7 +738,7 @@ class AWSSNSSQSTransport(Invoker):
         async def receive_messages() -> None:
             await start_waiter
 
-            async def _receive_wrapper():
+            async def _receive_wrapper() -> None:
                 def callback(
                     payload: Optional[str], receipt_handle: Optional[str], queue_url: Optional[str], message_topic: str
                 ) -> Callable:
@@ -875,10 +877,12 @@ class AWSSNSSQSTransport(Invoker):
                     break
                 if not cls.close_waiter.done() and task.done() and task.exception():
                     try:
-                        raise task.exception()
+                        exception = task.exception()
+                        if exception:
+                            raise exception
                     except Exception as e:
                         logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                    sleep_task = asyncio.ensure_future(asyncio.sleep(10))
+                    sleep_task: asyncio.Future = asyncio.ensure_future(asyncio.sleep(10))
                     await asyncio.wait([sleep_task, cls.close_waiter], return_when=asyncio.FIRST_COMPLETED)
                     if not sleep_task.done():
                         sleep_task.cancel()
