@@ -9,15 +9,15 @@ import tomodachi.__version__
 install_requires = [
     "pycparser>=2.18",
     "aioamqp>=0.13.0, <0.15.0",
-    #    "uvloop>=0.8.1",
-    #   "protobuf>=3.0.0, <4.0.0",
     "aiobotocore>=0.10.4, <1.2.0",
     "tzlocal>=1.4",
-    "aiodns>=2.0.0",
     "cchardet>=2.1.6",
     "aiohttp>=3.5.4, <3.7.0",
     "yarl>=1.1.0",
     "colorama>=0.3.9, <0.5.0",
+    # "uvloop>=0.14.0",
+    # "protobuf>=3.0.0, <4.0.0",
+    # "aiodns>=1.2.0",
 ]
 
 PY_VER = sys.version_info
