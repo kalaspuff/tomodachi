@@ -30,19 +30,23 @@ except Exception:
 class CLI:
     def help_command_usage(self) -> str:
         return (
-            "Usage: tomodachi.py subcommand [options] [args]\n"
+            "Usage: tomodachi <command> [options] [arguments]\n"
             "\n"
             "Options:\n"
-            "  -h, --help                       s         how this help message and exit\n"
-            "  -v, --version                              print tomodachi version\n"
-            "  --dependency-versions                      print versions of dependencies\n"
+            "  -h, --help                                Show this help message and exit\n"
+            "  -v, --version                             Print tomodachi version\n"
+            "  --dependency-versions                     Print versions of dependencies\n"
             "\n"
-            "Available subcommands:\n"
-            "  run <service ...> [-c <config-file ...>] [--production]\n"
-            "  -c, --config <files>                       use json configuration files\n"
-            "  --loop [auto|asyncio|uvloop]               event loop implementation\n"
-            "  -l, --log <level>, --log-level <level>     specify log level\n"
-            "  --production                               disable restart on file changes\n"
+            "Available commands:\n"
+            "  ---\n"
+            "  Command: run\n"
+            "  Starts service(s) defined in the .py files specified as <service> argument(s)\n"
+            "\n"
+            "  $ tomodachi run <service ...> [-c <config-file ...>] [--production]\n"
+            "  | --loop [auto|asyncio|uvloop]            Event loop implementation [asyncio]\n"
+            "  | --production                            Disable restart on file changes\n"
+            "  | -c, --config <files>                    Use configuration from JSON files\n"
+            "  | -l, --log <level>, --log-level <level>  Specify log level\n"
         )
 
     def help_command(self) -> None:
@@ -198,7 +202,7 @@ class CLI:
 
     def run_command_usage(self) -> str:
         return (
-            "Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--loop 'auto|asyncio|uvloop'] [--production]"
+            "Usage: tomodachi run <service ...> [-c <config-file ...>] [--loop auto|asyncio|uvloop] [--production]"
         )
 
     def run_command(self, args: List[str]) -> None:
@@ -283,15 +287,15 @@ class CLI:
 
     def main(self, argv: List[str]) -> None:
         try:
-            opts, args = getopt.getopt(argv, "hlvV ", ["help", "log", "version", "version", "dependency-versions"])
+            opts, args = getopt.getopt(argv, "hlvV ", ["help", "log", "version", "version", "dependency-versions", "dependencies", "deps"])
         except getopt.GetoptError as e:
             self.help_command()
         for opt, _ in opts:
-            if opt in ["-h", "--help"]:
+            if opt in ("-h", "--help"):
                 self.help_command()
-            if opt in ["-v", "-V", "--version"]:
+            if opt in ("-v", "-V", "--version"):
                 self.version_command()
-            if opt in ["--dependency-versions"]:
+            if opt in ("--dependency-versions", "--dependencies", "--deps"):
                 self.dependency_versions_command()
         if len(args):
             if args[0] in ("run", "start", "go"):

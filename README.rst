@@ -28,18 +28,23 @@ Usage
 
 .. code::
 
-    Usage: tomodachi <subcommand> [options] [args]
+    Usage: tomodachi <command> [options] [arguments]
 
     Options:
-      -h, --help             show this help message and exit
-      -v, --version          print tomodachi version
-      --dependency-versions  print versions of dependencies
+      -h, --help                                Show this help message and exit
+      -v, --version                             Print tomodachi version
+      --dependency-versions                     Print versions of dependencies
 
-    Available subcommands:
-      run <service ...> [-c <config-file ...>] [--production]
-      -c, --config <files>   use json configuration files
-      -l, --log <level>      specify log level
-      --production           disable restart on file changes
+    Available commands:
+      ---
+      Command: run
+      Starts service(s) defined in the .py files specified as <service> argument(s)
+
+      $ tomodachi run <service ...> [-c <config-file ...>] [--production]
+      | --loop [auto|asyncio|uvloop]            Event loop implementation [asyncio]
+      | --production                            Disable restart on file changes
+      | -c, --config <files>                    Use configuration from JSON files
+      | -l, --log <level>, --log-level <level>  Specify log level
 
 
 .. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
@@ -69,15 +74,18 @@ Usage
 
 | **Please note: this is a work in progress.**
 
-``tomodachi`` is still a highly experimental project with an unregular release
-schedule.
+``tomodachi`` is still an experimental project with an unregular release
+schedule. Before the package is available as a 1.0.0 release, note that there
+may be breaking changes between 0.x versions.
 
 
 How do I use this? (simple install using ``pip``)
 -------------------------------------------------
-Preferrably installation should be done via ``pip`` to get the cli alias set
+Installation could as always be done via ``pip`` to get the cli alias set
 up automatically. Locally it is recommended to install ``tomodachi`` into a
-virtualenv to avoid random packages into your base site-packages.
+virtualenv to avoid cluttering. When developing microservices for real it's
+highly recommended to use containerization such as Docker and ``tomodcahi``
+works great within such environments.
 
 .. code:: bash
 
@@ -86,11 +94,10 @@ virtualenv to avoid random packages into your base site-packages.
 
 Getting started 🏃
 ^^^^^^^^^^^^^^^^^^
-*Start off with* ``import tomodachi`` *and add a class decorated with*
-``@tomodachi.service`` *and/or extended from the* ``tomodachi.Service`` *class.
-Name your service class and then just add functions and triggers for how to
-invoke  them, either by HTTP requests, event messages or by timestamps /
-intervals.*
+*Start off with* ``import tomodachi`` *and add a service class extended from
+the* ``tomodachi.Service`` *class. Name your service class and then just add
+functions and triggers for how to invoke them, either by HTTP requests,
+pub/sub event messages or by timestamps / intervals.*
 
 
 
@@ -103,61 +110,78 @@ Basic HTTP based service 🌟
     import tomodachi
 
 
-    @tomodachi.service
     class Service(tomodachi.Service):
-        name = 'example'
+        name = "example"
 
         # Request paths are specified as regex for full flexibility
-        @tomodachi.http('GET', r'/resource/(?P<id>[^/]+?)/?')
+        @tomodachi.http("GET", r"/resource/(?P<id>[^/]+?)/?")
         async def resource(self, request, id):
             # Returning a string value normally means 200 OK
-            return 'id = {}'.format(id)
+            return f"id = {id}"
 
-        @tomodachi.http('GET', r'/health')
+        @tomodachi.http("GET", r"/health")
         async def health_check(self, request):
             # Return can also be a tuple, dict or even an aiohttp.web.Response
             # object for more complex responses - for example if you need to
             # send byte data, set your own status code or define own headers
             return {
-                'body': 'Healthy',
-                'status': 200
+                "body": "Healthy",
+                "status": 200,
             }
 
         # Specify custom 404 catch-all response
         @tomodachi.http_error(status_code=404)
         async def error_404(self, request):
-            return 'error 404'
+            return "error 404"
 
 
-RabbitMQ or AWS SNS/SQS event based messaging service 📡
+RabbitMQ or AWS SNS+SQS event based messaging service 📡
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-*Example of a service that would invoke a function when messages are published on a topic exchange.*
+*Example of a service that would invoke a function when messages are published on an AMQP topic exchange.*
 
 .. code:: python
 
     import tomodachi
 
-    @tomodachi.service
-    class Service(tomodachi.Service):
-        name = 'example'
 
-        # A route / topic on which the service will subscribe to via AMQP (or AWS SNS/SQS)
-        @tomodachi.amqp('example.topic')
-        async def example_topic_func(self, message):
-            # Received message, sending same message as response on another route / topic
-            await tomodachi.amqp_publish(self, message, routing_key='example.response')
+    class Service(tomodachi.Service):
+        name = "amqp-example"
+
+        # A route / topic on which the service will subscribe to via RabbitMQ / AMQP
+        @tomodachi.amqp("example.topic")
+        async def example_func(self, message):
+            # Received message, fordarding the same message as response on another route / topic
+            await tomodachi.amqp_publish(self, message, routing_key="example.response")
+
+*Example of a service using AWS SNS+SQS managed pub/sub messaging. AWS SNS and AWS SQS together features
+managed message queues for microservices, distributed systems, and serverless applications. This makes
+it great to use for ``tomodachi`` powered Python microservices in a distributed architecture hosted on AWS,
+for example in Docker on AWS ECS or AWS EKS using Kubernetes.*
+
+.. code:: python
+
+    import tomodachi
+
+
+    class Service(tomodachi.Service):
+        name = "aws-example"
+
+        # Using the @tomodachi.aws_sns_sqs decorator to make the service create an AWS SNS topic,
+        # an AWS SQS queue and to make a subscription from the topic to the queue as well as start
+        # receive messages from the queue using SQS.ReceiveMessages.
+        @tomodachi.aws_sns_sqs("example-topic", queue_name="example-queue")
+        async def example_func(self, message):
+            # Received message, forwarding the same message as response on another topic
+            await tomodachi.aws_sns_sqs_publish(self, message, topic="another-example-topic")
+
 
 
 Scheduling, inter-communication between services, etc. ⚡️
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-There are other examples available with examples of how to use services with self-invoking
-methods called on a specified interval or at specific times / days. Inter-communication
-between different services may be established using a pub-sub type with messages over AMQP
-or AWS SNS+SQS which is natively supported.
-
-See a more comprehensive example involving multiple services publishing and subcribing on
-topics using AWS SNS+SQS in the
-`pubsub-examples <https://github.com/kalaspuff/tomodachi/blob/master/examples/pubsub_example>`_ folder.
+There are other examples available with code of how to use services with self-invoking
+methods called on a specified interval or at specific times / days, as well as additional examples
+for inter-communication pub/sub between different services on both AMQP or AWS SNS+SQS as shown
+above. See more at the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples/>`_ folder.
 
 
 Run the service 😎
@@ -177,12 +201,21 @@ Run the service 😎
 
     local ~/code/service$ tomodachi run service.py
 
-    tomodachi/X.X.XX
-    October 02, 2017 - 13:38:00,481516
-    Quit services with <ctrl+c>.
-    2017-10-02 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    2017-10-02 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
-    2017-10-02 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+    ---
+    Starting tomodachi services (pid: 1) ...
+    * service.py
+
+    Current version: tomodachi x.x.xx on Python 3.x.x
+    Event loop implementation: asyncio
+    Local time: October 04, 2020 - 13:38:01,201509 UTC
+    Timestamp in UTC: 2020-10-04T13:38:01.201509Z
+
+    File watcher is active - code changes will automatically restart services
+    Quit running services with <ctrl+c>
+
+    2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
+    2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
 
 *HTTP service acts like a normal web server.*
@@ -201,50 +234,71 @@ Run the service 😎
 
 Example of ``tomodachi`` service containerized in Docker 🐳
 -----------------------------------------------------------
-Great ways to run microservices are either to run them in Docker or running them serverless.
-Here's an example of getting a tomodachi service up and running in Docker in no-time. The
-base-image (``kalaspuff/python-nginx-proxy``) also sets up ``nginx`` and proxies requests from
-port 80 to the service backend on 8080.
+Great ways to run microservices are usually to run them in containers like Docker, for example
+in a Kubernetes cluster or running them completely serverless. Here's an example of getting a
+``tomodachi`` service up and running in Docker in no-time.
 
-We're building a container using just two small files, the ``Dockerfile`` and the actual code
-for the microservice, ``service.py``.
+We're building a Docker image using just two small files, the ``Dockerfile`` and the actual code
+for the microservice, ``service.py``. In reality a service is probably not quite this small,
+but to just get started and show how simple it could be.
 
 **Dockerfile**
 
 .. code:: dockerfile
 
-    FROM kalaspuff/python-nginx-proxy:1.3.0
-    WORKDIR /
-    RUN apt-get -y update \
-        && apt-get install -y build-essential=12.3 \
-        && pip install tomodachi \
-        && apt-get purge -y --auto-remove build-essential \
-        && apt-get clean autoclean \
-        && apt-get autoremove -y \
-        && rm -rf /var/lib/{apt,dpkg,cache,log}/
+    FROM python:3.8-slim
+    RUN pip install tomodachi
     RUN mkdir /app
     WORKDIR /app
-    ADD service.py .
-    CMD tomodachi run service.py --production
+    COPY service.py .
+    ENV PYTHONUNBUFFERED=1
+    CMD ["tomodachi", "run", "service.py", "--production"]
 
 **service.py**
 
 .. code:: python
 
+    import json
+
     import tomodachi
 
-    @tomodachi.service
+
     class Service(tomodachi.Service):
-        name = 'example'
+        name = "example"
         options = {
-            'http': {
-                'port': 8080
+            "http": {
+                "port": 80,
+                "content_type": "application/json; charset=utf-8"
             }
         }
 
-        @tomodachi.http('GET', r'/')
+        _healthy = True
+
+        @tomodachi.http("GET", r"/")
         async def index_endpoint(self, request):
-            return 'friends forever!'
+            return json.dumps({
+                "data": "hello world!",
+                "execution_context": tomodachi.get_execution_context(),
+            })
+
+        @tomodachi.http("GET", r"/health/?", ignore_logging=True)
+        async def health_check(self, request):
+            if self._healthy:
+                return 200, json.dumps({"status": "healthy"})
+            else:
+                return 503, json.dumps({"status": "not healthy"})
+
+        @tomodachi.http_error(status_code=400)
+        async def error_400(self, request):
+            return json.dumps({"error": "bad-request"})
+
+        @tomodachi.http_error(status_code=404)
+        async def error_404(self, request):
+            return json.dumps({"error": "not-found"})
+
+        @tomodachi.http_error(status_code=405)
+        async def error_405(self, request):
+            return json.dumps({"error": "method-not-allowed"})
 
 *Building and running the container, forwarding host's port 31337 to port 80.*
 
@@ -255,19 +309,51 @@ for the microservice, ``service.py``.
 .. code:: bash
 
     local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
-    2017-10-02 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    2017-10-02 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:8080/
-    2017-10-02 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+    2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
+    2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
 *Making requests to the running container.*
 
 .. code:: bash
 
-    local ~$ curl http://127.0.0.1:31337/
-    friends forever!
+    local ~$ curl http://127.0.0.1:31337/ | jq
+    {
+      "data": "hello world!",
+      "execution_context": {
+        "tomodachi_version": "x.x.xx",
+        "python_version": "3.x.x",
+        "system_platform": "Linux",
+        "process_id": 1,
+        "init_timestamp": "2020-10-04T13:38:01.201509Z",
+        "event_loop": "asyncio",
+        "http_enabled": true,
+        "http_current_tasks": 1,
+        "http_total_tasks": 1,
+        "aiohttp_version": "x.x.xx"
+      }
+    }
+
+    local ~$ curl http://127.0.0.1:31337/health -i
+    HTTP/1.1 200 OK
+    Content-Type: application/json; charset=utf-8
+    Server: tomodachi
+    Content-Length: 21
+    Date: Sun, 04 Oct 2020 13:40:44 GMT
+
+    {"status": "healthy"}
+
+    local ~$ curl http://127.0.0.1:31337/no-route -i
+    HTTP/1.1 404 Not Found
+    Content-Type: application/json; charset=utf-8
+    Server: tomodachi
+    Content-Length: 22
+    Date: Sun, 04 Oct 2020 13:41:18 GMT
+
+    {"error": "not-found"}
 
 
-Nothing more nothing less. It's actually as easy as that.
+It's actually as easy as that.
 
 
 Available built-ins used as endpoints 🚀
@@ -293,29 +379,29 @@ HTTP endpoints:
 
 AWS SNS+SQS messaging:
 ^^^^^^^^^^^^^^^^^^^^^^
-``@tomodachi.aws_sns_sqs(topic, competing=None, queue_name=None, **kwargs)``
+``@tomodachi.aws_sns_sqs(topic, competing=True, queue_name=None, **kwargs)``
   This would set up an **AWS SQS queue**, subscribing to messages on the **AWS SNS topic** ``topic``, whereafter it will start consuming messages from the queue.
 
-  The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message.
+  The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message. Since ``tomodachi`` version 0.19.x this value has a changed default value and will now default to ``True`` as this is the most likely use-case for pub/sub in distributed architectures.
 
   Unless ``queue_name`` is specified an auto generated queue name will be used. Additional prefixes to both ``topic`` and ``queue_name`` can be assigned by setting the ``options.aws_sns_sqs.topic_prefix`` and ``options.aws_sns_sqs.queue_name_prefix`` dict values.
 
-  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_protocol`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
+  Depending on the service ``message_envelope`` (previously named ``message_protocol``) attribute if used, parts of the enveloped data would be distributed to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_envelope`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
 
-  If you're utilizing ``from tomodachi.protocol import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_protocol`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages.
+  If you're utilizing ``from tomodachi.envelope import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_envelope`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages. Custom enveloping classes can be built to fit your existing architecture or for even more control of tracing and shared metadata between services.
 
 AMQP messaging (RabbitMQ):
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-``@tomodachi.amqp(routing_key, exchange_name='amq.topic', competing=None, queue_name=None, **kwargs)``
-  Sets up the method to be called whenever a **AMQP / RabbitMQ message is received** for the specified ``routing_key``. By default the ``'amq.topic'`` topic exchange would be used, it may also be overridden by setting the ``options.amqp.exchange_name`` dict value for the service class.
+``@tomodachi.amqp(routing_key, exchange_name="amq.topic", competing=True, queue_name=None, **kwargs)``
+  Sets up the method to be called whenever a **AMQP / RabbitMQ message is received** for the specified ``routing_key``. By default the ``'amq.topic'`` topic exchange would be used, it may also be overridden by setting the ``options.amqp.exchange_name`` dict value on the service class.
 
-  The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message.
+  The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message. Since ``tomodachi`` version 0.19.x this value has a changed default value and will now default to ``True`` as this is the most likely use-case for pub/sub in distributed architectures.
 
   Unless ``queue_name`` is specified an auto generated queue name will be used. Additional prefixes to both ``routing_key`` and ``queue_name`` can be assigned by setting the ``options.amqp.routing_key_prefix`` and ``options.amqp.queue_name_prefix`` dict values.
 
-  Depending on the service ``message_protocol`` used, parts of the enveloped data would be distribbuted to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_protocol`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
+  Depending on the service ``message_envelope`` (previously named ``message_protocol``) attribute if used, parts of the enveloped data would be distributed to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_envelope`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
 
-  If you're utilizing ``from tomodachi.protocol import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_protocol`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages.
+  If you're utilizing ``from tomodachi.envelope import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_envelope`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages. Custom enveloping classes can be built to fit your existing architecture or for even more control of tracing and shared metadata between services.
 
 
 Scheduled functions / cron:
@@ -344,38 +430,40 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
 
     import tomodachi
 
+
     @tomodachi.decorator
     async def require_csrf(instance, request):
         token = request.headers.get("X-CSRF-Token")
-        if not token or token != request.cookies.get('csrftoken'):
+        if not token or token != request.cookies.get("csrftoken"):
             return {
-                'body': 'Invalid CSRF token',
-                'status': 403
+                "body": "Invalid CSRF token",
+                "status": 403
             }
 
-    @tomodachi.service
-    class Service(tomodachi.Service):
-        name = 'example'
 
-        @tomodachi.http('POST', r'/create')
+    class Service(tomodachi.Service):
+        name = "example"
+
+        @tomodachi.http("POST", r"/create")
         @require_csrf
         async def create_data(self, request):
             # Do magic here!
-            return 'OK'
+            return "OK"
 
 
 Requirements 👍
 ---------------
-* Python_ (``3.6+``, ``3.7+``, ``3.8+``, ``3.9+``)
-* aiohttp_
-* aiobotocore_
-* aioamqp_
-* uvloop_
+* Python_ (``3.7+``, ``3.8+``, ``3.9+``)
+* aiohttp_ (``aiohttp`` is the currently supported HTTP server implementation for ``tomodachi``)
+* aiobotocore_ and botocore_ (optional: for AWS SNS+SQS pub/sub messaging)
+* aioamqp_ (optional: for RabbitMQ / AMQP pub/sub messaging)
+* uvloop_ (optional: event loop implementation)
 
 .. _Python: https://www.python.org
 .. _asyncio: http://docs.python.org/3.9/library/asyncio.html
 .. _aiohttp: https://github.com/aio-libs/aiohttp
 .. _aiobotocore: https://github.com/aio-libs/aiobotocore
+.. _botocore: https://github.com/boto/botocore
 .. _aioamqp: https://github.com/Polyconseil/aioamqp
 .. _uvloop: https://github.com/MagicStack/uvloop
 

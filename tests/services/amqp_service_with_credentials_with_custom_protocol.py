@@ -38,7 +38,7 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @amqp("test.custom.topic", message_protocol=CustomProtocol)
+    @amqp("test.custom.topic", message_envelope=CustomProtocol)
     async def test(self, data: Any, protocol: Any, default_value: bool = True) -> None:
         if data == self.data_uuid and protocol == "custom":
             self.test_topic_data_received = default_value
@@ -48,7 +48,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
     async def _started_service(self) -> None:
         async def publish(data: Any, routing_key: str) -> None:
-            await amqp_publish(self, data, routing_key=routing_key, wait=False, message_protocol=CustomProtocol)
+            await amqp_publish(self, data, routing_key=routing_key, wait=False, message_envelope=CustomProtocol)
 
         async def _async() -> None:
             async def sleep_and_kill() -> None:

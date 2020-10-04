@@ -1,19 +1,38 @@
+import json
+
 import tomodachi
 
 
-@tomodachi.service
 class Service(tomodachi.Service):
-    name = 'example'
-    options = {
-        'http': {
-            'port': 8080
-        }
-    }
+    name = "example"
+    options = {"http": {"port": 80, "content_type": "application/json; charset=utf-8"}}
 
-    @tomodachi.http('GET', r'/')
+    _healthy = True
+
+    @tomodachi.http("GET", r"/")
     async def index_endpoint(self, request):
-        return 'friends forever!'
+        return json.dumps(
+            {
+                "data": "hello world!",
+                "execution_context": tomodachi.get_execution_context(),
+            }
+        )
 
-    @tomodachi.http('GET', r'/health')
+    @tomodachi.http("GET", r"/health/?", ignore_logging=True)
     async def health_check(self, request):
-        return 'healthy'
+        if self._healthy:
+            return 200, json.dumps({"status": "healthy"})
+        else:
+            return 503, json.dumps({"status": "not healthy"})
+
+    @tomodachi.http_error(status_code=400)
+    async def error_400(self, request):
+        return json.dumps({"error": "bad-request"})
+
+    @tomodachi.http_error(status_code=404)
+    async def error_404(self, request):
+        return json.dumps({"error": "not-found"})
+
+    @tomodachi.http_error(status_code=405)
+    async def error_405(self, request):
+        return json.dumps({"error": "method-not-allowed"})

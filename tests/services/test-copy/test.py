@@ -1,6 +1,6 @@
 import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
-from tomodachi.protocol.json_base import JsonBase
+from tomodachi.envelope.json_base import JsonBase
 
 from .code import test_func
 
@@ -9,7 +9,7 @@ from .code import test_func
 class DummyService(tomodachi.Service):
     name = "test_dummy"
     discovery = [DummyRegistry]
-    message_protocol = JsonBase
+    message_envelope = JsonBase
     options = {
         "aws_sns_sqs": {
             "region_name": "eu-west-1",

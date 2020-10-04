@@ -19,7 +19,8 @@ from tomodachi.helpers.execution_context import (
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
-MESSAGE_PROTOCOL_DEFAULT = "2594418c-5771-454a-a7f9-8f83ae82812a"
+MESSAGE_ENVELOPE_DEFAULT = "2594418c-5771-454a-a7f9-8f83ae82812a"
+MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
 MESSAGE_ROUTING_KEY_PREFIX = "38f58822-25f6-458a-985c-52701d40dbbc"
 
 
@@ -69,7 +70,9 @@ class AmqpTransport(Invoker):
         routing_key: str = "",
         exchange_name: str = "",
         wait: bool = True,
-        message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
         **kwargs: Any,
     ) -> None:
@@ -77,15 +80,19 @@ class AmqpTransport(Invoker):
             await cls.connect(cls, service, service.context)
         exchange_name = exchange_name or cls.exchange_name or "amq.topic"
 
-        message_protocol = (
-            getattr(service, "message_protocol", None)
-            if message_protocol == MESSAGE_PROTOCOL_DEFAULT
-            else message_protocol
+        if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
+            # Fallback if deprecated message_protocol keyword is used
+            message_envelope = message_protocol
+
+        message_envelope = (
+            getattr(service, "message_envelope", None)
+            if message_envelope == MESSAGE_ENVELOPE_DEFAULT
+            else message_envelope
         )
 
         payload = data
-        if message_protocol:
-            build_message_func = getattr(message_protocol, "build_message", None)
+        if message_envelope:
+            build_message_func = getattr(message_envelope, "build_message", None)
             if build_message_func:
                 payload = await build_message_func(service, routing_key, data, **kwargs)
 
@@ -179,19 +186,26 @@ class AmqpTransport(Invoker):
         exchange_name: str = "",
         competing: Optional[bool] = None,
         queue_name: Optional[str] = None,
-        message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
-        message_protocol = (
-            context.get("message_protocol") if message_protocol == MESSAGE_PROTOCOL_DEFAULT else message_protocol
+
+        if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
+            # Fallback if deprecated message_protocol keyword is used
+            message_envelope = message_protocol
+
+        message_envelope = (
+            context.get("message_envelope") if message_envelope == MESSAGE_ENVELOPE_DEFAULT else message_envelope
         )
 
-        # Validate the parser kwargs if there is a validation function in the protocol
-        if message_protocol:
-            protocol_kwargs_validation_func = getattr(message_protocol, "validate", None)
-            if protocol_kwargs_validation_func:
-                protocol_kwargs_validation_func(**parser_kwargs)
+        # Validate the parser kwargs if there is a validation function in the envelope
+        if message_envelope:
+            envelope_kwargs_validation_func = getattr(message_envelope, "validate", None)
+            if envelope_kwargs_validation_func:
+                envelope_kwargs_validation_func(**parser_kwargs)
 
         async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
@@ -214,9 +228,9 @@ class AmqpTransport(Invoker):
             message = payload
             message_uuid = None
             message_key = None
-            if message_protocol:
+            if message_envelope:
                 try:
-                    parse_message_func = getattr(message_protocol, "parse_message", None)
+                    parse_message_func = getattr(message_envelope, "parse_message", None)
                     if parse_message_func:
                         if len(parser_kwargs):
                             message, message_uuid, timestamp = await parse_message_func(payload, **parser_kwargs)
@@ -250,7 +264,7 @@ class AmqpTransport(Invoker):
                     if message is not False and not message_uuid:
                         await cls.channel.basic_client_ack(delivery_tag)
                     elif message is False and message_uuid:
-                        pass  # incompatible protocol, should probably ack if old message
+                        pass  # incompatible envelope, should probably ack if old message
                     elif message is False:
                         await cls.channel.basic_client_ack(delivery_tag)
                     return
@@ -258,7 +272,7 @@ class AmqpTransport(Invoker):
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
                 try:
-                    if not message_protocol and len(values.args[1:]):
+                    if not message_envelope and len(values.args[1:]):
                         routine = func(*(obj, message, *a))
                     elif len(merge_dicts(kwargs, kw)):
                         routine = func(*(obj, *a), **merge_dicts(kwargs, kw))

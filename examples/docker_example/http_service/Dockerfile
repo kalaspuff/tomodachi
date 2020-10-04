@@ -1,18 +1,11 @@
-FROM kalaspuff/python-nginx-proxy:1.3.0
+FROM python:3.8-slim
 
-WORKDIR /
+COPY requirements.txt ./
+RUN pip install -r requirements.txt && rm -f requirements.txt
 
-ADD requirements.txt .
-RUN apt-get -y update \
-    && apt-get install -y build-essential=12.3 \
-    && pip install -r requirements.txt \
-    && rm -f requirements.txt \
-    && apt-get purge -y --auto-remove build-essential \
-    && apt-get clean autoclean \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/{apt,dpkg,cache,log}/
-
+COPY app /app
 WORKDIR /app
-ADD app /app/
 
-CMD tomodachi run service.py --production
+ENV PYTHONUNBUFFERED=1
+
+CMD ["tomodachi", "run", "service.py", "--production"]

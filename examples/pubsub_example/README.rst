@@ -23,7 +23,7 @@ Preferrably set up a configuration file with your AWS credentials or manually ch
             "aws": {
                 "region_name": "eu-west-1",
                 "aws_access_key_id": "AKIFAKEKEYNOTREALZ35",
-                "aws_secret_access_key": "abtst2/Passw0rdSup3rS3creT.5o2gNDsS/00f",
+                "aws_secret_access_key": "abtst2/Passw0rdSup3rS3creT.5o2gNDsS/00f"
             },
             "aws_sns_sqs": {
                 "queue_name_prefix": "tomodachi-",
@@ -53,35 +53,35 @@ Full code for ``service_a.py``
 
 .. code:: python
 
-    import tomodachi
     from typing import Any
+
+    import tomodachi
     from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
-    from tomodachi.protocol import JsonBase
+    from tomodachi.envelope import JsonBase
 
 
-    @tomodachi.service
     class ServiceA(tomodachi.Service):
-        name = 'example_service_a'
-        message_protocol = JsonBase
+        name = "example-service-a"
+        message_envelope = JsonBase
 
         options = {
-            'aws_sns_sqs': {
-                'region_name': None,  # specify AWS region (example: 'eu-west-1')
-                'aws_access_key_id': None,  # specify AWS access key (example: 'AKIAXNTIENCJIY2STOCI')
-                'aws_secret_access_key': None  # specify AWS secret key
+            "aws_sns_sqs": {
+                "region_name": None,  # specify AWS region (example: "eu-west-1")
+                "aws_access_key_id": None,  # specify AWS access key (example: "AKIAXNTIENCJIY2STOCI")
+                "aws_secret_access_key": None,  # specify AWS secret key
             },
-            'aws_endpoint_urls': {
-                'sns': None,  # For example 'http://localhost:4575' if localstack is used for testing
-                'sqs': None  # For example 'http://localhost:4576' if localstack is used for testing
-            }
+            "aws_endpoint_urls": {
+                "sns": None,  # For example "http://localhost:4575" if localstack is used for testing
+                "sqs": None,  # For example "http://localhost:4576" if localstack is used for testing
+            },
         }
 
-        @aws_sns_sqs('example-pubsub-new-message', competing=True)
+        @aws_sns_sqs("example-pubsub-new-message")
         async def new_message(self, data: Any) -> None:
-            self.log('Received data (function: new_message) - "{}"'.format(data))
+            self.log(f"Received data (function: new_message) - '{data}'")
 
-            callback_data = 'message received: "{}"'.format(data)
-            await aws_sns_sqs_publish(self, callback_data, topic='example-pubsub-callback', wait=True)
+            callback_data = f"message received: '{data}'"
+            await aws_sns_sqs_publish(self, callback_data, topic="example-pubsub-callback", wait=True)
 
         async def _started_service(self) -> None:
-            self.log('Subscribing to messages on topic "example-pubsub-new-message"')
+            self.log("Subscribing to messages on topic 'example-pubsub-new-message'")

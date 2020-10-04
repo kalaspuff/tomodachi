@@ -3,6 +3,18 @@ Changes
 
 0.19.0 (2020-xx-xx)
 -------------------
+- ``@tomodachi.aws_sns_sqs`` and ``@tomodachi.amqp`` decorators has
+  changed the default value of the ``competing`` keyword-argument to
+  ``True``. Note that this is a change in default behaviour and may be a
+  breaking change if "non-competing" services were used. This change was
+  triggered in an attempt to make the API more clear and use more
+  common default values. It's rare that a non-shared queue would be used
+  for service replicas of the same type in a distributed architecture.
+
+- The event loop that the process will execute on can now be specified
+  on startup using ``--loop [auto|asyncio|uvloop]``, currently the `auto`
+  (or `default`) value will use Python's builtin `asyncio` event loop.
+
 - Fixes a bug that could cause a termination signal to stop the service
   in the middle of processing a message received via AWS SQS. The service
   will now await currently executing tasks before finally shutting down.
@@ -16,9 +28,28 @@ Changes
   configured to allow keep-alive connections by specifying the
   ``options.http.keepalive_timeout`` config value.
 
-- The event loop that the process will execute on can now be specified
-  on startup using ``--loop [auto|asyncio|uvloop]``, currently the `auto`
-  (or `default`) value will use Python's builtin `asyncio` event loop.
+- Service termination for HTTP based services will now correctly await
+  started tasks from clients that has disconnected before receiving
+  the response.
+
+- The ``message_protocol`` value that can be specified on service classes
+  has been renamed to ``message_envelope`` and the two example
+  implementations ``JsonBase`` and ``ProtobufBase`` has been moved from
+  ``tomodachi.protocol`` to ``tomodachi.envelope``. The previous imports
+  and service attribute is deprecated, but can still be used. Likewise
+  the optional ``message_protocol`` keyword argument passed to
+  ``@tomodachi.aws_sns_sqs``, ``@tomodachi.amqp``,
+  ``aws_sns_sqs_publish``, ``amqp_publish`` is renamed to
+  ``message_envelope``.
+
+- The argument to specify ``message_envelope`` on the
+  ``@tomodachi.aws_sns_sqs`` and ``@tomodachi.amqp`` decorators is now keyword only.
+
+- The arguments to specify ``message_envelope`` and ``topic_prefix`` to
+  ``aws_sns_sqs_publish`` is now keyword only.
+
+- The arguments to specify ``message_envelope`` and ``routing_key_prefix``
+  to ``amqp_publish`` is now keyword only.
 
 - ``uvloop`` is now an optional installed package.
 
@@ -26,12 +57,19 @@ Changes
 
 - Added ``tomodachi.get_execution_context()`` that holds metadata about
   the service execution that can be used for debugging purposes or be
-  sent to application monitoring platforms such as Sentry.
+  sent to application monitoring platforms such as Sentry or to be
+  included in custom log output for log search indexing. The
+  ``tomodachi.get_execution_context()`` function returns a ``dict``
+  with installed package versions of some key dependencies, function
+  call counters of different types, etc.
 
 - Refactoring and updates to code formatting, now using Black code style.
 
 - Updated startup output with additional information about the running
   process, including versions, etc.
+
+- Overall updated documentation and improved examples around running services
+  within Docker.
 
 - Added support for ``aiohttp`` 3.6.x.
 

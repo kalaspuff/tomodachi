@@ -25,7 +25,8 @@ from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
-MESSAGE_PROTOCOL_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
+MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
+MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
 MESSAGE_TOPIC_PREFIX = "09698c75-832b-470f-8e05-96d2dd8c4853"
 
 
@@ -63,19 +64,25 @@ class AWSSNSSQSTransport(Invoker):
         data: Any,
         topic: str,
         wait: bool = True,
-        message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
         **kwargs: Any,
     ) -> None:
-        message_protocol = (
-            getattr(service, "message_protocol", None)
-            if message_protocol == MESSAGE_PROTOCOL_DEFAULT
-            else message_protocol
+        if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
+            # Fallback if deprecated message_protocol keyword is used
+            message_envelope = message_protocol
+
+        message_envelope = (
+            getattr(service, "message_envelope", None)
+            if message_envelope == MESSAGE_ENVELOPE_DEFAULT
+            else message_envelope
         )
 
         payload = data
-        if message_protocol:
-            build_message_func = getattr(message_protocol, "build_message", None)
+        if message_envelope:
+            build_message_func = getattr(message_envelope, "build_message", None)
             if build_message_func:
                 payload = await build_message_func(service, topic, data, **kwargs)
 
@@ -160,19 +167,26 @@ class AWSSNSSQSTransport(Invoker):
         callback_kwargs: Optional[Union[list, set, tuple]] = None,
         competing: Optional[bool] = None,
         queue_name: Optional[str] = None,
-        message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
-        message_protocol = (
-            context.get("message_protocol") if message_protocol == MESSAGE_PROTOCOL_DEFAULT else message_protocol
+
+        if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
+            # Fallback if deprecated message_protocol keyword is used
+            message_envelope = message_protocol
+
+        message_envelope = (
+            context.get("message_envelope") if message_envelope == MESSAGE_ENVELOPE_DEFAULT else message_envelope
         )
 
-        # Validate the parser kwargs if there is a validation function in the protocol
-        if message_protocol:
-            protocol_kwargs_validation_func = getattr(message_protocol, "validate", None)
-            if protocol_kwargs_validation_func:
-                protocol_kwargs_validation_func(**parser_kwargs)
+        # Validate the parser kwargs if there is a validation function in the envelope
+        if message_envelope:
+            envelope_kwargs_validation_func = getattr(message_envelope, "validate", None)
+            if envelope_kwargs_validation_func:
+                envelope_kwargs_validation_func(**parser_kwargs)
 
         async def handler(
             payload: Optional[str],
@@ -207,9 +221,9 @@ class AWSSNSSQSTransport(Invoker):
             message = payload
             message_uuid = None
             message_key = None
-            if message_protocol:
+            if message_envelope:
                 try:
-                    parse_message_func = getattr(message_protocol, "parse_message", None)
+                    parse_message_func = getattr(message_envelope, "parse_message", None)
                     if parse_message_func:
                         if len(parser_kwargs):
                             message, message_uuid, timestamp = await parse_message_func(payload, **parser_kwargs)
@@ -246,7 +260,7 @@ class AWSSNSSQSTransport(Invoker):
                     if message is not False and not message_uuid:
                         await cls.delete_message(cls, receipt_handle, queue_url, context)
                     elif message is False and message_uuid:
-                        pass  # incompatible protocol, should probably delete if old message
+                        pass  # incompatible envelope, should probably delete if old message
                     elif message is False:
                         await cls.delete_message(cls, receipt_handle, queue_url, context)
                     return
@@ -254,7 +268,7 @@ class AWSSNSSQSTransport(Invoker):
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
                 try:
-                    if not message_protocol and len(values.args[1:]):
+                    if not message_envelope and len(values.args[1:]):
                         routine = func(*(obj, message, *a))
                     elif len(merge_dicts(kwargs, kw)):
                         routine = func(*(obj, *a), **merge_dicts(kwargs, kw))

@@ -49,7 +49,7 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @aws_sns_sqs("test-custom-topic", message_protocol=CustomProtocol)
+    @aws_sns_sqs("test-custom-topic", message_envelope=CustomProtocol)
     async def test(self, data: Any, protocol: Any, default_value: bool = True) -> None:
         if data == self.data_uuid and protocol == "custom":
             self.test_topic_data_received = default_value
@@ -59,7 +59,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
     async def _started_service(self) -> None:
         async def publish(data: Any, topic: str) -> None:
-            await aws_sns_sqs_publish(self, data, topic=topic, wait=False, message_protocol=CustomProtocol)
+            await aws_sns_sqs_publish(self, data, topic=topic, wait=False, message_envelope=CustomProtocol)
 
         async def _async() -> None:
             async def sleep_and_kill() -> None:

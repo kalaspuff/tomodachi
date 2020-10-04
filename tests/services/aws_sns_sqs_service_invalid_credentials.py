@@ -5,7 +5,7 @@ from typing import Any
 
 import tomodachi
 from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
-from tomodachi.protocol.json_base import JsonBase
+from tomodachi.enveloep.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs
 
 
@@ -14,7 +14,7 @@ class AWSSNSSQSService(tomodachi.Service):
     name = "test_aws_sns_sqs"
     log_level = "INFO"
     discovery = [AWSSNSRegistration]
-    message_protocol = JsonBase
+    message_envelope = JsonBase
     options = {
         "aws_sns_sqs": {
             "region_name": "eu-west-1",

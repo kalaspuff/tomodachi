@@ -755,12 +755,22 @@ class HttpTransport(Invoker):
 
                 increase_execution_context_value("http_current_tasks")
                 increase_execution_context_value("http_total_tasks")
-                task = asyncio.ensure_future(asyncio.shield(func()))
+                task = asyncio.ensure_future(func())
                 context["_http_active_requests"] = context.get("_http_active_requests", set())
                 context["_http_active_requests"].add(task)
                 try:
-                    result = await task
-                except (Exception, CancelledError):
+                    result = await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    try:
+                        result = await task
+                        decrease_execution_context_value("http_current_tasks")
+                        context["_http_active_requests"].remove(task)
+                        return task.result()
+                    except Exception:
+                        decrease_execution_context_value("http_current_tasks")
+                        context["_http_active_requests"].remove(task)
+                        raise
+                except Exception:
                     decrease_execution_context_value("http_current_tasks")
                     context["_http_active_requests"].remove(task)
                     raise

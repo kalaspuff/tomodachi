@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+import os
 import re
 import sys
 import types
@@ -243,24 +244,26 @@ class ServiceContainer(object):
         for name, instance, log_level in services_started:
             self.logger.info('Stopped service "{}" [id: {}]'.format(name, instance.uuid))
 
-        try:
-            tasks = [task for task in asyncio.all_tasks()]
-            for task in tasks:
-                try:
-                    co_filename = task.get_coro().cr_code.co_filename if hasattr(task, "get_coro") else task._coro.cr_code.co_filename  # type: ignore
-                    co_name = task.get_coro().cr_code.co_name if hasattr(task, "get_coro") else task._coro.cr_code.co_name  # type: ignore
+        # Debug output if TOMODACHI_DEBUG env is set. Shows still running tasks on service termination.
+        if os.environ.get("TOMODACHI_DEBUG") and os.environ.get("TOMODACHI_DEBUG") != "0":
+            try:
+                tasks = [task for task in asyncio.all_tasks()]
+                for task in tasks:
+                    try:
+                        co_filename = task.get_coro().cr_code.co_filename if hasattr(task, "get_coro") else task._coro.cr_code.co_filename  # type: ignore
+                        co_name = task.get_coro().cr_code.co_name if hasattr(task, "get_coro") else task._coro.cr_code.co_name  # type: ignore
 
-                    if "/tomodachi/watcher.py" in co_filename and co_name == "_watch_loop":
-                        continue
-                    if "/tomodachi/container.py" in co_filename and co_name == "run_until_complete":
-                        continue
-                    if "/asyncio/tasks.py" in co_filename and co_name == "wait":
-                        continue
+                        if "/tomodachi/watcher.py" in co_filename and co_name == "_watch_loop":
+                            continue
+                        if "/tomodachi/container.py" in co_filename and co_name == "run_until_complete":
+                            continue
+                        if "/asyncio/tasks.py" in co_filename and co_name == "wait":
+                            continue
 
-                    self.logger.warning(
-                        "Task '{}' from '{}' has not finished execution or was not awaited".format(co_name, co_filename)
-                    )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                        self.logger.warning(
+                            "** Task '{}' from '{}' has not finished execution or has not been awaited".format(co_name, co_filename)
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
