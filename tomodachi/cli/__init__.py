@@ -263,8 +263,6 @@ class CLI:
             self.test_dependencies()
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
-
-            print(tomodachi.get_execution_context())
         sys.exit(0)
 
     def main(self, argv: List[str]) -> None:

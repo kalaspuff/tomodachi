@@ -7,13 +7,14 @@ try:
     import tomodachi.helpers.logging
     import tomodachi.helpers.execution_context
     from tomodachi.helpers.execution_context import (
-        set_service,
-        unset_service,
-        clear_services,
+        set_service as _set_service,
+        unset_service as _unset_service,
+        clear_services as _clear_services,
         get_service,
         get_instance,
         set_execution_context,
         get_execution_context,
+        clear_execution_context as _clear_execution_context,
         increase_execution_context_value,
         decrease_execution_context_value
     )
@@ -46,11 +47,12 @@ __all__ = [
     "__version__",
     "__version_info__",
     "decorator",
-    "set_service",
-    "unset_service",
-    "clear_services",
+    "_set_service",
+    "_unset_service",
+    "_clear_services",
     "set_execution_context",
     "get_execution_context",
+    "_clear_execution_context",
     "get_service",
     "get_instance",
     "amqp",

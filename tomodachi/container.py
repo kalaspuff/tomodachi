@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional, cast
 import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
 from tomodachi.config import merge_dicts
+from tomodachi.helpers.execution_context import set_service, unset_service
 from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
 
 
@@ -112,8 +113,8 @@ class ServiceContainer(object):
                             other_service = tomodachi.get_service(new_service_name)
                             setattr(other_service, 'name', '{}-0001'.format(new_service_name))
                             setattr(other_service.__class__, 'name', other_service.name)
-                            tomodachi.unset_service(new_service_name)
-                            tomodachi.set_service(other_service.name, other_service)
+                            unset_service(new_service_name)
+                            set_service(other_service.name, other_service)
 
                         incr = 1
                         while True:
@@ -127,7 +128,7 @@ class ServiceContainer(object):
                     setattr(instance, "name", service_name)
                     setattr(instance, "cls", service_name)
 
-                tomodachi.set_service(service_name, instance)
+                set_service(service_name, instance)
 
                 log_level = getattr(instance, "log_level", None) or getattr(cls, "log_level", None) or "INFO"
 

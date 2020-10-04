@@ -20,6 +20,7 @@ import tomodachi.importer
 import tomodachi.invoker
 import tomodachi.watcher
 from tomodachi.container import ServiceContainer
+from tomodachi.helpers.execution_context import clear_services, clear_execution_context, set_execution_context
 from tomodachi.importer import ServiceImporter
 
 try:
@@ -157,14 +158,20 @@ class ServiceLauncher(object):
             except Exception:
                 event_loop_alias = str(loop)
 
-            tomodachi.set_execution_context({
+            clear_services()
+            clear_execution_context()
+            set_execution_context({
+                "tomodachi_version": tomodachi.__version__,
+                "python_version": platform.python_version(),
+                "system_platform": platform.system(),
                 "process_id": process_id,
                 "init_timestamp": init_timestamp_str,
                 "event_loop": event_loop_alias,
             })
-            if event_loop_version:
-                tomodachi.set_execution_context({
-                    "event_loop_version": event_loop_version,
+
+            if event_loop_alias == 'uvloop' and event_loop_version:
+                set_execution_context({
+                    "uvloop_version": event_loop_version,
                 })
 
             if watcher:
@@ -188,8 +195,6 @@ class ServiceLauncher(object):
             cls._close_waiter = asyncio.Future()
             cls._stopped_waiter = asyncio.Future()
             cls.restart_services = False
-
-            tomodachi.clear_services()
 
             try:
                 cls.services = set(

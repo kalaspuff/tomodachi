@@ -507,8 +507,10 @@ class AWSSNSSQSTransport(Invoker):
             await cls.create_client(cls, "sqs", context)
         client = cls.clients.get("sqs")
 
+        queue_url = ''
         try:
-            response = await client.create_queue(QueueName=queue_name)
+            response = await client.get_queue_url(QueueName=queue_name)
+            queue_url = response.get("QueueUrl")
         except (
             botocore.exceptions.NoCredentialsError,
             botocore.exceptions.PartialCredentialsError,
@@ -520,13 +522,29 @@ class AWSSNSSQSTransport(Invoker):
             )
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
         except botocore.exceptions.ClientError as e:
-            error_message = str(e)
-            logging.getLogger("transport.aws_sns_sqs").warning(
-                "Unable to create queue [sqs] on AWS ({})".format(error_message)
-            )
-            raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
+            pass
 
-        queue_url = response.get("QueueUrl")
+        if not queue_url:
+            try:
+                response = await client.create_queue(QueueName=queue_name)
+                queue_url = response.get("QueueUrl")
+            except (
+                botocore.exceptions.NoCredentialsError,
+                botocore.exceptions.PartialCredentialsError,
+                aiohttp.client_exceptions.ClientOSError,
+            ) as e:
+                error_message = str(e)
+                logging.getLogger("transport.aws_sns_sqs").warning(
+                    "Unable to connect [sqs] to AWS ({})".format(error_message)
+                )
+                raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
+            except botocore.exceptions.ClientError as e:
+                error_message = str(e)
+                logging.getLogger("transport.aws_sns_sqs").warning(
+                    "Unable to create queue [sqs] on AWS ({})".format(error_message)
+                )
+                raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
+
         if not queue_url:
             error_message = "Missing Queue URL in response"
             logging.getLogger("transport.aws_sns_sqs").warning(
@@ -657,20 +675,32 @@ class AWSSNSSQSTransport(Invoker):
         if not queue_policy:
             queue_policy = cls.generate_queue_policy(queue_arn, topic_arn_list, context)
 
+        current_queue_policy = {}
         try:
-            # MessageRetentionPeriod (default 4 days, set to context value)
-            # VisibilityTimeout (default 30 seconds)
-            response = await sqs_client.set_queue_attributes(
-                QueueUrl=queue_url, Attributes={"Policy": json.dumps(queue_policy)}
+            response = await sqs_client.get_queue_attributes(
+                QueueUrl=queue_url, AttributeNames=["Policy"]
             )
+            current_queue_policy = json.loads(response.get('Attributes', {}).get('Policy') or '{}')
         except botocore.exceptions.ClientError as e:
-            error_message = str(e)
-            logging.getLogger("transport.aws_sns_sqs").warning(
-                "Unable to set queue attributes [sqs] on AWS ({})".format(error_message)
-            )
-            raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
+            pass
+
+        if not current_queue_policy or [{**x, 'Sid': ''} for x in current_queue_policy.get('Statement', [])] != [{**x, 'Sid': ''} for x in queue_policy.get('Statement', [])]:
+            try:
+                # MessageRetentionPeriod (default 4 days, set to context value)
+                # VisibilityTimeout (default 30 seconds)
+                response = await sqs_client.set_queue_attributes(
+                    QueueUrl=queue_url, Attributes={"Policy": json.dumps(queue_policy)}
+                )
+            except botocore.exceptions.ClientError as e:
+                error_message = str(e)
+                logging.getLogger("transport.aws_sns_sqs").warning(
+                    "Unable to set queue attributes [sqs] on AWS ({})".format(error_message)
+                )
+                raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
 
         subscription_arn_list = []
+
+
         for topic_arn in topic_arn_list:
             try:
                 response = await client.subscribe(TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn)
@@ -822,10 +852,9 @@ class AWSSNSSQSTransport(Invoker):
                     except asyncio.CancelledError:
                         continue
 
-                    if not futures:
-                        continue
-
                     tasks = [asyncio.ensure_future(func()) for func in futures if func]
+                    if not tasks:
+                        continue
                     try:
                         await asyncio.shield(asyncio.wait(tasks))
                     except asyncio.CancelledError:
@@ -835,11 +864,28 @@ class AWSSNSSQSTransport(Invoker):
                 if not stop_waiter.done():
                     stop_waiter.set_result(None)
 
-            finished, unfinished = await asyncio.wait([asyncio.ensure_future(_receive_wrapper()), cls.close_waiter], return_when=asyncio.FIRST_COMPLETED)
-            for task in unfinished:
-                task.cancel()
+            task = None
+            while True:
+                if task and not cls.close_waiter.done():
+                    logging.getLogger("transport.aws_sns_sqs").warning("Resuming message receiving after trying to recover from fatal error")
+                if not task or task.done():
+                    task = asyncio.ensure_future(_receive_wrapper())
+                await asyncio.wait([cls.close_waiter, task], return_when=asyncio.FIRST_COMPLETED)
+                if cls.close_waiter.done():
+                    break
+                if not cls.close_waiter.done() and task.done() and task.exception():
+                    try:
+                        raise task.exception()
+                    except Exception as e:
+                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    sleep_task = asyncio.ensure_future(asyncio.sleep(10))
+                    await asyncio.wait([sleep_task, cls.close_waiter], return_when=asyncio.FIRST_COMPLETED)
+                    if not sleep_task.done():
+                        sleep_task.cancel()
 
-            await asyncio.wait([task for task in unfinished if not task.cancelled()])
+            if task and not task.done():
+                task.cancel()
+                await task
 
         loop = asyncio.get_event_loop()  # type: Any
 
