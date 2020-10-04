@@ -12,6 +12,10 @@ Changes
   ``options.amqp.virtualhost``, ``options.amqp.ssl`` and
   ``options.amqp.heartbeat``. (github: **xdmiodz**)
 
+- HTTP server functionality, which is based on ``aiohttp``, can now be
+  configured to allow keep-alive connections by specifying the
+  ``options.http.keepalive_timeout`` config value.
+
 - The event loop that the process will execute on can now be specified
   on startup using ``--loop [auto|asyncio|uvloop]``, currently the `auto`
   (or `default`) value will use Python's builtin `asyncio` event loop.
