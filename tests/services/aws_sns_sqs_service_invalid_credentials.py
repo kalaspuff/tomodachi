@@ -5,7 +5,7 @@ from typing import Any
 
 import tomodachi
 from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
-from tomodachi.enveloep.json_base import JsonBase
+from tomodachi.envelope.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs
 
 
