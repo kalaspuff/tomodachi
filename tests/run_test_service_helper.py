@@ -4,8 +4,6 @@ import logging
 import signal
 from typing import Any, Dict, Tuple
 
-import uvloop
-
 from tomodachi.container import ServiceContainer
 from tomodachi.importer import ServiceImporter
 
