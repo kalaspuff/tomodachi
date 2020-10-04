@@ -1,6 +1,5 @@
 from typing import Any, Dict, Optional, cast
 
-
 _services = {}
 _current_service = {}
 _context: Dict[str, Any] = {}
@@ -12,14 +11,14 @@ def set_service(name: str, instance: Any) -> None:
 
 
 def unset_service(name: str) -> None:
-    del(_services[name])
+    del _services[name]
 
 
 def clear_services() -> None:
     for name in list(_services.keys()):
-        del(_services[name])
+        del _services[name]
     if _current_service:
-        del(_current_service[0])
+        del _current_service[0]
 
 
 def get_service(name: Optional[str] = None) -> Any:
@@ -50,7 +49,7 @@ def get_execution_context() -> Dict[str, Any]:
 
 def clear_execution_context() -> None:
     for key in list(_context.keys()):
-        del(_context[key])
+        del _context[key]
 
 
 def increase_execution_context_value(key: str, value: int = 1) -> int:

@@ -92,9 +92,26 @@ class ServiceContainer(object):
                 service_name = getattr(instance, "name", getattr(cls, "name", None))
 
                 if not service_name:
-                    new_service_name = ''
-                    if instance.__class__.__module__ and instance.__class__.__module__ not in ('service.app', 'service.service', 'app.service', 'app.app', 'example.service', 'example.app'):
-                        new_service_name = '{}-'.format(re.sub(r'^.*[.]([a-zA-Z0-9_]+)[.]([a-zA-Z0-9_]+)$', r'\1-\2', str(instance.__class__.__module__))).replace('_', '-').replace('.', '-')
+                    new_service_name = ""
+                    if instance.__class__.__module__ and instance.__class__.__module__ not in (
+                        "service.app",
+                        "service.service",
+                        "app.service",
+                        "app.app",
+                        "example.service",
+                        "example.app",
+                    ):
+                        new_service_name = (
+                            "{}-".format(
+                                re.sub(
+                                    r"^.*[.]([a-zA-Z0-9_]+)[.]([a-zA-Z0-9_]+)$",
+                                    r"\1-\2",
+                                    str(instance.__class__.__module__),
+                                )
+                            )
+                            .replace("_", "-")
+                            .replace(".", "-")
+                        )
                     class_name = instance.__class__.__name__
                     for i, c in enumerate(class_name.lower()):
                         if i and c != class_name[i]:
@@ -103,22 +120,26 @@ class ServiceContainer(object):
                             c = "-"
                         new_service_name += c
 
-                    if new_service_name in ('app', 'service'):
-                        new_service_name = 'service'
+                    if new_service_name in ("app", "service"):
+                        new_service_name = "service"
 
-                    if not tomodachi.get_service(new_service_name) and not tomodachi.get_service('{}-0001'.format(new_service_name)):
+                    if not tomodachi.get_service(new_service_name) and not tomodachi.get_service(
+                        "{}-0001".format(new_service_name)
+                    ):
                         service_name = new_service_name
                     else:
-                        if tomodachi.get_service(new_service_name) and not tomodachi.get_service('{}-0001'.format(new_service_name)):
+                        if tomodachi.get_service(new_service_name) and not tomodachi.get_service(
+                            "{}-0001".format(new_service_name)
+                        ):
                             other_service = tomodachi.get_service(new_service_name)
-                            setattr(other_service, 'name', '{}-0001'.format(new_service_name))
-                            setattr(other_service.__class__, 'name', other_service.name)
+                            setattr(other_service, "name", "{}-0001".format(new_service_name))
+                            setattr(other_service.__class__, "name", other_service.name)
                             unset_service(new_service_name)
                             set_service(other_service.name, other_service)
 
                         incr = 1
                         while True:
-                            test_service_name = '{}-{:04d}'.format(new_service_name, incr)
+                            test_service_name = "{}-{:04d}".format(new_service_name, incr)
                             if tomodachi.get_service(test_service_name):
                                 incr += 1
                                 continue
@@ -226,17 +247,19 @@ class ServiceContainer(object):
             tasks = [task for task in asyncio.all_tasks()]
             for task in tasks:
                 try:
-                    co_filename = task.get_coro().cr_code.co_filename if hasattr(task, 'get_coro') else task._coro.cr_code.co_filename  # type: ignore
-                    co_name = task.get_coro().cr_code.co_name if hasattr(task, 'get_coro') else task._coro.cr_code.co_name  # type: ignore
+                    co_filename = task.get_coro().cr_code.co_filename if hasattr(task, "get_coro") else task._coro.cr_code.co_filename  # type: ignore
+                    co_name = task.get_coro().cr_code.co_name if hasattr(task, "get_coro") else task._coro.cr_code.co_name  # type: ignore
 
-                    if '/tomodachi/watcher.py' in co_filename and co_name == '_watch_loop':
+                    if "/tomodachi/watcher.py" in co_filename and co_name == "_watch_loop":
                         continue
-                    if '/tomodachi/container.py' in co_filename and co_name == 'run_until_complete':
+                    if "/tomodachi/container.py" in co_filename and co_name == "run_until_complete":
                         continue
-                    if '/asyncio/tasks.py' in co_filename and co_name == 'wait':
+                    if "/asyncio/tasks.py" in co_filename and co_name == "wait":
                         continue
 
-                    self.logger.warning("Task '{}' from '{}' has not finished execution or was not awaited".format(co_name, co_filename))
+                    self.logger.warning(
+                        "Task '{}' from '{}' has not finished execution or was not awaited".format(co_name, co_filename)
+                    )
                 except Exception:
                     pass
         except Exception:

@@ -20,7 +20,7 @@ import tomodachi.importer
 import tomodachi.invoker
 import tomodachi.watcher
 from tomodachi.container import ServiceContainer
-from tomodachi.helpers.execution_context import clear_services, clear_execution_context, set_execution_context
+from tomodachi.helpers.execution_context import clear_execution_context, clear_services, set_execution_context
 from tomodachi.importer import ServiceImporter
 
 try:
@@ -144,42 +144,51 @@ class ServiceLauncher(object):
                 tz = pytz.UTC
 
             init_timestamp = time.time()
-            init_timestamp_str = datetime.datetime.utcfromtimestamp(init_timestamp).isoformat() + 'Z'
+            init_timestamp_str = datetime.datetime.utcfromtimestamp(init_timestamp).isoformat() + "Z"
 
             process_id = os.getpid()
 
-            event_loop_alias = ''
-            event_loop_version = ''
+            event_loop_alias = ""
+            event_loop_version = ""
             try:
-                if 'uvloop.' in str(loop.__class__):
-                    event_loop_alias = 'uvloop'
+                if "uvloop." in str(loop.__class__):
+                    event_loop_alias = "uvloop"
                     import uvloop
+
                     event_loop_version = str(uvloop.__version__)
-                elif 'asyncio.' in str(loop.__class__):
-                    event_loop_alias = 'asyncio'
+                elif "asyncio." in str(loop.__class__):
+                    event_loop_alias = "asyncio"
                 else:
-                    event_loop_alias = '{}.{}'.format(loop.__class__.__module__, loop.__class__.__name__)
+                    event_loop_alias = "{}.{}".format(loop.__class__.__module__, loop.__class__.__name__)
             except Exception:
                 event_loop_alias = str(loop)
 
             clear_services()
             clear_execution_context()
-            set_execution_context({
-                "tomodachi_version": tomodachi.__version__,
-                "python_version": platform.python_version(),
-                "system_platform": platform.system(),
-                "process_id": process_id,
-                "init_timestamp": init_timestamp_str,
-                "event_loop": event_loop_alias,
-            })
+            set_execution_context(
+                {
+                    "tomodachi_version": tomodachi.__version__,
+                    "python_version": platform.python_version(),
+                    "system_platform": platform.system(),
+                    "process_id": process_id,
+                    "init_timestamp": init_timestamp_str,
+                    "event_loop": event_loop_alias,
+                }
+            )
 
-            if event_loop_alias == 'uvloop' and event_loop_version:
-                set_execution_context({
-                    "uvloop_version": event_loop_version,
-                })
+            if event_loop_alias == "uvloop" and event_loop_version:
+                set_execution_context(
+                    {
+                        "uvloop_version": event_loop_version,
+                    }
+                )
 
             if watcher:
-                init_local_datetime = datetime.datetime.fromtimestamp(init_timestamp) if tz is not pytz.UTC else datetime.datetime.utcfromtimestamp(init_timestamp)
+                init_local_datetime = (
+                    datetime.datetime.fromtimestamp(init_timestamp)
+                    if tz is not pytz.UTC
+                    else datetime.datetime.utcfromtimestamp(init_timestamp)
+                )
 
                 print("---")
                 print("Starting tomodachi services (pid: {}) ...".format(process_id))
@@ -187,10 +196,18 @@ class ServiceLauncher(object):
                     print("* {}".format(file))
 
                 print()
-                print("Current version: tomodachi {} on Python {}".format(tomodachi.__version__, platform.python_version()))
-                print("Event loop implementation: {}{}".format(event_loop_alias, ' {}'.format(event_loop_version) if event_loop_version else ''))
-                print('Local time: {} {}'.format(init_local_datetime.strftime("%B %d, %Y - %H:%M:%S,%f"), str(tz)))
-                print('Timestamp in UTC: {}'.format(init_timestamp_str))
+                print(
+                    "Current version: tomodachi {} on Python {}".format(
+                        tomodachi.__version__, platform.python_version()
+                    )
+                )
+                print(
+                    "Event loop implementation: {}{}".format(
+                        event_loop_alias, " {}".format(event_loop_version) if event_loop_version else ""
+                    )
+                )
+                print("Local time: {} {}".format(init_local_datetime.strftime("%B %d, %Y - %H:%M:%S,%f"), str(tz)))
+                print("Timestamp in UTC: {}".format(init_timestamp_str))
                 print()
                 print("File watcher is active - code changes will automatically restart services")
                 print("Quit running services with <ctrl+c>")

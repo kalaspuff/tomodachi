@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 
 try:
     import uvloop
+
     uvloop_installed = True
 except Exception:  # pragma: no cover
     uvloop_installed = False
@@ -56,7 +57,9 @@ class CLI:
         self.test_dependencies(fail_on_errors=False, output_versions=True, output_errors=True)
         sys.exit(0)
 
-    def test_dependencies(self, fail_on_errors: bool = True, output_versions: bool = False, output_errors: bool = True) -> Dict[str, Optional[str]]:
+    def test_dependencies(
+        self, fail_on_errors: bool = True, output_versions: bool = False, output_errors: bool = True
+    ) -> Dict[str, Optional[str]]:
         errors = False
 
         aioamqp_version = ""
@@ -68,6 +71,7 @@ class CLI:
 
         try:
             import aioamqp
+
             aioamqp_version = aioamqp.__version__
             if output_versions:
                 print("aioamqp/{}".format(aioamqp_version))
@@ -84,6 +88,7 @@ class CLI:
 
         try:
             import aiobotocore
+
             aiobotocore_version = aiobotocore.__version__
             if output_versions:
                 print("aiobotocore/{}".format(aiobotocore_version))
@@ -100,6 +105,7 @@ class CLI:
 
         try:
             import aiohttp
+
             aiohttp_version = aiohttp.__version__
             if output_versions:
                 print("aiohttp/{}".format(aiohttp_version))
@@ -116,6 +122,7 @@ class CLI:
 
         try:
             import botocore
+
             botocore_version = botocore.__version__
             if output_versions:
                 print("botocore/{}".format(botocore_version))
@@ -133,6 +140,7 @@ class CLI:
         try:
             # Optional
             import google.protobuf
+
             protobuf_version = (
                 google.protobuf.__version__.decode()
                 if isinstance(google.protobuf.__version__, bytes)
@@ -189,7 +197,9 @@ class CLI:
         }
 
     def run_command_usage(self) -> str:
-        return "Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--loop 'auto|asyncio|uvloop'] [--production]"
+        return (
+            "Usage: tomodachi.py run <service ...> [-c <config-file ...>] [--loop 'auto|asyncio|uvloop'] [--production]"
+        )
 
     def run_command(self, args: List[str]) -> None:
         if len(args) == 0:
@@ -203,12 +213,12 @@ class CLI:
                 args.pop(index)
                 value = args.pop(index).lower()
 
-                if value in ('auto', 'default'):
+                if value in ("auto", "default"):
                     pass
-                elif value in ('asyncio', 'aio', 'async'):
+                elif value in ("asyncio", "aio", "async"):
                     asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
                     pass
-                elif value in ('uvloop', 'libuv', 'uv'):
+                elif value in ("uvloop", "libuv", "uv"):
                     if not uvloop_installed:
                         print("The 'uvloop' package needs to be installed to use uvloop event loop")
                         sys.exit(2)
@@ -252,7 +262,13 @@ class CLI:
                 watcher = Watcher(root=root_directories, configuration=configuration)
 
             if "-l" in args or "--log" in args or "--log-level" in args:
-                index = args.index("-l") if "-l" in args else args.index("--log") if '--log' in args else args.index('--log-level')
+                index = (
+                    args.index("-l")
+                    if "-l" in args
+                    else args.index("--log")
+                    if "--log" in args
+                    else args.index("--log-level")
+                )
                 args.pop(index)
                 if len(args) > index:
                     log_level = getattr(logging, args.pop(index).upper(), None) or log_level

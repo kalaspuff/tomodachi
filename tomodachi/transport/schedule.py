@@ -9,7 +9,11 @@ import pytz
 import tzlocal
 
 from tomodachi.helpers.crontab import get_next_datetime
-from tomodachi.helpers.execution_context import decrease_execution_context_value, increase_execution_context_value, set_execution_context
+from tomodachi.helpers.execution_context import (
+    decrease_execution_context_value,
+    increase_execution_context_value,
+    set_execution_context,
+)
 from tomodachi.invoker import Invoker
 
 
@@ -378,7 +382,11 @@ class Scheduler(Invoker):
                     current_time = time.time()
                     task = asyncio.ensure_future(handler())
                     if hasattr(task, "set_name"):
-                        getattr(task, "set_name")('{} : {}'.format(func.__name__, datetime.datetime.utcfromtimestamp(current_time).isoformat()))
+                        getattr(task, "set_name")(
+                            "{} : {}".format(
+                                func.__name__, datetime.datetime.utcfromtimestamp(current_time).isoformat()
+                            )
+                        )
                     tasks.append(task)
                 except Exception as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
@@ -394,7 +402,9 @@ class Scheduler(Invoker):
                     if task.done():
                         continue
                     task_name = getattr(task, "get_name")() if hasattr(task, "get_name") else func.__name__
-                    logging.getLogger("transport.schedule").warning("Awaiting task '{}' to finish execution".format(task_name))
+                    logging.getLogger("transport.schedule").warning(
+                        "Awaiting task '{}' to finish execution".format(task_name)
+                    )
 
                 while not task_waiter.done():
                     sleep_task = asyncio.ensure_future(asyncio.sleep(10))
@@ -405,7 +415,9 @@ class Scheduler(Invoker):
                         if task.done():
                             continue
                         task_name = getattr(task, "get_name")() if hasattr(task, "get_name") else func.__name__
-                        logging.getLogger("transport.schedule").warning("Still awaiting task '{}' to finish execution".format(task_name))
+                        logging.getLogger("transport.schedule").warning(
+                            "Still awaiting task '{}' to finish execution".format(task_name)
+                        )
 
             if not stop_waiter.done():
                 stop_waiter.set_result(None)
@@ -447,11 +459,13 @@ class Scheduler(Invoker):
             return None
         context["_schedule_loop_started"] = True
 
-        set_execution_context({
-            "scheduled_functions_enabled": True,
-            "scheduled_functions_current_tasks": 0,
-            "scheduled_functions_total_tasks": 0,
-        })
+        set_execution_context(
+            {
+                "scheduled_functions_enabled": True,
+                "scheduled_functions_current_tasks": 0,
+                "scheduled_functions_total_tasks": 0,
+            }
+        )
 
         async def _schedule() -> None:
             cls.close_waiter = asyncio.Future()

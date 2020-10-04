@@ -12,7 +12,9 @@ from logging.handlers import WatchedFileHandler
 from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union  # noqa
 
 import colorama
-from aiohttp import WSMsgType, hdrs, web, web_protocol, web_server, web_urldispatcher, __version__ as aiohttp_version
+from aiohttp import WSMsgType
+from aiohttp import __version__ as aiohttp_version
+from aiohttp import hdrs, web, web_protocol, web_server, web_urldispatcher
 from aiohttp.helpers import BasicAuth
 from aiohttp.http import HttpVersion
 from aiohttp.streams import EofStream
@@ -20,7 +22,11 @@ from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from tomodachi.helpers.dict import merge_dicts
-from tomodachi.helpers.execution_context import increase_execution_context_value, decrease_execution_context_value, set_execution_context
+from tomodachi.helpers.execution_context import (
+    decrease_execution_context_value,
+    increase_execution_context_value,
+    set_execution_context,
+)
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
@@ -299,7 +305,9 @@ class HttpTransport(Invoker):
                     kwargs[k] = v
 
             @functools.wraps(func)
-            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
+            async def routine_func(
+                *a: Any, **kw: Any
+            ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (
                     (await routine) if isinstance(routine, Awaitable) else routine
@@ -414,7 +422,9 @@ class HttpTransport(Invoker):
             )
 
             @functools.wraps(func)
-            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
+            async def routine_func(
+                *a: Any, **kw: Any
+            ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (
                     (await routine) if isinstance(routine, Awaitable) else routine
@@ -683,9 +693,7 @@ class HttpTransport(Invoker):
                             response.body = b""
                     finally:
                         if not request.transport:
-                            response = web.Response(
-                                status=499, headers={}  # type: ignore
-                            )
+                            response = web.Response(status=499, headers={})  # type: ignore
                             response._eof_sent = True
 
                         if access_log:
@@ -761,25 +769,56 @@ class HttpTransport(Invoker):
 
                 return task.result()
 
-            client_max_size_option = http_options.get("client_max_size") or http_options.get("max_buffer_size") or http_options.get("max_upload_size") or "100M"
+            client_max_size_option = (
+                http_options.get("client_max_size")
+                or http_options.get("max_buffer_size")
+                or http_options.get("max_upload_size")
+                or "100M"
+            )
             client_max_size = (1024 ** 2) * 100
             try:
-                if client_max_size_option and isinstance(client_max_size_option, str) and (client_max_size_option.upper().endswith('G') or client_max_size_option.upper().endswith('GB')):
-                    client_max_size = int(re.sub(r'^([0-9]+)GB?$', r'\1', client_max_size_option.upper())) * (1024 ** 3)
-                elif client_max_size_option and isinstance(client_max_size_option, str) and (client_max_size_option.upper().endswith('M') or client_max_size_option.upper().endswith('MB')):
-                    client_max_size = int(re.sub(r'^([0-9]+)MB?$', r'\1', client_max_size_option.upper())) * (1024 ** 2)
-                elif client_max_size_option and isinstance(client_max_size_option, str) and (client_max_size_option.upper().endswith('K') or client_max_size_option.upper().endswith('KB')):
-                    client_max_size = int(re.sub(r'^([0-9]+)KB?$', r'\1', client_max_size_option.upper())) * 1024
-                elif client_max_size_option and isinstance(client_max_size_option, str) and (client_max_size_option.upper().endswith('B')):
-                    client_max_size = int(re.sub(r'^([0-9]+)B?$', r'\1', client_max_size_option.upper()))
+                if (
+                    client_max_size_option
+                    and isinstance(client_max_size_option, str)
+                    and (client_max_size_option.upper().endswith("G") or client_max_size_option.upper().endswith("GB"))
+                ):
+                    client_max_size = int(re.sub(r"^([0-9]+)GB?$", r"\1", client_max_size_option.upper())) * (1024 ** 3)
+                elif (
+                    client_max_size_option
+                    and isinstance(client_max_size_option, str)
+                    and (client_max_size_option.upper().endswith("M") or client_max_size_option.upper().endswith("MB"))
+                ):
+                    client_max_size = int(re.sub(r"^([0-9]+)MB?$", r"\1", client_max_size_option.upper())) * (1024 ** 2)
+                elif (
+                    client_max_size_option
+                    and isinstance(client_max_size_option, str)
+                    and (client_max_size_option.upper().endswith("K") or client_max_size_option.upper().endswith("KB"))
+                ):
+                    client_max_size = int(re.sub(r"^([0-9]+)KB?$", r"\1", client_max_size_option.upper())) * 1024
+                elif (
+                    client_max_size_option
+                    and isinstance(client_max_size_option, str)
+                    and (client_max_size_option.upper().endswith("B"))
+                ):
+                    client_max_size = int(re.sub(r"^([0-9]+)B?$", r"\1", client_max_size_option.upper()))
                 elif client_max_size_option:
                     client_max_size = int(client_max_size_option)
             except Exception:
-                raise ValueError("Bad value for http option client_max_size: {}".format(str(client_max_size_option))) from None
+                raise ValueError(
+                    "Bad value for http option client_max_size: {}".format(str(client_max_size_option))
+                ) from None
             if client_max_size >= 0 and client_max_size < 1024:
-                raise ValueError("Too low value for http option client_max_size: {} ({})".format(str(client_max_size_option), client_max_size_option))
+                raise ValueError(
+                    "Too low value for http option client_max_size: {} ({})".format(
+                        str(client_max_size_option), client_max_size_option
+                    )
+                )
             if client_max_size > 1024 ** 3:
-                raise ValueError("Too high value for http option client_max_size: {} ({})".format(str(client_max_size_option), client_max_size_option))
+                raise ValueError(
+                    "Too high value for http option client_max_size: {} ({})".format(
+                        str(client_max_size_option), client_max_size_option
+                    )
+                )
 
             app = web.Application(
                 middlewares=[middleware], client_max_size=(1024 ** 2) * 100  # type: ignore
@@ -805,33 +844,48 @@ class HttpTransport(Invoker):
             if port is True:
                 raise ValueError("Bad value for http option port: {}".format(str(port)))
 
-            keepalive_timeout_option = http_options.get("keepalive_timeout", 0) or http_options.get("keepalive_expiry", 0)
+            keepalive_timeout_option = http_options.get("keepalive_timeout", 0) or http_options.get(
+                "keepalive_expiry", 0
+            )
             keepalive_timeout = 0
             tcp_keepalive = False
             if keepalive_timeout_option is None or keepalive_timeout_option is False:
                 keepalive_timeout = 0
             if keepalive_timeout_option is True:
-                raise ValueError("Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option)))
+                raise ValueError(
+                    "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
+                )
             try:
                 keepalive_timeout = int(keepalive_timeout_option)
             except Exception:
-                raise ValueError("Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))) from None
+                raise ValueError(
+                    "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
+                ) from None
             if keepalive_timeout > 0:
                 tcp_keepalive = True
             else:
                 tcp_keepalive = False
                 keepalive_timeout = 0
 
-            set_execution_context({
-                "http_enabled": True,
-                "http_current_tasks": 0,
-                "http_total_tasks": 0,
-                "aiohttp_version": aiohttp_version,
-            })
+            set_execution_context(
+                {
+                    "http_enabled": True,
+                    "http_current_tasks": 0,
+                    "http_total_tasks": 0,
+                    "aiohttp_version": aiohttp_version,
+                }
+            )
 
             try:
                 app.freeze()
-                web_server = Server(app._handle, request_factory=app._make_request, server_header=server_header or "", access_log=access_log, keepalive_timeout=keepalive_timeout, tcp_keepalive=tcp_keepalive)
+                web_server = Server(
+                    app._handle,
+                    request_factory=app._make_request,
+                    server_header=server_header or "",
+                    access_log=access_log,
+                    keepalive_timeout=keepalive_timeout,
+                    tcp_keepalive=tcp_keepalive,
+                )
                 server_task = loop.create_server(web_server, host, port)  # type: ignore
                 server = await server_task  # type: ignore
             except OSError as e:
@@ -863,7 +917,9 @@ class HttpTransport(Invoker):
 
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
-                    logging.getLogger("transport.http").info("Closing {} websocket connection(s)".format(len(open_websockets)))
+                    logging.getLogger("transport.http").info(
+                        "Closing {} websocket connection(s)".format(len(open_websockets))
+                    )
                     tasks = []
                     for websocket in open_websockets:
                         try:
@@ -871,7 +927,9 @@ class HttpTransport(Invoker):
                         except Exception:
                             pass
                     try:
-                        results = await asyncio.wait_for(asyncio.shield(asyncio.gather(*tasks, return_exceptions=True)), timeout=10)
+                        results = await asyncio.wait_for(
+                            asyncio.shield(asyncio.gather(*tasks, return_exceptions=True)), timeout=10
+                        )
                         await asyncio.sleep(1)
                     except (Exception, asyncio.TimeoutError, asyncio.CancelledError) as e:
                         pass
@@ -888,8 +946,7 @@ class HttpTransport(Invoker):
                         pass
                     logging.getLogger("transport.http").info(
                         "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
-                            len(active_requests),
-                            termination_grace_period_seconds
+                            len(active_requests), termination_grace_period_seconds
                         )
                     )
                     try:
@@ -903,7 +960,9 @@ class HttpTransport(Invoker):
                         active_requests = context.get("_http_active_requests", set())
                         if active_requests:
                             logging.getLogger("transport.http").warning(
-                                "All requests did not gracefully finish execution - {} request(s) remaining".format(len(active_requests))
+                                "All requests did not gracefully finish execution - {} request(s) remaining".format(
+                                    len(active_requests)
+                                )
                             )
                     context["_http_active_requests"] = set()
 

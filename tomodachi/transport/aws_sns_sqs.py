@@ -16,7 +16,11 @@ import botocore
 from botocore.parsers import ResponseParserError
 
 from tomodachi.helpers.dict import merge_dicts
-from tomodachi.helpers.execution_context import decrease_execution_context_value, increase_execution_context_value, set_execution_context
+from tomodachi.helpers.execution_context import (
+    decrease_execution_context_value,
+    increase_execution_context_value,
+    set_execution_context,
+)
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
@@ -346,7 +350,9 @@ class AWSSNSSQSTransport(Invoker):
         try:
             if cls.clients_creation_time.get(name) and cls.clients_creation_time[name] + 30 > time.time():
                 return
-            create_client_func = session._create_client if hasattr(session, "_create_client") else session._create_client
+            create_client_func = (
+                session._create_client if hasattr(session, "_create_client") else session._create_client
+            )
             client = create_client_func(
                 name,
                 region_name=region_name,
@@ -507,7 +513,7 @@ class AWSSNSSQSTransport(Invoker):
             await cls.create_client(cls, "sqs", context)
         client = cls.clients.get("sqs")
 
-        queue_url = ''
+        queue_url = ""
         try:
             response = await client.get_queue_url(QueueName=queue_name)
             queue_url = response.get("QueueUrl")
@@ -676,18 +682,18 @@ class AWSSNSSQSTransport(Invoker):
             queue_policy = cls.generate_queue_policy(queue_arn, topic_arn_list, context)
 
         if not queue_policy or not isinstance(queue_policy, dict):
-            raise Exception('SQS policy is invalid')
+            raise Exception("SQS policy is invalid")
 
         current_queue_policy = {}
         try:
-            response = await sqs_client.get_queue_attributes(
-                QueueUrl=queue_url, AttributeNames=["Policy"]
-            )
-            current_queue_policy = json.loads(response.get('Attributes', {}).get('Policy') or '{}')
+            response = await sqs_client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["Policy"])
+            current_queue_policy = json.loads(response.get("Attributes", {}).get("Policy") or "{}")
         except botocore.exceptions.ClientError as e:
             pass
 
-        if not current_queue_policy or [{**x, 'Sid': ''} for x in current_queue_policy.get('Statement', [])] != [{**x, 'Sid': ''} for x in queue_policy.get('Statement', [])]:
+        if not current_queue_policy or [{**x, "Sid": ""} for x in current_queue_policy.get("Statement", [])] != [
+            {**x, "Sid": ""} for x in queue_policy.get("Statement", [])
+        ]:
             try:
                 # MessageRetentionPeriod (default 4 days, set to context value)
                 # VisibilityTimeout (default 30 seconds)
@@ -802,7 +808,9 @@ class AWSSNSSQSTransport(Invoker):
                             if "AWS.SimpleQueueService.NonExistentQueue" in error_message:
                                 if is_disconnected:
                                     is_disconnected = False
-                                    logging.getLogger("transport.aws_sns_sqs").warning("Reconnected - receiving messages")
+                                    logging.getLogger("transport.aws_sns_sqs").warning(
+                                        "Reconnected - receiving messages"
+                                    )
                                 try:
                                     context["_aws_sns_sqs_subscribed"] = False
                                     cls.topics = {}
@@ -823,7 +831,9 @@ class AWSSNSSQSTransport(Invoker):
                         except Exception as e:
                             error_message = str(e)
                             logging.getLogger("transport.aws_sns_sqs").warning(
-                                "Unexpected error while receiving message from queue [sqs] on AWS ({})".format(error_message)
+                                "Unexpected error while receiving message from queue [sqs] on AWS ({})".format(
+                                    error_message
+                                )
                             )
                             await asyncio.sleep(1)
                             continue
@@ -869,7 +879,9 @@ class AWSSNSSQSTransport(Invoker):
             task = None
             while True:
                 if task and not cls.close_waiter.done():
-                    logging.getLogger("transport.aws_sns_sqs").warning("Resuming message receiving after trying to recover from fatal error")
+                    logging.getLogger("transport.aws_sns_sqs").warning(
+                        "Resuming message receiving after trying to recover from fatal error"
+                    )
                 if not task or task.done():
                     task = asyncio.ensure_future(_receive_wrapper())
                 await asyncio.wait([cls.close_waiter, task], return_when=asyncio.FIRST_COMPLETED)
@@ -951,14 +963,16 @@ class AWSSNSSQSTransport(Invoker):
         async def _subscribe() -> None:
             cls.close_waiter = asyncio.Future()
 
-            set_execution_context({
-                "aws_sns_sqs_enabled": True,
-                "aws_sns_sqs_current_tasks": 0,
-                "aws_sns_sqs_total_tasks": 0,
-                "aiobotocore_version": aiobotocore.__version__,
-                "aiohttp_version": aiohttp.__version__,
-                "botocore_version": botocore.__version__,
-            })
+            set_execution_context(
+                {
+                    "aws_sns_sqs_enabled": True,
+                    "aws_sns_sqs_current_tasks": 0,
+                    "aws_sns_sqs_total_tasks": 0,
+                    "aiobotocore_version": aiobotocore.__version__,
+                    "aiohttp_version": aiohttp.__version__,
+                    "botocore_version": botocore.__version__,
+                }
+            )
 
             async def setup_queue(
                 topic: str, func: Callable, queue_name: Optional[str] = None, competing_consumer: Optional[bool] = None
