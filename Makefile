@@ -33,7 +33,7 @@ uninstall:
 	pip uninstall -y tomodachi
 
 lint:
-	pycodestyle --ignore E501 --exclude proto_build,build,tmp .
+	pycodestyle --ignore E203,W503,E501 --exclude proto_build,build,tmp .
 	mypy ./
 	@echo "ok"
 
