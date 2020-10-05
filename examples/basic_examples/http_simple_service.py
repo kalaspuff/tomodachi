@@ -9,7 +9,6 @@ from tomodachi import HttpResponse, http, http_error, http_static, websocket
 from tomodachi.discovery import DummyRegistry
 
 
-@tomodachi.service
 class ExampleHttpService(tomodachi.Service):
     name = "example-http-service"
     log_level = "DEBUG"

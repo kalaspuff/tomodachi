@@ -15,10 +15,13 @@ install_requires = [
     "aiohttp>=3.5.4, <3.7.0",
     "yarl>=1.1.0",
     "colorama>=0.3.9, <0.5.0",
-    # "uvloop>=0.14.0",
-    # "protobuf>=3.0.0, <4.0.0",
-    # "aiodns>=1.2.0",
 ]
+
+extras_require = {
+    'uvloop': ['uvloop>=0.14.0'],
+    'protobuf': ['protobuf>=3.0.0, <4.0.0'],
+    'aiodns': ['aiodns>=1.2.0'],
+}
 
 PY_VER = sys.version_info
 
@@ -60,6 +63,7 @@ setup(
     license="MIT",
     entry_points={"console_scripts": ["tomodachi = tomodachi.cli:cli_entrypoint"]},
     install_requires=install_requires,
+    extras_require=extras_require,
     keywords=(
         "tomodachi, microservice, microservices, framework, library, asyncio, "
         "aws, sns, sqs, amqp, rabbitmq, http, websockets, easy, fast, python 3"

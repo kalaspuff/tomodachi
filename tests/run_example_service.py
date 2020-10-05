@@ -7,7 +7,6 @@ from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.envelope.json_base import JsonBase
 
 
-@tomodachi.service
 class AutoClosingService(tomodachi.Service):
     name = "test_auto_closing"
     discovery = [DummyRegistry]

@@ -82,10 +82,10 @@ may be breaking changes between 0.x versions.
 How do I use this? (simple install using ``pip``)
 -------------------------------------------------
 Installation could as always be done via ``pip`` to get the cli alias set
-up automatically. Locally it is recommended to install ``tomodachi`` into a
-virtualenv to avoid cluttering. When developing microservices for real it's
-highly recommended to use containerization such as Docker and ``tomodcahi``
-works great within such environments.
+up automatically. Unless running development code within Docker, install
+``tomodachi`` into a virtualenv to avoid cluttering. When developing
+microservices for real it's however highly recommended to use
+containerization such as Docker.
 
 .. code:: bash
 

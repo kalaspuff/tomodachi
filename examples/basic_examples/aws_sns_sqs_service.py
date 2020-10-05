@@ -7,7 +7,6 @@ from tomodachi.discovery import AWSSNSRegistration
 from tomodachi.envelope import JsonBase
 
 
-@tomodachi.service
 class ExampleAWSSNSSQSService(tomodachi.Service):
     name = "example-aws-sns-sqs-service"
     log_level = "INFO"
