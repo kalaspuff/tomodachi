@@ -49,7 +49,7 @@ setup(
     name="tomodachi",
     version=tomodachi.__version__,
     description=(
-        "Microservice library on asyncio - HTTP server, websockets, pubsub messaging for RabbitMQ and AWS SNS+SQS."
+        "Microservice library on asyncio - HTTP server, websockets, pubsub messaging for AWS SNS+SQS and RabbitMQ."
     ),
     long_description="\n\n".join((read("README.rst"), read("CHANGES.rst"))),
     classifiers=classifiers,

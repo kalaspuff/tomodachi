@@ -181,7 +181,7 @@ Scheduling, inter-communication between services, etc. ⚡️
 There are other examples available with code of how to use services with self-invoking
 methods called on a specified interval or at specific times / days, as well as additional examples
 for inter-communication pub/sub between different services on both AMQP or AWS SNS+SQS as shown
-above. See more at the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples/>`_ folder.
+above. See more at the `examples folder <https://github.com/kalaspuff/tomodachi/blob/master/examples/>`_.
 
 
 Run the service 😎
@@ -492,7 +492,7 @@ What is the best way to run a ``tomodachi`` service?
   Personally I would currently go for a Dockerized environment with nginx proxy in front of the service to handle all the weirdness of the web, TLS, black magic and improved upgrades for WebSockets. Take a look at my `kalaspuff/docker-python-nginx-proxy <https://github.com/kalaspuff/docker-python-nginx-proxy>`_ base-image to get your code up and running within minutes.
 
 Are there any more example services?
-  There are a few examples in the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples>`_ folder, including using ``tomodachi`` in an `example Docker environment <https://github.com/kalaspuff/tomodachi/tree/master/examples/docker_examples/http_service>`_ with or without docker-compose, there are examples to publish events/messages to an AWS SNS topic and subscribe to an AWS SQS queue. There's also a similar example of how to work with pub-sub for RabbitMQ via AMQP transport protocol.
+  There are a few examples in the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples>`_ folder, including using ``tomodachi`` in an `example Docker environment <https://github.com/kalaspuff/tomodachi/tree/master/examples/docker_examples/http_service>`_ with or without docker-compose. There are examples to publish events / messages to an AWS SNS topic and subscribe to an AWS SQS queue. There's also a similar code available of how to work with pub/sub for RabbitMQ via the AMQP transport protocol.
 
 Why should I use this?
   ``tomodachi`` is a perfect place to start when experimenting with your architecture or trying out a concept for a new service. It may not have all the features you desire and it may never do, but I believe it's great for bootstrapping microservices in async Python.
