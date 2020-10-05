@@ -11,14 +11,14 @@ from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
 data_uuid = str(uuid.uuid4())
 
 
-class CustomProtocol(object):
+class CustomEnvelope(object):
     @classmethod
-    async def build_message(cls, service: Any, topic: str, data: Any) -> str:
-        message = {"protocol": "custom", "data": data}
+    async def build_message(cls, service: Any, topic: str, data: Any, **kwargs: Any) -> str:
+        message = {"envelope": "custom", "data": data}
         return json.dumps(message)
 
     @classmethod
-    async def parse_message(cls, payload: str) -> Union[Dict, Tuple]:
+    async def parse_message(cls, payload: str, **kwargs: Any) -> Union[Dict, Tuple]:
         message = json.loads(payload)
         return message, None, None
 
@@ -49,9 +49,9 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @aws_sns_sqs("test-custom-topic", message_envelope=CustomProtocol)
-    async def test(self, data: Any, protocol: Any, default_value: bool = True) -> None:
-        if data == self.data_uuid and protocol == "custom":
+    @aws_sns_sqs("test-custom-topic", message_envelope=CustomEnvelope)
+    async def test(self, data: Any, envelope: Any, default_value: bool = True) -> None:
+        if data == self.data_uuid and envelope == "custom":
             self.test_topic_data_received = default_value
             self.test_topic_data = data
 
@@ -59,7 +59,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
     async def _started_service(self) -> None:
         async def publish(data: Any, topic: str) -> None:
-            await aws_sns_sqs_publish(self, data, topic=topic, wait=False, message_envelope=CustomProtocol)
+            await aws_sns_sqs_publish(self, data, topic=topic, wait=False, message_envelope=CustomEnvelope)
 
         async def _async() -> None:
             async def sleep_and_kill() -> None:

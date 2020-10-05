@@ -85,7 +85,7 @@ class AmqpTransport(Invoker):
             message_envelope = message_protocol
 
         message_envelope = (
-            getattr(service, "message_envelope", None)
+            getattr(service, "message_envelope", getattr(service, "message_protocol", None))
             if message_envelope == MESSAGE_ENVELOPE_DEFAULT
             else message_envelope
         )
@@ -198,7 +198,7 @@ class AmqpTransport(Invoker):
             message_envelope = message_protocol
 
         message_envelope = (
-            context.get("message_envelope") if message_envelope == MESSAGE_ENVELOPE_DEFAULT else message_envelope
+            context.get("message_envelope", context.get("message_protocol")) if message_envelope == MESSAGE_ENVELOPE_DEFAULT else message_envelope
         )
 
         # Validate the parser kwargs if there is a validation function in the envelope
@@ -257,8 +257,10 @@ class AmqpTransport(Invoker):
                         for k, v in message.items():
                             if k in _callback_kwargs:
                                 kwargs[k] = v
-                        if "message" in _callback_kwargs and "message" not in message:
+                        if "message" in _callback_kwargs and (not isinstance(message, dict) or "message" not in message):
                             kwargs["message"] = message
+                        if "routing_key" in _callback_kwargs and (not isinstance(message, dict) or "routing_key" not in message):
+                            kwargs["routing_key"] = routing_key
                 except Exception as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
@@ -268,12 +270,23 @@ class AmqpTransport(Invoker):
                     elif message is False:
                         await cls.channel.basic_client_ack(delivery_tag)
                     return
+            else:
+                if _callback_kwargs:
+                    if "message" in _callback_kwargs:
+                        kwargs["message"] = message
+                    if "routing_key" in _callback_kwargs:
+                        kwargs["routing_key"] = routing_key
+
+                if len(values.args[1:]) and values.args[1] in kwargs:
+                    del(kwargs[values.args[1]])
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
                 try:
-                    if not message_envelope and len(values.args[1:]):
+                    if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
                         routine = func(*(obj, message, *a))
+                    elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
+                        routine = func(*(obj, message, *a), **merge_dicts(kwargs, kw))
                     elif len(merge_dicts(kwargs, kw)):
                         routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
                     elif len(values.args[1:]):

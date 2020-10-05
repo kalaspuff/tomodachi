@@ -11,6 +11,31 @@ Changes
   common default values. It's rare that a non-shared queue would be used
   for service replicas of the same type in a distributed architecture.
 
+- The ``@tomodachi.aws_sns_sqs`` decorator can now specify a
+  ``filter_policy`` which will be applied on the SNS subscription (for
+  the specified topic and queue) as the ``"FilterPolicy`` attribute.
+  This will apply a filter on SNS messages using the chosen "message
+  attributes" and/or their values specified in the filter.
+  Example: A filter policy value of
+  ``{"event": ["order_paid"], "currency": ["EUR", "USD"]}``
+  would set up the SNS subscription to receive messages on the topic
+  only where the message attribute ``"event"`` is ``"order_paid"``
+  and the ``"currency"`` value is either ``"EUR"`` or ``"USD"``.
+  If ``filter_policy`` is not specified as an argument, the
+  queue will receive messages on the topic as per already specified if
+  using an existing subscription, or receive all messages on the topic
+  if a new subscription is set up (default).
+  Changing the ``filter_policy`` on an existing subscription may take
+  several minutes to propagate. Read more about the filter policy format
+  on AWS. https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html
+
+- Related to the above mentioned filter policy, the ``aws_sns_sqs_publish``
+  function has also been updated with the possibility to specify said
+  "message attributes" using the ``message_attributes`` keyword
+  argument. Values should be specified as a simple ``dict`` with keys
+  and values. Example:
+  ``{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}``.
+
 - The event loop that the process will execute on can now be specified
   on startup using ``--loop [auto|asyncio|uvloop]``, currently the `auto`
   (or `default`) value will use Python's builtin `asyncio` event loop.
