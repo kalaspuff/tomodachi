@@ -198,7 +198,9 @@ class AmqpTransport(Invoker):
             message_envelope = message_protocol
 
         message_envelope = (
-            context.get("message_envelope", context.get("message_protocol")) if message_envelope == MESSAGE_ENVELOPE_DEFAULT else message_envelope
+            context.get("message_envelope", context.get("message_protocol"))
+            if message_envelope == MESSAGE_ENVELOPE_DEFAULT
+            else message_envelope
         )
 
         # Validate the parser kwargs if there is a validation function in the envelope
@@ -257,9 +259,13 @@ class AmqpTransport(Invoker):
                         for k, v in message.items():
                             if k in _callback_kwargs:
                                 kwargs[k] = v
-                        if "message" in _callback_kwargs and (not isinstance(message, dict) or "message" not in message):
+                        if "message" in _callback_kwargs and (
+                            not isinstance(message, dict) or "message" not in message
+                        ):
                             kwargs["message"] = message
-                        if "routing_key" in _callback_kwargs and (not isinstance(message, dict) or "routing_key" not in message):
+                        if "routing_key" in _callback_kwargs and (
+                            not isinstance(message, dict) or "routing_key" not in message
+                        ):
                             kwargs["routing_key"] = routing_key
                 except Exception as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
@@ -278,7 +284,7 @@ class AmqpTransport(Invoker):
                         kwargs["routing_key"] = routing_key
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
-                    del(kwargs[values.args[1]])
+                    del kwargs[values.args[1]]
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:

@@ -94,7 +94,9 @@ class AWSSNSSQSTransport(Invoker):
         if message_envelope:
             build_message_func = getattr(message_envelope, "build_message", None)
             if build_message_func:
-                payload = await build_message_func(service, topic, data, message_attributes=message_attributes, **kwargs)
+                payload = await build_message_func(
+                    service, topic, data, message_attributes=message_attributes, **kwargs
+                )
 
         topic_arn = await cls.create_topic(cls, topic, service.context, topic_prefix)
 
@@ -180,7 +182,9 @@ class AWSSNSSQSTransport(Invoker):
         *,
         message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
-        filter_policy: Optional[Union[str, Dict[str, List[Union[str, Dict[str, Union[bool, List]]]]]]] = FILTER_POLICY_DEFAULT,
+        filter_policy: Optional[
+            Union[str, Dict[str, List[Union[str, Dict[str, Union[bool, List]]]]]]
+        ] = FILTER_POLICY_DEFAULT,
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
@@ -190,7 +194,9 @@ class AWSSNSSQSTransport(Invoker):
             message_envelope = message_protocol
 
         message_envelope = (
-            context.get("message_envelope", context.get("message_protocol")) if message_envelope == MESSAGE_ENVELOPE_DEFAULT else message_envelope
+            context.get("message_envelope", context.get("message_protocol"))
+            if message_envelope == MESSAGE_ENVELOPE_DEFAULT
+            else message_envelope
         )
 
         # Validate the parser kwargs if there is a validation function in the envelope
@@ -231,7 +237,9 @@ class AWSSNSSQSTransport(Invoker):
             kwargs = {k: v for k, v in _callback_kwargs.items()}
 
             message = payload
-            message_attributes_values: Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]] = cls.transform_message_attributes_from_response(cls, message_attributes) if message_attributes else {}
+            message_attributes_values: Dict[
+                str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]
+            ] = (cls.transform_message_attributes_from_response(cls, message_attributes) if message_attributes else {})
             message_uuid = None
             message_key = None
 
@@ -240,7 +248,9 @@ class AWSSNSSQSTransport(Invoker):
                     parse_message_func = getattr(message_envelope, "parse_message", None)
                     if parse_message_func:
                         if len(parser_kwargs):
-                            message, message_uuid, timestamp = await parse_message_func(payload, message_attributes=message_attributes_values, **parser_kwargs)
+                            message, message_uuid, timestamp = await parse_message_func(
+                                payload, message_attributes=message_attributes_values, **parser_kwargs
+                            )
                         else:
                             message, message_uuid, timestamp = await parse_message_func(payload)
                     if message is not False and message_uuid:
@@ -267,15 +277,23 @@ class AWSSNSSQSTransport(Invoker):
                             for k, v in message.items():
                                 if k in _callback_kwargs:
                                     kwargs[k] = v
-                        if "message" in _callback_kwargs and (not isinstance(message, dict) or "message" not in message):
+                        if "message" in _callback_kwargs and (
+                            not isinstance(message, dict) or "message" not in message
+                        ):
                             kwargs["message"] = message
                         if "topic" in _callback_kwargs and (not isinstance(message, dict) or "topic" not in message):
                             kwargs["topic"] = topic
-                        if "receipt_handle" in _callback_kwargs and (not isinstance(message, dict) or "receipt_handle" not in message):
+                        if "receipt_handle" in _callback_kwargs and (
+                            not isinstance(message, dict) or "receipt_handle" not in message
+                        ):
                             kwargs["receipt_handle"] = receipt_handle
-                        if "queue_url" in _callback_kwargs and (not isinstance(message, dict) or "queue_url" not in message):
+                        if "queue_url" in _callback_kwargs and (
+                            not isinstance(message, dict) or "queue_url" not in message
+                        ):
                             kwargs["queue_url"] = queue_url
-                        if "message_attributes" in _callback_kwargs and (not isinstance(message, dict) or "message_attributes" not in message):
+                        if "message_attributes" in _callback_kwargs and (
+                            not isinstance(message, dict) or "message_attributes" not in message
+                        ):
                             kwargs["message_attributes"] = message_attributes_values
                 except Exception as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
@@ -300,7 +318,7 @@ class AWSSNSSQSTransport(Invoker):
                         kwargs["message_attributes"] = message_attributes_values
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
-                    del(kwargs[values.args[1]])
+                    del kwargs[values.args[1]]
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
@@ -479,51 +497,40 @@ class AWSSNSSQSTransport(Invoker):
 
         return topic_arn
 
-    def transform_message_attributes_from_response(cls, message_attributes: Dict) -> Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]]:
+    def transform_message_attributes_from_response(
+        cls, message_attributes: Dict
+    ) -> Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]]:
         result: Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]] = {}
 
         for name, values in message_attributes.items():
-            value = values['Value']
-            if values['Type'] == 'String':
+            value = values["Value"]
+            if values["Type"] == "String":
                 result[name] = value
-            elif values['Type'] == 'Number':
-                result[name] = int(value) if '.' not in value else float(value)
-            elif values['Type'] == 'Binary':
+            elif values["Type"] == "Number":
+                result[name] = int(value) if "." not in value else float(value)
+            elif values["Type"] == "Binary":
                 result[name] = base64.b64decode(value)
-            elif values['Type'] == 'String.Array':
+            elif values["Type"] == "String.Array":
                 result[name] = cast(List[Optional[Union[str, int, float, bool]]], json.loads(value))
 
         return result
 
-    def transform_message_attributes_to_botocore(cls, message_attributes: Dict) -> Dict[str, Dict[str, Union[str, bytes]]]:
+    def transform_message_attributes_to_botocore(
+        cls, message_attributes: Dict
+    ) -> Dict[str, Dict[str, Union[str, bytes]]]:
         result: Dict[str, Dict[str, Union[str, bytes]]] = {}
 
         for name, value in message_attributes.items():
             if isinstance(value, str):
-                result[name] = {
-                    'DataType': 'String',
-                    'StringValue': value
-                }
+                result[name] = {"DataType": "String", "StringValue": value}
             elif isinstance(value, (int, float, decimal.Decimal)):
-                result[name] = {
-                    'DataType': 'Number',
-                    'StringValue': str(value)
-                }
+                result[name] = {"DataType": "Number", "StringValue": str(value)}
             elif isinstance(value, bytes):
-                result[name] = {
-                    'DataType': 'Binary',
-                    'BinaryValue': value
-                }
+                result[name] = {"DataType": "Binary", "BinaryValue": value}
             elif isinstance(value, list):
-                result[name] = {
-                    'DataType': 'String.Array',
-                    'StringValue': json.dumps(value)
-                }
+                result[name] = {"DataType": "String.Array", "StringValue": json.dumps(value)}
             else:
-                result[name] = {
-                    'DataType': 'String',
-                    'StringValue': str(value)
-                }
+                result[name] = {"DataType": "String", "StringValue": str(value)}
 
         return result
 
@@ -536,7 +543,10 @@ class AWSSNSSQSTransport(Invoker):
         for retry in range(1, 4):
             client = cls.clients.get("sns")
             try:
-                response = await asyncio.wait_for(client.publish(TopicArn=topic_arn, Message=message, MessageAttributes=message_attribute_values), timeout=30)
+                response = await asyncio.wait_for(
+                    client.publish(TopicArn=topic_arn, Message=message, MessageAttributes=message_attribute_values),
+                    timeout=30,
+                )
             except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
                 await asyncio.sleep(1)
                 try:
@@ -729,7 +739,12 @@ class AWSSNSSQSTransport(Invoker):
         return queue_policy
 
     async def subscribe_wildcard_topic(
-        cls: Any, topic: str, queue_arn: str, queue_url: str, context: Dict, attributes: Optional[Dict[str, Union[str, bool]]] = None
+        cls: Any,
+        topic: str,
+        queue_arn: str,
+        queue_url: str,
+        context: Dict,
+        attributes: Optional[Dict[str, Union[str, bool]]] = None,
     ) -> Optional[List]:
         if not cls.clients or not cls.clients.get("sns"):
             await cls.create_client(cls, "sns", context)
@@ -779,7 +794,7 @@ class AWSSNSSQSTransport(Invoker):
         queue_url: str,
         context: Dict,
         queue_policy: Optional[Dict] = None,
-        attributes: Optional[Dict[str, Union[str, bool]]] = None
+        attributes: Optional[Dict[str, Union[str, bool]]] = None,
     ) -> List:
         if not cls.clients or not cls.clients.get("sns"):
             await cls.create_client(cls, "sns", context)
@@ -828,13 +843,19 @@ class AWSSNSSQSTransport(Invoker):
 
             if update_attributes and attributes:
                 try:
-                    response = await client.subscribe(TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn, Attributes=attributes)
+                    response = await client.subscribe(
+                        TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn, Attributes=attributes
+                    )
                     subscription_arn = response.get("SubscriptionArn")
                     update_attributes = False
                 except botocore.exceptions.ClientError as e:
                     error_message = str(e)
                     if "Subscription already exists with different attributes" in error_message:
-                        logging.getLogger("transport.aws_sns_sqs").info("SNS subscription for topic ARN '{}' and queue ARN '{}' previously had different attributes".format(topic_arn, queue_arn))
+                        logging.getLogger("transport.aws_sns_sqs").info(
+                            "SNS subscription for topic ARN '{}' and queue ARN '{}' previously had different attributes".format(
+                                topic_arn, queue_arn
+                            )
+                        )
                     else:
                         logging.getLogger("transport.aws_sns_sqs").warning(
                             "Unable to subscribe to topic [sns] on AWS ({})".format(error_message)
@@ -861,8 +882,16 @@ class AWSSNSSQSTransport(Invoker):
             if update_attributes and attributes:
                 for attribute_name, attribute_value in attributes.items():
                     try:
-                        logging.getLogger("transport.aws_sns_sqs").info("Updating '{}' attribute on subscription for topic ARN '{}' and queue ARN '{}' - changes can take several minutes to propagate".format(attribute_name, topic_arn, queue_arn))
-                        await client.set_subscription_attributes(SubscriptionArn=subscription_arn, AttributeName=attribute_name, AttributeValue=attribute_value)
+                        logging.getLogger("transport.aws_sns_sqs").info(
+                            "Updating '{}' attribute on subscription for topic ARN '{}' and queue ARN '{}' - changes can take several minutes to propagate".format(
+                                attribute_name, topic_arn, queue_arn
+                            )
+                        )
+                        await client.set_subscription_attributes(
+                            SubscriptionArn=subscription_arn,
+                            AttributeName=attribute_name,
+                            AttributeValue=attribute_value,
+                        )
                     except botocore.exceptions.ClientError as e:
                         logging.getLogger("transport.aws_sns_sqs").warning(
                             "Unable to subscribe to topic [sns] on AWS ({})".format(error_message)
@@ -888,7 +917,11 @@ class AWSSNSSQSTransport(Invoker):
 
             async def _receive_wrapper() -> None:
                 def callback(
-                    payload: Optional[str], receipt_handle: Optional[str], queue_url: Optional[str], message_topic: str, message_attributes: Dict
+                    payload: Optional[str],
+                    receipt_handle: Optional[str],
+                    queue_url: Optional[str],
+                    message_topic: str,
+                    message_attributes: Dict,
                 ) -> Callable:
                     async def _callback() -> None:
                         await handler(payload, receipt_handle, queue_url, message_topic, message_attributes)
@@ -1004,7 +1037,9 @@ class AWSSNSSQSTransport(Invoker):
                             payload = message_body.get("Message")
                             message_attributes = message_body.get("MessageAttributes", {})
 
-                            futures.append(callback(payload, receipt_handle, queue_url, message_topic, message_attributes))
+                            futures.append(
+                                callback(payload, receipt_handle, queue_url, message_topic, message_attributes)
+                            )
                     except asyncio.CancelledError:
                         continue
 
@@ -1119,7 +1154,11 @@ class AWSSNSSQSTransport(Invoker):
             )
 
             async def setup_queue(
-                topic: str, func: Callable, queue_name: Optional[str] = None, competing_consumer: Optional[bool] = None, attributes: Optional[Dict[str, Union[str, bool]]] = None
+                topic: str,
+                func: Callable,
+                queue_name: Optional[str] = None,
+                competing_consumer: Optional[bool] = None,
+                attributes: Optional[Dict[str, Union[str, bool]]] = None,
             ) -> str:
                 _uuid = obj.uuid
 
@@ -1146,7 +1185,9 @@ class AWSSNSSQSTransport(Invoker):
                 return queue_url
 
             for topic, competing, queue_name, func, handler, attributes in context.get("_aws_sns_sqs_subscribers", []):
-                queue_url = await setup_queue(topic, func, queue_name=queue_name, competing_consumer=competing, attributes=attributes)
+                queue_url = await setup_queue(
+                    topic, func, queue_name=queue_name, competing_consumer=competing, attributes=attributes
+                )
                 await cls.consume_queue(cls, obj, context, handler, queue_url=queue_url)
 
         return _subscribe
