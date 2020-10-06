@@ -93,62 +93,7 @@ class ServiceContainer(object):
                 service_name = getattr(instance, "name", getattr(cls, "name", None))
 
                 if not service_name:
-                    new_service_name = ""
-                    if instance.__class__.__module__ and instance.__class__.__module__ not in (
-                        "service.app",
-                        "service.service",
-                        "app.service",
-                        "app.app",
-                        "example.service",
-                        "example.app",
-                    ):
-                        new_service_name = (
-                            "{}-".format(
-                                re.sub(
-                                    r"^.*[.]([a-zA-Z0-9_]+)[.]([a-zA-Z0-9_]+)$",
-                                    r"\1-\2",
-                                    str(instance.__class__.__module__),
-                                )
-                            )
-                            .replace("_", "-")
-                            .replace(".", "-")
-                        )
-                    class_name = instance.__class__.__name__
-                    for i, c in enumerate(class_name.lower()):
-                        if i and c != class_name[i]:
-                            new_service_name += "-"
-                        if c == "_":
-                            c = "-"
-                        new_service_name += c
-
-                    if new_service_name in ("app", "service"):
-                        new_service_name = "service"
-
-                    if not tomodachi.get_service(new_service_name) and not tomodachi.get_service(
-                        "{}-0001".format(new_service_name)
-                    ):
-                        service_name = new_service_name
-                    else:
-                        if tomodachi.get_service(new_service_name) and not tomodachi.get_service(
-                            "{}-0001".format(new_service_name)
-                        ):
-                            other_service = tomodachi.get_service(new_service_name)
-                            setattr(other_service, "name", "{}-0001".format(new_service_name))
-                            setattr(other_service.__class__, "name", other_service.name)
-                            unset_service(new_service_name)
-                            set_service(other_service.name, other_service)
-
-                        incr = 1
-                        while True:
-                            test_service_name = "{}-{:04d}".format(new_service_name, incr)
-                            if tomodachi.get_service(test_service_name):
-                                incr += 1
-                                continue
-                            service_name = test_service_name
-                            break
-
-                    setattr(instance, "name", service_name)
-                    setattr(instance, "cls", service_name)
+                    continue
 
                 set_service(service_name, instance)
 
@@ -269,3 +214,63 @@ class ServiceContainer(object):
                         pass
             except Exception:
                 pass
+
+    def set_service_name(self, instance: Any) -> bool:
+        new_service_name = ""
+        if instance.__class__.__module__ and instance.__class__.__module__ not in (
+            "service.app",
+            "service.service",
+            "app.service",
+            "app.app",
+            "example.service",
+            "example.app",
+        ):
+            new_service_name = (
+                "{}-".format(
+                    re.sub(
+                        r"^.*[.]([a-zA-Z0-9_]+)[.]([a-zA-Z0-9_]+)$",
+                        r"\1-\2",
+                        str(instance.__class__.__module__),
+                    )
+                )
+                .replace("_", "-")
+                .replace(".", "-")
+            )
+        class_name = instance.__class__.__name__
+        for i, c in enumerate(class_name.lower()):
+            if i and c != class_name[i]:
+                new_service_name += "-"
+            if c == "_":
+                c = "-"
+            new_service_name += c
+
+        if new_service_name in ("app", "service"):
+            new_service_name = "service"
+
+        if not tomodachi.get_service(new_service_name) and not tomodachi.get_service(
+            "{}-0001".format(new_service_name)
+        ):
+            service_name = new_service_name
+        else:
+            if tomodachi.get_service(new_service_name) and not tomodachi.get_service(
+                "{}-0001".format(new_service_name)
+            ):
+                other_service = tomodachi.get_service(new_service_name)
+                setattr(other_service, "name", "{}-0001".format(new_service_name))
+                setattr(other_service.__class__, "name", other_service.name)
+                unset_service(new_service_name)
+                set_service(other_service.name, other_service)
+
+            incr = 1
+            while True:
+                test_service_name = "{}-{:04d}".format(new_service_name, incr)
+                if tomodachi.get_service(test_service_name):
+                    incr += 1
+                    continue
+                service_name = test_service_name
+                break
+
+        setattr(instance, "name", service_name)
+        setattr(cls.__class__, "name", service_name)
+
+        return True
