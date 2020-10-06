@@ -57,6 +57,11 @@ Changes
   started tasks from clients that has disconnected before receiving
   the response.
 
+- Functions decorated with ``@tomodachi.aws_sns_sqs`` will now be called
+  with the ``queue_url``, ``receipt_handle`` and ``message_attributes``
+  keyword arguments if specified in the function signature.
+  These can be used to update the visibility timeouts, among other things.
+
 - The ``message_protocol`` value that can be specified on service classes
   has been renamed to ``message_envelope`` and the two example
   implementations ``JsonBase`` and ``ProtobufBase`` has been moved from
@@ -68,7 +73,8 @@ Changes
   ``message_envelope``.
 
 - The argument to specify ``message_envelope`` on the
-  ``@tomodachi.aws_sns_sqs`` and ``@tomodachi.amqp`` decorators is now keyword only.
+  ``@tomodachi.aws_sns_sqs`` and ``@tomodachi.amqp`` decorators is now
+  keyword only.
 
 - The arguments to specify ``message_envelope`` and ``topic_prefix`` to
   ``aws_sns_sqs_publish`` is now keyword only.
