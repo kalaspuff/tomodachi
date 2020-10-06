@@ -271,6 +271,6 @@ class ServiceContainer(object):
                 break
 
         setattr(instance, "name", service_name)
-        setattr(cls.__class__, "name", service_name)
+        setattr(instance.__class__, "name", service_name)
 
         return True
