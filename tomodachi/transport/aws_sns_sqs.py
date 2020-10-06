@@ -815,7 +815,9 @@ class AWSSNSSQSTransport(Invoker):
         visibility_timeout = None
         message_retention_period = None
         try:
-            response = await sqs_client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["Policy", "VisibilityTimeout", "MessageRetentionPeriod"])
+            response = await sqs_client.get_queue_attributes(
+                QueueUrl=queue_url, AttributeNames=["Policy", "VisibilityTimeout", "MessageRetentionPeriod"]
+            )
             current_queue_attributes = response.get("Attributes", {})
             current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
             current_visibility_timeout = current_queue_attributes.get("VisibilityTimeout")
@@ -828,19 +830,17 @@ class AWSSNSSQSTransport(Invoker):
         if not current_queue_policy or [{**x, "Sid": ""} for x in current_queue_policy.get("Statement", [])] != [
             {**x, "Sid": ""} for x in queue_policy.get("Statement", [])
         ]:
-            queue_attributes['Policy'] = json.dumps(queue_policy)
+            queue_attributes["Policy"] = json.dumps(queue_policy)
 
         if visibility_timeout and visibility_timeout != current_visibility_timeout:
-            queue_attributes['VisibilityTimeout'] = visibility_timeout  # specified in seconds
+            queue_attributes["VisibilityTimeout"] = visibility_timeout  # specified in seconds
 
         if message_retention_period and message_retention_period != current_message_retention_period:
-            queue_attributes['MessageRetentionPeriod'] = message_retention_period  # specified in seconds
+            queue_attributes["MessageRetentionPeriod"] = message_retention_period  # specified in seconds
 
         if queue_attributes:
             try:
-                response = await sqs_client.set_queue_attributes(
-                    QueueUrl=queue_url, Attributes=queue_attributes
-                )
+                response = await sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes=queue_attributes)
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
                 logging.getLogger("transport.aws_sns_sqs").warning(

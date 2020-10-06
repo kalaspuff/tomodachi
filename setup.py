@@ -18,9 +18,9 @@ install_requires = [
 ]
 
 extras_require = {
-    'uvloop': ['uvloop>=0.14.0'],
-    'protobuf': ['protobuf>=3.0.0, <4.0.0'],
-    'aiodns': ['aiodns>=1.2.0'],
+    "uvloop": ["uvloop>=0.14.0"],
+    "protobuf": ["protobuf>=3.0.0, <4.0.0"],
+    "aiodns": ["aiodns>=1.2.0"],
 }
 
 PY_VER = sys.version_info
