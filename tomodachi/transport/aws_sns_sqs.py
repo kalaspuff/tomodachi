@@ -811,20 +811,35 @@ class AWSSNSSQSTransport(Invoker):
             raise Exception("SQS policy is invalid")
 
         current_queue_policy = {}
+        current_visibility_timeout = None
+        visibility_timeout = None
+        message_retention_period = None
         try:
-            response = await sqs_client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["Policy"])
-            current_queue_policy = json.loads(response.get("Attributes", {}).get("Policy") or "{}")
+            response = await sqs_client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["Policy", "VisibilityTimeout", "MessageRetentionPeriod"])
+            current_queue_attributes = response.get("Attributes", {})
+            current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
+            current_visibility_timeout = current_queue_attributes.get("VisibilityTimeout")
+            current_message_retention_period = current_queue_attributes.get("MessageRetentionPeriod")
         except botocore.exceptions.ClientError as e:
             pass
+
+        queue_attributes = {}
 
         if not current_queue_policy or [{**x, "Sid": ""} for x in current_queue_policy.get("Statement", [])] != [
             {**x, "Sid": ""} for x in queue_policy.get("Statement", [])
         ]:
+            queue_attributes['Policy'] = json.dumps(queue_policy)
+
+        if visibility_timeout and visibility_timeout != current_visibility_timeout:
+            queue_attributes['VisibilityTimeout'] = visibility_timeout  # specified in seconds
+
+        if message_retention_period and message_retention_period != current_message_retention_period:
+            queue_attributes['MessageRetentionPeriod'] = message_retention_period  # specified in seconds
+
+        if queue_attributes:
             try:
-                # MessageRetentionPeriod (default 4 days, set to context value)
-                # VisibilityTimeout (default 30 seconds)
                 response = await sqs_client.set_queue_attributes(
-                    QueueUrl=queue_url, Attributes={"Policy": json.dumps(queue_policy)}
+                    QueueUrl=queue_url, Attributes=queue_attributes
                 )
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
