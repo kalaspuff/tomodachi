@@ -16,7 +16,7 @@ coverage==5.3
 docutils==0.15.2
 execnet==1.7.1
 jmespath==0.10.0
-multidict==4.7.6
+multidict==5.0.0
 mypy==0.782
 packaging==20.4
 protobuf==3.13.0
