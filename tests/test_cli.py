@@ -188,9 +188,7 @@ def test_cli_start_service_using_uvloop_event_loop(monkeypatch: Any, capsys: Any
     monkeypatch.setattr(logging.root, "handlers", [])
 
     with pytest.raises(SystemExit):
-        tomodachi.cli.cli_entrypoint(
-            ["tomodachi", "run", "--loop", "uvloop", "tests/services/auto_closing_service.py"]
-        )
+        tomodachi.cli.cli_entrypoint(["tomodachi", "run", "--loop", "uvloop", "tests/services/auto_closing_service.py"])
 
     out, err = capsys.readouterr()
     assert "Starting tomodachi services" in out
