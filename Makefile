@@ -63,14 +63,15 @@ mypy:
 .PHONY: tests
 tests:
 	if [[ ! "${PYTEST_INSTALLED}" ]]; then make development; fi
-	PYTHONPATH=. py.test -n auto tests/
+	PYTHONPATH=. py.test tests/
 	PYTHONPATH=. python tomodachi.py run tests/run_example_service.py
+	PYTHONPATH=. python tomodachi.py run --loop uvloop tests/run_example_service.py
 	PYTHONPATH=. python setup.py check -r -s
 
 .PHONY: pytest
 pytest:
 	if [[ ! "${PYTEST_INSTALLED}" ]]; then make development; fi
-	PYTHONPATH=. py.test -n auto tests/
+	PYTHONPATH=. py.test tests/
 
 .PHONY: _check_release
 _check_release:

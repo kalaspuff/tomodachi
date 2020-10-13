@@ -56,6 +56,8 @@ def start_service(filename: str, monkeypatch: Any = None, wait: bool = True) -> 
         for signame in ("SIGINT", "SIGTERM"):
             loop.remove_signal_handler(getattr(signal, signame))
         loop = asyncio.get_event_loop()
+        for signame in ("SIGINT", "SIGTERM"):
+            loop.remove_signal_handler(getattr(signal, signame))
         if service:
             stop_services(loop)
         raise
