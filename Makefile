@@ -45,7 +45,6 @@ clean:
 .PHONY: black
 black:
 	black setup.py tomodachi.py tomodachi/ examples/ tests/
-	@echo "done"
 
 .PHONY: isort
 isort:
@@ -55,7 +54,11 @@ isort:
 lint:
 	pycodestyle --ignore E203,W503,E501 --exclude proto_build,build,tmp .
 	mypy ./
-	@echo "ok"
+
+.PHONY: mypy
+mypy:
+	mypy ./
+
 
 .PHONY: tests
 tests:
