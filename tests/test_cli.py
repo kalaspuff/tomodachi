@@ -169,6 +169,36 @@ def test_cli_start_service_production_mode(monkeypatch: Any, capsys: Any) -> Non
     assert out == ""
 
 
+def test_cli_start_service_using_asyncio_event_loop(monkeypatch: Any, capsys: Any) -> None:
+    monkeypatch.setattr(logging.root, "handlers", [])
+
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(
+            ["tomodachi", "run", "--loop", "asyncio", "tests/services/auto_closing_service.py"]
+        )
+
+    out, err = capsys.readouterr()
+    assert "Starting tomodachi services" in out
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
+    assert "Event loop implementation: asyncio" in out
+    assert "Event loop implementation: uvloop" not in out
+
+
+def test_cli_start_service_using_uvloop_event_loop(monkeypatch: Any, capsys: Any) -> None:
+    monkeypatch.setattr(logging.root, "handlers", [])
+
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(
+            ["tomodachi", "run", "--loop", "uvloop", "tests/services/auto_closing_service.py"]
+        )
+
+    out, err = capsys.readouterr()
+    assert "Starting tomodachi services" in out
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
+    assert "Event loop implementation: uvloop" in out
+    assert "Event loop implementation: asyncio" not in out
+
+
 def test_cli_start_service_with_config(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(logging.root, "handlers", [])
 
