@@ -36,7 +36,7 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @aws_sns_sqs("test-raw-topic")
+    @aws_sns_sqs("test-raw-topic", queue_name="test-queue-{}".format(data_uuid))
     async def test(self, value: Any, default_value: bool = True) -> None:
         if value == self.data_uuid:
             self.test_topic_data_received = default_value

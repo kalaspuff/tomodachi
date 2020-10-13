@@ -47,7 +47,7 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @aws_sns_sqs("test-topic")
+    @aws_sns_sqs("test-topic", competing=False)
     async def test(self, data: Any, metadata: Any, service: Any) -> None:
         if data == self.data_uuid:
             self.test_topic_data_received = True
@@ -74,7 +74,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
             self.check_closer()
 
-    @aws_sns_sqs("test-topic#")
+    @aws_sns_sqs("test-topic#", queue_name="test-queue-wildcard-{}".format(data_uuid))
     async def faked_wildcard_topic(self, metadata: Any, data: Any) -> None:
         if data == self.data_uuid:
             self.wildcard_topic_data_received = True

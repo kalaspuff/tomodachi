@@ -49,7 +49,7 @@ class AWSSNSSQSService(tomodachi.Service):
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @aws_sns_sqs("test-custom-topic", message_envelope=CustomEnvelope)
+    @aws_sns_sqs("test-custom-topic", queue_name="test-queue-{}".format(data_uuid), message_envelope=CustomEnvelope)
     async def test(self, data: Any, envelope: Any, default_value: bool = True) -> None:
         if data == self.data_uuid and envelope == "custom":
             self.test_topic_data_received = default_value
