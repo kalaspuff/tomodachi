@@ -11,7 +11,7 @@ botocore==1.15.15
 cchardet==2.1.6
 chardet==3.0.4
 codecov==2.1.9
-colorama==0.4.3
+colorama==0.4.4
 coverage==5.3
 docutils==0.15.2
 execnet==1.7.1
