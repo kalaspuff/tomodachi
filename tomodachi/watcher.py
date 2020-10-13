@@ -20,7 +20,7 @@ class Watcher(object):
         self.watched_files_crc = {}  # type: Dict[str, str]
         self.root = []  # type: List[str]
         self.ignored_dirs = ["__pycache__", ".git", ".svn", "__ignored__", "__temporary__", "__tmp__"]
-        self.watched_file_endings = [".py", ".json", ".yml", ".html", ".phtml"]
+        self.watched_file_endings = [".py", ".pyi", ".json", ".yml", ".html", ".phtml"]
 
         if not root:
             directory = os.path.realpath(sys.argv[0].rsplit("/", 1)[0])
