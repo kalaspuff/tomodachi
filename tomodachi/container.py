@@ -13,7 +13,7 @@ import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
 from tomodachi.config import merge_dicts
 from tomodachi.helpers.execution_context import set_service, unset_service
-from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE, INVOKER_TASK_START_KEYWORD
+from tomodachi.invoker import FUNCTION_ATTRIBUTE, INVOKER_TASK_START_KEYWORD, START_ATTRIBUTE
 
 
 class ServiceContainer(object):
@@ -115,7 +115,10 @@ class ServiceContainer(object):
                 invoker_functions.sort(key=invoker_function_sorter)
                 if invoker_functions:
                     invoker_tasks = invoker_tasks | set(
-                        [asyncio.ensure_future(getattr(instance, name)(**{INVOKER_TASK_START_KEYWORD: True})) for name in invoker_functions]
+                        [
+                            asyncio.ensure_future(getattr(instance, name)(**{INVOKER_TASK_START_KEYWORD: True}))
+                            for name in invoker_functions
+                        ]
                     )
                     services_started.add((service_name, instance, log_level))
 
