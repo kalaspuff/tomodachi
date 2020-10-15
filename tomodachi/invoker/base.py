@@ -16,7 +16,7 @@ class Invoker(object):
             def wrapper(func: Callable) -> Callable:
                 @functools.wraps(func)
                 async def _decorator(obj: Any, *a: Any, **kw: Any) -> Any:
-                    if not all((kw, INVOKER_TASK_START_KEYWORD in kw, kw[INVOKER_TASK_START_KEYWORD])):
+                    if not kw or not kw.get(INVOKER_TASK_START_KEYWORD):
                         return await func(obj, *a, **kw)
 
                     setattr(_decorator, START_ATTRIBUTE, False)  # deprecated

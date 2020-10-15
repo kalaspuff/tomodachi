@@ -103,16 +103,16 @@ it's however highly recommended to use containerization, such as Docker.
 
 Getting started 🏃
 ^^^^^^^^^^^^^^^^^^
-*Start off with* ``import tomodachi`` *and add a service class extending the*
+*Start with* ``import tomodachi`` *and add a service class extending the*
 ``tomodachi.Service`` *class. Preferably (but not required) you name your service
 by adding a* ``name`` *attribute in the class. For the service to actually run and
 do something your service class will also require at least one method that needs
 to be decorated with a decorator (like* ``@tomodachi.http`` *or*
 ``@tomodachi.aws_sns_sqs``) *so that they the functions can run when triggered via
 for example HTTP requests, pub/sub event messaging or by
-timestamps / intervals much like cron jobs.
+timestamps / intervals much like cron jobs.*
 
-There's a desciption of how each of the
+*There's a desciption of how each of the
 already available invoker decorators work and as previously mentioned, it's also
 possible to custom build your own (to namedrop a few possible examples / ideas –
 functionality to use Redis as a task queue, if your service needs to subscribing to
