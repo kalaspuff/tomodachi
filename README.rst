@@ -80,27 +80,44 @@ Usage
 schedule. Before the package is available as a 1.0.0 release, note that there
 may be breaking changes between 0.x versions.
 
-
-How do I use this? (simple install using ``pip``)
--------------------------------------------------
-Installation could as always be done via ``pip`` to get the cli alias set
-up automatically. Unless running development code within Docker, install
-``tomodachi`` into a virtualenv to avoid cluttering. When developing
-microservices for real it's however highly recommended to use
-containerization such as Docker.
+Start with installing the ``tomodachi`` distribution
+----------------------------------------------------
+Install ``tomodachi`` in your preferred way, wether it be ``poetry``, ``pip``,
+``pipenv``, etc. Installing the distribution will give your environment access to the
+``tomodachi`` package for imports as well as a shortcut to the CLI alias, which
+later is used to run the microservices you build.
 
 .. code:: bash
 
     local ~$ pip install tomodachi
+    ...
+    Installing collected packages: ..., ..., ..., tomodachi
+    Successfully installed ... ... ... tomodachi-0.x.xx
+
+
+
+Unless running development code within Docker, packages should preferably always
+be installed into a virtualenv to avoid cluttering. When deploying microservices
+it's however highly recommended to use containerization, such as Docker.
 
 
 Getting started 🏃
 ^^^^^^^^^^^^^^^^^^
-*Start off with* ``import tomodachi`` *and add a service class extended from
-the* ``tomodachi.Service`` *class. Name your service class and then just add
-functions and triggers for how to invoke them, either by HTTP requests,
-pub/sub event messages or by timestamps / intervals.*
+*Start off with* ``import tomodachi`` *and add a service class extending the*
+``tomodachi.Service`` *class. Preferably (but not required) you name your service
+by adding a* ``name`` *attribute in the class. For the service to actually run and
+do something your service class will also require at least one method that needs
+to be decorated with a decorator (like* ``@tomodachi.http`` *or*
+``@tomodachi.aws_sns_sqs``) *so that they the functions can run when triggered via
+for example HTTP requests, pub/sub event messaging or by
+timestamps / intervals much like cron jobs.
 
+There's a desciption of how each of the
+already available invoker decorators work and as previously mentioned, it's also
+possible to custom build your own (to namedrop a few possible examples / ideas –
+functionality to use Redis as a task queue, if your service needs to subscribing to
+Kinesis event streams and act on the data available there or if you're build GraphQL
+resolvers and want a neat way of calling those).*
 
 
 Basic HTTP based service 🌟
@@ -113,7 +130,7 @@ Basic HTTP based service 🌟
 
 
     class Service(tomodachi.Service):
-        name = "example"
+        name = "http-example"
 
         # Request paths are specified as regex for full flexibility
         @tomodachi.http("GET", r"/resource/(?P<id>[^/]+?)/?")
@@ -278,9 +295,14 @@ but to just get started and show how simple it could be.
 
         @tomodachi.http("GET", r"/")
         async def index_endpoint(self, request):
+            # tomodachi.get_execution_context() can be used for
+            # debugging purposes or to add additional service context
+            # in logs or alerts.
+            execution_context = tomodachi.get_execution_context()
+
             return json.dumps({
                 "data": "hello world!",
-                "execution_context": tomodachi.get_execution_context(),
+                "execution_context": execution_context,
             })
 
         @tomodachi.http("GET", r"/health/?", ignore_logging=True)
@@ -454,11 +476,11 @@ A ``tomodachi.Service`` service class may specify a class attribute named ``opti
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 **Configuration key**                                      **Description**                                                                                                                                                                                                                                                                                                                                                                                                                                                                     **Default value**
 ---------------------------------------------------------  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -------------------------------------------
-``aws_sns_sqs.topic_prefix``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ``""``
-``aws_sns_sqs.queue_name_prefix``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ``""``
 ``aws_sns_sqs.region_name``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ``None``
 ``aws_sns_sqs.aws_access_key_id``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ``None``
 ``aws_sns_sqs.aws_secret_access_key``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ``None``
+``aws_sns_sqs.topic_prefix``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ``""``
+``aws_sns_sqs.queue_name_prefix``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ``""``
 ---------------------------------------------------------  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ⁝⁝ **Configure custom AWS endpoints for development** ⁝⁝ ``options["aws_endpoint_urls"][key]``
@@ -473,13 +495,13 @@ A ``tomodachi.Service`` service class may specify a class attribute named ``opti
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 **Configuration key**                                      **Description**                                                                                                                                                                                                                                                                                                                                                                                                                                                                     **Default value**
 ---------------------------------------------------------  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -------------------------------------------
-``amqp.routing_key_prefix``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ``""``
-``amqp.queue_name_prefix``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ``""``
-``amqp.exchange_name``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ``"amq_topic"``
 ``amqp.host``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ``"127.0.0.1"``
 ``amqp.port``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ``5672``
 ``amqp.login``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ``"guest"``
 ``amqp.password``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ``"guest"``
+``amqp.exchange_name``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ``"amq_topic"``
+``amqp.routing_key_prefix``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ``""``
+``amqp.queue_name_prefix``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ``""``
 ``amqp.virtualhost``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ``"/"``
 ``amqp.ssl``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ``False``
 ``amqp.heartbeat``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ``60``

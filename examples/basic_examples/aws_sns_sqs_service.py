@@ -10,7 +10,7 @@ from tomodachi.envelope import JsonBase
 class ExampleAWSSNSSQSService(tomodachi.Service):
     name = "example-aws-sns-sqs-service"
     log_level = "INFO"
-    uuid = os.environ.get("SERVICE_UUID")
+    uuid = str(os.environ.get("SERVICE_UUID") or "")
 
     # Build own "discovery" functions, to be run on start and stop
     # See tomodachi/discovery/aws_sns_registration.py for example

@@ -9,7 +9,7 @@ from tomodachi.envelope import JsonBase
 class AWSSNSRegistrationService(tomodachi.Service):
     name = "example-aws-sns-registration-service"
     log_level = "INFO"
-    uuid = os.environ.get("SERVICE_UUID")
+    uuid = str(os.environ.get("SERVICE_UUID") or "")
 
     # The message envelope class defines how a message should be processed when sent and received
     # See tomodachi/envelope/json_base.py for a basic example using JSON and transferring some metadata

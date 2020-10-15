@@ -27,7 +27,7 @@ async def middleware_function(
 class ExampleAmqpService(tomodachi.Service):
     name = "example-amqp-service"
     log_level = "INFO"
-    uuid = os.environ.get("SERVICE_UUID")
+    uuid = str(os.environ.get("SERVICE_UUID") or "")
 
     # Build own "discovery" functions, to be run on start and stop
     # See tomodachi/discovery/dummy_registry.py for example

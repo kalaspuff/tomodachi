@@ -19,10 +19,11 @@ async def require_auth_token(instance: Any, request: web.Request) -> Any:
 class ExampleHttpAuthService(tomodachi.Service):
     name = "example-http-auth-service"
     log_level = "DEBUG"
-    allowed_token = str(uuid.uuid4())
-    uuid = os.environ.get("SERVICE_UUID")
+    uuid = str(os.environ.get("SERVICE_UUID") or "")
 
-    options = {"http": {"port": 4711, "content_type": "text/plain", "charset": "utf-8", "access_log": True}}
+    allowed_token = str(uuid.uuid4())
+
+    options = {"http": {"port": 4711, "content_type": "text/plain; charset=utf-8", "access_log": True}}
 
     @http("GET", r"/get-token/?")
     async def get_token(self, request: web.Request) -> str:

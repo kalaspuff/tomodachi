@@ -2,8 +2,9 @@ import functools
 import types
 from typing import Any, Callable, Dict, List, Optional  # noqa
 
-FUNCTION_ATTRIBUTE = "TOMODACHI_INVOKER"
-START_ATTRIBUTE = "TOMODACHI_INVOKER_START"
+FUNCTION_ATTRIBUTE = "_tomodachi_function_is_invoker_function"
+START_ATTRIBUTE = "_tomodachi_deprecated_invoker_function_start_marker"
+INVOKER_TASK_START_KEYWORD = "_tomodachi_invoker_task_start_keyword"
 
 
 class Invoker(object):
@@ -15,10 +16,10 @@ class Invoker(object):
             def wrapper(func: Callable) -> Callable:
                 @functools.wraps(func)
                 async def _decorator(obj: Any, *a: Any, **kw: Any) -> Any:
-                    if not getattr(_decorator, START_ATTRIBUTE, None):
+                    if not all((kw, INVOKER_TASK_START_KEYWORD in kw, kw[INVOKER_TASK_START_KEYWORD])):
                         return await func(obj, *a, **kw)
 
-                    setattr(_decorator, START_ATTRIBUTE, False)
+                    setattr(_decorator, START_ATTRIBUTE, False)  # deprecated
                     if not cls.context.get(obj, None):
                         if getattr(obj, "context", None):
                             cls.context[obj] = obj.context

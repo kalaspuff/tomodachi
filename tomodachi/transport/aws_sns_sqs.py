@@ -409,15 +409,21 @@ class AWSSNSSQSTransport(Invoker):
         config_base = context.get("options", {}).get("aws_sns_sqs", context.get("options", {}).get("aws", {}))
         aws_config_base = context.get("options", {}).get("aws", {})
 
-        region_name = config_base.get("aws_region_name", config_base.get("region_name")) or aws_config_base.get(
-            "aws_region_name", aws_config_base.get("region_name")
-        ) or None
-        aws_secret_access_key = config_base.get(
-            "aws_secret_access_key", config_base.get("secret_access_key")
-        ) or aws_config_base.get("aws_secret_access_key", aws_config_base.get("secret_access_key")) or None
-        aws_access_key_id = config_base.get(
-            "aws_access_key_id", config_base.get("access_key_id")
-        ) or aws_config_base.get("aws_access_key_id", aws_config_base.get("access_key_id")) or None
+        region_name = (
+            config_base.get("aws_region_name", config_base.get("region_name"))
+            or aws_config_base.get("aws_region_name", aws_config_base.get("region_name"))
+            or None
+        )
+        aws_secret_access_key = (
+            config_base.get("aws_secret_access_key", config_base.get("secret_access_key"))
+            or aws_config_base.get("aws_secret_access_key", aws_config_base.get("secret_access_key"))
+            or None
+        )
+        aws_access_key_id = (
+            config_base.get("aws_access_key_id", config_base.get("access_key_id"))
+            or aws_config_base.get("aws_access_key_id", aws_config_base.get("access_key_id"))
+            or None
+        )
         endpoint_url = (
             config_base.get("aws_endpoint_urls", config_base.get("endpoint_urls", {})).get(name)
             or config_base.get("aws_{}_endpoint_url".format(name), config_base.get("{}_endpoint_url".format(name)))

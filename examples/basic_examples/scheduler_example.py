@@ -7,7 +7,7 @@ from tomodachi import hourly, minutely, schedule
 class SchedulerService(tomodachi.Service):
     name = "example-scheduler-service"
     log_level = "DEBUG"
-    uuid = os.environ.get("SERVICE_UUID")
+    uuid = str(os.environ.get("SERVICE_UUID") or "")
 
     @schedule(interval="every second")
     async def every_second(self) -> None:

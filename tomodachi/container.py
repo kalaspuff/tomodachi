@@ -13,7 +13,7 @@ import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
 from tomodachi.config import merge_dicts
 from tomodachi.helpers.execution_context import set_service, unset_service
-from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
+from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE, INVOKER_TASK_START_KEYWORD
 
 
 class ServiceContainer(object):
@@ -66,7 +66,7 @@ class ServiceContainer(object):
         registered_services = set()  # type: set
         for _, cls in inspect.getmembers(self.module_import):
             if inspect.isclass(cls):
-                if not getattr(cls, CLASS_ATTRIBUTE, None):
+                if not getattr(cls, CLASS_ATTRIBUTE, False):
                     continue
 
                 instance = cls()
@@ -93,7 +93,9 @@ class ServiceContainer(object):
                 service_name = getattr(instance, "name", getattr(cls, "name", None))
 
                 if not service_name:
-                    continue
+                    service_name = ServiceContainer.assign_service_name(instance)
+                    if not service_name:
+                        continue
 
                 set_service(service_name, instance)
 
@@ -108,12 +110,12 @@ class ServiceContainer(object):
                 invoker_functions = []
                 for name, fn in inspect.getmembers(cls):
                     if inspect.isfunction(fn) and getattr(fn, FUNCTION_ATTRIBUTE, None):
-                        setattr(fn, START_ATTRIBUTE, True)
+                        setattr(fn, START_ATTRIBUTE, True)  # deprecated
                         invoker_functions.append(name)
                 invoker_functions.sort(key=invoker_function_sorter)
                 if invoker_functions:
                     invoker_tasks = invoker_tasks | set(
-                        [asyncio.ensure_future(getattr(instance, name)()) for name in invoker_functions]
+                        [asyncio.ensure_future(getattr(instance, name)(**{INVOKER_TASK_START_KEYWORD: True})) for name in invoker_functions]
                     )
                     services_started.add((service_name, instance, log_level))
 
@@ -215,15 +217,30 @@ class ServiceContainer(object):
             except Exception:
                 pass
 
-    def set_service_name(self, instance: Any) -> bool:
+    @classmethod
+    def assign_service_name(cls, instance: Any) -> str:
         new_service_name = ""
         if instance.__class__.__module__ and instance.__class__.__module__ not in (
             "service.app",
             "service.service",
+            "services.app",
+            "services.service",
+            "src.service",
+            "src.app",
+            "code.service",
+            "code.app",
             "app.service",
             "app.app",
+            "apps.service",
+            "apps.app",
             "example.service",
             "example.app",
+            "examples.service",
+            "examples.app",
+            "test.service",
+            "test.app",
+            "tests.service",
+            "tests.app",
         ):
             new_service_name = (
                 "{}-".format(
@@ -273,4 +290,4 @@ class ServiceContainer(object):
         setattr(instance, "name", service_name)
         setattr(instance.__class__, "name", service_name)
 
-        return True
+        return service_name

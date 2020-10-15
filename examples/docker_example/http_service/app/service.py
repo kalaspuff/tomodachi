@@ -11,10 +11,15 @@ class Service(tomodachi.Service):
 
     @tomodachi.http("GET", r"/")
     async def index_endpoint(self, request):
+        # tomodachi.get_execution_context() can be used for
+        # debugging purposes or to add additional service context
+        # in logs or alerts.
+        execution_context = tomodachi.get_execution_context()
+
         return json.dumps(
             {
                 "data": "hello world!",
-                "execution_context": tomodachi.get_execution_context(),
+                "execution_context": execution_context,
             }
         )
 

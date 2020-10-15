@@ -12,14 +12,14 @@ from tomodachi.discovery import DummyRegistry
 class ExampleHttpService(tomodachi.Service):
     name = "example-http-service"
     log_level = "DEBUG"
-    uuid = os.environ.get("SERVICE_UUID")
+    uuid = str(os.environ.get("SERVICE_UUID") or "")
 
     # Build own "discovery" functions, to be run on start and stop
     # See tomodachi/discovery/dummy_registry.py for example
     discovery = [DummyRegistry]
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
-    options = {"http": {"port": 4711, "content_type": "text/plain", "charset": "utf-8", "access_log": True}}
+    options = {"http": {"port": 4711, "content_type": "text/plain; charset=utf-8", "access_log": True}}
 
     @http("GET", r"/example/?")
     async def example(self, request: web.Request) -> str:
@@ -46,7 +46,7 @@ class ExampleHttpService(tomodachi.Service):
 
         async def _receive(data: Union[str, bytes]) -> None:
             # Called when the websocket receives data
-            self.log("websocket data received: {}".format(data))
+            self.log("websocket data received: {}".format(str(data)))
             await websocket.send_str("response")
 
         async def _close() -> None:

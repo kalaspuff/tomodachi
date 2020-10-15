@@ -82,7 +82,7 @@ Changes
 - The arguments to specify ``message_envelope`` and ``routing_key_prefix``
   to ``amqp_publish`` is now keyword only.
 
-- ``uvloop`` is now an optional installed package.
+- ``uvloop`` is now an optional installation.
 
 - More verbose output when waiting for active tasks during termination.
 
@@ -110,6 +110,12 @@ Changes
   running DNS resolution on the event loop when using ``aiohttp``.
 
 - Updated identifiers for support of Python 3.9.
+
+- The use of decorating service classes with ``@tomodachi.service`` is
+  now considered deprecated and the service classes should inherit from the
+  ``tomodachi.Service`` class instead. This works better with type-hinting
+  which currently cannot handle class decorators that modify the class just
+  yet.
 
 - Dropped support for Python 3.6.
 

@@ -15,7 +15,7 @@ def log_setup(
     filename: Optional[str] = None,
 ) -> logging.Logger:
     if not name:
-        name = "log.{}".format(service.name)
+        name = "log.{}".format(service.name) if getattr(service, "name", None) else "log.service"
     if not filename:
         raise Exception("log_filename must be specified for logging setup")
 
@@ -58,7 +58,7 @@ def log_setup(
 
 
 def log(service: Any, *args: Any, **kwargs: Any) -> None:
-    log_name = "log.{}".format(service.name)
+    log_name = "log.{}".format(service.name) if getattr(service, "name", None) else "log.service"
     log_level = None
     log_message = None
     if len(args) == 1:

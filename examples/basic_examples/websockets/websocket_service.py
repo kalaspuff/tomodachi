@@ -14,10 +14,10 @@ from tomodachi import http, http_error, http_static, websocket
 class ExampleWebsocketService(tomodachi.Service):
     name = "example-websocket-service"
     log_level = "DEBUG"
-    uuid = os.environ.get("SERVICE_UUID")
+    uuid = str(os.environ.get("SERVICE_UUID") or "")
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
-    options = {"http": {"port": 4711, "content_type": "text/plain", "charset": "utf-8", "access_log": True}}
+    options = {"http": {"port": 4711, "content_type": "text/plain; charset=utf-8", "access_log": True}}
 
     @http("GET", r"/(?:|index.html)")
     async def index(self, request: web.Request) -> web.Response:
