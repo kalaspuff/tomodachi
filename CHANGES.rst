@@ -111,13 +111,17 @@ Changes
 
 - Updated identifiers for support of Python 3.9.
 
-- The use of decorating service classes with ``@tomodachi.service`` is
-  now considered deprecated and the service classes should inherit from the
-  ``tomodachi.Service`` class instead. This works better with type-hinting
-  which currently cannot handle class decorators that modify the class just
-  yet.
-
 - Dropped support for Python 3.6.
+
+- The service class decorator ``@tomodachi.service`` is now considered
+  deprecated and the service classes should inherit from the
+  ``tomodachi.Service`` class instead. This also works better with
+  type-hinting, which currently cannot handle decorators that
+  modify a class.
+
+- The ``name`` attribute is no longer required on the service classes
+  and if not specified the value will now instead default to
+  ``"service"``.
 
 
 0.18.0 (2020-09-15)
