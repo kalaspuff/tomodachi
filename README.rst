@@ -4,6 +4,8 @@
   HTTP, websockets, RabbitMQ / AMQP and AWS SNS+SQS built-in support for event based
   messaging and intra-service communication.
 
+.. image:: https://github.com/kalaspuff/tomodachi/workflows/Python%20package/badge.svg
+    :target: https://github.com/kalaspuff/tomodachi/actions
 .. image:: https://travis-ci.org/kalaspuff/tomodachi.svg?branch=master
     :target: https://travis-ci.org/kalaspuff/tomodachi
 .. image:: https://img.shields.io/pypi/v/tomodachi.svg
