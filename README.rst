@@ -51,7 +51,7 @@ Usage
 
 - `Installation <#getting-started->`_
 
-- `Getting started with service code / basic example services <#getting-started->`_
+- `Getting started with service code / basic example services <#building-blocks-for-a-service-file-to-run-with-tomodachi-run-servicepy>`_
 
 - `Running microservices in Docker <#example-of-tomodachi-service-containerized-in-docker->`_
 
@@ -110,8 +110,8 @@ installed and run in isolated environments like Docker containers or virtual
 environments.
 
 
-Building blocks for a service file to run with ``tomodachi run service.py``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Building blocks for a service class and microservice entrypoint
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 1. ``import tomodachi`` and create a class that inherits ``tomodachi.Service``,
    it can be called anything… or just ``Service`` to keep it simple.
 2. Add a ``name`` attribute to the class and give it a string value. Having
@@ -126,24 +126,27 @@ Building blocks for a service file to run with ``tomodachi run service.py``
    trigger / subscription decorators, which also invokes what capabilities
    the service initially has.
 
+
 *Further down you'll find a desciption of how each of the built-in invoker decorators
 work and which keywords and parameters you can use to change their behaviour.*
 
 *Note: Publishing and subscribing to events and messages may require user credentials
 or hosting configuration to be able to access queues and topics.*
 
+
 **For simplicity, let's do HTTP:**
-* On each POST request to ``/sheep``, the service will wait
-  for up to one whole second (pretend that it's performing I/O – waiting for response
-  on a slow sheep counting database modification, for example) and then issue a 200 OK
-  with some data.
+
+* On each POST request to ``/sheep``, the service will wait for up to one whole second
+  (pretend that it's performing I/O – waiting for response on a slow sheep counting
+  database modification, for example) and then issue a 200 OK with some data.
 * It's also possible to query the amount of times the POST tasks has run by doing a
   ``GET`` request to the same url, ``/sheep``.
 * By using ``@tomodachi.http`` an HTTP server backed by ``aiohttp`` will be started
   on service start. ``tomodachi`` will act as a middleware to route requests to the
-  correct handlers, upgrade websocket connections and then also gracefully await 
+  correct handlers, upgrade websocket connections and then also gracefully await
   connections with still executing tasks, when the service is asked to stop – up until
   a configurable amount of time has passed.
+
 
 .. code:: python
 
@@ -169,7 +172,12 @@ or hosting configuration to be able to access queues and topics.*
             return 200, str(self._sheep_count)
 
 
-Run services with ``tomodachi run <path to file containing service class>``
+Run services with:
+
+.. code:: bash
+
+    local ~/code/service$ tomodachi run <path to .py file with service class code>
+
 
 ----
 
@@ -178,18 +186,22 @@ possible to build additional function decorators to suit the use-cases one may h
 
 To give a few possible examples / ideas of functionality that could be coded to call
 functions with data in similar ways:
+
 * Using Redis as a task queue with configurable keys to push or pop onto.
 * Subscribing to Kinesis or Kafka event streams and act on the data received.
 * An abstraction around otherwise complex functionality or to unify API design.
 * As an example to above sentence; GraphQL resolver functionality with built-in
   tracability and authentication management, with a unified API to application devs.
 
+
 ----
 
-Additional examples will follow with different ways to trigger functions in the
-service. Of course the different ways can be used within the same class, for example
+**Additional examples will follow with different ways to trigger functions in the service.**
+
+Of course the different ways can be used within the same class, for example
 the very common use-case of having a service listening on HTTP while also performing
 some kind of async pub/sub tasks.
+
 
 Basic HTTP based service 🌟
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -225,7 +237,7 @@ Code for a simple service which would service data over HTTP, pretty similar, bu
             return "error 404"
 
 
-RabbitMQ or AWS SNS+SQS event based messaging service 📡
+RabbitMQ or AWS SNS+SQS event based messaging service 🐰
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Example of a service that calls a function when messages are published on an AMQP topic exchange.
 
@@ -246,13 +258,14 @@ Example of a service that calls a function when messages are published on an AMQ
             # Received message, fordarding the same message as response on another route / topic
             await tomodachi.amqp_publish(self, message, routing_key="example.response")
 
-AWS SNS+SQS event based messaging service 📝
+
+AWS SNS+SQS event based messaging service 📡
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-*Example of a service using AWS SNS+SQS managed pub/sub messaging. AWS SNS and AWS SQS together
+Example of a service using AWS SNS+SQS managed pub/sub messaging. AWS SNS and AWS SQS together
 brings managed message queues for microservices, distributed systems, and serverless applications hosted
 on AWS. ``tomodachi`` services can customize their enveloping functionality to both unwrap incoming messages
 and/or to produce enveloped messages for published events / messages. Pub/sub patterns are great for
-scalability in distributed architectures, when for example hosted in Docker on Kubernetes.*
+scalability in distributed architectures, when for example hosted in Docker on Kubernetes.
 
 .. code:: python
 
@@ -274,7 +287,6 @@ scalability in distributed architectures, when for example hosted in Docker on K
             await tomodachi.aws_sns_sqs_publish(self, message, topic="another-example-topic")
 
 
-
 Scheduling, inter-communication between services, etc. ⚡️
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 There are other examples available with code of how to use services with self-invoking
@@ -282,6 +294,8 @@ methods called on a specified interval or at specific times / days, as well as a
 for inter-communication pub/sub between different services on both AMQP or AWS SNS+SQS as shown
 above. See more at the `examples folder <https://github.com/kalaspuff/tomodachi/blob/master/examples/>`_.
 
+
+----
 
 Run the service 😎
 ------------------
@@ -333,7 +347,7 @@ Run the service 😎
 
 Example of a microservice containerized in Docker 🐳
 ----------------------------------------------------
-A great way to distribute and operate microservices are usually to run them in containers or 
+A great way to distribute and operate microservices are usually to run them in containers or
 even more interestingly, in clusters of compute nodes. Here follows an example of getting a
 ``tomodachi`` based service up and running in Docker.
 
@@ -470,10 +484,10 @@ quite this small, but as a template to get started.
 
 **It's actually as easy as that to get something spinning. The hard part is usually to figure out (or decide) what to build next.**
 
-Other popular ways of running microservices are of course to use them as serverless 
-functions, with an ability of scaling to zero (Lambda, Cloud Functions, Knative, etc. 
+Other popular ways of running microservices are of course to use them as serverless
+functions, with an ability of scaling to zero (Lambda, Cloud Functions, Knative, etc.
 may come to mind). Currently ``tomodachi`` works best in a container setup and until
-proper serverless supporting execution context is available in the library, it 
+proper serverless supporting execution context is available in the library, it
 should be adviced to hold off and use other tech for those kinds of deployments.
 
 ----
@@ -537,7 +551,7 @@ Scheduled functions / cron / triggered on time interval:
   A **scheduled function** invoked on either a specified ``interval`` (you may use the popular cron notation as a str for fine-grained interval or specify an integer value of seconds) or a specific ``timestamp``. The ``timezone`` will default to your local time unless explicitly stated.
 
   When using an integer ``interval`` you may also specify wether the function should be called ``immediately`` on service start or wait the full ``interval`` seconds before its first invokation.
-  
+
 ``@tomodachi.heartbeat``
   A function which will be **invoked every second**.
 
