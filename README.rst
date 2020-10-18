@@ -86,8 +86,8 @@ may be breaking changes between 0.x versions.
 Getting started 🏃
 ------------------
 
-First: Installation – Poetry fully supported. Works just as fine with pip.
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+First off: Installation – ``poetry`` is fully supported and battle-tested, ``pip`` works just as fine
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Install ``tomodachi`` in your preferred way, wether it be ``poetry``, ``pip``,
 ``pipenv``, etc. Installing the distribution will give your environment access to the
 ``tomodachi`` package for imports as well as a shortcut to the CLI alias, which
@@ -121,7 +121,7 @@ Building blocks for a service file to run with ``tomodachi run service.py``
    with one of the available invoker decorators. Note that a service class
    must have at least one decorated function available to even be recognized
    as a service by ``tomodachi run``.
-4. Decide on how to call the function – for example using HTTP, pub/sub
+4. Decide on how to trigger the function – for example using HTTP, pub/sub
    or on a timed interval, then decorate your function with one of these
    trigger / subscription decorators, which also invokes what capabilities
    the service initially has.
@@ -139,6 +139,11 @@ or hosting configuration to be able to access queues and topics.*
   with some data.
 * It's also possible to query the amount of times the POST tasks has run by doing a
   ``GET`` request to the same url, ``/sheep``.
+* By using ``@tomodachi.http`` an HTTP server backed by ``aiohttp`` will be started
+  on service start. ``tomodachi`` will act as a middleware to route requests to the
+  correct handlers, upgrade websocket connections and then also gracefully await 
+  connections with still executing tasks, when the service is asked to stop – up until
+  a configurable amount of time has passed.
 
 .. code:: python
 
@@ -176,8 +181,8 @@ functions with data in similar ways:
 * Using Redis as a task queue with configurable keys to push or pop onto.
 * Subscribing to Kinesis or Kafka event streams and act on the data received.
 * An abstraction around otherwise complex functionality or to unify API design.
-* As an example to the sentence above, GraphQL resolver functionality with built-in
-  tracability and authentication management.*
+* As an example to above sentence; GraphQL resolver functionality with built-in
+  tracability and authentication management, with a unified API to application devs.
 
 ----
 
@@ -475,8 +480,7 @@ should be adviced to hold off and use other tech for those kinds of deployments.
 
 Available built-ins used as endpoints 🚀
 ----------------------------------------
-There are several built-in ways to invoke your microservice methods in which the most common ones are either directly via HTTP or via event based messaging (for example AMQP or AWS SNS+SQS). Here's a list of the currently available built-ins you may use to decorate your service functions.
-Here's a short run-down of the available decorators.
+As shown, there's different ways to trigger your microservice function in which the most common ones are either directly via HTTP or via event based messaging (for example AMQP or AWS SNS+SQS). Here's a list of the currently available built-ins you may use to decorate your service functions.
 
 HTTP endpoints:
 ^^^^^^^^^^^^^^^
@@ -527,27 +531,32 @@ AMQP messaging (RabbitMQ):
   If you're utilizing ``from tomodachi.envelope import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_envelope`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages. Custom enveloping classes can be built to fit your existing architecture or for even more control of tracing and shared metadata between services.
 
 
-Scheduled functions / cron:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Scheduled functions / cron / triggered on time interval:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ``@tomodachi.schedule(interval=None, timestamp=None, timezone=None, immediately=False)``
   A **scheduled function** invoked on either a specified ``interval`` (you may use the popular cron notation as a str for fine-grained interval or specify an integer value of seconds) or a specific ``timestamp``. The ``timezone`` will default to your local time unless explicitly stated.
 
   When using an integer ``interval`` you may also specify wether the function should be called ``immediately`` on service start or wait the full ``interval`` seconds before its first invokation.
-
+  
 ``@tomodachi.heartbeat``
   A function which will be **invoked every second**.
 
 ``@tomodachi.minutely``, ``@tomodachi.hourly``, ``@tomodachi.daily``, ``@tomodachi.monthly``
   A scheduled function which will be invoked once **every minute / hour / day / month**.
 
+**A word on scheduled tasks in distributed contexts:** What is your use-case for scheduling function triggers or functions that trigger on an interval. These types of scheduling may not be optimal in clusters with many pods in the same replication set, as all the services running the same code will very likely execute at the same timestamp / interval (which in same cases may correlated with exactly when they were last deployed). As such these functions are quite naive and should only be used with some care, so that it triggering the functions several times doesn't incur unnecessary costs or come as a bad surprise if the functions aren't completely idempotent. To perform a task on a specific timestamp or on an interval where only one of the available services of the same type in a cluster should trigger is a common thing to solve and there are several solutions to pick from., some kind of distributed consensus needs to be reached. Tooling exists, but what you need may differ depending on your use-case. There's algorithms for distributed consensus and leader election, Paxos or Raft, that luckily have already been implemented to solutions like the strongly consistent and distributed key-value stores *etcd* and *TiKV*. Even primitive solutions such as *Redis*  ``SETNX`` commands would work, but could be costly or hard to manage access levels around. If you're on k8s there's even a simple "leader election" API available that just creates a 15 seconds lease. Solutions are many and if you are in need, go hunting and find one that suits your use-case, there's probably tooling and libraries available to call it from your service functions.
 
-*You may also extend the functionality by building your own transports for your endpoints. The invokers themselves should extend the class* ``tomodachi.invoker.Invoker``.
+Implementing proper consensus mechanisms and in turn leader election can be complicated. In distributed environments the architectuer around these solutions needs to account for leases, decision making when consensus was not reached, how to handle crashed executors, quick recovery on master node(s) disruptions, etc.
+
+----
+
+*To extend the functionality by building your own trigger decorators for your endpoints, studying the built-in invoker classes should the first step of action. All invoker classes should extend the class for a common developer experience:* ``tomodachi.invoker.Invoker``.
 
 ----
 
 Additional configuration options 🤩
 -----------------------------------
-A ``tomodachi.Service`` service class may specify a class attribute named ``options`` (as a ``dict``) for additional configuration.
+A ``tomodachi.Service`` extended service class may specify a class attribute named ``options`` (as a ``dict``) for additional configuration.
 
 =========================================================  ==================================================================================================================================================================================================================================================================================================================================================================================================================================================================================  ===========================================
 ⁝⁝ **HTTP server parameters** ⁝⁝ ``options["http"][key]``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ``_____________________________``
