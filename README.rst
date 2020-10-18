@@ -54,8 +54,8 @@ container images.
 ==========
 
 *This documentation README includes a guide of how to get started with services,
-what built-in  functionality exists in this library, lists of available configuration 
-parameters and a few examples of service code.* 
+what built-in  functionality exists in this library, lists of available configuration
+parameters and a few examples of service code.*
 
 **Use the below table of contents to quickly navigate to what you're searching for.**
 
@@ -92,11 +92,11 @@ parameters and a few examples of service code.*
   + `HTTP server parameters include port settings, keep-alive, IP forwarding, … <#additional-configuration-options->`_
 
   + `AWS credentials and where they are required + use of prefixes to SQS queues and SNS topics… <#additional-configuration-options->`_
-  
+
   + `AWS custom endpoints configuration to try out functionality in development environments… <#additional-configuration-options->`_
-  
+
   + `AMQP / RabbitMQ pub/sub settings and connection setup… <#additional-configuration-options->`_
-  
+
   + `File watcher options for auto reload on file changes during development… <#additional-configuration-options->`_
 
 - `Decorating invoker functions with custom middleware <#decorated-functions-using-tomodachidecorator->`_
@@ -718,19 +718,31 @@ Requirements 👍
 .. _uvloop: https://github.com/MagicStack/uvloop
 
 
-License 🙋
-----------
-Offered under the `MIT license <https://github.com/kalaspuff/tomodachi/blob/master/LICENSE>`_
+``LICENSE`` 🙋
+==============
+``tomodachi`` is offered under the MIT License.
+
+* MIT License: https://github.com/kalaspuff/tomodachi/blob/master/LICENSE
 
 
-CHANGELOG 🧳
-------------
-Read the version to version changelog at https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst and https://github.com/kalaspuff/tomodachi/releases
+``CHANGELOG`` 🧳
+================
+Changes are recorded in the repo as well as together with the GitHub releases.
+
+* In repository: https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst
+
+* Release tags: https://github.com/kalaspuff/tomodachi/releases
 
 
-Source code 🦄
---------------
-The latest developer version of ``tomodachi`` is available at the GitHub repo https://github.com/kalaspuff/tomodachi
+``GITHUB / SOURCE`` 🦄
+======================
+The latest developer version of ``tomodachi`` is always available at GitHub.
+
+* Clone repo: ``git@github.com:kalaspuff/tomodachi.git``
+
+* GitHub: https://github.com/kalaspuff/tomodachi
+
+* Latest release: https://github.com/kalaspuff/tomodachi/releases/latest
 
 
 Any questions?
