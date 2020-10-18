@@ -22,10 +22,10 @@ Clone the repo and install the required dependencies.
     local ~/code$ cd tomodachi
 
     # Using poetry
-    local ~/code/tomodachi$ poetry install
+    local ~/code/tomodachi$ poetry install -E uvloop -E protobuf -E aiodns
 
-    # or alternatively with pip
-    local ~/code/tomodachi$ pip install -U .
+    # or alternatively with pip (version 20.2.4 tested)
+    local ~/code/tomodachi$ pip install --use-feature=2020-resolver --use-pep517 -U .[uvloop,protobuf,aiodns]
 
     # Verify that the tomodachi CLI is installed
     local ~/code/tomodachi$ tomodachi --version
