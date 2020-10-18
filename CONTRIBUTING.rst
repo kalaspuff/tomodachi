@@ -9,12 +9,14 @@ prepare pull requests with solutions to any bug you may encounter
 during execution.
 
 If you're already using ``poetry``
-(`poetry @ pypi <https://pypi.org/project/poetry/>`_, then please do
+(`poetry @ pypi <https://pypi.org/project/poetry/>`_), then please do
 so since it's the preferred way of handling the dependencies of this
 library. ``poetry`` can also be configured to handle virtualenvs
 automatically.
 
-Clone the repo and install the required dependencies.
+
+Clone the repo and install the required dependencies
+----------------------------------------------------
 
 .. code:: bash
 
@@ -38,18 +40,23 @@ Clone the repo and install the required dependencies.
     # Finally to start services
     local ~/code/tomodachi$ tomodachi run examples/basic_examples/http_simple_service.py
 
-
 To add a PR, for the repository, commit your changes to your own clone
 and make a PR on GitHub for your clone against master branch.
 
-There are GitHub actions enabled to automate most test cases, linting,
-type hinting, etc. You can also run them on your own, see ``Makefile``
+
+Automated linting, unit tests and integration tests
+---------------------------------------------------
+
+There are GitHub actions enabled on "push" to automate test cases for
+the most common use-cases, as well as performing lint tests, type 
+hint checking, etc. You can also run them on your own, see ``Makefile``
 for a helping hand.
 
-The code must conform to the ``black`` code style and
+ Note that the code must conform to the ``black`` code style and
 imports must be sorted alphabetically, and automatically separated into
-sections and by type. Use the following ``make`` commands to automate
-this:
+sections and by type. 🖤
+
+Use the following ``make`` commands to run these tasks on demand:
 
 .. code:: bash
 
@@ -58,6 +65,3 @@ this:
 
     local ~/code/tomodachi$ make isort
     # Runs: isort setup.py tomodachi.py tomodachi/ examples/ tests/
-
-
-.. _GitHub: https://github.com/kalaspuff/tomodachi
