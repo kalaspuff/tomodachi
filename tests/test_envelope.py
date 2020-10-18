@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import signal
@@ -10,7 +9,7 @@ from google.protobuf.json_format import MessageToJson
 
 from proto_build.message_pb2 import Person
 from run_test_service_helper import start_service
-from tomodachi.envelope.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
+from tomodachi.envelope.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage  # noqa
 from tomodachi.validation.validation import RegexMissmatchException, validate_field_regex
 
 

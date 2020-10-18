@@ -25,7 +25,7 @@ from tomodachi.importer import ServiceImporter
 
 try:
     CancelledError = asyncio.exceptions.CancelledError  # type: ignore
-except Exception as e:
+except Exception:
 
     class CancelledError(Exception):  # type: ignore
         pass
@@ -230,7 +230,7 @@ class ServiceLauncher(object):
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
                     raise cast(Exception, exception[0])
-            except tomodachi.importer.ServicePackageError as e:
+            except tomodachi.importer.ServicePackageError:
                 pass
             except Exception as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))

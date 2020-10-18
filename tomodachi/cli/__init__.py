@@ -152,9 +152,9 @@ class CLI:
             )
             if output_versions:
                 print("protobuf/{}".format(protobuf_version))
-        except ModuleNotFoundError as e:  # pragma: no cover
+        except ModuleNotFoundError:  # pragma: no cover
             pass
-        except Exception as e:  # pragma: no cover
+        except Exception:  # pragma: no cover
             pass
 
         try:
@@ -163,19 +163,19 @@ class CLI:
                 uvloop_version = uvloop.__version__
                 if output_versions:
                     print("uvloop/{}".format(uvloop_version))
-        except ModuleNotFoundError as e:  # pragma: no cover
+        except ModuleNotFoundError:  # pragma: no cover
             pass
-        except Exception as e:  # pragma: no cover
+        except Exception:  # pragma: no cover
             pass
 
         if not errors:
             try:
-                import tomodachi.helpers.logging
-                import tomodachi.invoker
-                import tomodachi.transport.amqp
-                import tomodachi.transport.aws_sns_sqs
-                import tomodachi.transport.http
-                import tomodachi.transport.schedule
+                import tomodachi.helpers.logging  # noqa
+                import tomodachi.invoker  # noqa
+                import tomodachi.transport.amqp  # noqa
+                import tomodachi.transport.aws_sns_sqs  # noqa
+                import tomodachi.transport.http  # noqa
+                import tomodachi.transport.schedule  # noqa
             except Exception as e:  # pragma: no cover
                 errors = True
                 if output_errors:
@@ -288,7 +288,7 @@ class CLI:
             opts, args = getopt.getopt(
                 argv, "hlvV ", ["help", "log", "version", "version", "dependency-versions", "dependencies", "deps"]
             )
-        except getopt.GetoptError as e:
+        except getopt.GetoptError:
             self.help_command()
         for opt, _ in opts:
             if opt in ("-h", "--help"):

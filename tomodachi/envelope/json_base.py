@@ -34,7 +34,6 @@ class JsonBase(object):
     async def parse_message(cls, payload: str, **kwargs: Any) -> Union[Dict, Tuple]:
         message = json.loads(payload)
 
-        protocol_version = message.get("metadata", {}).get("protocol_version")
         message_uuid = message.get("metadata", {}).get("message_uuid")
         timestamp = message.get("metadata", {}).get("timestamp")
 

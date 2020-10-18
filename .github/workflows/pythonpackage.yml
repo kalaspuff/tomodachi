@@ -36,10 +36,10 @@ jobs:
         run: |
           poetry install --no-interaction -E uvloop -E protobuf -E aiodns
           poetry show --tree
-      - name: Run unit tests
-        run: pytest --cov=./ tomodachi/
       - name: Test poetry build step
         run: poetry build
+      - name: Run unit tests
+        run: pytest --cov=./ tests -v
       - name: Lint with flake8
         run: flake8 tomodachi/ tests/
       - name: Run dummy service

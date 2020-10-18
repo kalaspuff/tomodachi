@@ -6,7 +6,7 @@ import inspect
 import logging
 import re
 import time
-from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, Match, Optional, Union
 
 import aioamqp
 
@@ -106,7 +106,7 @@ class AmqpTransport(Invoker):
                         cls.encode_routing_key(cls.get_routing_key(routing_key, service.context, routing_key_prefix)),
                     )
                     success = True
-                except AssertionError as e:
+                except AssertionError:
                     await cls.connect(cls, service, service.context)
 
         if wait:

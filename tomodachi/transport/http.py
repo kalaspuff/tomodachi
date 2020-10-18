@@ -32,7 +32,7 @@ from tomodachi.invoker import Invoker
 
 try:
     CancelledError = asyncio.exceptions.CancelledError  # type: ignore
-except Exception as e:
+except Exception:
 
     class CancelledError(Exception):  # type: ignore
         pass
@@ -385,7 +385,7 @@ class HttpTransport(Invoker):
                     path=filepath, chunk_size=256 * 1024  # type: ignore
                 )  # type: Union[web.Response, web.FileResponse]
                 return response
-            except PermissionError as e:
+            except PermissionError:
                 raise web.HTTPForbidden()  # type: ignore
 
         route_context = {"ignore_logging": ignore_logging}
@@ -599,7 +599,7 @@ class HttpTransport(Invoker):
                                 )
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
-            except Exception as e:
+            except Exception:
                 pass
             finally:
                 if _close_func:
@@ -759,10 +759,10 @@ class HttpTransport(Invoker):
                 context["_http_active_requests"] = context.get("_http_active_requests", set())
                 context["_http_active_requests"].add(task)
                 try:
-                    result = await asyncio.shield(task)
+                    await asyncio.shield(task)
                 except asyncio.CancelledError:
                     try:
-                        result = await task
+                        await task
                         decrease_execution_context_value("http_current_tasks")
                         context["_http_active_requests"].remove(task)
                         return task.result()
@@ -937,11 +937,11 @@ class HttpTransport(Invoker):
                         except Exception:
                             pass
                     try:
-                        results = await asyncio.wait_for(
+                        await asyncio.wait_for(
                             asyncio.shield(asyncio.gather(*tasks, return_exceptions=True)), timeout=10
                         )
                         await asyncio.sleep(1)
-                    except (Exception, asyncio.TimeoutError, asyncio.CancelledError) as e:
+                    except (Exception, asyncio.TimeoutError, asyncio.CancelledError):
                         pass
                     context["_http_open_websockets"] = []
 
@@ -960,13 +960,13 @@ class HttpTransport(Invoker):
                         )
                     )
                     try:
-                        results = await asyncio.wait_for(
+                        await asyncio.wait_for(
                             asyncio.shield(asyncio.gather(*active_requests, return_exceptions=True)),
                             timeout=termination_grace_period_seconds,
                         )
                         await asyncio.sleep(1)
                         active_requests = context.get("_http_active_requests", set())
-                    except (Exception, asyncio.TimeoutError, asyncio.CancelledError) as e:
+                    except (Exception, asyncio.TimeoutError, asyncio.CancelledError):
                         active_requests = context.get("_http_active_requests", set())
                         if active_requests:
                             logging.getLogger("transport.http").warning(

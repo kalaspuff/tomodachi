@@ -403,7 +403,7 @@ class AWSSNSSQSTransport(Invoker):
         if not cls.clients:
             cls.clients = {}
             cls.clients_creation_time = {}
-        loop = asyncio.get_event_loop()
+        asyncio.get_event_loop()
         session = aiobotocore.get_session()
 
         config_base = context.get("options", {}).get("aws_sns_sqs", context.get("options", {}).get("aws", {}))
@@ -654,7 +654,7 @@ class AWSSNSSQSTransport(Invoker):
                 "Unable to connect [sqs] to AWS ({})".format(error_message)
             )
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
-        except botocore.exceptions.ClientError as e:
+        except botocore.exceptions.ClientError:
             pass
 
         if not queue_url:
@@ -829,7 +829,7 @@ class AWSSNSSQSTransport(Invoker):
             current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
             current_visibility_timeout = current_queue_attributes.get("VisibilityTimeout")
             current_message_retention_period = current_queue_attributes.get("MessageRetentionPeriod")
-        except botocore.exceptions.ClientError as e:
+        except botocore.exceptions.ClientError:
             pass
 
         queue_attributes = {}
@@ -985,7 +985,7 @@ class AWSSNSSQSTransport(Invoker):
                             await cls.create_client(cls, "sqs", context)
                             client = cls.clients.get("sqs")
                             continue
-                        except ResponseParserError as e:
+                        except ResponseParserError:
                             if not is_disconnected:
                                 is_disconnected = True
                                 error_message = "Unable to parse response: the server was not able to produce a timely response to your request"

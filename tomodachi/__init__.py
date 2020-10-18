@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import inspect
+import inspect  # noqa
 import uuid
-from typing import Any, Callable, Dict, Optional, Tuple, Type, cast
+from typing import Callable, Dict, Tuple, Type, cast
 
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 
@@ -56,6 +56,8 @@ __all__ = [
     "set_execution_context",
     "get_execution_context",
     "_clear_execution_context",
+    "decrease_execution_context_value",
+    "increase_execution_context_value",
     "get_service",
     "get_instance",
     "amqp",
@@ -69,6 +71,7 @@ __all__ = [
     "ws",
     "HttpResponse",
     "HttpException",
+    "get_http_response_status",
     "schedule",
     "heartbeat",
     "minutely",
