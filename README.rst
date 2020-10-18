@@ -24,7 +24,8 @@ together.* 😻 👬 👭 👫 😻
 
 Usage
 -----
-``tomodachi`` is invoked via command line interface.
+``tomodachi`` is used to execute service code via command line interface or within
+container images.
 
 .. code::
 
@@ -48,6 +49,15 @@ Usage
 
 
 .. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
+
+README
+------
+
+  This documentation README includes a guide of how to build a quick service, what 
+  built-in  functionality exists, lists of available configuration parameters and 
+  a bunch of example code. Use the below table of contents to quickly navigate to 
+  what you're searching for.
+
 
 - `Installation <#getting-started->`_
 
@@ -86,8 +96,8 @@ may be breaking changes between 0.x versions.
 Getting started 🏃
 ------------------
 
-First off: Installation – ``poetry`` is fully supported and battle-tested, ``pip`` works just as fine
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+First off: Installation – using ``poetry`` is fully supported and battle-tested (``pip`` works just as fine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Install ``tomodachi`` in your preferred way, wether it be ``poetry``, ``pip``,
 ``pipenv``, etc. Installing the distribution will give your environment access to the
 ``tomodachi`` package for imports as well as a shortcut to the CLI alias, which
