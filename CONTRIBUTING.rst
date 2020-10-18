@@ -52,7 +52,7 @@ the most common use-cases, as well as performing lint tests, type
 hint checking, etc. You can also run them on your own, see ``Makefile``
 for a helping hand.
 
- Note that the code must conform to the ``black`` code style and
+Note that the code must conform to the ``black`` code style and
 imports must be sorted alphabetically, and automatically separated into
 sections and by type. 🖤
 
