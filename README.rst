@@ -49,9 +49,9 @@ Usage
 
 .. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
 
-- `Installation <#how-do-i-use-this-simple-install-using-pip>`_
+- `Installation <#getting-started->`_
 
-- `Getting started / example services <#getting-started->`_
+- `Getting started with service code / basic example services <#getting-started->`_
 
 - `Running microservices in Docker <#example-of-tomodachi-service-containerized-in-docker->`_
 
@@ -83,8 +83,8 @@ may be breaking changes between 0.x versions.
 Getting started 🏃
 ------------------
 
-Installation first – Packaged with Poetry but works perfectly with pip
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+First: Installation – Poetry fully supported. Works just as fine with pip.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Install ``tomodachi`` in your preferred way, wether it be ``poetry``, ``pip``,
 ``pipenv``, etc. Installing the distribution will give your environment access to the
 ``tomodachi`` package for imports as well as a shortcut to the CLI alias, which
@@ -107,32 +107,85 @@ installed and run in isolated environments like Docker containers or virtual
 environments.
 
 
-Getting started 🏃
-^^^^^^^^^^^^^^^^^^
-*Start with* ``import tomodachi`` *and add a service class extending the*
-``tomodachi.Service`` *class. Preferably (but not required) you name your service
-by adding a* ``name`` *attribute in the class. For the service to actually run and
-do something your service class will also require at least one method that needs
-to be decorated with a decorator (like* ``@tomodachi.http`` *or*
-``@tomodachi.aws_sns_sqs``) *so that they the functions can run when triggered via
-for example HTTP requests, pub/sub event messaging or by
-timestamps / intervals much like cron jobs.*
+Building blocks for a service file to run with ``tomodachi run service.py``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1. ``import tomodachi`` and create a class that inherits ``tomodachi.Service``,
+   it can be called anything… or just ``Service`` to keep it simple.
+2. Add a ``name`` attribute to the class and give it a string value. Having
+   a ``name`` attribute isn't required, but good practice.
+3. Define an awaitable function in the service class – in this example we'll
+   use it as an entrypoint to trigger code in the service by decorating it
+   with one of the available invoker decorators. Note that a service class
+   must have at least one decorated function available to even be recognized
+   as a service by ``tomodachi run``.
+4. Decide on how to call the function – for example using HTTP, pub/sub
+   or on a timed interval, then decorate your function with one of these
+   trigger / subscription decorators, which also invokes what capabilities
+   the service initially has.
 
 *Further down you'll find a desciption of how each of the built-in invoker decorators
-work and which keywords and parameters you can use to change their behaviour.
+work and which keywords and parameters you can use to change their behaviour.*
 
-Also, to give a few possible examples / ideas of functionality that could be built to
-invoke tasks / functions in similar ways – using Redis as a task queue, subscribing to
-Kinesis or Kafka event streams and act on the data received or to build abstraction
-around otherwise complex routing for easier developer access to GraphQL resolvers.*
+*Note: Publishing and subscribing to events and messages may require user credentials
+or hosting configuration to be able to access queues and topics.*
+
+**For simplicity, let's do HTTP:**
+* On each POST request to ``/sheep``, the service will wait
+  for up to one whole second (pretend that it's performing I/O – waiting for response
+  on a slow sheep counting database modification, for example) and then issue a 200 OK
+  with some data.
+* It's also possible to query the amount of times the POST tasks has run by doing a
+  ``GET`` request to the same url, ``/sheep``.
+
+.. code:: python
+
+    import asyncio
+    import random
+
+    import tomodachi
+
+
+    class Service(tomodachi.Service):
+        name = "sleepy-sheep-counter"
+
+        _sheep_count = 0
+
+        @tomodachi.http("POST", r"/sheep")
+        async def add_to_sheep_count(self, request):
+            await asyncio.sleep(random.random())
+            self._sheep_count += 1
+            return 200, str(self._sheep_count)
+
+        @tomodachi.http("GET", r"/sheep")
+        async def return_sheep_count(self, request):
+            return 200, str(self._sheep_count)
+
+
+Run services with ``tomodachi run <path to file containing service class>``
 
 ---
 
-Let's look at some examples to dig into how a ``tomodachi`` service could look like.
+Beside the currently existing built-in ways of interfacing with a service, it's
+possible to build additional function decorators to suit the use-cases one may have.
+
+To give a few possible examples / ideas of functionality that could be coded to call
+functions with data in similar ways:
+* Using Redis as a task queue with configurable keys to push or pop onto.
+* Subscribing to Kinesis or Kafka event streams and act on the data received.
+* An abstraction around otherwise complex functionality or to unify API design.
+* As an example to the sentence above, GraphQL resolver functionality with built-in
+  tracability and authentication management.*
+
+---
+
+Additional examples will follow with different ways to trigger functions in the
+service. Of course the different ways can be used within the same class, for example
+the very common use-case of having a service listening on HTTP while also performing
+some kind of async pub/sub tasks.
 
 Basic HTTP based service 🌟
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-*Code for a simple service which would service data over HTTP.*
+Code for a simple service which would service data over HTTP, pretty similar, but with a few more concepts added.
 
 .. code:: python
 
@@ -166,7 +219,7 @@ Basic HTTP based service 🌟
 
 RabbitMQ or AWS SNS+SQS event based messaging service 📡
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-*Example of a service that calls a function when messages are published on an AMQP topic exchange.*
+Example of a service that calls a function when messages are published on an AMQP topic exchange.
 
 .. code:: python
 
@@ -176,7 +229,8 @@ RabbitMQ or AWS SNS+SQS event based messaging service 📡
     class Service(tomodachi.Service):
         name = "amqp-example"
 
-        # 'message_envelope' attribute can be set on the service class to build / parse data.
+        # The "message_envelope" attribute can be set on the service class to build / parse data.
+        # message_envelope = ...
 
         # A route / topic on which the service will subscribe to via RabbitMQ / AMQP
         @tomodachi.amqp("example.topic")
@@ -184,6 +238,8 @@ RabbitMQ or AWS SNS+SQS event based messaging service 📡
             # Received message, fordarding the same message as response on another route / topic
             await tomodachi.amqp_publish(self, message, routing_key="example.response")
 
+AWS SNS+SQS event based messaging service 📝
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 *Example of a service using AWS SNS+SQS managed pub/sub messaging. AWS SNS and AWS SQS together
 brings managed message queues for microservices, distributed systems, and serverless applications hosted
 on AWS. ``tomodachi`` services can customize their enveloping functionality to both unwrap incoming messages
@@ -198,7 +254,8 @@ scalability in distributed architectures, when for example hosted in Docker on K
     class Service(tomodachi.Service):
         name = "aws-example"
 
-        # 'message_envelope' attribute can be set on the service class to build / parse data.
+        # The "message_envelope" attribute can be set on the service class to build / parse data.
+        # message_envelope = ...
 
         # Using the @tomodachi.aws_sns_sqs decorator to make the service create an AWS SNS topic,
         # an AWS SQS queue and to make a subscription from the topic to the queue as well as start
