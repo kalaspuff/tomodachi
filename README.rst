@@ -73,12 +73,15 @@ Usage
 
 - `Contributions <#contributions>`_
 
+----
 
 | **Please note: this library is a work in progress.**
 
 ``tomodachi`` is still an experimental project with an unregular release
 schedule. Before the package is available as a 1.0.0 release, note that there
 may be breaking changes between 0.x versions.
+
+----
 
 Getting started 🏃
 ------------------
@@ -163,7 +166,7 @@ or hosting configuration to be able to access queues and topics.*
 
 Run services with ``tomodachi run <path to file containing service class>``
 
----
+----
 
 Beside the currently existing built-in ways of interfacing with a service, it's
 possible to build additional function decorators to suit the use-cases one may have.
@@ -176,7 +179,7 @@ functions with data in similar ways:
 * As an example to the sentence above, GraphQL resolver functionality with built-in
   tracability and authentication management.*
 
----
+----
 
 Additional examples will follow with different ways to trigger functions in the
 service. Of course the different ways can be used within the same class, for example
@@ -325,8 +328,8 @@ Run the service 😎
 
 Example of a microservice containerized in Docker 🐳
 ----------------------------------------------------
-Great ways to run microservices are usually to run them in containers, in clusters of compute
-nodes or as a serverless function that's started when called for. Here's an example of getting a
+A great way to distribute and operate microservices are usually to run them in containers or 
+even more interestingly, in clusters of compute nodes. Here follows an example of getting a
 ``tomodachi`` based service up and running in Docker.
 
 We're building the service' container image using just two small files, the ``Dockerfile`` and
@@ -460,8 +463,15 @@ quite this small, but as a template to get started.
     > {"error": "not-found"}
 
 
-It's actually as easy as that to get something spinning.
+**It's actually as easy as that to get something spinning. The hard part is usually to figure out (or decide) what to build next.**
 
+Other popular ways of running microservices are of course to use them as serverless 
+functions, with an ability of scaling to zero (Lambda, Cloud Functions, Knative, etc. 
+may come to mind). Currently ``tomodachi`` works best in a container setup and until
+proper serverless supporting execution context is available in the library, it 
+should be adviced to hold off and use other tech for those kinds of deployments.
+
+----
 
 Available built-ins used as endpoints 🚀
 ----------------------------------------
@@ -533,7 +543,7 @@ Scheduled functions / cron:
 
 *You may also extend the functionality by building your own transports for your endpoints. The invokers themselves should extend the class* ``tomodachi.invoker.Invoker``.
 
----
+----
 
 Additional configuration options 🤩
 -----------------------------------
