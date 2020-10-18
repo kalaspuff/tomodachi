@@ -233,7 +233,8 @@ functions with data in similar ways:
 
 ----
 
-**Additional examples will follow with different ways to trigger functions in the service.**
+Additional examples will follow with different ways to trigger functions in the service.
+----------------------------------------------------------------------------------------
 
 Of course the different ways can be used within the same class, for example
 the very common use-case of having a service listening on HTTP while also performing
@@ -455,7 +456,8 @@ quite this small, but as a template to get started.
         async def error_405(self, request):
             return json.dumps({"error": "method-not-allowed"})
 
-*Building and running the container, forwarding host's port 31337 to port 80.*
+Building and running the container, forwarding host's port 31337 to port 80.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code:: bash
 
@@ -479,7 +481,8 @@ quite this small, but as a template to get started.
     > 2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
     > 2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
-*Making requests to the running container.*
+Making requests to the running container.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code:: bash
 
@@ -530,11 +533,11 @@ should be adviced to hold off and use other tech for those kinds of deployments.
 ----
 
 Available built-ins used as endpoints 🚀
-----------------------------------------
+========================================
 As shown, there's different ways to trigger your microservice function in which the most common ones are either directly via HTTP or via event based messaging (for example AMQP or AWS SNS+SQS). Here's a list of the currently available built-ins you may use to decorate your service functions.
 
 HTTP endpoints:
-^^^^^^^^^^^^^^^
+---------------
 ``@tomodachi.http(method, url, ignore_logging=[200])``
   Sets up an **HTTP endpoint** for the specified ``method`` (``GET``, ``PUT``, ``POST``, ``DELETE``) on the regexp ``url``.
   Optionally specify ``ignore_logging`` as a dict or tuple containing the status codes you do not wish to log the access of. Can also be set to ``True`` to ignore everything except status code 500.
@@ -550,7 +553,7 @@ HTTP endpoints:
 
 
 AWS SNS+SQS messaging:
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 ``@tomodachi.aws_sns_sqs(topic, competing=True, queue_name=None, filter_policy=None, **kwargs)``
   This would set up an **AWS SQS queue**, subscribing to messages on the **AWS SNS topic** ``topic``, whereafter it will start consuming messages from the queue.
 
@@ -569,7 +572,7 @@ AWS SNS+SQS messaging:
   If you're utilizing ``from tomodachi.envelope import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_envelope`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages. Custom enveloping classes can be built to fit your existing architecture or for even more control of tracing and shared metadata between services.
 
 AMQP messaging (RabbitMQ):
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 ``@tomodachi.amqp(routing_key, exchange_name="amq.topic", competing=True, queue_name=None, **kwargs)``
   Sets up the method to be called whenever a **AMQP / RabbitMQ message is received** for the specified ``routing_key``. By default the ``'amq.topic'`` topic exchange would be used, it may also be overridden by setting the ``options.amqp.exchange_name`` dict value on the service class.
 
@@ -583,7 +586,7 @@ AMQP messaging (RabbitMQ):
 
 
 Scheduled functions / cron / triggered on time interval:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------------------------------
 ``@tomodachi.schedule(interval=None, timestamp=None, timezone=None, immediately=False)``
   A **scheduled function** invoked on either a specified ``interval`` (you may use the popular cron notation as a str for fine-grained interval or specify an integer value of seconds) or a specific ``timestamp``. The ``timezone`` will default to your local time unless explicitly stated.
 
@@ -606,7 +609,7 @@ Implementing proper consensus mechanisms and in turn leader election can be comp
 ----
 
 Additional configuration options 🤩
------------------------------------
+===================================
 A ``tomodachi.Service`` extended service class may specify a class attribute named ``options`` (as a ``dict``) for additional configuration.
 
 =========================================================  ==================================================================================================================================================================================================================================================================================================================================================================================================================================================================================  ===========================================
@@ -701,8 +704,10 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
             return "OK"
 
 
+----
+
 Requirements 👍
----------------
+===============
 * Python_ (``3.7+``, ``3.8+``, ``3.9+``)
 * aiohttp_ (``aiohttp`` is the currently supported HTTP server implementation for ``tomodachi``)
 * aiobotocore_ and botocore_ (used for AWS SNS+SQS pub/sub messaging)
