@@ -53,35 +53,56 @@ container images.
 README
 ------
 
-  This documentation README includes a guide of how to build a quick service, what 
-  built-in  functionality exists, lists of available configuration parameters and 
-  a bunch of example code. Use the below table of contents to quickly navigate to 
+  This documentation README includes a guide of how to build a quick service, what
+  built-in  functionality exists, lists of available configuration parameters and
+  a bunch of example code. Use the below table of contents to quickly navigate to
   what you're searching for.
 
 
 - `Installation <#getting-started->`_
 
-- `Getting started with service code / basic example services <#building-blocks-for-a-service-file-to-run-with-tomodachi-run-servicepy>`_
+- `Getting started with service code / basic example services <#building-blocks-for-a-service-class-and-microservice-entrypoint>`_
 
-- `Running microservices in Docker <#example-of-tomodachi-service-containerized-in-docker->`_
+  + `<#basic-http-based-service->`_
+
+  + `<#rabbitmq-or-aws-snssqs-event-based-messaging-service->`_
+
+  + `<#aws-snssqs-event-based-messaging-service->`_
+
+  + `<#scheduling-inter-communication-between-services-etc-%EF%B8%8F>`_
+
+- `Start service with ``tomodachi run service.py`` <#run-the-service->`_
+
+- `Running ``tomodachi`` in Docker (with example) <#example-of-tomodachi-service-containerized-in-docker->`_
 
 - `Defining endpoints <#available-built-ins-used-as-endpoints->`_
 
-  - `HTTP endpoints <#http-endpoints>`_
+  + `HTTP endpoints + websockets <#http-endpoints>`_
 
-  - `AWS SNS+SQS messaging <#aws-snssqs-messaging>`_
+  + `AWS SNS+SQS messaging – pub/sub events <#aws-snssqs-messaging>`_
 
-  - `AMQP / RabbitMQ messaging <#amqp-messaging-rabbitmq>`_
+  + `AMQP / RabbitMQ messaging – pub/sub events <#amqp-messaging-rabbitmq>`_
 
-  - `Scheduled functions <#scheduled-functions--cron>`_
+  + `Scheduled functions – time intervals or with full-featured cron syntax <#scheduled-functions--cron--triggered-on-time-interval>`_
 
 - `Additional configuration options <#additional-configuration-options->`_
 
+  + HTTP server parameters include port settings, keep-alive, IP forwarding, …
+  + AWS credentials and where they are required + use of prefixes to SQS queues and SNS topics…
+  + AWS custom endpoints configuration to try out functionality in development environments…
+  + AMQP / RabbitMQ pub/sub settings and connection setup…
+  + File watcher options for auto reload on file changes during development…
+
+- `Decorated functions using ``@tomodachi.decorator`` <#decorated-functions-using-tomodachidecorator->`_
+
 - `Requirements <#requirements->`_
+
+- `Changelog, license and source code <#license->`_
 
 - `Questions <#any-questions>`_
 
 - `Contributions <#contributions>`_
+
 
 ----
 
@@ -694,6 +715,11 @@ Requirements 👍
 License 🙋
 ----------
 Offered under the `MIT license <https://github.com/kalaspuff/tomodachi/blob/master/LICENSE>`_
+
+
+CHANGELOG 🧳
+------------
+Read the version to version changelog at https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst and https://github.com/kalaspuff/tomodachi/releases
 
 
 Source code 🦄
