@@ -1,6 +1,6 @@
 ``tomodachi`` - a lightweight microservices library on Python asyncio
 =====================================================================
-  A Python 3 microservice library / framework using asyncio (async / await) with
+  A Python 3 microservice library / framework using ``asyncio`` (async / await) with
   HTTP, websockets, RabbitMQ / AMQP and AWS SNS+SQS built-in support for event based
   messaging and intra-service communication.
 
@@ -80,8 +80,11 @@ Usage
 schedule. Before the package is available as a 1.0.0 release, note that there
 may be breaking changes between 0.x versions.
 
-Start with installing the ``tomodachi`` distribution
-----------------------------------------------------
+Getting started 🏃
+------------------
+
+Installation first – Packaged with Poetry but works perfectly with pip
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Install ``tomodachi`` in your preferred way, wether it be ``poetry``, ``pip``,
 ``pipenv``, etc. Installing the distribution will give your environment access to the
 ``tomodachi`` package for imports as well as a shortcut to the CLI alias, which
@@ -90,15 +93,18 @@ later is used to run the microservices you build.
 .. code:: bash
 
     local ~$ pip install tomodachi
-    ...
-    Installing collected packages: ..., ..., ..., tomodachi
-    Successfully installed ... ... ... tomodachi-0.x.xx
+    > ...
+    > Installing collected packages: ..., ..., ..., tomodachi
+    > Successfully installed ... ... ... tomodachi-0.x.xx
+
+    local ~$ tomodachi --version
+    > tomodachi 0.19.0
 
 
-
-Unless running development code within Docker, packages should preferably always
-be installed into a virtualenv to avoid cluttering. When deploying microservices
-it's however highly recommended to use containerization, such as Docker.
+Probably goes without saying – services you build, their dependencies,
+together with runtime utilities like this one, should preferably always be
+installed and run in isolated environments like Docker containers or virtual
+environments.
 
 
 Getting started 🏃
@@ -112,13 +118,17 @@ to be decorated with a decorator (like* ``@tomodachi.http`` *or*
 for example HTTP requests, pub/sub event messaging or by
 timestamps / intervals much like cron jobs.*
 
-*There's a desciption of how each of the
-already available invoker decorators work and as previously mentioned, it's also
-possible to custom build your own (to namedrop a few possible examples / ideas –
-functionality to use Redis as a task queue, if your service needs to subscribing to
-Kinesis event streams and act on the data available there or if you're build GraphQL
-resolvers and want a neat way of calling those).*
+*Further down you'll find a desciption of how each of the built-in invoker decorators
+work and which keywords and parameters you can use to change their behaviour.
 
+Also, to give a few possible examples / ideas of functionality that could be built to
+invoke tasks / functions in similar ways – using Redis as a task queue, subscribing to
+Kinesis or Kafka event streams and act on the data received or to build abstraction
+around otherwise complex routing for easier developer access to GraphQL resolvers.*
+
+---
+
+Let's look at some examples to dig into how a ``tomodachi`` service could look like.
 
 Basic HTTP based service 🌟
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,7 +166,7 @@ Basic HTTP based service 🌟
 
 RabbitMQ or AWS SNS+SQS event based messaging service 📡
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-*Example of a service that would invoke a function when messages are published on an AMQP topic exchange.*
+*Example of a service that calls a function when messages are published on an AMQP topic exchange.*
 
 .. code:: python
 
@@ -166,16 +176,19 @@ RabbitMQ or AWS SNS+SQS event based messaging service 📡
     class Service(tomodachi.Service):
         name = "amqp-example"
 
+        # 'message_envelope' attribute can be set on the service class to build / parse data.
+
         # A route / topic on which the service will subscribe to via RabbitMQ / AMQP
         @tomodachi.amqp("example.topic")
         async def example_func(self, message):
             # Received message, fordarding the same message as response on another route / topic
             await tomodachi.amqp_publish(self, message, routing_key="example.response")
 
-*Example of a service using AWS SNS+SQS managed pub/sub messaging. AWS SNS and AWS SQS together features
-managed message queues for microservices, distributed systems, and serverless applications. This makes
-it great to use for ``tomodachi`` powered Python microservices in a distributed architecture hosted on AWS,
-for example in Docker on AWS ECS or AWS EKS using Kubernetes.*
+*Example of a service using AWS SNS+SQS managed pub/sub messaging. AWS SNS and AWS SQS together
+brings managed message queues for microservices, distributed systems, and serverless applications hosted
+on AWS. ``tomodachi`` services can customize their enveloping functionality to both unwrap incoming messages
+and/or to produce enveloped messages for published events / messages. Pub/sub patterns are great for
+scalability in distributed architectures, when for example hosted in Docker on Kubernetes.*
 
 .. code:: python
 
@@ -184,6 +197,8 @@ for example in Docker on AWS ECS or AWS EKS using Kubernetes.*
 
     class Service(tomodachi.Service):
         name = "aws-example"
+
+        # 'message_envelope' attribute can be set on the service class to build / parse data.
 
         # Using the @tomodachi.aws_sns_sqs decorator to make the service create an AWS SNS topic,
         # an AWS SQS queue and to make a subscription from the topic to the queue as well as start
@@ -207,10 +222,10 @@ Run the service 😎
 ------------------
 .. code:: bash
 
-    # cli alias is set up if installed via pip
+    # cli alias is set up automatically on installation
     local ~/code/service$ tomodachi run service.py
 
-    # example if cloned from repo
+    # shortcut to cli endpoint could be used if cloned from repo and not yet installed
     local ~/code/tomodachi$ python tomodachi.py run example/http_simple_service.py
 
 
@@ -219,22 +234,22 @@ Run the service 😎
 .. code:: bash
 
     local ~/code/service$ tomodachi run service.py
-
-    ---
-    Starting tomodachi services (pid: 1) ...
-    * service.py
-
-    Current version: tomodachi x.x.xx on Python 3.x.x
-    Event loop implementation: asyncio
-    Local time: October 04, 2020 - 13:38:01,201509 UTC
-    Timestamp in UTC: 2020-10-04T13:38:01.201509Z
-
-    File watcher is active - code changes will automatically restart services
-    Quit running services with <ctrl+c>
-
-    2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
-    2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+    >
+    > ---
+    > Starting tomodachi services (pid: 1) ...
+    > * service.py
+    >
+    > Current version: tomodachi x.x.xx on Python 3.x.x
+    > Event loop implementation: asyncio
+    > Local time: October 04, 2020 - 13:38:01,201509 UTC
+    > Timestamp in UTC: 2020-10-04T13:38:01.201509Z
+    >
+    > File watcher is active - code changes will automatically restart services
+    > Quit running services with <ctrl+c>
+    >
+    > 2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    > 2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
+    > 2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
 
 *HTTP service acts like a normal web server.*
@@ -242,24 +257,24 @@ Run the service 😎
 .. code:: bash
 
     local ~$ curl -v "http://127.0.0.1:9700/resource/1234"
+    > HTTP/1.1 200 OK
+    > Content-Type: text/plain; charset=utf-8
+    > Server: tomodachi
+    > Content-Length: 9
+    > Date: Mon, 02 Oct 2017 13:38:02 GMT
+    >
+    > id = 1234
 
-    < HTTP/1.1 200 OK
-    < Content-Type: text/plain; charset=utf-8
-    < Server: tomodachi
-    < Content-Length: 9
-    < Date: Mon, 02 Oct 2017 13:38:02 GMT
-    id = 1234
 
+Example of a microservice containerized in Docker 🐳
+----------------------------------------------------
+Great ways to run microservices are usually to run them in containers, in clusters of compute
+nodes or as a serverless function that's started when called for. Here's an example of getting a
+``tomodachi`` based service up and running in Docker.
 
-Example of ``tomodachi`` service containerized in Docker 🐳
------------------------------------------------------------
-Great ways to run microservices are usually to run them in containers like Docker, for example
-in a Kubernetes cluster or running them completely serverless. Here's an example of getting a
-``tomodachi`` service up and running in Docker in no-time.
-
-We're building a Docker image using just two small files, the ``Dockerfile`` and the actual code
-for the microservice, ``service.py``. In reality a service is probably not quite this small,
-but to just get started and show how simple it could be.
+We're building the service' container image using just two small files, the ``Dockerfile`` and
+the actual code for the microservice, ``service.py``. In reality a service would probably not be
+quite this small, but as a template to get started.
 
 **Dockerfile**
 
@@ -329,55 +344,66 @@ but to just get started and show how simple it could be.
 .. code:: bash
 
     local ~/code/service$ docker build . -t tomodachi-microservice
+    > Sending build context to Docker daemon  9.216kB
+    > Step 1/7 : FROM python:3.10-slim
+    > 3.8-slim: Pulling from library/python
+    > ...
+    >  ---> 3f7f3ab065d4
+    > Step 7/7 : CMD ["tomodachi", "run", "service.py", "--production"]
+    >  ---> Running in b8dfa9deb243
+    > Removing intermediate container b8dfa9deb243
+    >  ---> 8f09a3614da3
+    > Successfully built 8f09a3614da3
+    > Successfully tagged tomodachi-microservice:latest
 
 .. code:: bash
 
     local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
-    2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
-    2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+    > 2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    > 2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
+    > 2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
 *Making requests to the running container.*
 
 .. code:: bash
 
     local ~$ curl http://127.0.0.1:31337/ | jq
-    {
-      "data": "hello world!",
-      "execution_context": {
-        "tomodachi_version": "x.x.xx",
-        "python_version": "3.x.x",
-        "system_platform": "Linux",
-        "process_id": 1,
-        "init_timestamp": "2020-10-04T13:38:01.201509Z",
-        "event_loop": "asyncio",
-        "http_enabled": true,
-        "http_current_tasks": 1,
-        "http_total_tasks": 1,
-        "aiohttp_version": "x.x.xx"
-      }
-    }
+    > {
+    >   "data": "hello world!",
+    >   "execution_context": {
+    >     "tomodachi_version": "x.x.xx",
+    >     "python_version": "3.x.x",
+    >     "system_platform": "Linux",
+    >     "process_id": 1,
+    >     "init_timestamp": "2020-10-04T13:38:01.201509Z",
+    >     "event_loop": "asyncio",
+    >     "http_enabled": true,
+    >     "http_current_tasks": 1,
+    >     "http_total_tasks": 1,
+    >     "aiohttp_version": "x.x.xx"
+    >   }
+    > }
 
     local ~$ curl http://127.0.0.1:31337/health -i
-    HTTP/1.1 200 OK
-    Content-Type: application/json; charset=utf-8
-    Server: tomodachi
-    Content-Length: 21
-    Date: Sun, 04 Oct 2020 13:40:44 GMT
-
-    {"status": "healthy"}
+    > HTTP/1.1 200 OK
+    > Content-Type: application/json; charset=utf-8
+    > Server: tomodachi
+    > Content-Length: 21
+    > Date: Sun, 04 Oct 2020 13:40:44 GMT
+    >
+    > {"status": "healthy"}
 
     local ~$ curl http://127.0.0.1:31337/no-route -i
-    HTTP/1.1 404 Not Found
-    Content-Type: application/json; charset=utf-8
-    Server: tomodachi
-    Content-Length: 22
-    Date: Sun, 04 Oct 2020 13:41:18 GMT
+    > HTTP/1.1 404 Not Found
+    > Content-Type: application/json; charset=utf-8
+    > Server: tomodachi
+    > Content-Length: 22
+    > Date: Sun, 04 Oct 2020 13:41:18 GMT
+    >
+    > {"error": "not-found"}
 
-    {"error": "not-found"}
 
-
-It's actually as easy as that.
+It's actually as easy as that to get something spinning.
 
 
 Available built-ins used as endpoints 🚀
@@ -450,6 +476,7 @@ Scheduled functions / cron:
 
 *You may also extend the functionality by building your own transports for your endpoints. The invokers themselves should extend the class* ``tomodachi.invoker.Invoker``.
 
+---
 
 Additional configuration options 🤩
 -----------------------------------
@@ -553,7 +580,7 @@ Requirements 👍
 * aiohttp_ (``aiohttp`` is the currently supported HTTP server implementation for ``tomodachi``)
 * aiobotocore_ and botocore_ (used for AWS SNS+SQS pub/sub messaging)
 * aioamqp_ (used for RabbitMQ / AMQP pub/sub messaging)
-* uvloop_ (optional: event loop implementation)
+* uvloop_ (optional: alternative event loop implementation)
 
 .. _Python: https://www.python.org
 .. _asyncio: http://docs.python.org/3.9/library/asyncio.html
@@ -577,9 +604,9 @@ The latest developer version of ``tomodachi`` is available at the GitHub repo ht
 Any questions?
 ==============
 What is the best way to run a ``tomodachi`` service?
-  There's so many ways to orchestrate your infrastructure. Some people may run it within Docker containers, deployed and orchestrated via Terraform / Nomad / Kubernetes / Helm and some may run several services on the same environment, on the same machine. As with all microservices, remember to gather your output and monitor your instances or clusters.
+  Docker containers are great and can be scaled out in Kubernetes, Nomad or other orchestration engines. Some may instead run several services on the same environment, on the same machine if their workloads are smaller or more consistent. Remember to gather your output and monitor your instances or clusters.
 
-  Personally I would currently go for a Dockerized environment – preferably with an nginx proxy in front of the service to handle all the weirdness of the web if the service isn't just within your own network, but also to let nginx handle TLS, http2 and WebSocket protocol upgrades.
+  For real workloads: Go for a Dockerized environment if possible – async task queues are usually nice and services could scale up and down for keeping up with incoming demand; if you require network access like HTTP from users or API clients directly to the service, then it's usually preferred to put some kind of ingress (nginx, haproxy or other type of load balancer) to proxy requests to the service pods. Let the ingress then handle public TLS, http2 / http3, client facing keep-alives and WebSocket protocol upgrades and let the service instead take care of the business logic.
 
 Are there any more example services?
   There are a few examples in the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples>`_ folder, including using ``tomodachi`` in an `example Docker environment <https://github.com/kalaspuff/tomodachi/tree/master/examples/docker_examples/http_service>`_ with or without docker-compose. There are examples to publish events / messages to an AWS SNS topic and subscribe to an AWS SQS queue. There's also a similar code available of how to work with pub/sub for RabbitMQ via the AMQP transport protocol.
@@ -588,15 +615,15 @@ Why should I use this?
   ``tomodachi`` is a perfect place to start when experimenting with your architecture or trying out a concept for a new service. It may not have all the features you desire and it may never do, but I believe it's great for bootstrapping microservices in async Python.
 
 I have some great additions!
-  Sweet! Please send me a PR with your ideas. Get started at the short `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
+  Sweet! Please send me a PR with your ideas. There's now automatic tests that are running as GitHub actions to verify linting and regressions. Get started at the short `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
 
-Should I run this in production?
-  There are some projects that already have live versions of services running ``tomodachi`` in production. The library is provided as is with an unregular release schedule. As with most software, there will be bugs or inconsistencies. Consider this as beta software and note that it depends on other libraries which may be experimental. Let me know if you do however!
+Beta software in production?
+  There are some projects and organizations that already are running services based on ``tomodachi`` in production. The library is provided as is with an unregular release schedule, and as with most software, there will be unfortunate bugs or crashes. Consider this currently as beta software (with an ambition to be stable enough for production). Would be great to hear about other use-cases in the wild!
 
-  Another good idea is to drop in Sentry or other exception debugging solutions, to catch errors within the routing or in your microservice's functions in case there are unhandled exceptions raised.
+  Another good idea is to drop in Sentry or other exception debugging solutions. These are great to catch errors if something wouldn't work as expected in the internal routing or if your service code raises unhandled exceptions.
 
 Who built this and why?
-  My name is **Carl Oscar Aaro** [`@kalaspuff <https://github.com/kalaspuff>`_] and I'm a coder from Sweden. When I started writing the first few lines of ``tomodachi`` back in 2016 my original intension was just to learn more about asyncio and needed a constructive off-work project for experimentation. Nowadays I use ``tomodachi`` as a base for many smaller API based projects, to quickly get a PoC up and running and to instead be able to put more focus on the application itself, while still having the power of pub/sub events, health checks, GraphQL, HTTP or other ways of interfacing with a service, among other things. 🎉
+  My name is **Carl Oscar Aaro** [`@kalaspuff <https://github.com/kalaspuff>`_] and I'm a coder from Sweden. When I started writing the first few lines of this library back in 2016, my intention was just to learn more about Python's ``asyncio``, the event loop, event sourcing and message queues. A lot has happened since – now running services in both production and development clusters, while also using microservices for quick proof of concepts and experimentation. 🎉
 
 
 * https://github.com/kalaspuff

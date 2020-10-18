@@ -44,11 +44,16 @@ try:
 except Exception:  # pragma: no cover
     pass
 
+__author__ = "Carl Oscar Aaro"
+__email__ = "hello@carloscar.com"
+
 __all__ = [
     "service",
     "Service",
     "__version__",
     "__version_info__",
+    "__author__",
+    "__email__",
     "decorator",
     "_set_service",
     "_unset_service",
