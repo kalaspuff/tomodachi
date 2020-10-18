@@ -50,14 +50,16 @@ container images.
 
 .. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
 
-README
-------
+``README``
+==========
 
-  This documentation README includes a guide of how to build a quick service, what
-  built-in  functionality exists, lists of available configuration parameters and
-  a bunch of example code. Use the below table of contents to quickly navigate to
-  what you're searching for.
+*This documentation README includes a guide of how to get started with services,
+what built-in  functionality exists in this library, lists of available configuration 
+parameters and a few examples of service code.* 
 
+**Use the below table of contents to quickly navigate to what you're searching for.**
+
+|
 
 - `Installation <#getting-started->`_
 
@@ -71,11 +73,11 @@ README
 
   + `<#scheduling-inter-communication-between-services-etc-%EF%B8%8F>`_
 
-- `Start service with ``tomodachi run service.py`` <#run-the-service->`_
+- `Starting a service from CLI <#run-the-service->`_
 
-- `Running ``tomodachi`` in Docker (with example) <#example-of-tomodachi-service-containerized-in-docker->`_
+- `Running services in Docker (with example) <#example-of-tomodachi-service-containerized-in-docker->`_
 
-- `Defining endpoints <#available-built-ins-used-as-endpoints->`_
+- `Defining endpoints – trigger / invoker decorator functions <#available-built-ins-used-as-endpoints->`_
 
   + `HTTP endpoints + websockets <#http-endpoints>`_
 
@@ -87,11 +89,15 @@ README
 
 - `Additional configuration options <#additional-configuration-options->`_
 
-  + HTTP server parameters include port settings, keep-alive, IP forwarding, …
-  + AWS credentials and where they are required + use of prefixes to SQS queues and SNS topics…
-  + AWS custom endpoints configuration to try out functionality in development environments…
-  + AMQP / RabbitMQ pub/sub settings and connection setup…
-  + File watcher options for auto reload on file changes during development…
+  + `HTTP server parameters include port settings, keep-alive, IP forwarding, … <#additional-configuration-options->`_
+
+  + `AWS credentials and where they are required + use of prefixes to SQS queues and SNS topics… <#additional-configuration-options->`_
+  
+  + `AWS custom endpoints configuration to try out functionality in development environments… <#additional-configuration-options->`_
+  
+  + `AMQP / RabbitMQ pub/sub settings and connection setup… <#additional-configuration-options->`_
+  
+  + `File watcher options for auto reload on file changes during development… <#additional-configuration-options->`_
 
 - `Decorated functions using ``@tomodachi.decorator`` <#decorated-functions-using-tomodachidecorator->`_
 
