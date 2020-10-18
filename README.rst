@@ -99,7 +99,7 @@ parameters and a few examples of service code.*
   
   + `File watcher options for auto reload on file changes during development… <#additional-configuration-options->`_
 
-- `Decorated functions using ``@tomodachi.decorator`` <#decorated-functions-using-tomodachidecorator->`_
+- `Decorating invoker functions with custom middleware <#decorated-functions-using-tomodachidecorator->`_
 
 - `Requirements <#requirements->`_
 
