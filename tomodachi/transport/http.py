@@ -145,6 +145,10 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
         headers[hdrs.CONTENT_LENGTH] = str(len(msg))
         headers[hdrs.SERVER] = self._server_header or ""
+
+        if isinstance(request.version, HttpVersion) and (request.version.major, request.version.minor) in ((1, 0), (1, 1)):
+            headers[hdrs.CONNECTION] = "close"
+
         resp = web.Response(
             status=status, text=msg, headers=headers  # type: ignore
         )  # type: web.Response
@@ -657,7 +661,17 @@ class HttpTransport(Invoker):
             @web.middleware
             async def middleware(request: web.Request, handler: Callable) -> Union[web.Response, web.FileResponse]:
                 async def func() -> Union[web.Response, web.FileResponse]:
+                    response: Union[web.Response, web.FileResponse]
                     request_ip = RequestHandler.get_request_ip(request, context)
+
+                    if not request_ip:
+                        # Transport broken before request handling started, ignore request
+                        response = web.Response(status=499, headers={hdrs.SERVER: server_header or ""})  # type: ignore
+                        response._eof_sent = True
+                        response.force_close()  # type: ignore
+
+                        return response
+
                     if request.headers.get("Authorization"):
                         try:
                             request._cache["auth"] = BasicAuth.decode(request.headers.get("Authorization"))
@@ -668,39 +682,36 @@ class HttpTransport(Invoker):
                         timer = time.time()
                     response = web.Response(
                         status=503, headers={}  # type: ignore
-                    )  # type: Union[web.Response, web.FileResponse]
+                    )
                     try:
                         response = await handler(request)
-                        response.headers[hdrs.SERVER] = server_header or ""
                     except web.HTTPException as e:
                         error_handler = context.get("_http_error_handler", {}).get(e.status, None)
                         if error_handler:
                             response = await error_handler(request)
-                            response.headers[hdrs.SERVER] = server_header or ""
                         else:
                             response = e
-                            response.headers[hdrs.SERVER] = server_header or ""
                             response.body = str(e).encode("utf-8")
                     except Exception as e:
                         error_handler = context.get("_http_error_handler", {}).get(500, None)
                         logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                         if error_handler:
                             response = await error_handler(request)
-                            response.headers[hdrs.SERVER] = server_header or ""
                         else:
                             response = web.HTTPInternalServerError()  # type: ignore
-                            response.headers[hdrs.SERVER] = server_header or ""
                             response.body = b""
                     finally:
                         if not request.transport:
                             response = web.Response(status=499, headers={})  # type: ignore
                             response._eof_sent = True
 
+                        request_version = (request.version.major, request.version.minor) if isinstance(request.version, HttpVersion) else (1, 0)
+
                         if access_log:
                             request_time = time.time() - timer
                             version_string = None
                             if isinstance(request.version, HttpVersion):
-                                version_string = "HTTP/{}.{}".format(request.version.major, request.version.minor)
+                                version_string = "HTTP/{}.{}".format(request_version[0], request_version[1])
 
                             if not request._cache.get("is_websocket"):
                                 status_code = response.status if response is not None else 500
@@ -747,6 +758,19 @@ class HttpTransport(Invoker):
                                         "{0:.5f}s".format(round(request_time, 5)),
                                     )
                                 )
+
+                        if response is not None:
+                            response.headers[hdrs.SERVER] = server_header or ""
+
+                            if request_version in ((1, 0), (1, 1)) and not request._cache.get("is_websocket"):
+                                if context["_http_tcp_keepalive"] and request.keep_alive:
+                                    response.headers[hdrs.CONNECTION] = "keep-alive"
+                                    response.headers[hdrs.KEEP_ALIVE] = "timeout={}".format(context["_http_keepalive_timeout"])
+                                else:
+                                    response.headers[hdrs.CONNECTION] = "close"
+
+                        if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
+                            response.force_close()  # type: ignore
 
                         if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
                             raise response
@@ -886,6 +910,9 @@ class HttpTransport(Invoker):
                 }
             )
 
+            context["_http_tcp_keepalive"] = tcp_keepalive
+            context["_http_keepalive_timeout"] = keepalive_timeout
+
             try:
                 app.freeze()
                 web_server = Server(
@@ -917,6 +944,7 @@ class HttpTransport(Invoker):
             stop_method = getattr(obj, "_stop_service", None)
 
             async def stop_service(*args: Any, **kwargs: Any) -> None:
+                context["_http_tcp_keepalive"] = False
                 context["_http_accept_new_requests"] = False
 
                 server.close()
