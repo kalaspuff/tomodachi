@@ -40,6 +40,13 @@ jobs:
         run: poetry build
       - name: Run unit tests
         run: pytest --cov=./ tests -v
+        env:
+          TOMODACHI_TEST_AWS_ACCESS_KEY_ID: ${{ secrets.TOMODACHI_TEST_AWS_ACCESS_KEY_ID }}
+          TOMODACHI_TEST_AWS_ACCESS_SECRET: ${{ secrets.TOMODACHI_TEST_AWS_ACCESS_SECRET }}
+          TOMODACHI_TEST_AWS_REGION: ${{ secrets.TOMODACHI_TEST_AWS_REGION }}
+          TOMODACHI_TEST_SERVICE_UUID: ${{ secrets.TOMODACHI_TEST_SERVICE_UUID }}
+          TOMODACHI_TEST_SNS_TOPIC_PREFIX: ${{ secrets.TOMODACHI_TEST_SNS_TOPIC_PREFIX }}
+          TOMODACHI_TEST_SQS_QUEUE_PREFIX: ${{ secrets.TOMODACHI_TEST_SQS_QUEUE_PREFIX }}
       - name: Lint with flake8
         run: flake8 tomodachi/ tests/
       - name: Run dummy service
