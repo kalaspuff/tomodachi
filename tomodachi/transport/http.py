@@ -146,7 +146,10 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
         headers[hdrs.CONTENT_LENGTH] = str(len(msg))
         headers[hdrs.SERVER] = self._server_header or ""
 
-        if isinstance(request.version, HttpVersion) and (request.version.major, request.version.minor) in ((1, 0), (1, 1)):
+        if isinstance(request.version, HttpVersion) and (request.version.major, request.version.minor) in (
+            (1, 0),
+            (1, 1),
+        ):
             headers[hdrs.CONNECTION] = "close"
 
         resp = web.Response(
@@ -680,9 +683,7 @@ class HttpTransport(Invoker):
 
                     if access_log:
                         timer = time.time()
-                    response = web.Response(
-                        status=503, headers={}  # type: ignore
-                    )
+                    response = web.Response(status=503, headers={})  # type: ignore
                     try:
                         response = await handler(request)
                     except web.HTTPException as e:
@@ -705,7 +706,11 @@ class HttpTransport(Invoker):
                             response = web.Response(status=499, headers={})  # type: ignore
                             response._eof_sent = True
 
-                        request_version = (request.version.major, request.version.minor) if isinstance(request.version, HttpVersion) else (1, 0)
+                        request_version = (
+                            (request.version.major, request.version.minor)
+                            if isinstance(request.version, HttpVersion)
+                            else (1, 0)
+                        )
 
                         if access_log:
                             request_time = time.time() - timer
@@ -765,7 +770,9 @@ class HttpTransport(Invoker):
                             if request_version in ((1, 0), (1, 1)) and not request._cache.get("is_websocket"):
                                 if context["_http_tcp_keepalive"] and request.keep_alive:
                                     response.headers[hdrs.CONNECTION] = "keep-alive"
-                                    response.headers[hdrs.KEEP_ALIVE] = "timeout={}".format(context["_http_keepalive_timeout"])
+                                    response.headers[hdrs.KEEP_ALIVE] = "timeout={}".format(
+                                        context["_http_keepalive_timeout"]
+                                    )
                                 else:
                                     response.headers[hdrs.CONNECTION] = "close"
 
