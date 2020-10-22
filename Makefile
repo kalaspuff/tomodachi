@@ -40,15 +40,15 @@ black:
 isort:
 	poetry run isort tomodachi.py tomodachi/ examples/ tests/
 
-.PHONY: lint
-lint:
+.PHONY: flake8
+flake8:
 	poetry run flake8 tomodachi/ tests/
-	poetry run mypy ./
 
 .PHONY: mypy
 mypy:
 	poetry run mypy ./
 
+lint: flake8 mypy
 
 .PHONY: tests
 tests:
