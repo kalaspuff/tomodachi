@@ -34,11 +34,11 @@ clean:
 
 .PHONY: black
 black:
-	poetry run black setup.py tomodachi.py tomodachi/ examples/ tests/
+	poetry run black tomodachi.py tomodachi/ examples/ tests/
 
 .PHONY: isort
 isort:
-	poetry run isort setup.py tomodachi.py tomodachi/ examples/ tests/
+	poetry run isort tomodachi.py tomodachi/ examples/ tests/
 
 .PHONY: lint
 lint:
