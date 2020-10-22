@@ -869,7 +869,8 @@ class AWSSNSSQSTransport(Invoker):
                         TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn, Attributes=attributes
                     )
                     subscription_arn = response.get("SubscriptionArn")
-                    update_attributes = False
+                    if subscription_arn and "000000000000" not in subscription_arn:
+                        update_attributes = False
                 except botocore.exceptions.ClientError as e:
                     error_message = str(e)
                     if "Subscription already exists with different attributes" in error_message:
@@ -904,11 +905,12 @@ class AWSSNSSQSTransport(Invoker):
             if update_attributes and attributes:
                 for attribute_name, attribute_value in attributes.items():
                     try:
-                        logging.getLogger("transport.aws_sns_sqs").info(
-                            "Updating '{}' attribute on subscription for topic ARN '{}' and queue ARN '{}' - changes can take several minutes to propagate".format(
-                                attribute_name, topic_arn, queue_arn
+                        if "000000000000" not in subscription_arn:
+                            logging.getLogger("transport.aws_sns_sqs").info(
+                                "Updating '{}' attribute on subscription for topic ARN '{}' and queue ARN '{}' - changes can take several minutes to propagate".format(
+                                    attribute_name, topic_arn, queue_arn
+                                )
                             )
-                        )
                         await client.set_subscription_attributes(
                             SubscriptionArn=subscription_arn,
                             AttributeName=attribute_name,
