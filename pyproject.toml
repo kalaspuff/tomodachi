@@ -76,7 +76,7 @@ black = { version = "*", markers = "sys_platform != \"win32\"", allow-prerelease
 mypy = { version = ">=0.790", markers = "sys_platform != \"win32\"" }
 codecov = { version = ">=2.1.10", markers = "sys_platform != \"win32\"" }
 readme-renderer = { version = ">=27.0", markers = "sys_platform != \"win32\"" }
-twine = "^3.2.0"
+twine = { version = "^3.2.0", markers = "sys_platform != \"win32\"" }
 
 [tool.poetry.scripts]
 tomodachi = "tomodachi.cli:cli_entrypoint"
@@ -95,4 +95,4 @@ exclude = '\.eggs/|tomodachi\.egg-info/|\.git/|\.mypy_cache/|\.venv/|\.pytest_ca
 profile = "black"
 line_length = 120
 known_first_party = "tomodachi,run_test_service_helper,proto_build"
-skip = ".mypy_cache,__pycache__,dist"
+skip = ".mypy_cache,__pycache__,tomodachi.egg-info,.eggs,syntax_error_service.py,.vscode,dist"
