@@ -107,6 +107,14 @@ Changes
 - Overall updated documentation and improved examples around running services
   within Docker.
 
+- ``requirements.txt`` is no more and has been replaced with
+  ``pyproject.toml`` with a Poetry section together with the ``poetry.lock``.
+
+- Replaced Travis CI with GitHub actions.
+
+- Replaced py-up with GitHub's dependabot, which as of recently also
+  supports Poetry's lock files.
+
 - Added support for ``aiohttp`` 3.6.x.
 
 - Added support for ``aiobotocore`` 1.x.x.
