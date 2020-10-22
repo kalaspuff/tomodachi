@@ -3,6 +3,11 @@ Changes
 
 0.19.0 (2020-xx-xx)
 -------------------
+- Note: This is a rather large release with a lot of updates. Also, this
+  release includes a lot of improvements to be able to quicker implement
+  features for the future and modernizes a lot of the build, testing and
+  linting steps to be on par with cutting edge Python development.
+
 - ``@tomodachi.aws_sns_sqs`` and ``@tomodachi.amqp`` decorators has
   changed the default value of the ``competing`` keyword-argument to
   ``True``. Note that this is a change in default behaviour and may be a
