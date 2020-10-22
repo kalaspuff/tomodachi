@@ -32,7 +32,8 @@ Changes
   if a new subscription is set up (default).
   Changing the ``filter_policy`` on an existing subscription may take
   several minutes to propagate. Read more about the filter policy format
-  on AWS. https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html
+  on AWS, since it doesn't follow the same pattern as specifying message
+  attributes. https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html
 
 - Related to the above mentioned filter policy, the ``aws_sns_sqs_publish``
   function has also been updated with the possibility to specify said
