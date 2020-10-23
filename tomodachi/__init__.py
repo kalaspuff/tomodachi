@@ -44,8 +44,10 @@ try:
 except Exception:  # pragma: no cover
     pass
 
-__author__ = "Carl Oscar Aaro"
-__email__ = "hello@carloscar.com"
+__author__: str = "Carl Oscar Aaro"
+__email__: str = "hello@carloscar.com"
+
+CLASS_ATTRIBUTE: str = "_tomodachi_class_is_service_class"
 
 __all__ = [
     "service",
@@ -83,9 +85,8 @@ __all__ = [
     "hourly",
     "daily",
     "monthly",
+    "CLASS_ATTRIBUTE",
 ]
-
-CLASS_ATTRIBUTE = "_tomodachi_class_is_service_class"
 
 
 class TomodachiServiceMeta(type):
@@ -109,7 +110,7 @@ class TomodachiServiceMeta(type):
 
 
 class Service(metaclass=TomodachiServiceMeta):
-    CLASS_ATTRIBUTE: bool = False
+    _tomodachi_class_is_service_class: bool = False
     name: str = ""
     uuid: str = ""
     log: Callable = tomodachi.helpers.logging.log
