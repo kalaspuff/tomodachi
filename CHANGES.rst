@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.19.0 (2020-xx-xx)
+0.19.0 (2020-10-23)
 -------------------
 - Note: This is a rather large release with a lot of updates. Also, this
   release includes a lot of improvements to be able to quicker implement
