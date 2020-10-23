@@ -1,18 +1,141 @@
 Changes
 =======
 
-0.18.1 (2020-xx-xx)
+0.19.0 (2020-xx-xx)
 -------------------
+- Note: This is a rather large release with a lot of updates. Also, this
+  release includes a lot of improvements to be able to quicker implement
+  features for the future and modernizes a lot of the build, testing and
+  linting steps to be on par with cutting edge Python development.
+
+- ``@tomodachi.aws_sns_sqs`` and ``@tomodachi.amqp`` decorators has
+  changed the default value of the ``competing`` keyword-argument to
+  ``True``. Note that this is a change in default behaviour and may be a
+  breaking change if "non-competing" services were used. This change was
+  triggered in an attempt to make the API more clear and use more
+  common default values. It's rare that a non-shared queue would be used
+  for service replicas of the same type in a distributed architecture.
+
+- The ``@tomodachi.aws_sns_sqs`` decorator can now specify a
+  ``filter_policy`` which will be applied on the SNS subscription (for
+  the specified topic and queue) as the ``"FilterPolicy`` attribute.
+  This will apply a filter on SNS messages using the chosen "message
+  attributes" and/or their values specified in the filter.
+  Example: A filter policy value of
+  ``{"event": ["order_paid"], "currency": ["EUR", "USD"]}``
+  would set up the SNS subscription to receive messages on the topic
+  only where the message attribute ``"event"`` is ``"order_paid"``
+  and the ``"currency"`` value is either ``"EUR"`` or ``"USD"``.
+  If ``filter_policy`` is not specified as an argument, the
+  queue will receive messages on the topic as per already specified if
+  using an existing subscription, or receive all messages on the topic
+  if a new subscription is set up (default).
+  Changing the ``filter_policy`` on an existing subscription may take
+  several minutes to propagate. Read more about the filter policy format
+  on AWS, since it doesn't follow the same pattern as specifying message
+  attributes. https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html
+
+- Related to the above mentioned filter policy, the ``aws_sns_sqs_publish``
+  function has also been updated with the possibility to specify said
+  "message attributes" using the ``message_attributes`` keyword
+  argument. Values should be specified as a simple ``dict`` with keys
+  and values. Example:
+  ``{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}``.
+
+- The event loop that the process will execute on can now be specified
+  on startup using ``--loop [auto|asyncio|uvloop]``, currently the `auto`
+  (or `default`) value will use Python's builtin `asyncio` event loop.
+
+- Fixes a bug that could cause a termination signal to stop the service
+  in the middle of processing a message received via AWS SQS. The service
+  will now await currently executing tasks before finally shutting down.
+
 - Added SSL and virtualhost settings to AMQP transport, as well as
   additional configuration options which can be passed via
   ``options.amqp.virtualhost``, ``options.amqp.ssl`` and
   ``options.amqp.heartbeat``. (github: **xdmiodz**)
 
+- HTTP server functionality, which is based on ``aiohttp``, can now be
+  configured to allow keep-alive connections by specifying the
+  ``options.http.keepalive_timeout`` config value.
+
+- Service termination for HTTP based services will now correctly await
+  started tasks from clients that has disconnected before receiving
+  the response.
+
+- Functions decorated with ``@tomodachi.aws_sns_sqs`` will now be called
+  with the ``queue_url``, ``receipt_handle`` and ``message_attributes``
+  keyword arguments if specified in the function signature.
+  These can be used to update the visibility timeouts, among other things.
+
+- The ``message_protocol`` value that can be specified on service classes
+  has been renamed to ``message_envelope`` and the two example
+  implementations ``JsonBase`` and ``ProtobufBase`` has been moved from
+  ``tomodachi.protocol`` to ``tomodachi.envelope``. The previous imports
+  and service attribute is deprecated, but can still be used. Likewise
+  the optional ``message_protocol`` keyword argument passed to
+  ``@tomodachi.aws_sns_sqs``, ``@tomodachi.amqp``,
+  ``aws_sns_sqs_publish``, ``amqp_publish`` is renamed to
+  ``message_envelope``.
+
+- The argument to specify ``message_envelope`` on the
+  ``@tomodachi.aws_sns_sqs`` and ``@tomodachi.amqp`` decorators is now
+  keyword only.
+
+- The arguments to specify ``message_envelope`` and ``topic_prefix`` to
+  ``aws_sns_sqs_publish`` is now keyword only.
+
+- The arguments to specify ``message_envelope`` and ``routing_key_prefix``
+  to ``amqp_publish`` is now keyword only.
+
+- ``uvloop`` is now an optional installation.
+
+- More verbose output when waiting for active tasks during termination.
+
+- Added ``tomodachi.get_execution_context()`` that holds metadata about
+  the service execution that can be used for debugging purposes or be
+  sent to application monitoring platforms such as Sentry or to be
+  included in custom log output for log search indexing. The
+  ``tomodachi.get_execution_context()`` function returns a ``dict``
+  with installed package versions of some key dependencies, function
+  call counters of different types, etc.
+
+- Refactoring and updates to code formatting, now using Black code style.
+
+- Updated startup output with additional information about the running
+  process, including versions, etc.
+
+- Overall updated documentation and improved examples around running services
+  within Docker.
+
+- ``requirements.txt`` is no more and has been replaced with
+  ``pyproject.toml`` with a Poetry section together with the ``poetry.lock``.
+
+- Replaced Travis CI with GitHub actions.
+
+- Replaced py-up with GitHub's dependabot, which as of recently also
+  supports Poetry's lock files.
+
 - Added support for ``aiohttp`` 3.6.x.
+
+- Added support for ``aiobotocore`` 1.x.x.
+
+- Added ``aiodns`` as an optional installation, as it's recommended for
+  running DNS resolution on the event loop when using ``aiohttp``.
 
 - Updated identifiers for support of Python 3.9.
 
-- Refactoring and updates to code formatting, now using Black code style.
+- Dropped support for Python 3.6.
+
+- The service class decorator ``@tomodachi.service`` is now considered
+  deprecated and the service classes should inherit from the
+  ``tomodachi.Service`` class instead. This also works better with
+  type-hinting, which currently cannot handle decorators that
+  modify a class.
+
+- The ``name`` attribute is no longer required on the service classes
+  and if not specified the value will now instead default to
+  ``"service"``.
 
 
 0.18.0 (2020-09-15)

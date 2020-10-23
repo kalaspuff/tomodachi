@@ -12,7 +12,9 @@ from logging.handlers import WatchedFileHandler
 from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union  # noqa
 
 import colorama
-from aiohttp import WSMsgType, hdrs, web, web_protocol, web_server, web_urldispatcher
+from aiohttp import WSMsgType
+from aiohttp import __version__ as aiohttp_version
+from aiohttp import hdrs, web, web_protocol, web_server, web_urldispatcher
 from aiohttp.helpers import BasicAuth
 from aiohttp.http import HttpVersion
 from aiohttp.streams import EofStream
@@ -20,12 +22,17 @@ from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from tomodachi.helpers.dict import merge_dicts
+from tomodachi.helpers.execution_context import (
+    decrease_execution_context_value,
+    increase_execution_context_value,
+    set_execution_context,
+)
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
 try:
     CancelledError = asyncio.exceptions.CancelledError  # type: ignore
-except Exception as e:
+except Exception:
 
     class CancelledError(Exception):  # type: ignore
         pass
@@ -138,6 +145,13 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
         headers[hdrs.CONTENT_LENGTH] = str(len(msg))
         headers[hdrs.SERVER] = self._server_header or ""
+
+        if isinstance(request.version, HttpVersion) and (request.version.major, request.version.minor) in (
+            (1, 0),
+            (1, 1),
+        ):
+            headers[hdrs.CONNECTION] = "close"
+
         resp = web.Response(
             status=status, text=msg, headers=headers  # type: ignore
         )  # type: web.Response
@@ -298,7 +312,9 @@ class HttpTransport(Invoker):
                     kwargs[k] = v
 
             @functools.wraps(func)
-            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
+            async def routine_func(
+                *a: Any, **kw: Any
+            ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (
                     (await routine) if isinstance(routine, Awaitable) else routine
@@ -376,7 +392,7 @@ class HttpTransport(Invoker):
                     path=filepath, chunk_size=256 * 1024  # type: ignore
                 )  # type: Union[web.Response, web.FileResponse]
                 return response
-            except PermissionError as e:
+            except PermissionError:
                 raise web.HTTPForbidden()  # type: ignore
 
         route_context = {"ignore_logging": ignore_logging}
@@ -413,7 +429,9 @@ class HttpTransport(Invoker):
             )
 
             @functools.wraps(func)
-            async def routine_func(*a: Any, **kw: Any) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
+            async def routine_func(
+                *a: Any, **kw: Any
+            ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value = (
                     (await routine) if isinstance(routine, Awaitable) else routine
@@ -588,7 +606,7 @@ class HttpTransport(Invoker):
                                 )
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
-            except Exception as e:
+            except Exception:
                 pass
             finally:
                 if _close_func:
@@ -613,8 +631,10 @@ class HttpTransport(Invoker):
             return None
         context["_http_server_started"] = True
 
-        server_header = context.get("options", {}).get("http", {}).get("server_header", "tomodachi")
-        access_log = context.get("options", {}).get("http", {}).get("access_log", True)
+        http_options = context.get("options", {}).get("http", {})
+
+        server_header = http_options.get("server_header", "tomodachi")
+        access_log = http_options.get("access_log", True)
 
         logger_handler = None
         if isinstance(access_log, str):
@@ -644,7 +664,17 @@ class HttpTransport(Invoker):
             @web.middleware
             async def middleware(request: web.Request, handler: Callable) -> Union[web.Response, web.FileResponse]:
                 async def func() -> Union[web.Response, web.FileResponse]:
+                    response: Union[web.Response, web.FileResponse]
                     request_ip = RequestHandler.get_request_ip(request, context)
+
+                    if not request_ip:
+                        # Transport broken before request handling started, ignore request
+                        response = web.Response(status=499, headers={hdrs.SERVER: server_header or ""})  # type: ignore
+                        response._eof_sent = True
+                        response.force_close()  # type: ignore
+
+                        return response
+
                     if request.headers.get("Authorization"):
                         try:
                             request._cache["auth"] = BasicAuth.decode(request.headers.get("Authorization"))
@@ -653,43 +683,40 @@ class HttpTransport(Invoker):
 
                     if access_log:
                         timer = time.time()
-                    response = web.Response(
-                        status=503, headers={}  # type: ignore
-                    )  # type: Union[web.Response, web.FileResponse]
+                    response = web.Response(status=503, headers={})  # type: ignore
                     try:
                         response = await handler(request)
-                        response.headers[hdrs.SERVER] = server_header or ""
                     except web.HTTPException as e:
                         error_handler = context.get("_http_error_handler", {}).get(e.status, None)
                         if error_handler:
                             response = await error_handler(request)
-                            response.headers[hdrs.SERVER] = server_header or ""
                         else:
                             response = e
-                            response.headers[hdrs.SERVER] = server_header or ""
                             response.body = str(e).encode("utf-8")
                     except Exception as e:
                         error_handler = context.get("_http_error_handler", {}).get(500, None)
                         logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                         if error_handler:
                             response = await error_handler(request)
-                            response.headers[hdrs.SERVER] = server_header or ""
                         else:
                             response = web.HTTPInternalServerError()  # type: ignore
-                            response.headers[hdrs.SERVER] = server_header or ""
                             response.body = b""
                     finally:
                         if not request.transport:
-                            response = web.Response(
-                                status=499, headers={}  # type: ignore
-                            )
+                            response = web.Response(status=499, headers={})  # type: ignore
                             response._eof_sent = True
+
+                        request_version = (
+                            (request.version.major, request.version.minor)
+                            if isinstance(request.version, HttpVersion)
+                            else (1, 0)
+                        )
 
                         if access_log:
                             request_time = time.time() - timer
                             version_string = None
                             if isinstance(request.version, HttpVersion):
-                                version_string = "HTTP/{}.{}".format(request.version.major, request.version.minor)
+                                version_string = "HTTP/{}.{}".format(request_version[0], request_version[1])
 
                             if not request._cache.get("is_websocket"):
                                 status_code = response.status if response is not None else 500
@@ -737,22 +764,102 @@ class HttpTransport(Invoker):
                                     )
                                 )
 
+                        if response is not None:
+                            response.headers[hdrs.SERVER] = server_header or ""
+
+                            if request_version in ((1, 0), (1, 1)) and not request._cache.get("is_websocket"):
+                                if context["_http_tcp_keepalive"] and request.keep_alive:
+                                    response.headers[hdrs.CONNECTION] = "keep-alive"
+                                    response.headers[hdrs.KEEP_ALIVE] = "timeout={}".format(
+                                        context["_http_keepalive_timeout"]
+                                    )
+                                else:
+                                    response.headers[hdrs.CONNECTION] = "close"
+
+                        if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
+                            response.force_close()  # type: ignore
+
                         if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
                             raise response
 
                         return response
 
-                task = asyncio.ensure_future(asyncio.shield(func()))
+                increase_execution_context_value("http_current_tasks")
+                increase_execution_context_value("http_total_tasks")
+                task = asyncio.ensure_future(func())
                 context["_http_active_requests"] = context.get("_http_active_requests", set())
                 context["_http_active_requests"].add(task)
                 try:
-                    result = await task
-                except (Exception, CancelledError):
+                    await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    try:
+                        await task
+                        decrease_execution_context_value("http_current_tasks")
+                        context["_http_active_requests"].remove(task)
+                        return task.result()
+                    except Exception:
+                        decrease_execution_context_value("http_current_tasks")
+                        context["_http_active_requests"].remove(task)
+                        raise
+                except Exception:
+                    decrease_execution_context_value("http_current_tasks")
                     context["_http_active_requests"].remove(task)
                     raise
+                decrease_execution_context_value("http_current_tasks")
                 context["_http_active_requests"].remove(task)
 
                 return task.result()
+
+            client_max_size_option = (
+                http_options.get("client_max_size")
+                or http_options.get("max_buffer_size")
+                or http_options.get("max_upload_size")
+                or "100M"
+            )
+            client_max_size = (1024 ** 2) * 100
+            try:
+                if (
+                    client_max_size_option
+                    and isinstance(client_max_size_option, str)
+                    and (client_max_size_option.upper().endswith("G") or client_max_size_option.upper().endswith("GB"))
+                ):
+                    client_max_size = int(re.sub(r"^([0-9]+)GB?$", r"\1", client_max_size_option.upper())) * (1024 ** 3)
+                elif (
+                    client_max_size_option
+                    and isinstance(client_max_size_option, str)
+                    and (client_max_size_option.upper().endswith("M") or client_max_size_option.upper().endswith("MB"))
+                ):
+                    client_max_size = int(re.sub(r"^([0-9]+)MB?$", r"\1", client_max_size_option.upper())) * (1024 ** 2)
+                elif (
+                    client_max_size_option
+                    and isinstance(client_max_size_option, str)
+                    and (client_max_size_option.upper().endswith("K") or client_max_size_option.upper().endswith("KB"))
+                ):
+                    client_max_size = int(re.sub(r"^([0-9]+)KB?$", r"\1", client_max_size_option.upper())) * 1024
+                elif (
+                    client_max_size_option
+                    and isinstance(client_max_size_option, str)
+                    and (client_max_size_option.upper().endswith("B"))
+                ):
+                    client_max_size = int(re.sub(r"^([0-9]+)B?$", r"\1", client_max_size_option.upper()))
+                elif client_max_size_option:
+                    client_max_size = int(client_max_size_option)
+            except Exception:
+                raise ValueError(
+                    "Bad value for http option client_max_size: {}".format(str(client_max_size_option))
+                ) from None
+            if client_max_size >= 0 and client_max_size < 1024:
+                raise ValueError(
+                    "Too low value for http option client_max_size: {} ({})".format(
+                        str(client_max_size_option), client_max_size_option
+                    )
+                )
+            if client_max_size > 1024 ** 3:
+                raise ValueError(
+                    "Too high value for http option client_max_size: {} ({})".format(
+                        str(client_max_size_option), client_max_size_option
+                    )
+                )
 
             app = web.Application(
                 middlewares=[middleware], client_max_size=(1024 ** 2) * 100  # type: ignore
@@ -762,7 +869,7 @@ class HttpTransport(Invoker):
                 try:
                     compiled_pattern = re.compile(pattern)
                 except re.error as exc:
-                    raise ValueError("Bad pattern '{}': {}".format(pattern, exc)) from None
+                    raise ValueError("Bad http route pattern '{}': {}".format(pattern, exc)) from None
                 ignore_logging = route_context.get("ignore_logging", False)
                 setattr(handler, "ignore_logging", ignore_logging)
                 resource = DynamicResource(compiled_pattern)
@@ -772,12 +879,58 @@ class HttpTransport(Invoker):
                 resource.add_route(method.upper(), handler, expect_handler=None)  # type: ignore
 
             context["_http_accept_new_requests"] = True
-            port = context.get("options", {}).get("http", {}).get("port", 9700)
-            host = context.get("options", {}).get("http", {}).get("host", "0.0.0.0")
+
+            port = http_options.get("port", 9700)
+            host = http_options.get("host", "0.0.0.0")
+            if port is True:
+                raise ValueError("Bad value for http option port: {}".format(str(port)))
+
+            keepalive_timeout_option = http_options.get("keepalive_timeout", 0) or http_options.get(
+                "keepalive_expiry", 0
+            )
+            keepalive_timeout = 0
+            tcp_keepalive = False
+            if keepalive_timeout_option is None or keepalive_timeout_option is False:
+                keepalive_timeout = 0
+            if keepalive_timeout_option is True:
+                raise ValueError(
+                    "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
+                )
+            try:
+                keepalive_timeout = int(keepalive_timeout_option)
+            except Exception:
+                raise ValueError(
+                    "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
+                ) from None
+            if keepalive_timeout > 0:
+                tcp_keepalive = True
+            else:
+                tcp_keepalive = False
+                keepalive_timeout = 0
+
+            set_execution_context(
+                {
+                    "http_enabled": True,
+                    "http_current_tasks": 0,
+                    "http_total_tasks": 0,
+                    "aiohttp_version": aiohttp_version,
+                }
+            )
+
+            context["_http_tcp_keepalive"] = tcp_keepalive
+            context["_http_keepalive_timeout"] = keepalive_timeout
 
             try:
                 app.freeze()
-                server_task = loop.create_server(Server(app._handle, request_factory=app._make_request, server_header=server_header or "", access_log=access_log, keepalive_timeout=0, tcp_keepalive=False), host, port)  # type: ignore
+                web_server = Server(
+                    app._handle,
+                    request_factory=app._make_request,
+                    server_header=server_header or "",
+                    access_log=access_log,
+                    keepalive_timeout=keepalive_timeout,
+                    tcp_keepalive=tcp_keepalive,
+                )
+                server_task = loop.create_server(web_server, host, port)  # type: ignore
                 server = await server_task  # type: ignore
             except OSError as e:
                 context["_http_accept_new_requests"] = False
@@ -798,13 +951,20 @@ class HttpTransport(Invoker):
             stop_method = getattr(obj, "_stop_service", None)
 
             async def stop_service(*args: Any, **kwargs: Any) -> None:
+                context["_http_tcp_keepalive"] = False
                 context["_http_accept_new_requests"] = False
+
                 server.close()
                 await server.wait_closed()
 
+                if len(web_server.connections):
+                    await asyncio.sleep(1)
+
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
-                    logging.getLogger("transport.http").info("Closing websocket connections")
+                    logging.getLogger("transport.http").info(
+                        "Closing {} websocket connection(s)".format(len(open_websockets))
+                    )
                     tasks = []
                     for websocket in open_websockets:
                         try:
@@ -812,35 +972,51 @@ class HttpTransport(Invoker):
                         except Exception:
                             pass
                     try:
-                        results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=10)
-                    except (Exception, asyncio.TimeoutError) as e:
+                        await asyncio.wait_for(
+                            asyncio.shield(asyncio.gather(*tasks, return_exceptions=True)), timeout=10
+                        )
+                        await asyncio.sleep(1)
+                    except (Exception, asyncio.TimeoutError, asyncio.CancelledError):
                         pass
                     context["_http_open_websockets"] = []
 
                 active_requests = context.get("_http_active_requests", set())
                 if active_requests:
-                    termination_grace_period_seconds = (
-                        context.get("options", {}).get("http", {}).get("termination_grace_period_seconds", 30)
-                    )
+                    termination_grace_period_seconds = 30
+                    try:
+                        termination_grace_period_seconds = int(
+                            http_options.get("termination_grace_period_seconds") or termination_grace_period_seconds
+                        )
+                    except Exception:
+                        pass
                     logging.getLogger("transport.http").info(
-                        "Waiting for active requests to complete - grace period of {} seconds".format(
-                            termination_grace_period_seconds
+                        "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
+                            len(active_requests), termination_grace_period_seconds
                         )
                     )
                     try:
-                        results = await asyncio.wait_for(
-                            asyncio.gather(*active_requests, return_exceptions=True),
+                        await asyncio.wait_for(
+                            asyncio.shield(asyncio.gather(*active_requests, return_exceptions=True)),
                             timeout=termination_grace_period_seconds,
                         )
                         await asyncio.sleep(1)
-                    except (Exception, asyncio.TimeoutError) as e:
-                        logging.getLogger("transport.http").warning(
-                            "All active requests did not gracefully finish their execution"
-                        )
-                        pass
+                        active_requests = context.get("_http_active_requests", set())
+                    except (Exception, asyncio.TimeoutError, asyncio.CancelledError):
+                        active_requests = context.get("_http_active_requests", set())
+                        if active_requests:
+                            logging.getLogger("transport.http").warning(
+                                "All requests did not gracefully finish execution - {} request(s) remaining".format(
+                                    len(active_requests)
+                                )
+                            )
                     context["_http_active_requests"] = set()
 
-                await app.shutdown()
+                if len(web_server.connections):
+                    await app.shutdown()
+                    await asyncio.sleep(1)
+                else:
+                    await app.shutdown()
+
                 if logger_handler:
                     logging.getLogger("transport.http").removeHandler(logger_handler)
                 await app.cleanup()

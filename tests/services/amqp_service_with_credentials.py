@@ -5,7 +5,7 @@ import uuid
 from typing import Any
 
 import tomodachi
-from tomodachi.protocol.json_base import JsonBase
+from tomodachi.envelope.json_base import JsonBase
 from tomodachi.transport.amqp import amqp, amqp_publish
 
 
@@ -13,7 +13,7 @@ from tomodachi.transport.amqp import amqp, amqp_publish
 class AMQPService(tomodachi.Service):
     name = "test_amqp"
     log_level = "INFO"
-    message_protocol = JsonBase
+    message_envelope = JsonBase
     options = {"amqp": {"login": "guest", "password": "guest"}}
     closer = asyncio.Future()  # type: Any
     test_topic_data_received = False

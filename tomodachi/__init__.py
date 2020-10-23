@@ -1,10 +1,26 @@
-import inspect
-from typing import Any, Optional
+from __future__ import annotations
+
+import inspect  # noqa
+import uuid
+from typing import Callable, Dict, Tuple, Type, cast
 
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 
 try:
+    import tomodachi.helpers.execution_context
     import tomodachi.helpers.logging
+    from tomodachi.helpers.execution_context import clear_execution_context as _clear_execution_context
+    from tomodachi.helpers.execution_context import clear_services as _clear_services
+    from tomodachi.helpers.execution_context import (
+        decrease_execution_context_value,
+        get_execution_context,
+        get_instance,
+        get_service,
+        increase_execution_context_value,
+        set_execution_context,
+    )
+    from tomodachi.helpers.execution_context import set_service as _set_service
+    from tomodachi.helpers.execution_context import unset_service as _unset_service
     from tomodachi.invoker import decorator
 except Exception:  # pragma: no cover
     pass
@@ -28,13 +44,27 @@ try:
 except Exception:  # pragma: no cover
     pass
 
+__author__: str = "Carl Oscar Aaro"
+__email__: str = "hello@carloscar.com"
+
+CLASS_ATTRIBUTE: str = "_tomodachi_class_is_service_class"
+
 __all__ = [
     "service",
     "Service",
     "__version__",
     "__version_info__",
+    "__author__",
+    "__email__",
     "decorator",
-    "set_service",
+    "_set_service",
+    "_unset_service",
+    "_clear_services",
+    "set_execution_context",
+    "get_execution_context",
+    "_clear_execution_context",
+    "decrease_execution_context_value",
+    "increase_execution_context_value",
     "get_service",
     "get_instance",
     "amqp",
@@ -48,51 +78,48 @@ __all__ = [
     "ws",
     "HttpResponse",
     "HttpException",
+    "get_http_response_status",
     "schedule",
     "heartbeat",
     "minutely",
     "hourly",
     "daily",
     "monthly",
+    "CLASS_ATTRIBUTE",
 ]
 
-CLASS_ATTRIBUTE = "TOMODACHI_SERVICE_CLASS"
-_services = {}
-_current_service = {}
+
+class TomodachiServiceMeta(type):
+    def __new__(
+        cls: Type[TomodachiServiceMeta], name: str, bases: Tuple[type, ...], attributedict: Dict
+    ) -> TomodachiServiceMeta:
+        attributedict[CLASS_ATTRIBUTE] = True
+        result = cast(Type["Service"], super().__new__(cls, name, bases, dict(attributedict)))
+
+        if bases and not result.uuid:
+            result.uuid = str(uuid.uuid4())
+        if bases and not result.name:
+            result.name = "service"
+
+        # Removing the CLASS_ATTRIBUTE for classes that were used as bases for inheritance to other classes
+        for base in bases:
+            if hasattr(base, CLASS_ATTRIBUTE):
+                delattr(base, CLASS_ATTRIBUTE)
+
+        return cast(TomodachiServiceMeta, result)
 
 
-def service(cls: Any) -> Any:
-    setattr(cls, CLASS_ATTRIBUTE, True)
-    if not getattr(cls, "log", None):
-        cls.log = tomodachi.helpers.logging.log
-    if not getattr(cls, "log_setup", None):
-        cls.log_setup = tomodachi.helpers.logging.log_setup
-    return cls
+class Service(metaclass=TomodachiServiceMeta):
+    _tomodachi_class_is_service_class: bool = False
+    name: str = ""
+    uuid: str = ""
+    log: Callable = tomodachi.helpers.logging.log
+    log_setup: Callable = tomodachi.helpers.logging.log_setup
 
 
-class Service(object):
-    TOMODACHI_SERVICE_CLASS = True
-    log = tomodachi.helpers.logging.log
-    log_setup = tomodachi.helpers.logging.log_setup
+def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
+    if isinstance(cls, TomodachiServiceMeta):
+        return cls
 
-
-def set_service(name: str, instance: Any) -> None:
-    _services[name] = instance
-    _current_service[0] = instance
-
-
-def get_service(name: Optional[str] = None) -> Any:
-    if name is None:
-        if _current_service and len(_current_service):
-            return _current_service[0]
-
-        for k, v in _services.items():
-            name = k
-            break
-
-    return _services.get(name)
-
-
-def get_instance(name: Optional[str] = None) -> Any:
-    # alias for tomodachi.get_service()
-    return get_service(name)
+    result = type(cls.__name__, (cls, Service), dict(cls.__dict__))
+    return result

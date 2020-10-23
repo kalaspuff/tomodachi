@@ -1,13 +1,13 @@
 import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
-from tomodachi.protocol.protobuf_base import ProtobufBase
+from tomodachi.envelope.protobuf_base import ProtobufBase
 
 
 @tomodachi.service
 class DummyService(tomodachi.Service):
     name = "test_dummy_protobuf"
     discovery = [DummyRegistry]
-    message_protocol = ProtobufBase
+    message_envelope = ProtobufBase
     options = {
         "aws_sns_sqs": {
             "region_name": "eu-west-1",

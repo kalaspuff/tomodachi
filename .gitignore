@@ -104,3 +104,7 @@ examples/configs/*credentials.json
 # VS Code
 .vscode
 *.code-workspace
+
+# Legacy build tools
+/requirements.txt
+/setup.py

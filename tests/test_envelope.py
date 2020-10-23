@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import signal
@@ -10,7 +9,7 @@ from google.protobuf.json_format import MessageToJson
 
 from proto_build.message_pb2 import Person
 from run_test_service_helper import start_service
-from tomodachi.protocol.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
+from tomodachi.envelope.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage  # noqa
 from tomodachi.validation.validation import RegexMissmatchException, validate_field_regex
 
 
@@ -22,9 +21,9 @@ def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     async def _async() -> None:
         data = {"key": "value"}
         t1 = time.time()
-        json_message = await instance.message_protocol.build_message(instance, "topic", data)
+        json_message = await instance.message_envelope.build_message(instance, "topic", data)
         t2 = time.time()
-        result, message_uuid, timestamp = await instance.message_protocol.parse_message(json_message)
+        result, message_uuid, timestamp = await instance.message_envelope.parse_message(json_message)
         assert result.get("data") == data
         assert result.get("metadata", {}).get("data_encoding") == "raw"
         assert len(json.dumps(result.get("data"))) == len(json.dumps(data))
@@ -52,10 +51,10 @@ def test_json_base_large_message(monkeypatch: Any, capsys: Any, loop: Any) -> No
         data = ["item {}".format(i) for i in range(1, 10000)]
         assert len(json.dumps(data)) > 60000
         t1 = time.time()
-        json_message = await instance.message_protocol.build_message(instance, "topic", data)
+        json_message = await instance.message_envelope.build_message(instance, "topic", data)
         assert len(json.dumps(json_message)) < 60000
         t2 = time.time()
-        result, message_uuid, timestamp = await instance.message_protocol.parse_message(json_message)
+        result, message_uuid, timestamp = await instance.message_envelope.parse_message(json_message)
         assert result.get("metadata", {}).get("data_encoding") == "base64_gzip_json"
         assert len(json.dumps(result.get("data"))) == len(json.dumps(data))
         assert json.dumps(result.get("data")) == json.dumps(data)
@@ -83,9 +82,9 @@ def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
         data.name = "John Doe"
         data.id = "12"
         t1 = time.time()
-        protobuf_message = await instance.message_protocol.build_message(instance, "topic", data)
+        protobuf_message = await instance.message_envelope.build_message(instance, "topic", data)
         t2 = time.time()
-        result, message_uuid, timestamp = await instance.message_protocol.parse_message(protobuf_message, Person)
+        result, message_uuid, timestamp = await instance.message_envelope.parse_message(protobuf_message, Person)
         assert type(result.get("data")) is Person
         assert result.get("data") == data
         assert result.get("metadata", {}).get("data_encoding") == "proto"
@@ -117,8 +116,8 @@ def test_protobuf_base_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) 
         data = Person()
         data.name = "John Doe"
         data.id = "12"
-        protobuf_message = await instance.message_protocol.build_message(instance, "topic", data)
-        result, message_uuid, timestamp = await instance.message_protocol.parse_message(protobuf_message)
+        protobuf_message = await instance.message_envelope.build_message(instance, "topic", data)
+        result, message_uuid, timestamp = await instance.message_envelope.parse_message(protobuf_message)
         assert type(result.get("data")) is not Person
         assert type(result.get("data")) is bytes
         assert result.get("data") != data
@@ -142,8 +141,8 @@ def test_protobuf_base_bad_proto_class(monkeypatch: Any, capsys: Any, loop: Any)
         data = Person()
         data.name = "John Doe"
         data.id = "12"
-        json_message = await instance.message_protocol.build_message(instance, "topic", data)
-        await instance.message_protocol.parse_message(json_message, str)
+        json_message = await instance.message_envelope.build_message(instance, "topic", data)
+        await instance.message_envelope.parse_message(json_message, str)
 
     with pytest.raises(AttributeError):
         loop.run_until_complete(_async())
@@ -161,7 +160,7 @@ def test_protobuf_validation_no_proto_class(monkeypatch: Any, capsys: Any, loop:
     instance = services.get("test_dummy_protobuf")
 
     async def _async() -> None:
-        instance.message_protocol.validate()
+        instance.message_envelope.validate()
 
     with pytest.raises(Exception):
         loop.run_until_complete(_async())
@@ -179,7 +178,7 @@ def test_protobuf_validation_bad_proto_class(monkeypatch: Any, capsys: Any, loop
     instance = services.get("test_dummy_protobuf")
 
     async def _async() -> None:
-        instance.message_protocol.validate(proto_class=str)
+        instance.message_envelope.validate(proto_class=str)
 
     with pytest.raises(Exception):
         loop.run_until_complete(_async())
@@ -203,8 +202,8 @@ def test_protobuf_object_validation_function(monkeypatch: Any, capsys: Any, loop
         data = Person()
         data.name = "John Doe"
         data.id = "12"
-        protobuf_message = await instance.message_protocol.build_message(instance, "topic", data)
-        await instance.message_protocol.parse_message(protobuf_message, Person, test_validator)
+        protobuf_message = await instance.message_envelope.build_message(instance, "topic", data)
+        await instance.message_envelope.parse_message(protobuf_message, Person, test_validator)
 
     loop.run_until_complete(_async())
 
@@ -227,9 +226,9 @@ def test_protobuf_object_static_validation_function(monkeypatch: Any, capsys: An
         data = Person()
         data.name = "John Doe"
         data.id = "12"
-        protobuf_message = await instance.message_protocol.build_message(instance, "topic", data)
+        protobuf_message = await instance.message_envelope.build_message(instance, "topic", data)
 
-        await instance.message_protocol.parse_message(protobuf_message, Person, test_static_validator)
+        await instance.message_envelope.parse_message(protobuf_message, Person, test_static_validator)
 
     loop.run_until_complete(_async())
 
@@ -252,8 +251,8 @@ def test_protobuf_object_validation_function_fail(monkeypatch: Any, capsys: Any,
         data = Person()
         data.name = "John Doe"
         data.id = "12"
-        protobuf_message = await instance.message_protocol.build_message(instance, "topic", data)
-        await instance.message_protocol.parse_message(protobuf_message, Person, test_validator)
+        protobuf_message = await instance.message_envelope.build_message(instance, "topic", data)
+        await instance.message_envelope.parse_message(protobuf_message, Person, test_validator)
 
     with pytest.raises(RegexMissmatchException):
         loop.run_until_complete(_async())
@@ -277,9 +276,9 @@ def test_protobuf_object_static_validation_function_fail(monkeypatch: Any, capsy
         data = Person()
         data.name = "John Doe"
         data.id = "12"
-        protobuf_message = await instance.message_protocol.build_message(instance, "topic", data)
+        protobuf_message = await instance.message_envelope.build_message(instance, "topic", data)
 
-        await instance.message_protocol.parse_message(protobuf_message, Person, test_static_validator)
+        await instance.message_envelope.parse_message(protobuf_message, Person, test_static_validator)
 
     with pytest.raises(RegexMissmatchException):
         loop.run_until_complete(_async())

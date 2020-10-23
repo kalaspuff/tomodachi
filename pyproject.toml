@@ -1,11 +1,98 @@
+[tool.poetry]
+name = "tomodachi"
+version = "0.19.0"
+description = "Microservice library on asyncio - HTTP server, websockets, pub/sub messaging for AWS SNS+SQS and RabbitMQ"
+authors = ["Carl Oscar Aaro <hello@carloscar.com>"]
+keywords = ["tomodachi", "microservice", "microservices", "framework", "library", "asyncio", "aws", "sns", "sqs", "amqp", "rabbitmq", "http", "websockets", "easy", "fast", "pubsub", "events", "event based messaging", "messages", "protocol buffers", "protobuf", "async", "message attributes", "filter policy", "distributed architecture", "scalable", "python 3"]
+readme = "README.rst"
+license = "MIT"
+
+homepage = "https://github.com/kalaspuff/tomodachi"
+repository = "https://github.com/kalaspuff/tomodachi"
+documentation = "https://github.com/kalaspuff/tomodachi/blob/master/README.rst"
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: AsyncIO",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Distributed Computing",
+    "Typing :: Typed"
+]
+
+packages = [
+    { include = "tomodachi/" },
+]
+
+[tool.poetry.urls]
+Changelog = "https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+pycparser = ">=2.18"
+aioamqp = ">=0.13.0, <0.15.0"
+aiobotocore = ">=0.10.4, <1.2.0"
+tzlocal = ">=1.4"
+cchardet = ">=2.1.6"
+aiohttp = ">=3.5.4, !=3.6.3, <3.7.0"
+yarl = ">=1.1.0, <1.6.0"
+colorama = ">=0.3.9, <0.5.0"
+
+# derived from aiobotocore for dependency resolution speed in same cases.
+botocore = ">=1.12.252, <=1.17.44"
+
+# extras
+protobuf = { version = ">=3.13.0", optional = true }
+uvloop = { version = ">=0.14.0, <1.0.0", optional = true }
+aiodns = { version = ">=1.2.0", optional = true }
+
+[tool.poetry.extras]
+protobuf = ["protobuf"]
+uvloop = ["uvloop"]
+aiodns = ["aiodns"]
+
+[tool.poetry.dev-dependencies]
+# The dev dependencies look messy, but helps out to not get a bunch of win32 into the dev category.
+flake8 = { version = ">=3.8.4", markers = "sys_platform != \"win32\"" }
+flake8-black = { version = ">=0.2.0", markers = "sys_platform != \"win32\"" }
+flake8-isort = { version = ">=4.0.0", markers = "sys_platform != \"win32\"" }
+isort = { version = ">=5.6.0", markers = "sys_platform != \"win32\"" }
+pytest = { version = ">=6.1.0", markers = "sys_platform != \"win32\"" }
+pytest-cov = { version = ">=2.10.0", markers = "sys_platform != \"win32\"" }
+black = { version = "*", markers = "sys_platform != \"win32\"", allow-prereleases = true }
+mypy = { version = ">=0.790", markers = "sys_platform != \"win32\"" }
+codecov = { version = ">=2.1.10", markers = "sys_platform != \"win32\"" }
+readme-renderer = { version = ">=27.0", markers = "sys_platform != \"win32\"" }
+twine = { version = "^3.2.0", markers = "sys_platform != \"win32\"" }
+
+[tool.poetry.scripts]
+tomodachi = "tomodachi.cli:cli_entrypoint"
+
+[build-system]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.black]
 line-length = 120
-target_version = ["py36", "py37", "py38"]
+target_version = ["py37", "py38"]
 include = '\.pyi?$'
-exclude = '\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/|proto_build/|syntax_error_service\.py'
+exclude = '\.eggs/|tomodachi\.egg-info/|\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/|proto_build/|syntax_error_service\.py|setup\.py'
 
 [tool.isort]
 profile = "black"
 line_length = 120
 known_first_party = "tomodachi,run_test_service_helper,proto_build"
-skip = ".mypy_cache,__pycache__"
+skip = ".mypy_cache,__pycache__,tomodachi.egg-info,.eggs,syntax_error_service.py,.vscode,dist"

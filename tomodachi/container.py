@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+import os
 import re
 import sys
 import types
@@ -11,7 +12,8 @@ from typing import Any, Dict, Optional, cast
 import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
 from tomodachi.config import merge_dicts
-from tomodachi.invoker import FUNCTION_ATTRIBUTE, START_ATTRIBUTE
+from tomodachi.helpers.execution_context import set_service, unset_service
+from tomodachi.invoker import FUNCTION_ATTRIBUTE, INVOKER_TASK_START_KEYWORD, START_ATTRIBUTE
 
 
 class ServiceContainer(object):
@@ -64,7 +66,7 @@ class ServiceContainer(object):
         registered_services = set()  # type: set
         for _, cls in inspect.getmembers(self.module_import):
             if inspect.isclass(cls):
-                if not getattr(cls, CLASS_ATTRIBUTE, None):
+                if not getattr(cls, CLASS_ATTRIBUTE, False):
                     continue
 
                 instance = cls()
@@ -89,10 +91,13 @@ class ServiceContainer(object):
                     instance.uuid = str(uuid.uuid4())
 
                 service_name = getattr(instance, "name", getattr(cls, "name", None))
-                if not service_name:
-                    continue
 
-                tomodachi.set_service(service_name, instance)
+                if not service_name:
+                    service_name = ServiceContainer.assign_service_name(instance)
+                    if not service_name:
+                        continue
+
+                set_service(service_name, instance)
 
                 log_level = getattr(instance, "log_level", None) or getattr(cls, "log_level", None) or "INFO"
 
@@ -105,12 +110,15 @@ class ServiceContainer(object):
                 invoker_functions = []
                 for name, fn in inspect.getmembers(cls):
                     if inspect.isfunction(fn) and getattr(fn, FUNCTION_ATTRIBUTE, None):
-                        setattr(fn, START_ATTRIBUTE, True)
+                        setattr(fn, START_ATTRIBUTE, True)  # deprecated
                         invoker_functions.append(name)
                 invoker_functions.sort(key=invoker_function_sorter)
                 if invoker_functions:
                     invoker_tasks = invoker_tasks | set(
-                        [asyncio.ensure_future(getattr(instance, name)()) for name in invoker_functions]
+                        [
+                            asyncio.ensure_future(getattr(instance, name)(**{INVOKER_TASK_START_KEYWORD: True}))
+                            for name in invoker_functions
+                        ]
                     )
                     services_started.add((service_name, instance, log_level))
 
@@ -182,5 +190,107 @@ class ServiceContainer(object):
 
         if stop_futures and any(stop_futures):
             await asyncio.wait([asyncio.ensure_future(func()) for func in stop_futures if func])
+
         for name, instance, log_level in services_started:
             self.logger.info('Stopped service "{}" [id: {}]'.format(name, instance.uuid))
+
+        # Debug output if TOMODACHI_DEBUG env is set. Shows still running tasks on service termination.
+        if os.environ.get("TOMODACHI_DEBUG") and os.environ.get("TOMODACHI_DEBUG") != "0":
+            try:
+                tasks = [task for task in asyncio.all_tasks()]
+                for task in tasks:
+                    try:
+                        co_filename = task.get_coro().cr_code.co_filename if hasattr(task, "get_coro") else task._coro.cr_code.co_filename  # type: ignore
+                        co_name = task.get_coro().cr_code.co_name if hasattr(task, "get_coro") else task._coro.cr_code.co_name  # type: ignore
+
+                        if "/tomodachi/watcher.py" in co_filename and co_name == "_watch_loop":
+                            continue
+                        if "/tomodachi/container.py" in co_filename and co_name == "run_until_complete":
+                            continue
+                        if "/asyncio/tasks.py" in co_filename and co_name == "wait":
+                            continue
+
+                        self.logger.warning(
+                            "** Task '{}' from '{}' has not finished execution or has not been awaited".format(
+                                co_name, co_filename
+                            )
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+    @classmethod
+    def assign_service_name(cls, instance: Any) -> str:
+        new_service_name = ""
+        if instance.__class__.__module__ and instance.__class__.__module__ not in (
+            "service.app",
+            "service.service",
+            "services.app",
+            "services.service",
+            "src.service",
+            "src.app",
+            "code.service",
+            "code.app",
+            "app.service",
+            "app.app",
+            "apps.service",
+            "apps.app",
+            "example.service",
+            "example.app",
+            "examples.service",
+            "examples.app",
+            "test.service",
+            "test.app",
+            "tests.service",
+            "tests.app",
+        ):
+            new_service_name = (
+                "{}-".format(
+                    re.sub(
+                        r"^.*[.]([a-zA-Z0-9_]+)[.]([a-zA-Z0-9_]+)$",
+                        r"\1-\2",
+                        str(instance.__class__.__module__),
+                    )
+                )
+                .replace("_", "-")
+                .replace(".", "-")
+            )
+        class_name = instance.__class__.__name__
+        for i, c in enumerate(class_name.lower()):
+            if i and c != class_name[i]:
+                new_service_name += "-"
+            if c == "_":
+                c = "-"
+            new_service_name += c
+
+        if new_service_name in ("app", "service"):
+            new_service_name = "service"
+
+        if not tomodachi.get_service(new_service_name) and not tomodachi.get_service(
+            "{}-0001".format(new_service_name)
+        ):
+            service_name = new_service_name
+        else:
+            if tomodachi.get_service(new_service_name) and not tomodachi.get_service(
+                "{}-0001".format(new_service_name)
+            ):
+                other_service = tomodachi.get_service(new_service_name)
+                setattr(other_service, "name", "{}-0001".format(new_service_name))
+                setattr(other_service.__class__, "name", other_service.name)
+                unset_service(new_service_name)
+                set_service(other_service.name, other_service)
+
+            incr = 1
+            while True:
+                test_service_name = "{}-{:04d}".format(new_service_name, incr)
+                if tomodachi.get_service(test_service_name):
+                    incr += 1
+                    continue
+                service_name = test_service_name
+                break
+
+        setattr(instance, "name", service_name)
+        setattr(instance.__class__, "name", service_name)
+
+        return service_name

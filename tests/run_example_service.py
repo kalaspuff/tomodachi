@@ -4,14 +4,13 @@ import signal
 
 import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
-from tomodachi.protocol.json_base import JsonBase
+from tomodachi.envelope.json_base import JsonBase
 
 
-@tomodachi.service
 class AutoClosingService(tomodachi.Service):
     name = "test_auto_closing"
     discovery = [DummyRegistry]
-    message_protocol = JsonBase
+    message_envelope = JsonBase
 
     start = False
     started = False

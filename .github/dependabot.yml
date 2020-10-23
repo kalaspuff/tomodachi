@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 15
+    allow:
+      - dependency-name: "*"
+        dependency-type: "development"
+      - dependency-name: "*"
+        dependency-type: "production"

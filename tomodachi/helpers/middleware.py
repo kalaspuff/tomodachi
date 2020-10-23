@@ -13,7 +13,7 @@ async def execute_middlewares(func: Callable, routine_func: Callable, middleware
                 return await middleware_bubble(idx + 1, *a, **kw)
 
             if middlewares and len(middlewares) <= idx + 1:
-                _func = routine_func
+                _func = routine_func  # noqa
 
             middleware = middlewares[idx]  # type: Callable
 
@@ -21,6 +21,7 @@ async def execute_middlewares(func: Callable, routine_func: Callable, middleware
             defaults = inspect.getfullargspec(middleware).defaults
             if defaults:
                 arg_len = arg_len - len(defaults)
+
             middleware_arguments = [_func, *args, middleware_context][0:arg_len]
 
             return await middleware(*middleware_arguments, *ma, **mkw)

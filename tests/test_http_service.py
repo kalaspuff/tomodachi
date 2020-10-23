@@ -250,6 +250,7 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
             assert await response.text() == "before"
             assert instance.function_triggered is False
 
+        async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get(
                 "http://127.0.0.1:{}/middleware-before".format(port), headers={"X-Use-Middleware": "After"}
             )

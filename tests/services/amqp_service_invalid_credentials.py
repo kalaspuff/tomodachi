@@ -4,7 +4,7 @@ import signal
 from typing import Any
 
 import tomodachi
-from tomodachi.protocol.json_base import JsonBase
+from tomodachi.envelope.json_base import JsonBase
 from tomodachi.transport.amqp import amqp
 
 
@@ -12,7 +12,7 @@ from tomodachi.transport.amqp import amqp
 class AMQPService(tomodachi.Service):
     name = "test_amqp"
     log_level = "INFO"
-    message_protocol = JsonBase
+    message_envelope = JsonBase
     options = {"amqp": {"port": 54321, "login": "invalid", "password": "invalid"}}
     closer = asyncio.Future()  # type: Any
 

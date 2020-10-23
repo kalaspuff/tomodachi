@@ -6,15 +6,21 @@ import inspect
 import logging
 import re
 import time
-from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, Match, Optional, Union
 
 import aioamqp
 
 from tomodachi.helpers.dict import merge_dicts
+from tomodachi.helpers.execution_context import (
+    decrease_execution_context_value,
+    increase_execution_context_value,
+    set_execution_context,
+)
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
-MESSAGE_PROTOCOL_DEFAULT = "2594418c-5771-454a-a7f9-8f83ae82812a"
+MESSAGE_ENVELOPE_DEFAULT = "2594418c-5771-454a-a7f9-8f83ae82812a"
+MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
 MESSAGE_ROUTING_KEY_PREFIX = "38f58822-25f6-458a-985c-52701d40dbbc"
 
 
@@ -64,7 +70,9 @@ class AmqpTransport(Invoker):
         routing_key: str = "",
         exchange_name: str = "",
         wait: bool = True,
-        message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
         **kwargs: Any,
     ) -> None:
@@ -72,15 +80,19 @@ class AmqpTransport(Invoker):
             await cls.connect(cls, service, service.context)
         exchange_name = exchange_name or cls.exchange_name or "amq.topic"
 
-        message_protocol = (
-            getattr(service, "message_protocol", None)
-            if message_protocol == MESSAGE_PROTOCOL_DEFAULT
-            else message_protocol
+        if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
+            # Fallback if deprecated message_protocol keyword is used
+            message_envelope = message_protocol
+
+        message_envelope = (
+            getattr(service, "message_envelope", getattr(service, "message_protocol", None))
+            if message_envelope == MESSAGE_ENVELOPE_DEFAULT
+            else message_envelope
         )
 
         payload = data
-        if message_protocol:
-            build_message_func = getattr(message_protocol, "build_message", None)
+        if message_envelope:
+            build_message_func = getattr(message_envelope, "build_message", None)
             if build_message_func:
                 payload = await build_message_func(service, routing_key, data, **kwargs)
 
@@ -94,7 +106,7 @@ class AmqpTransport(Invoker):
                         cls.encode_routing_key(cls.get_routing_key(routing_key, service.context, routing_key_prefix)),
                     )
                     success = True
-                except AssertionError as e:
+                except AssertionError:
                     await cls.connect(cls, service, service.context)
 
         if wait:
@@ -174,19 +186,28 @@ class AmqpTransport(Invoker):
         exchange_name: str = "",
         competing: Optional[bool] = None,
         queue_name: Optional[str] = None,
-        message_protocol: Any = MESSAGE_PROTOCOL_DEFAULT,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
-        message_protocol = (
-            context.get("message_protocol") if message_protocol == MESSAGE_PROTOCOL_DEFAULT else message_protocol
+
+        if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
+            # Fallback if deprecated message_protocol keyword is used
+            message_envelope = message_protocol
+
+        message_envelope = (
+            context.get("message_envelope", context.get("message_protocol"))
+            if message_envelope == MESSAGE_ENVELOPE_DEFAULT
+            else message_envelope
         )
 
-        # Validate the parser kwargs if there is a validation function in the protocol
-        if message_protocol:
-            protocol_kwargs_validation_func = getattr(message_protocol, "validate", None)
-            if protocol_kwargs_validation_func:
-                protocol_kwargs_validation_func(**parser_kwargs)
+        # Validate the parser kwargs if there is a validation function in the envelope
+        if message_envelope:
+            envelope_kwargs_validation_func = getattr(message_envelope, "validate", None)
+            if envelope_kwargs_validation_func:
+                envelope_kwargs_validation_func(**parser_kwargs)
 
         async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
             _callback_kwargs = callback_kwargs  # type: Any
@@ -209,9 +230,9 @@ class AmqpTransport(Invoker):
             message = payload
             message_uuid = None
             message_key = None
-            if message_protocol:
+            if message_envelope:
                 try:
-                    parse_message_func = getattr(message_protocol, "parse_message", None)
+                    parse_message_func = getattr(message_envelope, "parse_message", None)
                     if parse_message_func:
                         if len(parser_kwargs):
                             message, message_uuid, timestamp = await parse_message_func(payload, **parser_kwargs)
@@ -238,23 +259,40 @@ class AmqpTransport(Invoker):
                         for k, v in message.items():
                             if k in _callback_kwargs:
                                 kwargs[k] = v
-                        if "message" in _callback_kwargs and "message" not in message:
+                        if "message" in _callback_kwargs and (
+                            not isinstance(message, dict) or "message" not in message
+                        ):
                             kwargs["message"] = message
+                        if "routing_key" in _callback_kwargs and (
+                            not isinstance(message, dict) or "routing_key" not in message
+                        ):
+                            kwargs["routing_key"] = routing_key
                 except Exception as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.channel.basic_client_ack(delivery_tag)
                     elif message is False and message_uuid:
-                        pass  # incompatible protocol, should probably ack if old message
+                        pass  # incompatible envelope, should probably ack if old message
                     elif message is False:
                         await cls.channel.basic_client_ack(delivery_tag)
                     return
+            else:
+                if _callback_kwargs:
+                    if "message" in _callback_kwargs:
+                        kwargs["message"] = message
+                    if "routing_key" in _callback_kwargs:
+                        kwargs["routing_key"] = routing_key
+
+                if len(values.args[1:]) and values.args[1] in kwargs:
+                    del kwargs[values.args[1]]
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
                 try:
-                    if not message_protocol and len(values.args[1:]):
+                    if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
                         routine = func(*(obj, message, *a))
+                    elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
+                        routine = func(*(obj, message, *a), **merge_dicts(kwargs, kw))
                     elif len(merge_dicts(kwargs, kw)):
                         routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
                     elif len(values.args[1:]):
@@ -295,9 +333,13 @@ class AmqpTransport(Invoker):
                 await cls.channel.basic_client_ack(delivery_tag)
                 return return_value
 
+            increase_execution_context_value("amqp_current_tasks")
+            increase_execution_context_value("amqp_total_tasks")
             return_value = await execute_middlewares(
                 func, routine_func, context.get("message_middleware", []), *(obj, message, routing_key)
             )
+            decrease_execution_context_value("amqp_current_tasks")
+
             return return_value
 
         exchange_name = exchange_name or context.get("options", {}).get("amqp", {}).get("exchange_name", "amq.topic")
@@ -376,6 +418,15 @@ class AmqpTransport(Invoker):
         if context.get("_amqp_subscribed"):
             return None
         context["_amqp_subscribed"] = True
+
+        set_execution_context(
+            {
+                "amqp_enabled": True,
+                "amqp_current_tasks": 0,
+                "amqp_total_tasks": 0,
+                "aioamqp_version": aioamqp.__version__,
+            }
+        )
 
         cls.channel = None
         channel = await cls.connect(cls, obj, context)
