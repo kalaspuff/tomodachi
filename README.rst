@@ -28,10 +28,15 @@ Project documentation
 .. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
     :target: https://tomodachi.dev/docs/getting-started
 
-* Getting started / installation: https://tomodachi.dev/docs
-* Example code: https://tomodachi.dev/docs/examples
-* Options and configuration parameters: https://tomodachi.dev/docs/options
-* FAQ: https://tomodachi.dev/docs/faq
+- Getting started / installation: https://tomodachi.dev/docs
+- Example code: https://tomodachi.dev/docs/examples
+- Endpoint built-ins:
+  + HTTP endpoints: https://tomodachi.dev/docs/http
+  + AWS SNS+SQS event messaging: https://tomodachi.dev/docs/aws-sns-sqs
+  + AMQP messaging (RabbitMQ): https://tomodachi.dev/docs/amqp-rabbitmq
+  + Scheduled functions and cron: https://tomodachi.dev/docs/scheduled-functions-cron
+- Options and configuration parameters: https://tomodachi.dev/docs/options
+- FAQ: https://tomodachi.dev/docs/faq
 
 
 Usage
@@ -71,64 +76,13 @@ parameters and a few examples of service code.*
 
 **Use https://tomodachi.dev/docs for extensive project documentation.**
 
-|
-
-- `Installation <#getting-started->`_
-
-- `Getting started with service code / basic example services <#building-blocks-for-a-service-class-and-microservice-entrypoint>`_
-
-  + `<#basic-http-based-service->`_
-
-  + `<#rabbitmq-or-aws-snssqs-event-based-messaging-service->`_
-
-  + `<#aws-snssqs-event-based-messaging-service->`_
-
-  + `<#scheduling-inter-communication-between-services-etc-%EF%B8%8F>`_
-
-- `Starting a service from CLI <#run-the-service->`_
-
-- `Running services in Docker (with example) <#example-of-tomodachi-service-containerized-in-docker->`_
-
-- `Defining endpoints – trigger / invoker decorator functions <#available-built-ins-used-as-endpoints->`_
-
-  + `HTTP endpoints + websockets <#http-endpoints>`_
-
-  + `AWS SNS+SQS messaging – pub/sub events <#aws-snssqs-messaging>`_
-
-  + `AMQP / RabbitMQ messaging – pub/sub events <#amqp-messaging-rabbitmq>`_
-
-  + `Scheduled functions – time intervals or with full-featured cron syntax <#scheduled-functions--cron--triggered-on-time-interval>`_
-
-- `Additional configuration options <#additional-configuration-options->`_
-
-  + `HTTP server parameters include port settings, keep-alive, IP forwarding, … <#additional-configuration-options->`_
-
-  + `AWS credentials and where they are required + use of prefixes to SQS queues and SNS topics… <#additional-configuration-options->`_
-
-  + `AWS custom endpoints configuration to try out functionality in development environments… <#additional-configuration-options->`_
-
-  + `AMQP / RabbitMQ pub/sub settings and connection setup… <#additional-configuration-options->`_
-
-  + `File watcher options for auto reload on file changes during development… <#additional-configuration-options->`_
-
-- `Decorating invoker functions with custom middleware <#decorated-functions-using-tomodachidecorator->`_
-
-- `Requirements <#requirements->`_
-
-- `Changelog, license and source code <#license->`_
-
-- `Questions <#any-questions>`_
-
-- `Contributions <#contributions>`_
-
-
 ----
 
 | **Please note: this library is a work in progress.**
 
-``tomodachi`` is still an experimental project with an unregular release
-schedule. Before the package is available as a 1.0.0 release, note that there
-may be breaking changes between 0.x versions.
+Consider `tomodachi` as beta software. `tomodachi` is still an experimental
+project with an unregular release schedule. The package is not yet available
+as `1.0.0` and there may be breaking changes between `0.x` versions.
 
 ----
 
@@ -147,10 +101,10 @@ later is used to run the microservices you build.
     local ~$ pip install tomodachi
     > ...
     > Installing collected packages: ..., ..., ..., tomodachi
-    > Successfully installed ... ... ... tomodachi-0.x.xx
+    > Successfully installed ... ... ... tomodachi-x.x.xx
 
     local ~$ tomodachi --version
-    > tomodachi 0.19.0
+    > tomodachi x.xx.xx
 
 
 Probably goes without saying – services you build, their dependencies,
