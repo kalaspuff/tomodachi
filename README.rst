@@ -29,13 +29,21 @@ Project documentation
     :target: https://tomodachi.dev/docs/getting-started
 
 - Getting started / installation: https://tomodachi.dev/docs
+
 - Example code: https://tomodachi.dev/docs/examples
+
 - Endpoint built-ins:
+
   + HTTP endpoints: https://tomodachi.dev/docs/http
+
   + AWS SNS+SQS event messaging: https://tomodachi.dev/docs/aws-sns-sqs
+  
   + AMQP messaging (RabbitMQ): https://tomodachi.dev/docs/amqp-rabbitmq
+  
   + Scheduled functions and cron: https://tomodachi.dev/docs/scheduled-functions-cron
+
 - Options and configuration parameters: https://tomodachi.dev/docs/options
+
 - FAQ: https://tomodachi.dev/docs/faq
 
 
