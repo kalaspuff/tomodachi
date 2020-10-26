@@ -47,7 +47,10 @@ class CLI:
             "  | --production                            Disable restart on file changes\n"
             "  | -c, --config <files>                    Use configuration from JSON files\n"
             "  | -l, --log <level>, --log-level <level>  Specify log level\n"
-        )
+            "\n"
+            ">> Version: {}\n"
+            ">> Full documentation at: https://tomodachi.dev/docs"
+        ).format(tomodachi.__version__)
 
     def help_command(self) -> None:
         print(self.help_command_usage())
