@@ -21,10 +21,17 @@ use of any type of transport layer available.
 *Tomodachi* [**友達**] *means friends – a suitable name for microservices working
 together.* 😻 👬 👭 👫 😻
 
-.. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
-    :target: https://tomodachi.dev/docs
 
-* Documentation and service examples available at: https://tomodachi.dev/docs
+Project documentation
+---------------------
+
+.. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
+    :target: https://tomodachi.dev/docs/getting-started
+
+* Getting started / installation: https://tomodachi.dev/docs
+* Example code: https://tomodachi.dev/docs/examples
+* Options and configuration parameters: https://tomodachi.dev/docs/options
+* FAQ: https://tomodachi.dev/docs/faq
 
 
 Usage
@@ -62,7 +69,7 @@ container images.
 what built-in  functionality exists in this library, lists of available configuration
 parameters and a few examples of service code.*
 
-**Use the below table of contents to quickly navigate to what you're searching for.**
+**Use https://tomodachi.dev/docs for extensive project documentation.**
 
 |
 
