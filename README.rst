@@ -22,9 +22,6 @@ use of any type of transport layer available.
 together.* 😻 👬 👭 👫 😻
 
 
-.. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
-    :target: https://tomodachi.dev/docs/getting-started
-
 Project documentation
 ---------------------
 
@@ -45,6 +42,9 @@ Project documentation
 - Options and configuration parameters: https://tomodachi.dev/docs/options
 
 - FAQ: https://tomodachi.dev/docs/faq
+
+.. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
+    :target: https://tomodachi.dev/docs/getting-started
 
 
 Usage
