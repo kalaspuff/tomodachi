@@ -21,6 +21,11 @@ use of any type of transport layer available.
 *Tomodachi* [**友達**] *means friends – a suitable name for microservices working
 together.* 😻 👬 👭 👫 😻
 
+.. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
+    :target: https://tomodachi.dev/docs
+
+* Documentation and service examples available at: https://tomodachi.dev/docs
+
 
 Usage
 -----
@@ -600,7 +605,7 @@ Scheduled functions / cron / triggered on time interval:
 
 **A word on scheduled tasks in distributed contexts:** What is your use-case for scheduling function triggers or functions that trigger on an interval. These types of scheduling may not be optimal in clusters with many pods in the same replication set, as all the services running the same code will very likely execute at the same timestamp / interval (which in same cases may correlated with exactly when they were last deployed). As such these functions are quite naive and should only be used with some care, so that it triggering the functions several times doesn't incur unnecessary costs or come as a bad surprise if the functions aren't completely idempotent. To perform a task on a specific timestamp or on an interval where only one of the available services of the same type in a cluster should trigger is a common thing to solve and there are several solutions to pick from., some kind of distributed consensus needs to be reached. Tooling exists, but what you need may differ depending on your use-case. There's algorithms for distributed consensus and leader election, Paxos or Raft, that luckily have already been implemented to solutions like the strongly consistent and distributed key-value stores *etcd* and *TiKV*. Even primitive solutions such as *Redis*  ``SETNX`` commands would work, but could be costly or hard to manage access levels around. If you're on k8s there's even a simple "leader election" API available that just creates a 15 seconds lease. Solutions are many and if you are in need, go hunting and find one that suits your use-case, there's probably tooling and libraries available to call it from your service functions.
 
-Implementing proper consensus mechanisms and in turn leader election can be complicated. In distributed environments the architectuer around these solutions needs to account for leases, decision making when consensus was not reached, how to handle crashed executors, quick recovery on master node(s) disruptions, etc.
+Implementing proper consensus mechanisms and in turn leader election can be complicated. In distributed environments the architecture around these solutions needs to account for leases, decision making when consensus was not reached, how to handle crashed executors, quick recovery on master node(s) disruptions, etc.
 
 ----
 
