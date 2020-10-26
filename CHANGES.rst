@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.19.1 (2020-10-26)
+-------------------
+- Documentation related updates. External documentation is available at
+  https://tomodachi.dev/docs.
+
+
 0.19.0 (2020-10-23)
 -------------------
 - Note: This is a rather large release with a lot of updates. Also, this
