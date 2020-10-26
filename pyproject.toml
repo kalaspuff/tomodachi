@@ -9,7 +9,7 @@ license = "MIT"
 
 homepage = "https://github.com/kalaspuff/tomodachi"
 repository = "https://github.com/kalaspuff/tomodachi"
-documentation = "https://github.com/kalaspuff/tomodachi/blob/master/README.rst"
+documentation = "https://tomodachi.dev/docs"
 
 classifiers = [
     "Development Status :: 4 - Beta",
