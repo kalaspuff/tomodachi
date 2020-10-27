@@ -818,7 +818,8 @@ class HttpTransport(Invoker):
                                     elif (
                                         context["_http_max_keepalive_time"]
                                         and time.time()
-                                        > request.protocol._connection_start_time + context["_http_max_keepalive_time"]
+                                        > getattr(request.protocol, "_connection_start_time", 0)
+                                        + context["_http_max_keepalive_time"]
                                     ):
                                         use_keepalive = False
 
