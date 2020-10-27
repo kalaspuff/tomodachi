@@ -805,18 +805,30 @@ class HttpTransport(Invoker):
                                 use_keepalive = False
                                 if context["_http_tcp_keepalive"] and request.keep_alive and request.protocol:
                                     use_keepalive = True
-                                    if not context["_http_keepalive_timeout"] or context["_http_keepalive_timeout"] <= 0:
+                                    if (
+                                        not context["_http_keepalive_timeout"]
+                                        or context["_http_keepalive_timeout"] <= 0
+                                    ):
                                         use_keepalive = False
-                                    elif context["_http_max_keepalive_requests"] and request.protocol._request_count >= context["_http_max_keepalive_requests"]:
+                                    elif (
+                                        context["_http_max_keepalive_requests"]
+                                        and request.protocol._request_count >= context["_http_max_keepalive_requests"]
+                                    ):
                                         use_keepalive = False
-                                    elif context["_http_max_keepalive_time"] and time.time() > request.protocol._connection_start_time + context["_http_max_keepalive_time"]:
+                                    elif (
+                                        context["_http_max_keepalive_time"]
+                                        and time.time()
+                                        > request.protocol._connection_start_time + context["_http_max_keepalive_time"]
+                                    ):
                                         use_keepalive = False
 
                                 if use_keepalive:
                                     response.headers[hdrs.CONNECTION] = "keep-alive"
                                     response.headers[hdrs.KEEP_ALIVE] = "timeout={}{}".format(
                                         request.protocol._keepalive_timeout,
-                                        ", max={}".format(context["_http_max_keepalive_requests"]) if context["_http_max_keepalive_requests"] else ""
+                                        ", max={}".format(context["_http_max_keepalive_requests"])
+                                        if context["_http_max_keepalive_requests"]
+                                        else "",
                                     )
                                 else:
                                     response.headers[hdrs.CONNECTION] = "close"
