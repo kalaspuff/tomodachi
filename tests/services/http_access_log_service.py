@@ -14,7 +14,7 @@ class HttpService(tomodachi.Service):
     name = "test_http"
     options = {"http": {"port": None, "access_log": "/tmp/03c2ad00-d47d-4569-84a3-0958f88f6c14.log"}}
     uuid = None
-    closer = asyncio.Future()  # type: Any
+    closer: asyncio.Future = asyncio.Future()
     slow_request = False
 
     def __init__(self) -> None:

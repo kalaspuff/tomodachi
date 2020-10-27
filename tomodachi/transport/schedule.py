@@ -168,7 +168,7 @@ class Scheduler(Invoker):
             if isinstance(interval, int):
                 return int(current_time + interval)
 
-            interval_aliases = {
+            interval_aliases: Dict[Tuple[str, ...], Union[str, int]] = {
                 ("every second", "1s", "1 s", "1second", "1 second", "second", "secondly", "once per second"): 1,
                 (
                     "every minute",
@@ -213,7 +213,7 @@ class Scheduler(Invoker):
                 ("sunday", "sundays", "sun", "every sunday", "once per sunday"): "0 0 * * 0",
                 ("weekday", "weekdays", "every weekday"): "0 0 * * 1-5",
                 ("weekend", "weekends", "every weekend"): "0 0 * * 0,6",
-            }  # type: Dict[Tuple[str, ...], Union[str, int]]
+            }
             interval = interval.lower()
 
             if interval.endswith("s") or interval.endswith("seconds"):
@@ -223,7 +223,7 @@ class Scheduler(Invoker):
                     pass
 
             try:
-                interval_value = [v for k, v in interval_aliases.items() if interval in k][0]  # type: Union[str, int]
+                interval_value: Union[str, int] = [v for k, v in interval_aliases.items() if interval in k][0]
             except IndexError:
                 interval_value = interval
             if isinstance(interval_value, int):
@@ -243,7 +243,7 @@ class Scheduler(Invoker):
 
     def get_timezone(cls: Any, timezone: Optional[str] = None) -> Optional[str]:
         if timezone:
-            tz_aliases = {
+            tz_aliases: Dict[Tuple[str, ...], str] = {
                 (
                     "+00:00",
                     "-00:00",
@@ -280,7 +280,7 @@ class Scheduler(Invoker):
                 ("-10:00", "-1000", "GMT -1000", "GMT -10:00", "GMT -10"): "Etc/GMT+10",
                 ("-11:00", "-1100", "GMT -1100", "GMT -11:00", "GMT -11"): "Etc/GMT+11",
                 ("-12:00", "-1200", "GMT -1200", "GMT -12:00", "GMT -12"): "Etc/GMT+12",
-            }  # type: Dict[Tuple[str, ...], str]
+            }
             try:
                 try:
                     timezone = [
@@ -311,15 +311,15 @@ class Scheduler(Invoker):
 
         if not cls.close_waiter:
             cls.close_waiter = asyncio.Future()
-        stop_waiter = asyncio.Future()  # type: asyncio.Future
-        start_waiter = asyncio.Future()  # type: asyncio.Future
+        stop_waiter: asyncio.Future = asyncio.Future()
+        start_waiter: asyncio.Future = asyncio.Future()
 
         async def schedule_loop() -> None:
             await start_waiter
 
             next_call_at = None
             prev_call_at = None
-            tasks = []  # type: List
+            tasks: List = []
             current_time = time.time()
             too_many_tasks = False
             threshold = 20
@@ -425,7 +425,7 @@ class Scheduler(Invoker):
             if not stop_waiter.done():
                 stop_waiter.set_result(None)
 
-        loop = asyncio.get_event_loop()  # type: Any
+        loop: Any = asyncio.get_event_loop()
 
         stop_method = getattr(obj, "_stop_service", None)
 

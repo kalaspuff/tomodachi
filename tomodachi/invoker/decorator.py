@@ -19,8 +19,8 @@ class DecorationClass(object):
         self.__annotations__ = fn.__annotations__
         self.__kwdefaults__ = fn.__kwdefaults__
 
-        self.args = None  # type: Any
-        self.kwargs = None  # type: Any
+        self.args: Any = None
+        self.kwargs: Any = None
         self.function = fn
         self.decorator_function = decorator_fn
         self.include_function = include_function

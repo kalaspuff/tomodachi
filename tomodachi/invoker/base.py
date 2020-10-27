@@ -8,7 +8,7 @@ INVOKER_TASK_START_KEYWORD = "_tomodachi_invoker_task_start_keyword"
 
 
 class Invoker(object):
-    context = {}  # type: Dict
+    context: Dict = {}
 
     @classmethod
     def decorator(cls, cls_func: Callable) -> Callable:

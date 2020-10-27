@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List
 
 async def execute_middlewares(func: Callable, routine_func: Callable, middlewares: List, *args: Any) -> Any:
     if middlewares:
-        middleware_context = {}  # type: Dict
+        middleware_context: Dict = {}
 
         async def middleware_bubble(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
             @functools.wraps(func)
@@ -15,7 +15,7 @@ async def execute_middlewares(func: Callable, routine_func: Callable, middleware
             if middlewares and len(middlewares) <= idx + 1:
                 _func = routine_func  # noqa
 
-            middleware = middlewares[idx]  # type: Callable
+            middleware: Callable = middlewares[idx]
 
             arg_len = len(inspect.getfullargspec(middleware).args)
             defaults = inspect.getfullargspec(middleware).defaults

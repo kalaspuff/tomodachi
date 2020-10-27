@@ -35,9 +35,9 @@ class ServiceImporter(object):
             elif not file_path.endswith(".py") and not os.path.isfile("{}.py".format(file_path)):
                 raise OSError("No such service file")
             try:
-                spec = importlib.util.find_spec(
+                spec: Any = importlib.util.find_spec(
                     ".{}".format(file_path.rsplit("/", 1)[1])[:-3], package=os.path.dirname(file_path).rsplit("/", 1)[1]
-                )  # type: Any
+                )
                 if not spec:
                     # package name already taken, imported service not part of a package
                     spec = importlib.util.spec_from_file_location(file_name, file_path)
@@ -151,7 +151,7 @@ class ServiceImporter(object):
         cwd = os.getcwd()
         file_path = "{}/{}".format(os.path.realpath(cwd), file_name)
 
-        spec = importlib.util.spec_from_file_location(file_name, file_path)  # type: Any
+        spec: Any = importlib.util.spec_from_file_location(file_name, file_path)
         module_import = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module_import)
 

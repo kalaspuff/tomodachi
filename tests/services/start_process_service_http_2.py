@@ -14,7 +14,7 @@ class HttpService(tomodachi.Service):
     name = "test_http"
     options = {"http": {"port": 53252, "access_log": True, "real_ip_from": "127.0.0.1"}}
     uuid = None
-    closer = asyncio.Future()  # type: Any
+    closer: asyncio.Future = asyncio.Future()
     function_order = []
 
     @http("GET", r"/?")

@@ -7,7 +7,7 @@ import sys
 import types
 import uuid
 from types import ModuleType, TracebackType
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional, Set, cast
 
 import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
@@ -27,8 +27,8 @@ class ServiceContainer(object):
         self.configuration = configuration
         self.logger = logging.getLogger("services.{}".format(self.module_name))
 
-        self._close_waiter = asyncio.Future()  # type: asyncio.Future
-        self.started_waiter = asyncio.Future()  # type: asyncio.Future
+        self._close_waiter: asyncio.Future = asyncio.Future()
+        self.started_waiter: asyncio.Future = asyncio.Future()
 
         def catch_uncaught_exceptions(type_: type, value: BaseException, traceback: TracebackType) -> None:
             raise value
@@ -58,12 +58,12 @@ class ServiceContainer(object):
         await self._close_waiter
 
     async def run_until_complete(self) -> None:
-        services_started = set()  # type: set
-        invoker_tasks = set()  # type: set
-        start_futures = set()  # type: set
-        stop_futures = set()  # type: set
-        started_futures = set()  # type: set
-        registered_services = set()  # type: set
+        services_started: Set = set()
+        invoker_tasks: Set = set()
+        start_futures: Set = set()
+        stop_futures: Set = set()
+        started_futures: Set = set()
+        registered_services: Set = set()
         for _, cls in inspect.getmembers(self.module_import):
             if inspect.isclass(cls):
                 if not getattr(cls, CLASS_ATTRIBUTE, False):

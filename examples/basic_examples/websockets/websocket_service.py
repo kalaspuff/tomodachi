@@ -22,9 +22,7 @@ class ExampleWebsocketService(tomodachi.Service):
         path = "{}/{}".format(
             os.path.dirname(self.context.get("context", {}).get("_service_file_path")), "public/index.html"
         )
-        response = FileResponse(
-            path=path, chunk_size=256 * 1024  # type: ignore
-        )  # type: web.Response
+        response: web.Response = FileResponse(path=path, chunk_size=256 * 1024)
         return response
 
     @http_static("public/", r"/public")

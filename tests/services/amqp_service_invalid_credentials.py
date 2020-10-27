@@ -14,7 +14,7 @@ class AMQPService(tomodachi.Service):
     log_level = "INFO"
     message_envelope = JsonBase
     options = {"amqp": {"port": 54321, "login": "invalid", "password": "invalid"}}
-    closer = asyncio.Future()  # type: Any
+    closer: asyncio.Future = asyncio.Future()
 
     @amqp("test.topic", ("data",))
     async def test(self, data: Any) -> None:

@@ -11,7 +11,7 @@ from tomodachi.transport.schedule import schedule
 class SchedulerService(tomodachi.Service):
     name = "test_schedule"
     uuid = None
-    closer = asyncio.Future()  # type: Any
+    closer: asyncio.Future = asyncio.Future()
     function_order = []
 
     @schedule(interval="5 seconds", immediately=True)

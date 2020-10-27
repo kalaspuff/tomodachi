@@ -15,7 +15,7 @@ class AMQPService(tomodachi.Service):
     log_level = "INFO"
     message_envelope = JsonBase
     options = {"amqp": {"login": "guest", "password": "guest"}}
-    closer = asyncio.Future()  # type: Any
+    closer: asyncio.Future = asyncio.Future()
     test_topic_data_received = False
     test_topic_specified_queue_name_data_received = False
     test_topic_metadata_topic = None

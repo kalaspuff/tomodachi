@@ -16,9 +16,9 @@ def crc(file_path: str) -> str:
 
 class Watcher(object):
     def __init__(self, root: Optional[List] = None, configuration: Optional[Dict] = None) -> None:
-        self.watched_files = {}  # type: Dict[str, float]
-        self.watched_files_crc = {}  # type: Dict[str, str]
-        self.root = []  # type: List[str]
+        self.watched_files: Dict[str, float] = {}
+        self.watched_files_crc: Dict[str, str] = {}
+        self.root: List[str] = []
         self.ignored_dirs = ["__pycache__", ".git", ".svn", "__ignored__", "__temporary__", "__tmp__"]
         self.watched_file_endings = [".py", ".pyi", ".json", ".yml", ".html", ".phtml"]
 
@@ -42,8 +42,8 @@ class Watcher(object):
         self.update_watched_files()
 
     def update_watched_files(self, reindex: bool = False) -> Dict:
-        watched_files = {}  # type: Dict[str, float]
-        watched_files_crc = {}  # type: Dict[str, str]
+        watched_files: Dict[str, float] = {}
+        watched_files_crc: Dict[str, str] = {}
         if not self.watched_files or reindex:
             for r in self.root:
                 for root, dirs, files in os.walk(r, topdown=True):
@@ -110,7 +110,7 @@ class Watcher(object):
         return {}
 
     async def watch(self, loop: asyncio.AbstractEventLoop = None, callback_func: Optional[Callable] = None) -> Any:
-        _loop = asyncio.get_event_loop() if not loop else loop  # type: Any
+        _loop: Any = asyncio.get_event_loop() if not loop else loop
 
         async def _watch_loop() -> None:
             loop_counter = 0

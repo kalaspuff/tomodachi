@@ -22,7 +22,7 @@ class AWSSNSSQSService(tomodachi.Service):
             "aws_secret_access_key": "XXXXXXXXX",
         }
     }
-    closer = asyncio.Future()  # type: Any
+    closer: asyncio.Future = asyncio.Future()
 
     @aws_sns_sqs("test-topic", ("data",))
     async def test(self, data: Any) -> None:

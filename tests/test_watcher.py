@@ -60,7 +60,7 @@ def test_watcher_callback(loop: Any) -> None:
     assert len(result.get("updated", 0)) == 0
 
     class Test:
-        callbacks_run = {}  # type: Dict[int, bool]
+        callbacks_run: Dict[int, bool] = {}
 
         @classmethod
         async def _async(cls) -> None:
