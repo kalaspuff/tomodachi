@@ -48,9 +48,14 @@ class HttpException(Exception):
 
 
 class RequestHandler(web_protocol.RequestHandler):  # type: ignore
+    __slots__ = web_protocol.RequestHandler.__slots__ + ("_server_header", "_access_log", "_connection_start_time")
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop("server_header", None) if kwargs else None
         self._access_log = kwargs.pop("access_log", None) if kwargs else None
+
+        self._connection_start_time = time.time()
+
         super().__init__(*args, **kwargs)  # type: ignore
 
     @staticmethod
@@ -202,6 +207,7 @@ class Server(web_server.Server):  # type: ignore
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop("server_header", None) if kwargs else None
         self._access_log = kwargs.pop("access_log", None) if kwargs else None
+
         super().__init__(*args, **kwargs)  # type: ignore
 
     def __call__(self) -> RequestHandler:
@@ -796,16 +802,28 @@ class HttpTransport(Invoker):
                             response.headers[hdrs.SERVER] = server_header or ""
 
                             if request_version in ((1, 0), (1, 1)) and not request._cache.get("is_websocket"):
-                                if context["_http_tcp_keepalive"] and request.keep_alive:
+                                use_keepalive = False
+                                if context["_http_tcp_keepalive"] and request.keep_alive and request.protocol:
+                                    use_keepalive = True
+                                    if not context["_http_keepalive_timeout"] or context["_http_keepalive_timeout"] <= 0:
+                                        use_keepalive = False
+                                    elif context["_http_max_keepalive_requests"] and request.protocol._request_count >= context["_http_max_keepalive_requests"]:
+                                        use_keepalive = False
+                                    elif context["_http_max_keepalive_time"] and time.time() > request.protocol._connection_start_time + context["_http_max_keepalive_time"]:
+                                        use_keepalive = False
+
+                                if use_keepalive:
                                     response.headers[hdrs.CONNECTION] = "keep-alive"
-                                    response.headers[hdrs.KEEP_ALIVE] = "timeout={}".format(
-                                        context["_http_keepalive_timeout"]
+                                    response.headers[hdrs.KEEP_ALIVE] = "timeout={}{}".format(
+                                        request.protocol._keepalive_timeout,
+                                        ", max={}".format(context["_http_max_keepalive_requests"]) if context["_http_max_keepalive_requests"] else ""
                                     )
                                 else:
                                     response.headers[hdrs.CONNECTION] = "close"
+                                    response.force_close()  # type: ignore
 
-                        if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
-                            response.force_close()  # type: ignore
+                            if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
+                                response.force_close()  # type: ignore
 
                         if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
                             raise response
@@ -823,18 +841,30 @@ class HttpTransport(Invoker):
                     try:
                         await task
                         decrease_execution_context_value("http_current_tasks")
-                        context["_http_active_requests"].remove(task)
+                        try:
+                            context["_http_active_requests"].remove(task)
+                        except KeyError:
+                            pass
                         return task.result()
                     except Exception:
                         decrease_execution_context_value("http_current_tasks")
-                        context["_http_active_requests"].remove(task)
+                        try:
+                            context["_http_active_requests"].remove(task)
+                        except KeyError:
+                            pass
                         raise
                 except Exception:
                     decrease_execution_context_value("http_current_tasks")
-                    context["_http_active_requests"].remove(task)
+                    try:
+                        context["_http_active_requests"].remove(task)
+                    except KeyError:
+                        pass
                     raise
                 decrease_execution_context_value("http_current_tasks")
-                context["_http_active_requests"].remove(task)
+                try:
+                    context["_http_active_requests"].remove(task)
+                except KeyError:
+                    pass
 
                 return task.result()
 
@@ -913,13 +943,14 @@ class HttpTransport(Invoker):
             if port is True:
                 raise ValueError("Bad value for http option port: {}".format(str(port)))
 
+            # Configuration settings for keep-alive could use some refactoring
+
             keepalive_timeout_option = http_options.get("keepalive_timeout", 0) or http_options.get(
                 "keepalive_expiry", 0
             )
             keepalive_timeout = 0
-            tcp_keepalive = False
             if keepalive_timeout_option is None or keepalive_timeout_option is False:
-                keepalive_timeout = 0
+                keepalive_timeout_option = 0
             if keepalive_timeout_option is True:
                 raise ValueError(
                     "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
@@ -930,11 +961,62 @@ class HttpTransport(Invoker):
                 raise ValueError(
                     "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
                 ) from None
+
+            tcp_keepalive = False
             if keepalive_timeout > 0:
                 tcp_keepalive = True
             else:
                 tcp_keepalive = False
                 keepalive_timeout = 0
+
+            max_keepalive_requests_option = http_options.get("max_keepalive_requests", None)
+            max_keepalive_requests = None
+            if max_keepalive_requests_option is None or max_keepalive_requests_option is False:
+                max_keepalive_requests_option = None
+            if max_keepalive_requests_option is True:
+                raise ValueError(
+                    "Bad value for http option max_keepalive_requests: {}".format(str(max_keepalive_requests_option))
+                )
+            try:
+                if max_keepalive_requests_option is not None:
+                    max_keepalive_requests = int(max_keepalive_requests_option)
+                if max_keepalive_requests == 0:
+                    max_keepalive_requests = None
+            except Exception:
+                raise ValueError(
+                    "Bad value for http option max_keepalive_requests: {}".format(str(max_keepalive_requests_option))
+                ) from None
+            if not tcp_keepalive and max_keepalive_requests:
+                raise ValueError(
+                    "HTTP keep-alive must be enabled to use http option max_keepalive_requests - a http.keepalive_timeout option value is required"
+                ) from None
+
+            max_keepalive_time_option = http_options.get("max_keepalive_time", None)
+            max_keepalive_time = None
+            if max_keepalive_time_option is None or max_keepalive_time_option is False:
+                max_keepalive_time_option = None
+            if max_keepalive_time_option is True:
+                raise ValueError(
+                    "Bad value for http option max_keepalive_time: {}".format(str(max_keepalive_time_option))
+                )
+            try:
+                if max_keepalive_time_option is not None:
+                    max_keepalive_time = int(max_keepalive_time_option)
+                if max_keepalive_time == 0:
+                    max_keepalive_time = None
+            except Exception:
+                raise ValueError(
+                    "Bad value for http option max_keepalive_time: {}".format(str(max_keepalive_time_option))
+                ) from None
+            if not tcp_keepalive and max_keepalive_time:
+                raise ValueError(
+                    "HTTP keep-alive must be enabled to use http option max_keepalive_time - a http.keepalive_timeout option value is required"
+                ) from None
+
+            context["_http_tcp_keepalive"] = tcp_keepalive
+            context["_http_keepalive_timeout"] = keepalive_timeout
+            context["_http_max_keepalive_requests"] = max_keepalive_requests
+            context["_http_max_keepalive_time"] = max_keepalive_time
 
             set_execution_context(
                 {
@@ -944,9 +1026,6 @@ class HttpTransport(Invoker):
                     "aiohttp_version": aiohttp_version,
                 }
             )
-
-            context["_http_tcp_keepalive"] = tcp_keepalive
-            context["_http_keepalive_timeout"] = keepalive_timeout
 
             try:
                 app.freeze()
@@ -980,13 +1059,15 @@ class HttpTransport(Invoker):
 
             async def stop_service(*args: Any, **kwargs: Any) -> None:
                 context["_http_tcp_keepalive"] = False
-                context["_http_accept_new_requests"] = False
 
                 server.close()
                 await server.wait_closed()
 
                 if len(web_server.connections):
                     await asyncio.sleep(1)
+
+                if not tcp_keepalive:
+                    context["_http_accept_new_requests"] = False
 
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
@@ -1008,24 +1089,58 @@ class HttpTransport(Invoker):
                         pass
                     context["_http_open_websockets"] = []
 
+                termination_grace_period_seconds = 30
+                try:
+                    termination_grace_period_seconds = int(
+                        http_options.get("termination_grace_period_seconds") or termination_grace_period_seconds
+                    )
+                except Exception:
+                    pass
+
+                log_wait_message = True if termination_grace_period_seconds >= 2 else False
+
+                if tcp_keepalive and len(web_server.connections):
+                    wait_start_time = time.time()
+
+                    while wait_start_time + max(2, termination_grace_period_seconds) > time.time():
+                        active_requests = context.get("_http_active_requests", set())
+                        if not active_requests and not len(web_server.connections):
+                            break
+
+                        if log_wait_message:
+                            log_wait_message = False
+                            if len(web_server.connections) and len(web_server.connections) != len(active_requests):
+                                logging.getLogger("transport.http").info(
+                                    "Waiting for {} keep-alive connection(s) to close".format(
+                                        len(web_server.connections)
+                                    )
+                                )
+                            if active_requests:
+                                logging.getLogger("transport.http").info(
+                                    "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
+                                        len(active_requests), termination_grace_period_seconds
+                                    )
+                                )
+
+                        await asyncio.sleep(0.25)
+
+                    termination_grace_period_seconds -= int(time.time() - wait_start_time)
+
+                context["_http_accept_new_requests"] = False
+
                 active_requests = context.get("_http_active_requests", set())
                 if active_requests:
-                    termination_grace_period_seconds = 30
-                    try:
-                        termination_grace_period_seconds = int(
-                            http_options.get("termination_grace_period_seconds") or termination_grace_period_seconds
+                    if log_wait_message:
+                        logging.getLogger("transport.http").info(
+                            "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
+                                len(active_requests), termination_grace_period_seconds
+                            )
                         )
-                    except Exception:
-                        pass
-                    logging.getLogger("transport.http").info(
-                        "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
-                            len(active_requests), termination_grace_period_seconds
-                        )
-                    )
+
                     try:
                         await asyncio.wait_for(
                             asyncio.shield(asyncio.gather(*active_requests, return_exceptions=True)),
-                            timeout=termination_grace_period_seconds,
+                            timeout=max(2, termination_grace_period_seconds),
                         )
                         await asyncio.sleep(1)
                         active_requests = context.get("_http_active_requests", set())
@@ -1040,6 +1155,11 @@ class HttpTransport(Invoker):
                     context["_http_active_requests"] = set()
 
                 if len(web_server.connections):
+                    logging.getLogger("transport.http").warning(
+                        "The remaining {} open TCP connections will be forcefully closed".format(
+                            len(web_server.connections)
+                        )
+                    )
                     await app.shutdown()
                     await asyncio.sleep(1)
                 else:
