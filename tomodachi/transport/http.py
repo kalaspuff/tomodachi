@@ -8,7 +8,6 @@ import pathlib
 import re
 import time
 import uuid
-from logging.handlers import WatchedFileHandler
 from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
 from aiohttp import WSMsgType
@@ -37,12 +36,10 @@ except Exception:
         pass
 
 
-try:
-    import colorama
-
-    colorama_installed = True
-except Exception:
-    colorama_installed = False
+# Should be implemented as lazy load instead
+class ColoramaCache:
+    _is_colorama_installed: Optional[bool] = None
+    _colorama: Any = None
 
 
 class HttpException(Exception):
@@ -90,8 +87,18 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
     @staticmethod
     def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]] = False) -> str:
-        if not colorama_installed:
+        if ColoramaCache._is_colorama_installed is None:
+            try:
+                import colorama  # noqa  # isort:skip
+
+                ColoramaCache._is_colorama_installed = True
+                ColoramaCache._colorama = colorama
+            except Exception:
+                ColoramaCache._is_colorama_installed = False
+
+        if ColoramaCache._is_colorama_installed is False:
             return str(text) if text else ""
+
         if status is False:
             status = text
         status_code = str(status) if status else None
@@ -100,18 +107,18 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
             color = None
 
             if status_code == "101":
-                color = colorama.Fore.CYAN
+                color = ColoramaCache._colorama.Fore.CYAN
             elif status_code[0] == "2":
-                color = colorama.Fore.GREEN
+                color = ColoramaCache._colorama.Fore.GREEN
             elif status_code[0] == "3" or status_code == "499":
-                color = colorama.Fore.YELLOW
+                color = ColoramaCache._colorama.Fore.YELLOW
             elif status_code[0] == "4":
-                color = colorama.Fore.RED
+                color = ColoramaCache._colorama.Fore.RED
             elif status_code[0] == "5":
-                color = colorama.Fore.WHITE + colorama.Back.RED
+                color = ColoramaCache._colorama.Fore.WHITE + ColoramaCache._colorama.Back.RED
 
             if color:
-                return "{}{}{}".format(color, output_text, colorama.Style.RESET_ALL)
+                return "{}{}{}".format(color, output_text, ColoramaCache._colorama.Style.RESET_ALL)
             return output_text
 
         return str(text) if text else ""
@@ -657,6 +664,8 @@ class HttpTransport(Invoker):
 
         logger_handler = None
         if isinstance(access_log, str):
+            from logging.handlers import WatchedFileHandler  # noqa  # isort:skip
+
             try:
                 wfh = WatchedFileHandler(filename=access_log)
             except FileNotFoundError as e:

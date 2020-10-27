@@ -1,6 +1,27 @@
 Changes
 =======
 
+0.20.0 (2020-10-27)
+-------------------
+- Lazy loading of dependencies to lower memory foot print and to make
+  services launch quicker as they usually don't use all built-in
+  implementations. Reference services launch noticeable faster now.
+
+- Optimizations and refactoring of middleware for all service function
+  calls of all built-in invokers, saving somewhere around 10-20% on CPU
+  time in average.
+
+- Improved type hints for invoker decorators.
+
+- Preparations to be able to loosen dependencies and in the future make
+  the related packages into optional extras instead.
+
+- Printed hints (in development) on missing packages that haven't been
+  installed or couldn't be imported and in turn causing fatal errors.
+
+- Added support for ``aiohttp`` 3.7.x.
+
+
 0.19.1 (2020-10-26)
 -------------------
 - Documentation related updates. External documentation is available at

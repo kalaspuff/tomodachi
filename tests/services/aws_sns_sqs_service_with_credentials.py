@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 import signal
-import uuid
+import uuid as uuid_
 from typing import Any, Dict, Set
 
 import tomodachi
@@ -10,7 +10,7 @@ from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
 from tomodachi.envelope.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
 
-data_uuid = str(uuid.uuid4())
+data_uuid = str(uuid_.uuid4())
 
 
 @tomodachi.service
@@ -30,7 +30,7 @@ class AWSSNSSQSService(tomodachi.Service):
             "topic_prefix": os.environ.get("TOMODACHI_TEST_SNS_TOPIC_PREFIX"),
         },
     }
-    uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID")
+    uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID") or ""
     closer = asyncio.Future()  # type: Any
     test_topic_data_received = False
     test_topic_specified_queue_name_data_received = False
@@ -129,7 +129,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
         asyncio.ensure_future(_async())
 
-        self.data_uuid = str(uuid.uuid4())
+        self.data_uuid = str(uuid_.uuid4())
 
         await publish(self.data_uuid, "test-topic")
         await publish(self.data_uuid, "test-topic-unique")

@@ -72,8 +72,6 @@ scheduler = ["tzlocal", "pytz"]
 
 color = ["colorama"]
 
-basic = ["aiobotocore", "botocore", "aiohttp", "cchardet", "aioamqp", "tzlocal", "pytz"]
-
 
 [tool.poetry.dev-dependencies]
 # The dev dependencies look messy, but helps out to not get a bunch of win32 into the dev category.

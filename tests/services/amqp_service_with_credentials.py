@@ -23,7 +23,7 @@ class AMQPService(tomodachi.Service):
     wildcard_topic_data_received = False
     data_uuid = None
 
-    def check_closer(self):
+    def check_closer(self) -> None:
         if (
             self.test_topic_data_received
             and self.test_topic_specified_queue_name_data_received
