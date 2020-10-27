@@ -11,6 +11,25 @@ Changes
   calls of all built-in invokers, saving somewhere around 10-20% on CPU
   time in average.
 
+- Improvements to awaiting open keep-alive connections when terminating
+  a service for a lower chance of interrupting last second incoming
+  requests over the connection.
+
+- New option: ``http.max_keepalive_requests``. An optional number (int)
+  of requests which is allowed for a keep-alive connection. After the
+  specified number of requests has been done, the connection will be
+  closed. A value of ``0`` or ``None`` (default) will allow any number
+  of requests over an open keep-alive connection.
+
+- New option: ``http.max_keepalive_time``. An optional maximum time in
+  seconds (int) for which keep-alive connections are kept open. If a
+  keep-alive connection has been kept open for more than
+  ``http.max_keepalive_time`` seconds, the following request will be
+  closed upon returning a response. The feature is not used by default
+  and won't be used if the value is ``0`` or ``None``. A keep-alive
+  connection may otherwise be open unless inactive for more than the
+  keep-alive timeout.
+
 - Improved type hint annotations for invoker decorators.
 
 - Preparations to be able to loosen dependencies and in the future make
