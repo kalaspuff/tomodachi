@@ -677,7 +677,7 @@ class HttpTransport(Invoker):
 
                     if request.headers.get("Authorization"):
                         try:
-                            request._cache["auth"] = BasicAuth.decode(request.headers.get("Authorization"))
+                            request._cache["auth"] = BasicAuth.decode(request.headers.get("Authorization", ""))
                         except ValueError:
                             pass
 

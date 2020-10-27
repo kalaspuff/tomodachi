@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.19.2 (2020-10-27)
+-------------------
+- Added support for ``aiohttp`` 3.7.x.
+
+
 0.19.1 (2020-10-26)
 -------------------
 - Documentation related updates. External documentation is available at
