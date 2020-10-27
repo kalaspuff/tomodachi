@@ -9,9 +9,8 @@ import re
 import time
 import uuid
 from logging.handlers import WatchedFileHandler
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union  # noqa
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast  # noqa
 
-import colorama
 from aiohttp import WSMsgType
 from aiohttp import __version__ as aiohttp_version
 from aiohttp import hdrs, web, web_protocol, web_server, web_urldispatcher
@@ -36,6 +35,13 @@ except Exception:
 
     class CancelledError(Exception):  # type: ignore
         pass
+
+try:
+    import colorama
+
+    colorama_installed = True
+except Exception:
+    colorama_installed = False
 
 
 class HttpException(Exception):
@@ -83,6 +89,8 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
     @staticmethod
     def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]] = False) -> str:
+        if not colorama_installed:
+            return str(text) if text else ""
         if status is False:
             status = text
         status_code = str(status) if status else None
@@ -276,9 +284,10 @@ class HttpTransport(Invoker):
         obj: Any,
         context: Dict,
         func: Any,
-        method: str,
+        method: Union[str, List[str], Tuple[str, ...]],
         url: str,
-        ignore_logging: Union[bool, List[int], Tuple[int]] = False,
+        *,
+        ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False,
         pre_handler_func: Optional[Callable] = None,
     ) -> Any:
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
@@ -299,17 +308,20 @@ class HttpTransport(Invoker):
             except IndexError:
                 pass
 
+        values = inspect.getfullargspec(func)
+        original_kwargs = (
+            {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
+            if values.defaults
+            else {}
+        )
+
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
-            result = compiled_pattern.match(request.path)
-            values = inspect.getfullargspec(func)
-            kwargs = (
-                {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
-                if values.defaults
-                else {}
-            )
-            if result:
-                for k, v in result.groupdict().items():
-                    kwargs[k] = v
+            kwargs = dict(original_kwargs)
+            if "(" in pattern:
+                result = compiled_pattern.match(request.path)
+                if result:
+                    for k, v in result.groupdict().items():
+                        kwargs[k] = v
 
             @functools.wraps(func)
             async def routine_func(
@@ -344,8 +356,10 @@ class HttpTransport(Invoker):
         if isinstance(method, list) or isinstance(method, tuple):
             for m in method:
                 context["_http_routes"].append((m.upper(), pattern, handler, route_context))
-        else:
+        elif isinstance(method, str):
             context["_http_routes"].append((method.upper(), pattern, handler, route_context))
+        else:
+            raise Exception("Invalid method '{}' for route".format(str(method)))
 
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
@@ -357,7 +371,8 @@ class HttpTransport(Invoker):
         func: Any,
         path: str,
         base_url: str,
-        ignore_logging: Union[bool, List[int], Tuple[int]] = False,
+        *,
+        ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False,
     ) -> Any:
         if "?P<filename>" not in base_url:
             pattern = r"^{}(?P<filename>.+?)$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", base_url)))
@@ -418,15 +433,15 @@ class HttpTransport(Invoker):
             except IndexError:
                 pass
 
+        values = inspect.getfullargspec(func)
+        kwargs = (
+            {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
+            if values.defaults
+            else {}
+        )
+
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             request._cache["error_status_code"] = status_code
-
-            values = inspect.getfullargspec(func)
-            kwargs = (
-                {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
-                if values.defaults
-                else {}
-            )
 
             @functools.wraps(func)
             async def routine_func(
@@ -466,6 +481,13 @@ class HttpTransport(Invoker):
         async def _pre_handler_func(obj: Any, request: web.Request) -> None:
             request._cache["is_websocket"] = True
             request._cache["websocket_uuid"] = str(uuid.uuid4())
+
+        values = inspect.getfullargspec(func)
+        original_kwargs = (
+            {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
+            if values.defaults
+            else {}
+        )
 
         @functools.wraps(func)
         async def _func(obj: Any, request: web.Request, *a: Any, **kw: Any) -> None:
@@ -517,16 +539,12 @@ class HttpTransport(Invoker):
                     )
                 )
 
-            result = compiled_pattern.match(request.path)
-            values = inspect.getfullargspec(func)
-            kwargs = (
-                {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
-                if values.defaults
-                else {}
-            )
-            if result:
-                for k, v in result.groupdict().items():
-                    kwargs[k] = v
+            kwargs = dict(original_kwargs)
+            if "(" in pattern:
+                result = compiled_pattern.match(request.path)
+                if result:
+                    for k, v in result.groupdict().items():
+                        kwargs[k] = v
 
             if len(values.args) - (len(values.defaults) if values.defaults else 0) >= 3:
                 # If the function takes a third required argument the value will be filled with the request object
@@ -1106,9 +1124,29 @@ async def get_http_response_status(
             return status_code
 
 
-http = HttpTransport.decorator(HttpTransport.request_handler)
-http_error = HttpTransport.decorator(HttpTransport.error_handler)
-http_static = HttpTransport.decorator(HttpTransport.static_request_handler)
+__http = HttpTransport.decorator(HttpTransport.request_handler)
+__http_error = HttpTransport.decorator(HttpTransport.error_handler)
+__http_static = HttpTransport.decorator(HttpTransport.static_request_handler)
 
-websocket = HttpTransport.decorator(HttpTransport.websocket_handler)
-ws = HttpTransport.decorator(HttpTransport.websocket_handler)
+__websocket = HttpTransport.decorator(HttpTransport.websocket_handler)
+__ws = HttpTransport.decorator(HttpTransport.websocket_handler)
+
+
+def http(method: Union[str, List[str], Tuple[str, ...]], url: str, *, ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False, pre_handler_func: Optional[Callable] = None) -> Callable:
+    return cast(Callable, __http(method, url, ignore_logging=ignore_logging, pre_handler_func=pre_handler_func))
+
+
+def http_error(status_code: int) -> Callable:
+    return cast(Callable, __http_error(status_code))
+
+
+def http_static(path: str, base_url: str, *, ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False) -> Callable:
+    return cast(Callable, __http_static(path, base_url, ignore_logging=ignore_logging))
+
+
+def websocket(url: str) -> Callable:
+    return cast(Callable, __websocket(url))
+
+
+def ws(url: str) -> Callable:
+    return cast(Callable, __ws(url))

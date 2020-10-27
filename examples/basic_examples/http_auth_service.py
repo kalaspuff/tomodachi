@@ -1,6 +1,5 @@
-import asyncio
 import os
-import uuid
+import uuid as uuid_
 from typing import Any
 
 from aiohttp import web
@@ -21,7 +20,7 @@ class ExampleHttpAuthService(tomodachi.Service):
     log_level = "DEBUG"
     uuid = str(os.environ.get("SERVICE_UUID") or "")
 
-    allowed_token = str(uuid.uuid4())
+    allowed_token = str(uuid_.uuid4())
 
     options = {"http": {"port": 4711, "content_type": "text/plain; charset=utf-8", "access_log": True}}
 

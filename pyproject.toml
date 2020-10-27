@@ -65,14 +65,14 @@ uvloop = ["uvloop"]
 aiodns = ["aiodns"]
 brotli = ["Brotli"]
 
-# aws = ["aiobotocore", "botocore", "aiohttp", "cchardet"]
-# amqp = ["aioamqp"]
-# http = ["aiohttp", "cchardet"]
-# scheduler = ["tzlocal", "pytz"]
-#
-# color = ["colorama"]
-#
-# basic = ["aiobotocore", "botocore", "aiohttp", "cchardet", "aioamqp", "tzlocal"]
+aws = ["aiobotocore", "botocore", "aiohttp", "cchardet"]
+amqp = ["aioamqp"]
+http = ["aiohttp", "cchardet"]
+scheduler = ["tzlocal", "pytz"]
+
+color = ["colorama"]
+
+basic = ["aiobotocore", "botocore", "aiohttp", "cchardet", "aioamqp", "tzlocal", "pytz"]
 
 
 [tool.poetry.dev-dependencies]

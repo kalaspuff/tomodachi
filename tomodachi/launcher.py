@@ -191,7 +191,7 @@ class ServiceLauncher(object):
 
                 init_local_datetime = (
                     datetime.datetime.fromtimestamp(init_timestamp)
-                    if tz and tz is not utc_tz
+                    if tz and tz is not utc_tz and str(tz) != "UTC"
                     else datetime.datetime.utcfromtimestamp(init_timestamp)
                 )
 
@@ -240,6 +240,28 @@ class ServiceLauncher(object):
                 pass
             except Exception as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+
+                if isinstance(e, ModuleNotFoundError):  # pragma: no cover
+                    missing_module_name = str(getattr(e, "name", None) or "")
+                    if missing_module_name:
+                        color = ""
+                        color_reset = ""
+                        try:
+                            import colorama  # noqa  # isort:skip
+
+                            color = colorama.Fore.WHITE + colorama.Back.RED
+                            color_reset = colorama.Style.RESET_ALL
+                        except Exception:
+                            pass
+
+                        print("")
+                        print(
+                            "{}[fatal error] The '{}' package is missing or cannot be imported.{}".format(
+                                color, missing_module_name, color_reset
+                            )
+                        )
+                        print("")
+
                 if restarting:
                     logging.getLogger("watcher.restart").warning("Service cannot restart due to errors")
                     logging.getLogger("watcher.restart").warning("Trying again in 1.5 seconds")

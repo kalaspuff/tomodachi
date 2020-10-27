@@ -1,7 +1,5 @@
-import asyncio
 import os
-import pathlib
-import uuid
+import uuid as uuid_
 from typing import Callable, Tuple, Union
 
 from aiohttp import web
@@ -41,7 +39,7 @@ class ExampleWebsocketService(tomodachi.Service):
         async def _receive(data: Union[str, bytes]) -> None:
             # Called when the websocket receives data
             self.log("websocket data received: {}".format(data))
-            await websocket.send_str("response {}".format(str(uuid.uuid4())))
+            await websocket.send_str("response {}".format(str(uuid_.uuid4())))
 
         async def _close() -> None:
             # Called when the websocket is closed by the other end

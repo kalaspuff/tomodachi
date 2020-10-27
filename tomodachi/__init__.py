@@ -42,6 +42,7 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, str]]] = {
     "minutely": ("tomodachi.transport.schedule",),
     "monthly": ("tomodachi.transport.schedule",),
     "schedule": ("tomodachi.transport.schedule",),
+    "scheduler": ("tomodachi.transport.schedule",),
     "_log": ("tomodachi.helpers.logging", "log"),
     "_log_setup": ("tomodachi.helpers.logging", "log_setup"),
 }
@@ -58,11 +59,117 @@ def __getattr__(name: str) -> Any:
         real_name = name if len(__available_defs[name]) < 2 else __available_defs[name][1]
 
         if not __imported_modules.get(module_name):
-            __imported_modules[module_name] = importlib.import_module(module_name)
+            try:
+                __imported_modules[module_name] = importlib.import_module(module_name)
+            except ModuleNotFoundError as e:  # pragma: no cover
+                import logging  # noqa  # isort:skip
+                import sys  # noqa  # isort:skip
+
+                missing_module_name = str(getattr(e, "name", None) or "")
+                if missing_module_name:
+                    print(
+                        "Fatal dependency failure: '{}' failed to load (error: \"{}\")".format(
+                            missing_module_name, str(e)
+                        )
+                    )
+                    print("")
+                    logging.exception("")
+                    print("")
+
+                logging.getLogger("exception").warning("Unable to initialize dependencies")
+                logging.getLogger("exception").warning("Error: See above exceptions and traceback")
+
+                print("")
+                if missing_module_name:
+                    color = ""
+                    color_reset = ""
+                    try:
+                        import colorama  # noqa  # isort:skip
+
+                        color = colorama.Fore.WHITE + colorama.Back.RED
+                        color_reset = colorama.Style.RESET_ALL
+                    except Exception:
+                        pass
+
+                    if module_name == "tomodachi.transport.http" and missing_module_name in ("aiohttp",):
+                        print(
+                            "{}[fatal error] The '{}' package is missing.{}".format(
+                                color, missing_module_name, color_reset
+                            )
+                        )
+                        print(
+                            "{}[fatal error] Install 'tomodachi' with 'http' extras to use '@tomodachi.http' functions.{}".format(
+                                color, color_reset
+                            )
+                        )
+                        print("")
+                    if module_name == "tomodachi.transport.aws_sns_sqs" and missing_module_name in (
+                        "aiobotocore",
+                        "botocore",
+                        "aiohttp",
+                    ):
+                        print(
+                            "{}[fatal error] The '{}' package is missing.{}".format(
+                                color, missing_module_name, color_reset
+                            )
+                        )
+                        print(
+                            "{}[fatal error] Install 'tomodachi' with 'aws' extras to use '@tomodachi.aws_sns_sqs' functions.{}".format(
+                                color, color_reset
+                            )
+                        )
+                        print("")
+                    if module_name == "tomodachi.transport.amqp" and missing_module_name in ("aioamqp",):
+                        print(
+                            "{}[fatal error] The '{}' package is missing.{}".format(
+                                color, missing_module_name, color_reset
+                            )
+                        )
+                        print(
+                            "{}[fatal error] Install 'tomodachi' with 'amqp' extras to use '@tomodachi.amqp' functions.{}".format(
+                                color, color_reset
+                            )
+                        )
+                        print("")
+                    if module_name == "tomodachi.transport.schedule" and missing_module_name in (
+                        "tzlocal",
+                        "pytz",
+                        "zoneinfo",
+                    ):
+                        print(
+                            "{}[fatal error] The '{}' package is missing.{}".format(
+                                color, missing_module_name, color_reset
+                            )
+                        )
+                        print(
+                            "{}[fatal error] Install 'tomodachi' with 'scheduler' extras to use '@tomodachi.schedule' functions.{}".format(
+                                color, color_reset
+                            )
+                        )
+                        print("")
+                print("Exiting: Service terminating with exit code: 1")
+                sys.exit(1)
+            except Exception as e:  # pragma: no cover
+                import logging  # noqa  # isort:skip
+
+                print(
+                    "Fatal dependency failure: '{}:{}' failed to load (error: \"{}\")".format(module_name, name, str(e))
+                )
+                print("")
+                logging.exception("")
+                print("")
+
+                logging.getLogger("exception").warning("Unable to initialize dependencies")
+                logging.getLogger("exception").warning("Error: See above exceptions and traceback")
+
+                raise e
+
         module = __imported_modules.get(module_name)
 
         __cached_defs[name] = getattr(module, real_name)
         return __cached_defs[name]
+
+    raise AttributeError("module 'tomodachi' has no attribute '{}'".format(name))
 
 
 __author__: str = "Carl Oscar Aaro"

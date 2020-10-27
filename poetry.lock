@@ -829,14 +829,20 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 
 [extras]
 aiodns = ["aiodns"]
+amqp = ["aioamqp"]
+aws = ["aiobotocore", "botocore", "aiohttp", "cchardet"]
+basic = ["aiobotocore", "botocore", "aiohttp", "cchardet", "aioamqp", "tzlocal", "pytz"]
 brotli = ["Brotli"]
+color = ["colorama"]
+http = ["aiohttp", "cchardet"]
 protobuf = ["protobuf"]
+scheduler = ["tzlocal", "pytz"]
 uvloop = ["uvloop"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "430b88bb0a7603e20f94835384a790cf5f09bcaa0315e2a8517d1db1bb152b85"
+content-hash = "399bad61c1f8ffe560c2b781c4d84005c7daad80f994eaab1ec88f23f93c8e9b"
 
 [metadata.files]
 aioamqp = [
