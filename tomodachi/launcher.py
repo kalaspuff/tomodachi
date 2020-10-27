@@ -9,16 +9,10 @@ import sys
 import time
 from typing import Any, Dict, List, Optional, Union, cast
 
-import multidict  # noqa
-import pytz
-import tzlocal
-import yarl  # noqa
-
 import tomodachi.__version__
 import tomodachi.container
 import tomodachi.importer
 import tomodachi.invoker
-import tomodachi.watcher
 from tomodachi.container import ServiceContainer
 from tomodachi.helpers.execution_context import clear_execution_context, clear_services, set_execution_context
 from tomodachi.importer import ServiceImporter
@@ -42,7 +36,7 @@ class ServiceLauncher(object):
         cls,
         service_files: Union[List, set],
         configuration: Optional[Dict] = None,
-        watcher: Optional[tomodachi.watcher.Watcher] = None,
+        watcher: Any = None,
     ) -> None:
         def stop_services() -> None:
             asyncio.ensure_future(_stop_services())
@@ -125,6 +119,7 @@ class ServiceLauncher(object):
         safe_modules = [
             "typing",
             "importlib.util",
+            "inspect",
             "time",
             "logging",
             "re",
@@ -136,13 +131,6 @@ class ServiceLauncher(object):
 
         restarting = False
         while cls.restart_services:
-            try:
-                tz = tzlocal.get_localzone()
-                if not tz:
-                    tz = pytz.UTC
-            except Exception:
-                tz = pytz.UTC
-
             init_timestamp = time.time()
             init_timestamp_str = datetime.datetime.utcfromtimestamp(init_timestamp).isoformat() + "Z"
 
@@ -153,7 +141,7 @@ class ServiceLauncher(object):
             try:
                 if "uvloop." in str(loop.__class__):
                     event_loop_alias = "uvloop"
-                    import uvloop
+                    import uvloop  # noqa  # isort:skip
 
                     event_loop_version = str(uvloop.__version__)
                 elif "asyncio." in str(loop.__class__):
@@ -184,9 +172,26 @@ class ServiceLauncher(object):
                 )
 
             if watcher:
+                tz: Any = None
+                utc_tz: Any = None
+
+                try:
+                    import pytz  # noqa  # isort:skip
+                    import tzlocal  # noqa  # isort:skip
+
+                    utc_tz = pytz.UTC
+                    try:
+                        tz = tzlocal.get_localzone()
+                        if not tz:
+                            tz = pytz.UTC
+                    except Exception:
+                        tz = pytz.UTC
+                except Exception:
+                    pass
+
                 init_local_datetime = (
                     datetime.datetime.fromtimestamp(init_timestamp)
-                    if tz is not pytz.UTC
+                    if tz and tz is not utc_tz
                     else datetime.datetime.utcfromtimestamp(init_timestamp)
                 )
 
@@ -206,7 +211,8 @@ class ServiceLauncher(object):
                         event_loop_alias, " {}".format(event_loop_version) if event_loop_version else ""
                     )
                 )
-                print("Local time: {} {}".format(init_local_datetime.strftime("%B %d, %Y - %H:%M:%S,%f"), str(tz)))
+                if tz:
+                    print("Local time: {} {}".format(init_local_datetime.strftime("%B %d, %Y - %H:%M:%S,%f"), str(tz)))
                 print("Timestamp in UTC: {}".format(init_timestamp_str))
                 print()
                 print("File watcher is active - code changes will automatically restart services")

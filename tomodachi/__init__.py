@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import inspect  # noqa
-import uuid
-from typing import Callable, Dict, Tuple, Type, cast
+import importlib
+import uuid as uuid_
+from typing import Any, Dict, Optional, Tuple, Type, Union, cast
 
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 
 try:
-    import tomodachi.helpers.execution_context
-    import tomodachi.helpers.logging
     from tomodachi.helpers.execution_context import clear_execution_context as _clear_execution_context
     from tomodachi.helpers.execution_context import clear_services as _clear_services
     from tomodachi.helpers.execution_context import (
@@ -25,24 +23,47 @@ try:
 except Exception:  # pragma: no cover
     pass
 
-try:
-    from tomodachi.transport.amqp import amqp, amqp_publish
-except Exception:  # pragma: no cover
-    pass
-try:
-    from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
-except Exception:  # pragma: no cover
-    pass
-try:
-    from tomodachi.transport.http import HttpException
-    from tomodachi.transport.http import Response as HttpResponse
-    from tomodachi.transport.http import get_http_response_status, http, http_error, http_static, websocket, ws
-except Exception:  # pragma: no cover
-    pass
-try:
-    from tomodachi.transport.schedule import daily, heartbeat, hourly, minutely, monthly, schedule
-except Exception:  # pragma: no cover
-    pass
+__available_defs: Dict[str, Union[Tuple[str], Tuple[str, str]]] = {
+    "amqp": ("tomodachi.transport.amqp",),
+    "amqp_publish": ("tomodachi.transport.amqp",),
+    "aws_sns_sqs": ("tomodachi.transport.aws_sns_sqs",),
+    "aws_sns_sqs_publish": ("tomodachi.transport.aws_sns_sqs",),
+    "HttpException": ("tomodachi.transport.http",),
+    "HttpResponse": ("tomodachi.transport.http", "Response"),
+    "get_http_response_status": ("tomodachi.transport.http",),
+    "http": ("tomodachi.transport.http",),
+    "http_error": ("tomodachi.transport.http",),
+    "http_static": ("tomodachi.transport.http",),
+    "websocket": ("tomodachi.transport.http",),
+    "ws": ("tomodachi.transport.http",),
+    "daily": ("tomodachi.transport.schedule",),
+    "heartbeat": ("tomodachi.transport.schedule",),
+    "hourly": ("tomodachi.transport.schedule",),
+    "minutely": ("tomodachi.transport.schedule",),
+    "monthly": ("tomodachi.transport.schedule",),
+    "schedule": ("tomodachi.transport.schedule",),
+    "_log": ("tomodachi.helpers.logging", "log"),
+    "_log_setup": ("tomodachi.helpers.logging", "log_setup"),
+}
+__imported_modules: Dict[str, Any] = {}
+__cached_defs: Dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in __cached_defs:
+        return __cached_defs[name]
+
+    if name in __available_defs:
+        module_name = __available_defs[name][0]
+        real_name = name if len(__available_defs[name]) < 2 else __available_defs[name][1]
+
+        if not __imported_modules.get(module_name):
+            __imported_modules[module_name] = importlib.import_module(module_name)
+        module = __imported_modules.get(module_name)
+
+        __cached_defs[name] = getattr(module, real_name)
+        return __cached_defs[name]
+
 
 __author__: str = "Carl Oscar Aaro"
 __email__: str = "hello@carloscar.com"
@@ -97,7 +118,7 @@ class TomodachiServiceMeta(type):
         result = cast(Type["Service"], super().__new__(cls, name, bases, dict(attributedict)))
 
         if bases and not result.uuid:
-            result.uuid = str(uuid.uuid4())
+            result.uuid = str(uuid_.uuid4())
         if bases and not result.name:
             result.name = "service"
 
@@ -113,8 +134,18 @@ class Service(metaclass=TomodachiServiceMeta):
     _tomodachi_class_is_service_class: bool = False
     name: str = ""
     uuid: str = ""
-    log: Callable = tomodachi.helpers.logging.log
-    log_setup: Callable = tomodachi.helpers.logging.log_setup
+
+    def log(self, *args: Any, **kwargs: Any) -> None:
+        return __getattr__("_log")(self, *args, **kwargs)
+
+    def log_setup(
+        self,
+        name: Optional[str] = None,
+        level: Optional[Union[str, int]] = None,
+        formatter: Any = True,
+        filename: Optional[str] = None,
+    ) -> Any:
+        return __getattr__("_log_setup")(self, name=name, level=level, formatter=formatter, filename=filename)
 
 
 def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:

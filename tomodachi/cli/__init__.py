@@ -6,17 +6,9 @@ import os
 import sys
 from typing import Dict, List, Optional
 
-try:
-    import uvloop
-
-    uvloop_installed = True
-except Exception:  # pragma: no cover
-    uvloop_installed = False
-
 import tomodachi
 from tomodachi.config import parse_config_files
 from tomodachi.launcher import ServiceLauncher
-from tomodachi.watcher import Watcher
 
 try:
     if ModuleNotFoundError:
@@ -162,10 +154,11 @@ class CLI:
 
         try:
             # Optional
-            if uvloop_installed:
-                uvloop_version = uvloop.__version__
-                if output_versions:
-                    print("uvloop/{}".format(uvloop_version))
+            import uvloop  # noqa  # isort:skip
+
+            uvloop_version = uvloop.__version__
+            if output_versions:
+                print("uvloop/{}".format(uvloop_version))
         except ModuleNotFoundError:  # pragma: no cover
             pass
         except Exception:  # pragma: no cover
@@ -224,7 +217,9 @@ class CLI:
                     asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
                     pass
                 elif value in ("uvloop", "libuv", "uv"):
-                    if not uvloop_installed:
+                    try:
+                        import uvloop  # noqa  # isort:skip
+                    except Exception:  # pragma: no cover
                         print("The 'uvloop' package needs to be installed to use uvloop event loop")
                         sys.exit(2)
                     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -264,6 +259,8 @@ class CLI:
                 root_directories = [os.getcwd()]
                 for arg in set(args):
                     root_directories.append(os.path.dirname("{}/{}".format(os.path.realpath(cwd), arg)))
+                from tomodachi.watcher import Watcher  # noqa  #  isort:skip
+
                 watcher = Watcher(root=root_directories, configuration=configuration)
 
             if "-l" in args or "--log" in args or "--log-level" in args:
