@@ -11,7 +11,7 @@ Changes
   calls of all built-in invokers, saving somewhere around 10-20% on CPU
   time in average.
 
-- Improved type hints for invoker decorators.
+- Improved type hint annotations for invoker decorators.
 
 - Preparations to be able to loosen dependencies and in the future make
   the related packages into optional extras instead.
@@ -19,6 +19,9 @@ Changes
 - Printed hints (in development) on missing packages that haven't been
   installed or couldn't be imported and in turn causing fatal errors.
 
+
+0.19.2 (2020-10-27)
+-------------------
 - Added support for ``aiohttp`` 3.7.x.
 
 

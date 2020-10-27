@@ -831,7 +831,6 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 aiodns = ["aiodns"]
 amqp = ["aioamqp"]
 aws = ["aiobotocore", "botocore", "aiohttp", "cchardet"]
-basic = ["aiobotocore", "botocore", "aiohttp", "cchardet", "aioamqp", "tzlocal", "pytz"]
 brotli = ["Brotli"]
 color = ["colorama"]
 http = ["aiohttp", "cchardet"]
@@ -842,7 +841,7 @@ uvloop = ["uvloop"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "399bad61c1f8ffe560c2b781c4d84005c7daad80f994eaab1ec88f23f93c8e9b"
+content-hash = "050532c49ff1bcb7571c9e1f801d3418268c5dbd4409d5d2e01bd696a7059a26"
 
 [metadata.files]
 aioamqp = [
