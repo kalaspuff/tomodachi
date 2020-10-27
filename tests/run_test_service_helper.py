@@ -2,7 +2,7 @@ import asyncio
 import functools
 import logging
 import signal
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from tomodachi.container import ServiceContainer
 from tomodachi.importer import ServiceImporter
@@ -12,8 +12,8 @@ def start_service(filename: str, monkeypatch: Any = None, wait: bool = True) -> 
     if monkeypatch:
         monkeypatch.setattr(logging.root, "handlers", [])
 
-    loop = asyncio.get_event_loop()  # type: Any
-    service = None  # type: Any
+    loop = asyncio.get_event_loop()
+    service: Optional[ServiceContainer] = None
 
     def stop_services(loop: Any = None) -> None:
         if not loop:
@@ -26,10 +26,11 @@ def start_service(filename: str, monkeypatch: Any = None, wait: bool = True) -> 
         asyncio.ensure_future(_force_stop_services())
 
     async def _stop_services() -> None:
-        service.stop_service()
+        if service:
+            service.stop_service()
 
     async def _force_stop_services() -> None:
-        if not service.started_waiter.done():
+        if service and not service.started_waiter.done():
             service.started_waiter.set_result([])
 
     for signame in ("SIGINT", "SIGTERM"):
@@ -40,7 +41,7 @@ def start_service(filename: str, monkeypatch: Any = None, wait: bool = True) -> 
         assert service is not None
 
         async def _async() -> None:
-            loop = asyncio.get_event_loop()  # type: Any
+            loop = asyncio.get_event_loop()
             try:
                 await service.run_until_complete()
             except Exception:

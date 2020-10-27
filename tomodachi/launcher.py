@@ -7,7 +7,7 @@ import platform
 import signal
 import sys
 import time
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Set, Union, cast
 
 import tomodachi.__version__
 import tomodachi.container
@@ -26,10 +26,10 @@ except Exception:
 
 
 class ServiceLauncher(object):
-    _close_waiter = None  # type: Union[None, asyncio.Future]
-    _stopped_waiter = None  # type: Union[None, asyncio.Future]
+    _close_waiter: Optional[asyncio.Future] = None
+    _stopped_waiter: Optional[asyncio.Future] = None
     restart_services = False
-    services = set()  # type: set
+    services: Set = set()
 
     @classmethod
     def run_until_complete(

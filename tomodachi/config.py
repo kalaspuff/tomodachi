@@ -10,7 +10,7 @@ def parse_config_files(config_files: List[str]) -> Optional[Dict]:
     if isinstance(config_files, str):
         config_files = [config_files]
 
-    configuration = {}  # type: Dict
+    configuration: Dict = {}
 
     for config_file in config_files:
         with open(config_file) as f:

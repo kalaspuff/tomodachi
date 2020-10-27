@@ -159,7 +159,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
                     )
                 )
 
-        headers = CIMultiDict({})  # type: CIMultiDict
+        headers: CIMultiDict = CIMultiDict({})
         headers[hdrs.CONTENT_TYPE] = "text/plain; charset=utf-8"
 
         msg = "" if status == 500 or not message else message
@@ -173,9 +173,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
         ):
             headers[hdrs.CONNECTION] = "close"
 
-        resp = web.Response(
-            status=status, text=msg, headers=headers  # type: ignore
-        )  # type: web.Response
+        resp: web.Response = web.Response(status=status, text=msg, headers=headers)  # type: ignore
         resp.force_close()  # type: ignore
 
         # some data already got sent, connection is broken
@@ -218,7 +216,7 @@ class Server(web_server.Server):  # type: ignore
 
 class DynamicResource(web_urldispatcher.DynamicResource):  # type: ignore
     def __init__(self, pattern: Any, *, name: Optional[str] = None) -> None:
-        self._routes = []  # type: List
+        self._routes: List = []
         self._name = name
         self._pattern = pattern
         self._formatter = ""
@@ -281,14 +279,14 @@ class Response(object):
         else:
             body_value = b""
 
-        response = web.Response(
+        response: web.Response = web.Response(
             body=body_value,  # type: ignore
             status=self._status,
             reason=self._reason,
             headers=self._headers,
             content_type=self.content_type,
             charset=self.charset,
-        )  # type: web.Response
+        )
         return response
 
 
@@ -342,9 +340,9 @@ class HttpTransport(Invoker):
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
-                return_value = (
+                return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response] = (
                     (await routine) if isinstance(routine, Awaitable) else routine
-                )  # type: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
+                )
                 return return_value
 
             if not context.get("_http_accept_new_requests"):
@@ -417,9 +415,9 @@ class HttpTransport(Invoker):
 
                 pathlib.Path(filepath).open("r")
 
-                response = FileResponse(
+                response: Union[web.Response, web.FileResponse] = FileResponse(
                     path=filepath, chunk_size=256 * 1024  # type: ignore
-                )  # type: Union[web.Response, web.FileResponse]
+                )
                 return response
             except PermissionError:
                 raise web.HTTPForbidden()  # type: ignore
@@ -462,9 +460,9 @@ class HttpTransport(Invoker):
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
-                return_value = (
+                return_value: Union[str, bytes, Dict, List, Tuple, web.Response, Response] = (
                     (await routine) if isinstance(routine, Awaitable) else routine
-                )  # type: Union[str, bytes, Dict, List, Tuple, web.Response, Response]
+                )
                 return return_value
 
             return_value = await execute_middlewares(
@@ -570,9 +568,9 @@ class HttpTransport(Invoker):
 
             try:
                 routine = func(*(obj, websocket, *a), **merge_dicts(kwargs, kw))
-                callback_functions = (
+                callback_functions: Optional[Union[Tuple[Callable, Callable], Tuple[Callable], Callable]] = (
                     (await routine) if isinstance(routine, Awaitable) else routine
-                )  # type: Optional[Union[Tuple, Callable]]
+                )
             except Exception as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                 try:
@@ -608,10 +606,10 @@ class HttpTransport(Invoker):
             _close_func = None
 
             if callback_functions and isinstance(callback_functions, tuple):
-                try:
-                    _receive_func, _close_func = callback_functions
-                except ValueError:
-                    (_receive_func,) = callback_functions
+                if len(callback_functions) == 2:
+                    _receive_func, _close_func = cast(Tuple[Callable, Callable], callback_functions)
+                elif len(callback_functions) == 1:
+                    (_receive_func,) = cast(Tuple[Callable], callback_functions)
             elif callback_functions:
                 _receive_func = callback_functions
 
@@ -932,9 +930,9 @@ class HttpTransport(Invoker):
                     )
                 )
 
-            app = web.Application(
+            app: web.Application = web.Application(
                 middlewares=[middleware], client_max_size=(1024 ** 2) * 100  # type: ignore
-            )  # type: web.Application
+            )
             app._set_loop(None)  # type: ignore
             for method, pattern, handler, route_context in context.get("_http_routes", []):
                 try:
@@ -1223,12 +1221,12 @@ async def resolve_response(
     headers = None
     if isinstance(value, dict):
         body = value.get("body")
-        _status = value.get("status")  # type: Optional[SupportsInt]
+        _status: Optional[SupportsInt] = value.get("status")
         if _status and isinstance(_status, (int, str, bytes)):
             status = int(_status)
         _returned_headers = value.get("headers")
         if _returned_headers:
-            returned_headers = _returned_headers  # type: Union[Mapping[str, Any], Iterable[Tuple[str, Any]]]
+            returned_headers: Union[Mapping[str, Any], Iterable[Tuple[str, Any]]] = _returned_headers
             headers = CIMultiDict(returned_headers)
     elif isinstance(value, list) or isinstance(value, tuple):
         _status = value[0]

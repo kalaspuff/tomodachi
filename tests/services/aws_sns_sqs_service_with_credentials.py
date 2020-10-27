@@ -31,7 +31,7 @@ class AWSSNSSQSService(tomodachi.Service):
         },
     }
     uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID") or ""
-    closer = asyncio.Future()  # type: Any
+    closer: asyncio.Future = asyncio.Future()
     test_topic_data_received = False
     test_topic_specified_queue_name_data_received = False
     test_topic_metadata_topic = None

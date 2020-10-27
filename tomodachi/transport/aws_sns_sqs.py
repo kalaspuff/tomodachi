@@ -58,7 +58,7 @@ class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
 class AWSSNSSQSTransport(Invoker):
     clients = None
     clients_creation_time = None
-    topics = {}  # type: Dict[str, str]
+    topics: Dict[str, str] = {}
     close_waiter = None
 
     @classmethod
@@ -106,7 +106,7 @@ class AWSSNSSQSTransport(Invoker):
         if wait:
             await _publish_message()
         else:
-            loop = asyncio.get_event_loop()  # type: Any
+            loop: Any = asyncio.get_event_loop()
             loop.create_task(_publish_message())
 
     @classmethod
@@ -205,7 +205,7 @@ class AWSSNSSQSTransport(Invoker):
             if envelope_kwargs_validation_func:
                 envelope_kwargs_validation_func(**parser_kwargs)
 
-        _callback_kwargs = callback_kwargs  # type: Any
+        _callback_kwargs: Any = callback_kwargs
         values = inspect.getfullargspec(func)
         if not _callback_kwargs:
             _callback_kwargs = (
@@ -935,8 +935,8 @@ class AWSSNSSQSTransport(Invoker):
         if not cls.close_waiter:
             cls.close_waiter = asyncio.Future()
 
-        stop_waiter = asyncio.Future()  # type: asyncio.Future
-        start_waiter = asyncio.Future()  # type: asyncio.Future
+        stop_waiter: asyncio.Future = asyncio.Future()
+        start_waiter: asyncio.Future = asyncio.Future()
 
         async def receive_messages() -> None:
             await start_waiter
@@ -1108,7 +1108,7 @@ class AWSSNSSQSTransport(Invoker):
                 task.cancel()
                 await task
 
-        loop = asyncio.get_event_loop()  # type: Any
+        loop: Any = asyncio.get_event_loop()
 
         stop_method = getattr(obj, "_stop_service", None)
 
@@ -1200,7 +1200,7 @@ class AWSSNSSQSTransport(Invoker):
                 else:
                     queue_name = cls.prefix_queue_name(queue_name, context)
 
-                queue_url, queue_arn = await cls.create_queue(cls, queue_name, context)  # type: str, str
+                queue_url, queue_arn = cast(Tuple[str, str], await cls.create_queue(cls, queue_name, context))
 
                 if re.search(r"([*#])", topic):
                     await cls.subscribe_wildcard_topic(cls, topic, queue_arn, queue_url, context, attributes=attributes)

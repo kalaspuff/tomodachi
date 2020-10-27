@@ -58,9 +58,9 @@ class AmqpChannelClosed(AmqpException):
 
 
 class AmqpTransport(Invoker):
-    channel = None  # type: Any
-    protocol = None  # type: Any
-    transport = None  # type: Any
+    channel: Any = None
+    protocol: Any = None
+    transport: Any = None
 
     @classmethod
     async def publish(
@@ -112,7 +112,7 @@ class AmqpTransport(Invoker):
         if wait:
             await _publish_message()
         else:
-            loop = asyncio.get_event_loop()  # type: Any
+            loop: Any = asyncio.get_event_loop()
             loop.create_task(_publish_message())
 
     @classmethod
@@ -209,7 +209,7 @@ class AmqpTransport(Invoker):
             if envelope_kwargs_validation_func:
                 envelope_kwargs_validation_func(**parser_kwargs)
 
-        _callback_kwargs = callback_kwargs  # type: Any
+        _callback_kwargs: Any = callback_kwargs
         values = inspect.getfullargspec(func)
         if not _callback_kwargs:
             _callback_kwargs = (
@@ -224,7 +224,7 @@ class AmqpTransport(Invoker):
             )
         else:
             _callback_kwargs = {k: None for k in _callback_kwargs if k != "self"}
-        original_kwargs = {k: v for k, v in _callback_kwargs.items()}  # type: Dict[str, Any]
+        original_kwargs: Dict[str, Any] = {k: v for k, v in _callback_kwargs.items()}
 
         async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
             kwargs = dict(original_kwargs)

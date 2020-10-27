@@ -41,7 +41,7 @@ class HttpService(tomodachi.Service):
     options = {"http": {"port": None, "access_log": True, "real_ip_from": "127.0.0.1"}}
     invocation_count = 0
     uuid = None
-    closer = asyncio.Future()  # type: Any
+    closer: asyncio.Future = asyncio.Future()
 
     @http("GET", r"/count/1/?")
     @count_invocations_1

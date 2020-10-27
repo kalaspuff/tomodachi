@@ -11,7 +11,7 @@ from tomodachi.transport.schedule import heartbeat, schedule
 class SchedulerService(tomodachi.Service):
     name = "test_schedule"
     uuid = None
-    closer = asyncio.Future()  # type: Any
+    closer: asyncio.Future = asyncio.Future()
     seconds_triggered = 0
     third_seconds_triggered = 0
 

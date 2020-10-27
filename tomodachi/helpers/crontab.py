@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, SupportsInt, Tuple, Union  # noqa
 
 import pytz
 
-cron_attributes = [
+cron_attributes: List[Tuple[str, Tuple[int, int], Dict[str, int]]] = [
     ("minute", (0, 59), {}),
     ("hour", (0, 23), {}),
     ("day", (1, 31), {}),
@@ -28,8 +28,8 @@ cron_attributes = [
     ),
     ("isoweekday", (0, 7), {"mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6, "sun": 0}),
     ("year", (1970, 2099), {}),
-]  # type: List[Tuple[str, Tuple[int, int], Dict[str, int]]]
-crontab_aliases = {
+]
+crontab_aliases: Dict[str, str] = {
     "@yearly": "0 0 1 1 *",
     "@annually": "0 0 1 1 *",
     "@monthly": "0 0 1 * *",
@@ -37,7 +37,7 @@ crontab_aliases = {
     "@daily": "0 0 * * *",
     "@hourly": "0 * * * *",
     "@minutely": "* * * * *",
-}  # type: Dict[str, str]
+}
 
 
 def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Optional[datetime.datetime]:
@@ -51,8 +51,10 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
     use_weekdays = False
     use_days = False
     for i, attr in enumerate(cron_attributes):
-        cron_type, cron_range, aliases = attr  # type: str, Tuple, Dict[str, int]
-        available_values = []  # type: Union[List[int], set]
+        cron_range: Tuple
+        aliases: Dict[str, int]
+        _, cron_range, aliases = attr
+        available_values: Union[List[int], set] = []
         parts = cron_parts[i].lower().split(",")
 
         if attr[0] == "isoweekday" and cron_parts[i] != "*":
@@ -63,9 +65,9 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
         for part in parts:
             last = False
             parsed = False
-            possible_values = [x for x in range(cron_range[0], cron_range[1] + 1)]  # type: List[int]
+            possible_values: List[int] = [x for x in range(cron_range[0], cron_range[1] + 1)]
             if "-" in part:
-                a_value, b_value = part.split("-")  # type: str, str
+                a_value, b_value = part.split("-")
                 if "/" in b_value:
                     b_value, _ = b_value.split("/")
                 if "l" in a_value[0]:
@@ -166,12 +168,12 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
     def calculate_date(
         input_date: datetime.datetime, last_day: bool, last_weekday: bool
     ) -> Optional[datetime.datetime]:
-        tz = input_date.tzinfo  # type: Any
+        tz: Any = input_date.tzinfo
         naive_date = not bool(input_date.tzinfo)
         if tz is None:
             tz = pytz.UTC
 
-        next_date = input_date  # type: Optional[datetime.datetime]
+        next_date: Optional[datetime.datetime] = input_date
         while True:
             original_date = next_date
             next_date_weekday = next_date
@@ -299,7 +301,7 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
             )
         return next_date
 
-    tz = now_date.tzinfo  # type: Any
+    tz: Any = now_date.tzinfo
     calculated_dates = [
         calculate_date(tz.localize(d) if tz else d, last_day, last_weekday)
         for d in [

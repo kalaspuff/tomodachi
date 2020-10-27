@@ -5,7 +5,7 @@ from typing import Any, Dict  # noqa
 # An example discovery class which would could be extended to register which
 # the started service' HTTP endpoints are.
 class DummyRegistry(object):
-    http_endpoints = {}  # type: Dict
+    http_endpoints: Dict = {}
 
     @classmethod
     async def add_http_endpoint(cls, service: Any, host: str, port: int, method: str, pattern: str) -> None:

@@ -232,7 +232,7 @@ class CLI:
                 index = args.index("-c") if "-c" in args else args.index("--config")
                 args.pop(index)
 
-                config_files = []  # type: List[str]
+                config_files: List[str] = []
                 while len(args) > index and args[index][0] != "-":
                     value = args.pop(index)
                     if value not in config_files:
