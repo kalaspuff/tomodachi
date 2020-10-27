@@ -38,6 +38,7 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, str]]] = {
     "ws": ("tomodachi.transport.http",),
     "daily": ("tomodachi.transport.schedule",),
     "heartbeat": ("tomodachi.transport.schedule",),
+    "every_second": ("tomodachi.transport.schedule",),
     "hourly": ("tomodachi.transport.schedule",),
     "minutely": ("tomodachi.transport.schedule",),
     "monthly": ("tomodachi.transport.schedule",),
@@ -209,6 +210,7 @@ __all__ = [
     "get_http_response_status",
     "schedule",
     "heartbeat",
+    "every_second",
     "minutely",
     "hourly",
     "daily",
@@ -243,7 +245,7 @@ class Service(metaclass=TomodachiServiceMeta):
     uuid: str = ""
 
     def log(self, *args: Any, **kwargs: Any) -> None:
-        return __getattr__("_log")(self, *args, **kwargs)
+        __getattr__("_log")(self, *args, **kwargs)
 
     def log_setup(
         self,

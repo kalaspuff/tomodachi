@@ -502,12 +502,26 @@ __daily = Scheduler.decorator(Scheduler.schedule_handler_with_interval("daily"))
 __monthly = Scheduler.decorator(Scheduler.schedule_handler_with_interval("monthly"))
 
 
-def schedule(interval: Optional[Union[str, int]] = None, timestamp: Optional[str] = None, timezone: Optional[str] = None, immediately: Optional[bool] = False) -> Callable:
-    return cast(Callable, __schedule(interval=interval, timestamp=timestamp, timezone=timezone, immediately=immediately))
+def schedule(
+    interval: Optional[Union[str, int]] = None,
+    timestamp: Optional[str] = None,
+    timezone: Optional[str] = None,
+    immediately: Optional[bool] = False,
+) -> Callable:
+    return cast(
+        Callable, __schedule(interval=interval, timestamp=timestamp, timezone=timezone, immediately=immediately)
+    )
 
 
-def scheduler(interval: Optional[Union[str, int]] = None, timestamp: Optional[str] = None, timezone: Optional[str] = None, immediately: Optional[bool] = False) -> Callable:
-    return cast(Callable, __scheduler(interval=interval, timestamp=timestamp, timezone=timezone, immediately=immediately))
+def scheduler(
+    interval: Optional[Union[str, int]] = None,
+    timestamp: Optional[str] = None,
+    timezone: Optional[str] = None,
+    immediately: Optional[bool] = False,
+) -> Callable:
+    return cast(
+        Callable, __scheduler(interval=interval, timestamp=timestamp, timezone=timezone, immediately=immediately)
+    )
 
 
 def heartbeat(func: Optional[Callable] = None) -> Callable:

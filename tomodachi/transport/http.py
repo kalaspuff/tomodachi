@@ -9,7 +9,7 @@ import re
 import time
 import uuid
 from logging.handlers import WatchedFileHandler
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast  # noqa
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
 from aiohttp import WSMsgType
 from aiohttp import __version__ as aiohttp_version
@@ -35,6 +35,7 @@ except Exception:
 
     class CancelledError(Exception):  # type: ignore
         pass
+
 
 try:
     import colorama
@@ -1132,7 +1133,13 @@ __websocket = HttpTransport.decorator(HttpTransport.websocket_handler)
 __ws = HttpTransport.decorator(HttpTransport.websocket_handler)
 
 
-def http(method: Union[str, List[str], Tuple[str, ...]], url: str, *, ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False, pre_handler_func: Optional[Callable] = None) -> Callable:
+def http(
+    method: Union[str, List[str], Tuple[str, ...]],
+    url: str,
+    *,
+    ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False,
+    pre_handler_func: Optional[Callable] = None,
+) -> Callable:
     return cast(Callable, __http(method, url, ignore_logging=ignore_logging, pre_handler_func=pre_handler_func))
 
 
@@ -1140,7 +1147,9 @@ def http_error(status_code: int) -> Callable:
     return cast(Callable, __http_error(status_code))
 
 
-def http_static(path: str, base_url: str, *, ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False) -> Callable:
+def http_static(
+    path: str, base_url: str, *, ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False
+) -> Callable:
     return cast(Callable, __http_static(path, base_url, ignore_logging=ignore_logging))
 
 

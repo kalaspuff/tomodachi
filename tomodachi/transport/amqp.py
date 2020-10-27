@@ -547,5 +547,27 @@ amqp_publish = AmqpTransport.publish
 publish = AmqpTransport.publish
 
 
-def amqp(routing_key: str, callback_kwargs: Optional[Union[List, Set, Tuple]] = None, exchange_name: str = "", competing: Optional[bool] = None, queue_name: Optional[str] = None, *, message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT, message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT, **kwargs: Any) -> Callable:
-    return cast(Callable, __amqp(routing_key, callback_kwargs=callback_kwargs, exchange_name=exchange_name, competing=competing, queue_name=queue_name, message_envelope=message_envelope, message_protocol=message_protocol, **kwargs))
+def amqp(
+    routing_key: str,
+    callback_kwargs: Optional[Union[List, Set, Tuple]] = None,
+    exchange_name: str = "",
+    competing: Optional[bool] = None,
+    queue_name: Optional[str] = None,
+    *,
+    message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+    message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+    **kwargs: Any,
+) -> Callable:
+    return cast(
+        Callable,
+        __amqp(
+            routing_key,
+            callback_kwargs=callback_kwargs,
+            exchange_name=exchange_name,
+            competing=competing,
+            queue_name=queue_name,
+            message_envelope=message_envelope,
+            message_protocol=message_protocol,
+            **kwargs,
+        ),
+    )

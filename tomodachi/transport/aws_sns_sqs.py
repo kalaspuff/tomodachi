@@ -1224,5 +1224,29 @@ aws_sns_sqs_publish = AWSSNSSQSTransport.publish
 publish = AWSSNSSQSTransport.publish
 
 
-def aws_sns_sqs(topic: str, callback_kwargs: Optional[Union[List, Set, Tuple]] = None, competing: Optional[bool] = None, queue_name: Optional[str] = None, *, message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT, message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT, filter_policy: Optional[Union[str, Dict[str, List[Union[str, Dict[str, Union[bool, List]]]]]]] = FILTER_POLICY_DEFAULT, **kwargs: Any) -> Callable:
-    return cast(Callable, __aws_sns_sqs(topic, callback_kwargs=callback_kwargs, competing=competing, queue_name=queue_name, message_envelope=message_envelope, message_protocol=message_protocol, filter_policy=filter_policy, **kwargs))
+def aws_sns_sqs(
+    topic: str,
+    callback_kwargs: Optional[Union[List, Set, Tuple]] = None,
+    competing: Optional[bool] = None,
+    queue_name: Optional[str] = None,
+    *,
+    message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+    message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+    filter_policy: Optional[
+        Union[str, Dict[str, List[Union[str, Dict[str, Union[bool, List]]]]]]
+    ] = FILTER_POLICY_DEFAULT,
+    **kwargs: Any,
+) -> Callable:
+    return cast(
+        Callable,
+        __aws_sns_sqs(
+            topic,
+            callback_kwargs=callback_kwargs,
+            competing=competing,
+            queue_name=queue_name,
+            message_envelope=message_envelope,
+            message_protocol=message_protocol,
+            filter_policy=filter_policy,
+            **kwargs,
+        ),
+    )
