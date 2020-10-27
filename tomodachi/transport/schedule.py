@@ -3,7 +3,7 @@ import datetime
 import inspect
 import logging
 import time
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union  # noqa
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union, cast  # noqa
 
 import pytz
 import tzlocal
@@ -30,13 +30,16 @@ class Scheduler(Invoker):
         timezone: Optional[str] = None,
         immediately: Optional[bool] = False,
     ) -> Any:
+        values = inspect.getfullargspec(func)
+        original_kwargs = (
+            {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
+            if values.defaults
+            else {}
+        )
+
         async def handler() -> None:
-            values = inspect.getfullargspec(func)
-            kwargs = (
-                {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
-                if values.defaults
-                else {}
-            )
+            kwargs = dict(original_kwargs)
+
             increase_execution_context_value("scheduled_functions_current_tasks")
             increase_execution_context_value("scheduled_functions_total_tasks")
             try:
@@ -487,12 +490,59 @@ class Scheduler(Invoker):
         return _schedule
 
 
-schedule = Scheduler.decorator(Scheduler.schedule_handler)
+__schedule = Scheduler.decorator(Scheduler.schedule_handler)
+__scheduler = Scheduler.decorator(Scheduler.schedule_handler)
 
-heartbeat = Scheduler.decorator(Scheduler.schedule_handler_with_interval(1))
-every_second = Scheduler.decorator(Scheduler.schedule_handler_with_interval(1))
+__heartbeat = Scheduler.decorator(Scheduler.schedule_handler_with_interval(1))
+__every_second = Scheduler.decorator(Scheduler.schedule_handler_with_interval(1))
 
-minutely = Scheduler.decorator(Scheduler.schedule_handler_with_interval("minutely"))
-hourly = Scheduler.decorator(Scheduler.schedule_handler_with_interval("hourly"))
-daily = Scheduler.decorator(Scheduler.schedule_handler_with_interval("daily"))
-monthly = Scheduler.decorator(Scheduler.schedule_handler_with_interval("monthly"))
+__minutely = Scheduler.decorator(Scheduler.schedule_handler_with_interval("minutely"))
+__hourly = Scheduler.decorator(Scheduler.schedule_handler_with_interval("hourly"))
+__daily = Scheduler.decorator(Scheduler.schedule_handler_with_interval("daily"))
+__monthly = Scheduler.decorator(Scheduler.schedule_handler_with_interval("monthly"))
+
+
+def schedule(
+    interval: Optional[Union[str, int]] = None,
+    timestamp: Optional[str] = None,
+    timezone: Optional[str] = None,
+    immediately: Optional[bool] = False,
+) -> Callable:
+    return cast(
+        Callable, __schedule(interval=interval, timestamp=timestamp, timezone=timezone, immediately=immediately)
+    )
+
+
+def scheduler(
+    interval: Optional[Union[str, int]] = None,
+    timestamp: Optional[str] = None,
+    timezone: Optional[str] = None,
+    immediately: Optional[bool] = False,
+) -> Callable:
+    return cast(
+        Callable, __scheduler(interval=interval, timestamp=timestamp, timezone=timezone, immediately=immediately)
+    )
+
+
+def heartbeat(func: Optional[Callable] = None) -> Callable:
+    return cast(Callable, __heartbeat(func))
+
+
+def every_second(func: Optional[Callable] = None) -> Callable:
+    return cast(Callable, __every_second(func))
+
+
+def minutely(func: Optional[Callable] = None) -> Callable:
+    return cast(Callable, __minutely(func))
+
+
+def hourly(func: Optional[Callable] = None) -> Callable:
+    return cast(Callable, __hourly(func))
+
+
+def daily(func: Optional[Callable] = None) -> Callable:
+    return cast(Callable, __daily(func))
+
+
+def monthly(func: Optional[Callable] = None) -> Callable:
+    return cast(Callable, __monthly(func))

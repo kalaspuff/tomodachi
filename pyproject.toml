@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tomodachi"
-version = "0.19.2"
+version = "0.20.0"
 description = "Microservice library on asyncio - HTTP server, websockets, pub/sub messaging for AWS SNS+SQS and RabbitMQ"
 authors = ["Carl Oscar Aaro <hello@carloscar.com>"]
 keywords = ["tomodachi", "microservice", "microservices", "framework", "library", "asyncio", "aws", "sns", "sqs", "amqp", "rabbitmq", "http", "websockets", "easy", "fast", "pubsub", "events", "event based messaging", "messages", "protocol buffers", "protobuf", "async", "message attributes", "filter policy", "distributed architecture", "scalable", "python 3"]
@@ -42,10 +42,10 @@ Changelog = "https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst"
 [tool.poetry.dependencies]
 python = "^3.7"
 
-pycparser = ">=2.18"
 aioamqp = ">=0.13.0, <0.15.0"
 aiobotocore = ">=0.10.4, <1.2.0"
 tzlocal = ">=1.4"
+pytz = "*"
 cchardet = ">=2.1.6"
 aiohttp = ">=3.5.4, <3.8.0"
 colorama = ">=0.3.9, <0.5.0"
@@ -57,11 +57,20 @@ botocore = ">=1.12.252, <=1.17.44"
 protobuf = { version = ">=3.13.0", optional = true }
 uvloop = { version = ">=0.14.0, <1.0.0", optional = true }
 aiodns = { version = ">=1.2.0", optional = true }
+Brotli = { version = "^1.0.9", optional = true }
 
 [tool.poetry.extras]
 protobuf = ["protobuf"]
 uvloop = ["uvloop"]
 aiodns = ["aiodns"]
+brotli = ["Brotli"]
+
+aws = ["aiobotocore", "botocore", "aiohttp", "cchardet"]
+amqp = ["aioamqp"]
+http = ["aiohttp", "cchardet"]
+scheduler = ["tzlocal", "pytz"]
+
+color = ["colorama"]
 
 [tool.poetry.dev-dependencies]
 # The dev dependencies look messy, but helps out to not get a bunch of win32 into the dev category.
@@ -74,8 +83,7 @@ pytest-cov = { version = ">=2.10.0", markers = "sys_platform != \"win32\"" }
 black = { version = "*", markers = "sys_platform != \"win32\"", allow-prereleases = true }
 mypy = { version = ">=0.790", markers = "sys_platform != \"win32\"" }
 codecov = { version = ">=2.1.10", markers = "sys_platform != \"win32\"" }
-readme-renderer = { version = ">=27.0", markers = "sys_platform != \"win32\"" }
-twine = { version = "^3.2.0", markers = "sys_platform != \"win32\"" }
+twine = { version = ">=3.2.0", markers = "sys_platform != \"win32\"" }
 
 [tool.poetry.scripts]
 tomodachi = "tomodachi.cli:cli_entrypoint"

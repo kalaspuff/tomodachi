@@ -87,6 +87,30 @@ class ServiceContainer(object):
 
                 self.setup_configuration(instance)
 
+                context_options = getattr(instance, "context", {}).get("options", {})
+                if context_options:
+                    for key in list(context_options.keys()):
+                        if "." in key:
+                            key_split = key.split(".")
+                            op_lvl = context_options
+                            for i, k_lvl in enumerate(key_split):
+                                if i + 1 == len(key_split):
+                                    if k_lvl in op_lvl and op_lvl[k_lvl] != context_options[key]:
+                                        raise Exception(
+                                            'Missmatching options for \'{}\': ({}) "{}" and ({}) "{}" differs'.format(
+                                                key,
+                                                type(context_options[key]).__name__,
+                                                context_options[key],
+                                                type(op_lvl[k_lvl]).__name__,
+                                                op_lvl[k_lvl],
+                                            )
+                                        )
+                                    op_lvl[k_lvl] = context_options[key]
+                                    continue
+                                if k_lvl not in op_lvl:
+                                    op_lvl[k_lvl] = {}
+                                op_lvl = op_lvl.get(k_lvl)
+
                 if not getattr(instance, "uuid", None):
                     instance.uuid = str(uuid.uuid4())
 

@@ -6,17 +6,9 @@ import os
 import sys
 from typing import Dict, List, Optional
 
-try:
-    import uvloop
-
-    uvloop_installed = True
-except Exception:  # pragma: no cover
-    uvloop_installed = False
-
 import tomodachi
 from tomodachi.config import parse_config_files
 from tomodachi.launcher import ServiceLauncher
-from tomodachi.watcher import Watcher
 
 try:
     if ModuleNotFoundError:
@@ -61,11 +53,12 @@ class CLI:
         sys.exit(0)
 
     def dependency_versions_command(self) -> None:
-        self.test_dependencies(fail_on_errors=False, output_versions=True, output_errors=True)
+        CLI.test_dependencies(fail_on_errors=False, output_versions=True, output_errors=True)
         sys.exit(0)
 
+    @classmethod
     def test_dependencies(
-        self, fail_on_errors: bool = True, output_versions: bool = False, output_errors: bool = True
+        cls, fail_on_errors: bool = True, output_versions: bool = False, output_errors: bool = True
     ) -> Dict[str, Optional[str]]:
         errors = False
 
@@ -77,7 +70,7 @@ class CLI:
         uvloop_version = ""
 
         try:
-            import aioamqp
+            import aioamqp  # noqa  # isort:skip
 
             aioamqp_version = aioamqp.__version__
             if output_versions:
@@ -85,16 +78,16 @@ class CLI:
         except ModuleNotFoundError as e:  # pragma: no cover
             errors = True
             if output_errors:
-                print('Dependency failure: aioamqp failed to load (error: "{}")'.format(str(e)))
+                print("Dependency failure: 'aioamqp' failed to load (error: \"{}\")".format(str(e)))
         except Exception as e:  # pragma: no cover
             errors = True
             if output_errors:
-                print('Dependency failure: aioamqp failed to load (error: "{}")'.format(str(e)))
+                print("Dependency failure: 'aioamqp' failed to load (error: \"{}\")".format(str(e)))
                 logging.exception("")
                 print("")
 
         try:
-            import aiobotocore
+            import aiobotocore  # noqa  # isort:skip
 
             aiobotocore_version = aiobotocore.__version__
             if output_versions:
@@ -102,16 +95,16 @@ class CLI:
         except ModuleNotFoundError as e:  # pragma: no cover
             errors = True
             if output_errors:
-                print('Dependency failure: aiobotocore failed to load (error: "{}")'.format(str(e)))
+                print("Dependency failure: 'aiobotocore' failed to load (error: \"{}\")".format(str(e)))
         except Exception as e:  # pragma: no cover
             errors = True
             if output_errors:
-                print('Dependency failure: aiobotocore failed to load (error: "{}")'.format(str(e)))
+                print("Dependency failure: 'aiobotocore' failed to load (error: \"{}\")".format(str(e)))
                 logging.exception("")
                 print("")
 
         try:
-            import aiohttp
+            import aiohttp  # noqa  # isort:skip
 
             aiohttp_version = aiohttp.__version__
             if output_versions:
@@ -119,16 +112,16 @@ class CLI:
         except ModuleNotFoundError as e:  # pragma: no cover
             errors = True
             if output_errors:
-                print('Dependency failure: aiohttp failed to load (error: "{}")'.format(str(e)))
+                print("Dependency failure: 'aiohttp' failed to load (error: \"{}\")".format(str(e)))
         except Exception as e:  # pragma: no cover
             errors = True
             if output_errors:
-                print('Dependency failure: aiohttp failed to load (error: "{}")'.format(str(e)))
+                print("Dependency failure: 'aiohttp' failed to load (error: \"{}\")".format(str(e)))
                 logging.exception("")
                 print("")
 
         try:
-            import botocore
+            import botocore  # noqa  # isort:skip
 
             botocore_version = botocore.__version__
             if output_versions:
@@ -136,17 +129,17 @@ class CLI:
         except ModuleNotFoundError as e:  # pragma: no cover
             errors = True
             if output_errors:
-                print('Dependency failure: botocore failed to load (error: "{}")'.format(str(e)))
+                print("Dependency failure: 'botocore' failed to load (error: \"{}\")".format(str(e)))
         except Exception as e:  # pragma: no cover
             errors = True
             if output_errors:
-                print('Dependency failure: botocore failed to load (error: "{}")'.format(str(e)))
+                print("Dependency failure: 'botocore' failed to load (error: \"{}\")".format(str(e)))
                 logging.exception("")
                 print("")
 
         try:
             # Optional
-            import google.protobuf
+            import google.protobuf  # noqa  # isort:skip
 
             protobuf_version = (
                 google.protobuf.__version__.decode()
@@ -162,10 +155,11 @@ class CLI:
 
         try:
             # Optional
-            if uvloop_installed:
-                uvloop_version = uvloop.__version__
-                if output_versions:
-                    print("uvloop/{}".format(uvloop_version))
+            import uvloop  # noqa  # isort:skip
+
+            uvloop_version = uvloop.__version__
+            if output_versions:
+                print("uvloop/{}".format(uvloop_version))
         except ModuleNotFoundError:  # pragma: no cover
             pass
         except Exception:  # pragma: no cover
@@ -173,12 +167,12 @@ class CLI:
 
         if not errors:
             try:
-                import tomodachi.helpers.logging  # noqa
-                import tomodachi.invoker  # noqa
-                import tomodachi.transport.amqp  # noqa
-                import tomodachi.transport.aws_sns_sqs  # noqa
-                import tomodachi.transport.http  # noqa
-                import tomodachi.transport.schedule  # noqa
+                import tomodachi.helpers.logging  # noqa  # isort:skip
+                import tomodachi.invoker  # noqa  # isort:skip
+                import tomodachi.transport.amqp  # noqa  # isort:skip
+                import tomodachi.transport.aws_sns_sqs  # noqa  # isort:skip
+                import tomodachi.transport.http  # noqa  # isort:skip
+                import tomodachi.transport.schedule  # noqa  # isort:skip
             except Exception as e:  # pragma: no cover
                 errors = True
                 if output_errors:
@@ -224,7 +218,9 @@ class CLI:
                     asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
                     pass
                 elif value in ("uvloop", "libuv", "uv"):
-                    if not uvloop_installed:
+                    try:
+                        import uvloop  # noqa  # isort:skip
+                    except Exception:  # pragma: no cover
                         print("The 'uvloop' package needs to be installed to use uvloop event loop")
                         sys.exit(2)
                     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -264,6 +260,8 @@ class CLI:
                 root_directories = [os.getcwd()]
                 for arg in set(args):
                     root_directories.append(os.path.dirname("{}/{}".format(os.path.realpath(cwd), arg)))
+                from tomodachi.watcher import Watcher  # noqa  #  isort:skip
+
                 watcher = Watcher(root=root_directories, configuration=configuration)
 
             if "-l" in args or "--log" in args or "--log-level" in args:
@@ -280,8 +278,6 @@ class CLI:
 
             logging.basicConfig(format="%(asctime)s (%(name)s): %(message)s", level=log_level)
             logging.Formatter(fmt="%(asctime)s.%(msecs).03d", datefmt="%Y-%m-%d %H:%M:%S")
-
-            self.test_dependencies()
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(0)

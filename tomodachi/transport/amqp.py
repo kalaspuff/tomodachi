@@ -6,7 +6,7 @@ import inspect
 import logging
 import re
 import time
-from typing import Any, Awaitable, Callable, Dict, Match, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Set, Tuple, Union, cast
 
 import aioamqp
 
@@ -182,7 +182,7 @@ class AmqpTransport(Invoker):
         context: Dict,
         func: Any,
         routing_key: str,
-        callback_kwargs: Optional[Union[list, set, tuple]] = None,
+        callback_kwargs: Optional[Union[List, Set, Tuple]] = None,
         exchange_name: str = "",
         competing: Optional[bool] = None,
         queue_name: Optional[str] = None,
@@ -209,23 +209,25 @@ class AmqpTransport(Invoker):
             if envelope_kwargs_validation_func:
                 envelope_kwargs_validation_func(**parser_kwargs)
 
+        _callback_kwargs = callback_kwargs  # type: Any
+        values = inspect.getfullargspec(func)
+        if not _callback_kwargs:
+            _callback_kwargs = (
+                {
+                    k: values.defaults[i - len(values.args) + 1]
+                    if values.defaults and i >= len(values.args) - len(values.defaults) - 1
+                    else None
+                    for i, k in enumerate(values.args[1:])
+                }
+                if values.args and len(values.args) > 1
+                else {}
+            )
+        else:
+            _callback_kwargs = {k: None for k in _callback_kwargs if k != "self"}
+        original_kwargs = {k: v for k, v in _callback_kwargs.items()}  # type: Dict[str, Any]
+
         async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
-            _callback_kwargs = callback_kwargs  # type: Any
-            values = inspect.getfullargspec(func)
-            if not _callback_kwargs:
-                _callback_kwargs = (
-                    {
-                        k: values.defaults[i - len(values.args) + 1]
-                        if values.defaults and i >= len(values.args) - len(values.defaults) - 1
-                        else None
-                        for i, k in enumerate(values.args[1:])
-                    }
-                    if values.args and len(values.args) > 1
-                    else {}
-                )
-            else:
-                _callback_kwargs = {k: None for k in _callback_kwargs if k != "self"}
-            kwargs = {k: v for k, v in _callback_kwargs.items()}  # type: Dict[str, Any]
+            kwargs = dict(original_kwargs)
 
             message = payload
             message_uuid = None
@@ -540,6 +542,32 @@ class AmqpTransport(Invoker):
         return _subscribe
 
 
-amqp = AmqpTransport.decorator(AmqpTransport.subscribe_handler)
+__amqp = AmqpTransport.decorator(AmqpTransport.subscribe_handler)
 amqp_publish = AmqpTransport.publish
 publish = AmqpTransport.publish
+
+
+def amqp(
+    routing_key: str,
+    callback_kwargs: Optional[Union[List, Set, Tuple]] = None,
+    exchange_name: str = "",
+    competing: Optional[bool] = None,
+    queue_name: Optional[str] = None,
+    *,
+    message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+    message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+    **kwargs: Any,
+) -> Callable:
+    return cast(
+        Callable,
+        __amqp(
+            routing_key,
+            callback_kwargs=callback_kwargs,
+            exchange_name=exchange_name,
+            competing=competing,
+            queue_name=queue_name,
+            message_envelope=message_envelope,
+            message_protocol=message_protocol,
+            **kwargs,
+        ),
+    )

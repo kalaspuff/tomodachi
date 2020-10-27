@@ -22,9 +22,7 @@ class HttpServiceOne(tomodachi.Service):
 class HttpServiceTwo(tomodachi.Service):
     name = "test_http2"
     options = {
-        "http": {
-            "port": 54322,
-        }
+        "http.port": 54322,
     }
 
     @http("GET", r"/test/?")

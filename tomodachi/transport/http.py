@@ -8,10 +8,8 @@ import pathlib
 import re
 import time
 import uuid
-from logging.handlers import WatchedFileHandler
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union  # noqa
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
-import colorama
 from aiohttp import WSMsgType
 from aiohttp import __version__ as aiohttp_version
 from aiohttp import hdrs, web, web_protocol, web_server, web_urldispatcher
@@ -38,15 +36,26 @@ except Exception:
         pass
 
 
+# Should be implemented as lazy load instead
+class ColoramaCache:
+    _is_colorama_installed: Optional[bool] = None
+    _colorama: Any = None
+
+
 class HttpException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._log_level = kwargs.get("log_level") if kwargs and kwargs.get("log_level") else "INFO"
 
 
 class RequestHandler(web_protocol.RequestHandler):  # type: ignore
+    __slots__ = web_protocol.RequestHandler.__slots__ + ("_server_header", "_access_log", "_connection_start_time")
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop("server_header", None) if kwargs else None
         self._access_log = kwargs.pop("access_log", None) if kwargs else None
+
+        self._connection_start_time = time.time()
+
         super().__init__(*args, **kwargs)  # type: ignore
 
     @staticmethod
@@ -83,6 +92,18 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
     @staticmethod
     def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]] = False) -> str:
+        if ColoramaCache._is_colorama_installed is None:
+            try:
+                import colorama  # noqa  # isort:skip
+
+                ColoramaCache._is_colorama_installed = True
+                ColoramaCache._colorama = colorama
+            except Exception:
+                ColoramaCache._is_colorama_installed = False
+
+        if ColoramaCache._is_colorama_installed is False:
+            return str(text) if text else ""
+
         if status is False:
             status = text
         status_code = str(status) if status else None
@@ -91,18 +112,18 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
             color = None
 
             if status_code == "101":
-                color = colorama.Fore.CYAN
+                color = ColoramaCache._colorama.Fore.CYAN
             elif status_code[0] == "2":
-                color = colorama.Fore.GREEN
+                color = ColoramaCache._colorama.Fore.GREEN
             elif status_code[0] == "3" or status_code == "499":
-                color = colorama.Fore.YELLOW
+                color = ColoramaCache._colorama.Fore.YELLOW
             elif status_code[0] == "4":
-                color = colorama.Fore.RED
+                color = ColoramaCache._colorama.Fore.RED
             elif status_code[0] == "5":
-                color = colorama.Fore.WHITE + colorama.Back.RED
+                color = ColoramaCache._colorama.Fore.WHITE + ColoramaCache._colorama.Back.RED
 
             if color:
-                return "{}{}{}".format(color, output_text, colorama.Style.RESET_ALL)
+                return "{}{}{}".format(color, output_text, ColoramaCache._colorama.Style.RESET_ALL)
             return output_text
 
         return str(text) if text else ""
@@ -186,6 +207,7 @@ class Server(web_server.Server):  # type: ignore
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop("server_header", None) if kwargs else None
         self._access_log = kwargs.pop("access_log", None) if kwargs else None
+
         super().__init__(*args, **kwargs)  # type: ignore
 
     def __call__(self) -> RequestHandler:
@@ -276,9 +298,10 @@ class HttpTransport(Invoker):
         obj: Any,
         context: Dict,
         func: Any,
-        method: str,
+        method: Union[str, List[str], Tuple[str, ...]],
         url: str,
-        ignore_logging: Union[bool, List[int], Tuple[int]] = False,
+        *,
+        ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False,
         pre_handler_func: Optional[Callable] = None,
     ) -> Any:
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
@@ -299,17 +322,20 @@ class HttpTransport(Invoker):
             except IndexError:
                 pass
 
+        values = inspect.getfullargspec(func)
+        original_kwargs = (
+            {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
+            if values.defaults
+            else {}
+        )
+
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
-            result = compiled_pattern.match(request.path)
-            values = inspect.getfullargspec(func)
-            kwargs = (
-                {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
-                if values.defaults
-                else {}
-            )
-            if result:
-                for k, v in result.groupdict().items():
-                    kwargs[k] = v
+            kwargs = dict(original_kwargs)
+            if "(" in pattern:
+                result = compiled_pattern.match(request.path)
+                if result:
+                    for k, v in result.groupdict().items():
+                        kwargs[k] = v
 
             @functools.wraps(func)
             async def routine_func(
@@ -344,8 +370,10 @@ class HttpTransport(Invoker):
         if isinstance(method, list) or isinstance(method, tuple):
             for m in method:
                 context["_http_routes"].append((m.upper(), pattern, handler, route_context))
-        else:
+        elif isinstance(method, str):
             context["_http_routes"].append((method.upper(), pattern, handler, route_context))
+        else:
+            raise Exception("Invalid method '{}' for route".format(str(method)))
 
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
@@ -357,7 +385,8 @@ class HttpTransport(Invoker):
         func: Any,
         path: str,
         base_url: str,
-        ignore_logging: Union[bool, List[int], Tuple[int]] = False,
+        *,
+        ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False,
     ) -> Any:
         if "?P<filename>" not in base_url:
             pattern = r"^{}(?P<filename>.+?)$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", base_url)))
@@ -418,15 +447,15 @@ class HttpTransport(Invoker):
             except IndexError:
                 pass
 
+        values = inspect.getfullargspec(func)
+        kwargs = (
+            {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
+            if values.defaults
+            else {}
+        )
+
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             request._cache["error_status_code"] = status_code
-
-            values = inspect.getfullargspec(func)
-            kwargs = (
-                {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
-                if values.defaults
-                else {}
-            )
 
             @functools.wraps(func)
             async def routine_func(
@@ -466,6 +495,13 @@ class HttpTransport(Invoker):
         async def _pre_handler_func(obj: Any, request: web.Request) -> None:
             request._cache["is_websocket"] = True
             request._cache["websocket_uuid"] = str(uuid.uuid4())
+
+        values = inspect.getfullargspec(func)
+        original_kwargs = (
+            {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
+            if values.defaults
+            else {}
+        )
 
         @functools.wraps(func)
         async def _func(obj: Any, request: web.Request, *a: Any, **kw: Any) -> None:
@@ -517,16 +553,12 @@ class HttpTransport(Invoker):
                     )
                 )
 
-            result = compiled_pattern.match(request.path)
-            values = inspect.getfullargspec(func)
-            kwargs = (
-                {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
-                if values.defaults
-                else {}
-            )
-            if result:
-                for k, v in result.groupdict().items():
-                    kwargs[k] = v
+            kwargs = dict(original_kwargs)
+            if "(" in pattern:
+                result = compiled_pattern.match(request.path)
+                if result:
+                    for k, v in result.groupdict().items():
+                        kwargs[k] = v
 
             if len(values.args) - (len(values.defaults) if values.defaults else 0) >= 3:
                 # If the function takes a third required argument the value will be filled with the request object
@@ -638,6 +670,8 @@ class HttpTransport(Invoker):
 
         logger_handler = None
         if isinstance(access_log, str):
+            from logging.handlers import WatchedFileHandler  # noqa  # isort:skip
+
             try:
                 wfh = WatchedFileHandler(filename=access_log)
             except FileNotFoundError as e:
@@ -768,16 +802,41 @@ class HttpTransport(Invoker):
                             response.headers[hdrs.SERVER] = server_header or ""
 
                             if request_version in ((1, 0), (1, 1)) and not request._cache.get("is_websocket"):
-                                if context["_http_tcp_keepalive"] and request.keep_alive:
+                                use_keepalive = False
+                                if context["_http_tcp_keepalive"] and request.keep_alive and request.protocol:
+                                    use_keepalive = True
+                                    if (
+                                        not context["_http_keepalive_timeout"]
+                                        or context["_http_keepalive_timeout"] <= 0
+                                    ):
+                                        use_keepalive = False
+                                    elif (
+                                        context["_http_max_keepalive_requests"]
+                                        and request.protocol._request_count >= context["_http_max_keepalive_requests"]
+                                    ):
+                                        use_keepalive = False
+                                    elif (
+                                        context["_http_max_keepalive_time"]
+                                        and time.time()
+                                        > getattr(request.protocol, "_connection_start_time", 0)
+                                        + context["_http_max_keepalive_time"]
+                                    ):
+                                        use_keepalive = False
+
+                                if use_keepalive:
                                     response.headers[hdrs.CONNECTION] = "keep-alive"
-                                    response.headers[hdrs.KEEP_ALIVE] = "timeout={}".format(
-                                        context["_http_keepalive_timeout"]
+                                    response.headers[hdrs.KEEP_ALIVE] = "timeout={}{}".format(
+                                        request.protocol._keepalive_timeout,
+                                        ", max={}".format(context["_http_max_keepalive_requests"])
+                                        if context["_http_max_keepalive_requests"]
+                                        else "",
                                     )
                                 else:
                                     response.headers[hdrs.CONNECTION] = "close"
+                                    response.force_close()  # type: ignore
 
-                        if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
-                            response.force_close()  # type: ignore
+                            if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
+                                response.force_close()  # type: ignore
 
                         if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
                             raise response
@@ -795,18 +854,30 @@ class HttpTransport(Invoker):
                     try:
                         await task
                         decrease_execution_context_value("http_current_tasks")
-                        context["_http_active_requests"].remove(task)
+                        try:
+                            context["_http_active_requests"].remove(task)
+                        except KeyError:
+                            pass
                         return task.result()
                     except Exception:
                         decrease_execution_context_value("http_current_tasks")
-                        context["_http_active_requests"].remove(task)
+                        try:
+                            context["_http_active_requests"].remove(task)
+                        except KeyError:
+                            pass
                         raise
                 except Exception:
                     decrease_execution_context_value("http_current_tasks")
-                    context["_http_active_requests"].remove(task)
+                    try:
+                        context["_http_active_requests"].remove(task)
+                    except KeyError:
+                        pass
                     raise
                 decrease_execution_context_value("http_current_tasks")
-                context["_http_active_requests"].remove(task)
+                try:
+                    context["_http_active_requests"].remove(task)
+                except KeyError:
+                    pass
 
                 return task.result()
 
@@ -885,13 +956,14 @@ class HttpTransport(Invoker):
             if port is True:
                 raise ValueError("Bad value for http option port: {}".format(str(port)))
 
+            # Configuration settings for keep-alive could use some refactoring
+
             keepalive_timeout_option = http_options.get("keepalive_timeout", 0) or http_options.get(
                 "keepalive_expiry", 0
             )
             keepalive_timeout = 0
-            tcp_keepalive = False
             if keepalive_timeout_option is None or keepalive_timeout_option is False:
-                keepalive_timeout = 0
+                keepalive_timeout_option = 0
             if keepalive_timeout_option is True:
                 raise ValueError(
                     "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
@@ -902,11 +974,62 @@ class HttpTransport(Invoker):
                 raise ValueError(
                     "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
                 ) from None
+
+            tcp_keepalive = False
             if keepalive_timeout > 0:
                 tcp_keepalive = True
             else:
                 tcp_keepalive = False
                 keepalive_timeout = 0
+
+            max_keepalive_requests_option = http_options.get("max_keepalive_requests", None)
+            max_keepalive_requests = None
+            if max_keepalive_requests_option is None or max_keepalive_requests_option is False:
+                max_keepalive_requests_option = None
+            if max_keepalive_requests_option is True:
+                raise ValueError(
+                    "Bad value for http option max_keepalive_requests: {}".format(str(max_keepalive_requests_option))
+                )
+            try:
+                if max_keepalive_requests_option is not None:
+                    max_keepalive_requests = int(max_keepalive_requests_option)
+                if max_keepalive_requests == 0:
+                    max_keepalive_requests = None
+            except Exception:
+                raise ValueError(
+                    "Bad value for http option max_keepalive_requests: {}".format(str(max_keepalive_requests_option))
+                ) from None
+            if not tcp_keepalive and max_keepalive_requests:
+                raise ValueError(
+                    "HTTP keep-alive must be enabled to use http option max_keepalive_requests - a http.keepalive_timeout option value is required"
+                ) from None
+
+            max_keepalive_time_option = http_options.get("max_keepalive_time", None)
+            max_keepalive_time = None
+            if max_keepalive_time_option is None or max_keepalive_time_option is False:
+                max_keepalive_time_option = None
+            if max_keepalive_time_option is True:
+                raise ValueError(
+                    "Bad value for http option max_keepalive_time: {}".format(str(max_keepalive_time_option))
+                )
+            try:
+                if max_keepalive_time_option is not None:
+                    max_keepalive_time = int(max_keepalive_time_option)
+                if max_keepalive_time == 0:
+                    max_keepalive_time = None
+            except Exception:
+                raise ValueError(
+                    "Bad value for http option max_keepalive_time: {}".format(str(max_keepalive_time_option))
+                ) from None
+            if not tcp_keepalive and max_keepalive_time:
+                raise ValueError(
+                    "HTTP keep-alive must be enabled to use http option max_keepalive_time - a http.keepalive_timeout option value is required"
+                ) from None
+
+            context["_http_tcp_keepalive"] = tcp_keepalive
+            context["_http_keepalive_timeout"] = keepalive_timeout
+            context["_http_max_keepalive_requests"] = max_keepalive_requests
+            context["_http_max_keepalive_time"] = max_keepalive_time
 
             set_execution_context(
                 {
@@ -916,9 +1039,6 @@ class HttpTransport(Invoker):
                     "aiohttp_version": aiohttp_version,
                 }
             )
-
-            context["_http_tcp_keepalive"] = tcp_keepalive
-            context["_http_keepalive_timeout"] = keepalive_timeout
 
             try:
                 app.freeze()
@@ -952,13 +1072,15 @@ class HttpTransport(Invoker):
 
             async def stop_service(*args: Any, **kwargs: Any) -> None:
                 context["_http_tcp_keepalive"] = False
-                context["_http_accept_new_requests"] = False
 
                 server.close()
                 await server.wait_closed()
 
                 if len(web_server.connections):
                     await asyncio.sleep(1)
+
+                if not tcp_keepalive:
+                    context["_http_accept_new_requests"] = False
 
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
@@ -980,24 +1102,58 @@ class HttpTransport(Invoker):
                         pass
                     context["_http_open_websockets"] = []
 
+                termination_grace_period_seconds = 30
+                try:
+                    termination_grace_period_seconds = int(
+                        http_options.get("termination_grace_period_seconds") or termination_grace_period_seconds
+                    )
+                except Exception:
+                    pass
+
+                log_wait_message = True if termination_grace_period_seconds >= 2 else False
+
+                if tcp_keepalive and len(web_server.connections):
+                    wait_start_time = time.time()
+
+                    while wait_start_time + max(2, termination_grace_period_seconds) > time.time():
+                        active_requests = context.get("_http_active_requests", set())
+                        if not active_requests and not len(web_server.connections):
+                            break
+
+                        if log_wait_message:
+                            log_wait_message = False
+                            if len(web_server.connections) and len(web_server.connections) != len(active_requests):
+                                logging.getLogger("transport.http").info(
+                                    "Waiting for {} keep-alive connection(s) to close".format(
+                                        len(web_server.connections)
+                                    )
+                                )
+                            if active_requests:
+                                logging.getLogger("transport.http").info(
+                                    "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
+                                        len(active_requests), termination_grace_period_seconds
+                                    )
+                                )
+
+                        await asyncio.sleep(0.25)
+
+                    termination_grace_period_seconds -= int(time.time() - wait_start_time)
+
+                context["_http_accept_new_requests"] = False
+
                 active_requests = context.get("_http_active_requests", set())
                 if active_requests:
-                    termination_grace_period_seconds = 30
-                    try:
-                        termination_grace_period_seconds = int(
-                            http_options.get("termination_grace_period_seconds") or termination_grace_period_seconds
+                    if log_wait_message:
+                        logging.getLogger("transport.http").info(
+                            "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
+                                len(active_requests), termination_grace_period_seconds
+                            )
                         )
-                    except Exception:
-                        pass
-                    logging.getLogger("transport.http").info(
-                        "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
-                            len(active_requests), termination_grace_period_seconds
-                        )
-                    )
+
                     try:
                         await asyncio.wait_for(
                             asyncio.shield(asyncio.gather(*active_requests, return_exceptions=True)),
-                            timeout=termination_grace_period_seconds,
+                            timeout=max(2, termination_grace_period_seconds),
                         )
                         await asyncio.sleep(1)
                         active_requests = context.get("_http_active_requests", set())
@@ -1012,6 +1168,11 @@ class HttpTransport(Invoker):
                     context["_http_active_requests"] = set()
 
                 if len(web_server.connections):
+                    logging.getLogger("transport.http").warning(
+                        "The remaining {} open TCP connections will be forcefully closed".format(
+                            len(web_server.connections)
+                        )
+                    )
                     await app.shutdown()
                     await asyncio.sleep(1)
                 else:
@@ -1106,9 +1267,37 @@ async def get_http_response_status(
             return status_code
 
 
-http = HttpTransport.decorator(HttpTransport.request_handler)
-http_error = HttpTransport.decorator(HttpTransport.error_handler)
-http_static = HttpTransport.decorator(HttpTransport.static_request_handler)
+__http = HttpTransport.decorator(HttpTransport.request_handler)
+__http_error = HttpTransport.decorator(HttpTransport.error_handler)
+__http_static = HttpTransport.decorator(HttpTransport.static_request_handler)
 
-websocket = HttpTransport.decorator(HttpTransport.websocket_handler)
-ws = HttpTransport.decorator(HttpTransport.websocket_handler)
+__websocket = HttpTransport.decorator(HttpTransport.websocket_handler)
+__ws = HttpTransport.decorator(HttpTransport.websocket_handler)
+
+
+def http(
+    method: Union[str, List[str], Tuple[str, ...]],
+    url: str,
+    *,
+    ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False,
+    pre_handler_func: Optional[Callable] = None,
+) -> Callable:
+    return cast(Callable, __http(method, url, ignore_logging=ignore_logging, pre_handler_func=pre_handler_func))
+
+
+def http_error(status_code: int) -> Callable:
+    return cast(Callable, __http_error(status_code))
+
+
+def http_static(
+    path: str, base_url: str, *, ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False
+) -> Callable:
+    return cast(Callable, __http_static(path, base_url, ignore_logging=ignore_logging))
+
+
+def websocket(url: str) -> Callable:
+    return cast(Callable, __websocket(url))
+
+
+def ws(url: str) -> Callable:
+    return cast(Callable, __ws(url))

@@ -1,13 +1,13 @@
 import asyncio
 import os
 import signal
-import uuid
+import uuid as uuid_
 from typing import Any
 
 import tomodachi
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
 
-data_uuid = str(uuid.uuid4())
+data_uuid = str(uuid_.uuid4())
 
 
 @tomodachi.service
@@ -25,13 +25,13 @@ class AWSSNSSQSService(tomodachi.Service):
             "topic_prefix": os.environ.get("TOMODACHI_TEST_SNS_TOPIC_PREFIX"),
         },
     }
-    uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID")
+    uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID") or ""
     closer = asyncio.Future()  # type: Any
     test_topic_data_received = False
     test_topic_data = None
     data_uuid = data_uuid
 
-    def check_closer(self):
+    def check_closer(self) -> None:
         if self.test_topic_data_received:
             if not self.closer.done():
                 self.closer.set_result(None)
@@ -62,7 +62,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
         asyncio.ensure_future(_async())
 
-        self.data_uuid = str(uuid.uuid4())
+        self.data_uuid = str(uuid_.uuid4())
         for _ in range(30):
             if self.test_topic_data_received:
                 break

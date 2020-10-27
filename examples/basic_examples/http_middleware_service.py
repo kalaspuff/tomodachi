@@ -1,12 +1,11 @@
 import asyncio
 import os
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Dict
 
 from aiohttp import web
 
 import tomodachi
-from tomodachi import HttpResponse, http, http_error, http_static, websocket
-from tomodachi.discovery import DummyRegistry
+from tomodachi import http, http_error
 
 
 async def middleware_function(

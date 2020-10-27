@@ -44,7 +44,7 @@ class AWSSNSSQSService(tomodachi.Service):
     test_topic_data = None
     data_uuid = data_uuid
 
-    def check_closer(self):
+    def check_closer(self) -> None:
         if self.test_topic_data_received:
             if not self.closer.done():
                 self.closer.set_result(None)

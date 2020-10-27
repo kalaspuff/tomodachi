@@ -1,5 +1,4 @@
 import uuid
-from typing import Any
 
 import tomodachi
 from tomodachi import aws_sns_sqs_publish, schedule
