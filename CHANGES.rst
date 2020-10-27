@@ -3,7 +3,7 @@ Changes
 
 0.20.0 (2020-10-27)
 -------------------
-- Lazy loading of dependencies to lower memory foot print and to make
+- Lazy loading of dependencies to lower memory footprint and to make
   services launch quicker as they usually don't use all built-in
   implementations. Reference services launch noticeable faster now.
 
