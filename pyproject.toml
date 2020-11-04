@@ -49,6 +49,7 @@ pytz = "*"
 cchardet = ">=2.1.6"
 aiohttp = ">=3.5.4, <3.8.0"
 colorama = ">=0.3.9, <0.5.0"
+asahi = "^0.1.0"
 
 # derived from aiobotocore for dependency resolution speed in same cases.
 botocore = ">=1.12.252, <=1.17.44"
@@ -59,18 +60,20 @@ uvloop = { version = ">=0.14.0, <1.0.0", optional = true }
 aiodns = { version = ">=1.2.0", optional = true }
 Brotli = { version = "^1.0.9", optional = true }
 
+# extras management
+asahi-extras = { version = "*", optional = true }
+
 [tool.poetry.extras]
 protobuf = ["protobuf"]
 uvloop = ["uvloop"]
 aiodns = ["aiodns"]
 brotli = ["Brotli"]
 
-aws = ["aiobotocore", "botocore", "aiohttp", "cchardet"]
-amqp = ["aioamqp"]
-http = ["aiohttp", "cchardet"]
-scheduler = ["tzlocal", "pytz"]
-
-color = ["colorama"]
+aws = ["asahi-extras"]        # ["aiobotocore", "botocore", "aiohttp", "cchardet"]
+amqp = ["asahi-extras"]       # ["aioamqp"]
+http = ["asahi-extras"]       # ["aiohttp", "cchardet"]
+scheduler = ["asahi-extras"]  # ["tzlocal", "pytz"]
+color = ["asahi-extras"]      # ["colorama"]
 
 [tool.poetry.dev-dependencies]
 # The dev dependencies look messy, but helps out to not get a bunch of win32 into the dev category.
