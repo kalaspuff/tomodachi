@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.20.1 (2020-11-04)
+-------------------
+- Fixes the bug which caused almost all dependencies to be optional
+  installs ("extras") if ``tomodachi`` were installed with ``pip``.
+  All previous required dependencies are now again installed by default
+  also when using ``pip`` installer.
+
+
 0.20.0 (2020-10-27)
 -------------------
 - Lazy loading of dependencies to lower memory footprint and to make

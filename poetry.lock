@@ -927,6 +927,7 @@ asahi = [
 ]
 asahi-extras = [
     {file = "asahi-extras-0.1.1.tar.gz", hash = "sha256:83526d16c619318894a92e0a6f2c603b401eb29cdda059848a10635154737706"},
+    {file = "asahi_extras-0.1.1-py3-none-any.whl", hash = "sha256:750e9d3c302e0667712b0abaeaf76db4f4a74413b5f76ae1f0333d9219f74fea"},
 ]
 async-timeout = [
     {file = "async-timeout-3.0.1.tar.gz", hash = "sha256:0c3c816a028d47f659d6ff5c745cb2acf1f966da1fe5c19c77a70282b25f4c5f"},
