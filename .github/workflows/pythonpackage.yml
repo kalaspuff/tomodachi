@@ -51,7 +51,7 @@ jobs:
         run: flake8 tomodachi/ tests/
       - name: Run dummy service
         run: tomodachi run tests/run_example_service.py
-      - name: Run dummy service (with uvloopp)
+      - name: Run dummy service (with uvloop)
         run: tomodachi run --loop uvloop tests/run_example_service.py
       - name: Output version
         run: python tomodachi.py -v
