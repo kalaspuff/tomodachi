@@ -102,6 +102,13 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
             assert response.headers.get("X-Tomodachi-Response") == "test"
 
         async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get("http://127.0.0.1:{}/same-response".format(port))
+            assert response.status == 200
+            assert await response.text() == "test tomodachi response"
+            assert isinstance(response.headers, CIMultiDictProxy)
+            assert response.headers.get("X-Tomodachi-Response") == "test"
+
+        async with aiohttp.ClientSession(loop=loop) as client:
             _id = "123456789"
             response = await client.get("http://127.0.0.1:{}/test/{}".format(port, _id))
             assert response.status == 200
