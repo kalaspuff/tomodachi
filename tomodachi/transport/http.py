@@ -48,7 +48,7 @@ class HttpException(Exception):
 
 
 class RequestHandler(web_protocol.RequestHandler):  # type: ignore
-    __slots__ = web_protocol.RequestHandler.__slots__ + ("_server_header", "_access_log", "_connection_start_time")
+    __slots__ = web_protocol.RequestHandler.__slots__ + ("_server_header", "_access_log", "_connection_start_time", "_keepalive")
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop("server_header", None) if kwargs else None
@@ -931,7 +931,7 @@ class HttpTransport(Invoker):
                 )
 
             app: web.Application = web.Application(
-                middlewares=[middleware], client_max_size=(1024 ** 2) * 100  # type: ignore
+                middlewares=[middleware], client_max_size=client_max_size  # type: ignore
             )
             app._set_loop(None)  # type: ignore
             for method, pattern, handler, route_context in context.get("_http_routes", []):
