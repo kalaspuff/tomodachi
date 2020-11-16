@@ -40,16 +40,17 @@ class Invoker(object):
 
                     # Work-around if the decorators are stacked with multiple decorators for the same method
                     if getattr(func, FUNCTION_ATTRIBUTE, None):
+                        decorated_func = cast(Callable, getattr(func, "func"))
                         decorated_cls_func = cast(Callable, getattr(func, "cls_func"))
                         decorated_args = cast(Tuple, getattr(func, "args"))
                         decorated_kwargs = cast(Dict, getattr(func, "kwargs"))
-                        decorated_func = cast(Callable, getattr(func, "func"))
+
                         fn = cast(
                             Callable,
                             cls.decorator(decorated_cls_func)(*decorated_args, **decorated_kwargs)(decorated_func),
                         )
                         setattr(fn, START_ATTRIBUTE, True)
-                        await fn(obj, *args, **kwargs)
+                        await fn(obj, *a, **kw)
 
                     return start_func
 
