@@ -48,7 +48,12 @@ class HttpException(Exception):
 
 
 class RequestHandler(web_protocol.RequestHandler):  # type: ignore
-    __slots__ = web_protocol.RequestHandler.__slots__ + ("_server_header", "_access_log", "_connection_start_time", "_keepalive")
+    __slots__ = web_protocol.RequestHandler.__slots__ + (
+        "_server_header",
+        "_access_log",
+        "_connection_start_time",
+        "_keepalive",
+    )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop("server_header", None) if kwargs else None
