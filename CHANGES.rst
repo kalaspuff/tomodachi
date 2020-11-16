@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.20.2 (2020-11-16)
+-------------------
+- Fixes an issue which could cause hot reloading of services to break
+  (for eaxmple when using Protocol Buffers), due to the change in
+  pre-initialized modules from the ``tomodachi`` 0.20.0 release.
+
+
 0.20.1 (2020-11-04)
 -------------------
 - Fixes the bug which caused almost all dependencies to be optional
