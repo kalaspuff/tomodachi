@@ -207,10 +207,19 @@ class CLI:
             configuration = None
             log_level = logging.INFO
 
-            if "--loop" in args:
-                index = args.index("--loop")
-                args.pop(index)
-                value = args.pop(index).lower()
+            env_loop = str(os.getenv('TOMODACHI_LOOP', '')).lower() or None
+
+            if env_loop or "--loop" in args:
+                if "--loop" in args:
+                    index = args.index("--loop")
+                    args.pop(index)
+                    value = args.pop(index).lower()
+
+                    if env_loop and env_loop != value:
+                        print("Invalid argument to --loop, '{}' differs from env TOMODACHI_LOOP".format(value))
+                        sys.exit(2)
+                else:
+                    value = env_loop
 
                 if value in ("auto", "default"):
                     pass

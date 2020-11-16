@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from tomodachi.__version__ import __version_info__ as __version_info__
 from tomodachi.helpers.execution_context import clear_execution_context as _clear_execution_context
@@ -51,3 +51,5 @@ class Service(metaclass=TomodachiServiceMeta):
     log_setup: Callable = ...
 
 def service(cls: Type[object]) -> Type[TomodachiServiceMeta]: ...
+
+def run(app: Optional[Union[str, List[str], Tuple[str]]] = None, *args: str, **kwargs: Optional[str]) -> None: ...

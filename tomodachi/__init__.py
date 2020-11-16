@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import uuid as uuid_
-from typing import Any, Dict, Optional, Tuple, Type, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
 from tomodachi.__version__ import __version__, __version_info__  # noqa
 
@@ -23,7 +23,7 @@ try:
 except Exception:  # pragma: no cover
     pass
 
-__available_defs: Dict[str, Union[Tuple[str], Tuple[str, str]]] = {
+__available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
     "amqp": ("tomodachi.transport.amqp",),
     "amqp_publish": ("tomodachi.transport.amqp",),
     "aws_sns_sqs": ("tomodachi.transport.aws_sns_sqs",),
@@ -46,6 +46,7 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, str]]] = {
     "scheduler": ("tomodachi.transport.schedule",),
     "_log": ("tomodachi.helpers.logging", "log"),
     "_log_setup": ("tomodachi.helpers.logging", "log_setup"),
+    "cli": ("tomodachi.cli", None),
 }
 __imported_modules: Dict[str, Any] = {}
 __cached_defs: Dict[str, Any] = {}
@@ -167,7 +168,11 @@ def __getattr__(name: str) -> Any:
 
         module = __imported_modules.get(module_name)
 
-        __cached_defs[name] = getattr(module, real_name)
+        if real_name is not None:
+            __cached_defs[name] = getattr(module, real_name)
+        else:
+            __cached_defs[name] = module
+
         return __cached_defs[name]
 
     raise AttributeError("module 'tomodachi' has no attribute '{}'".format(name))
@@ -186,6 +191,9 @@ __all__ = [
     "__author__",
     "__email__",
     "decorator",
+    "cli",
+    "run",
+    "_run",
     "_set_service",
     "_unset_service",
     "_clear_services",
@@ -263,3 +271,44 @@ def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
 
     result = type(cls.__name__, (cls, Service), dict(cls.__dict__))
     return result
+
+
+def run(app: Optional[Union[str, List[str], Tuple[str]]] = None, *args: str, **kwargs: Optional[str]) -> None:
+    if hasattr(run, "__tomodachi_called") and run.__tomodachi_called:
+        return
+    setattr(run, "__tomodachi_called", True)
+
+    run_args = []
+    if not app:
+        import inspect  # noqa  # isort:skip
+        frame = inspect.stack()[1]
+        module = inspect.getmodule(frame[0])
+        if not module:
+            print("Error: Missing argument for 'tomodachi.run', or it was called from interpreter.")
+            setattr(run, "__tomodachi_called", False)
+            return
+        run_args.append(module.__file__)
+    elif isinstance(app, (list, tuple)):
+        for arg in app:
+            if not isinstance(arg, str):
+                continue
+            run_args.append(arg)
+    elif isinstance(app, str):
+        run_args.append(app)
+
+    for arg in args:
+        if not isinstance(arg, str):
+            continue
+        run_args.append(arg)
+
+    for key, value in kwargs.items():
+        if not isinstance(key, str):
+            continue
+        if value is not None and not isinstance(key, str):
+            continue
+        run_args.append("--{}".format(key))
+        if value is not None:
+            run_args.append(value)
+
+    from tomodachi.cli import CLI  # noqa  # isort:skip
+    CLI().run_command(run_args)
