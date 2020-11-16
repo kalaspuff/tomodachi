@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.20.3 (2020-11-16)
+-------------------
+- Corrects an issue with having multiple invoker decorators to the
+  same service function / task.
+
+- Fixed the ``http.client_max_size`` option, which invalidly always
+  defaulted to ``(1024 ** 2) * 100`` (``100MB``), even though specified
+  to another value.
+
+- Fixes backward compability with ``aiohttp`` 3.5.x.
+
+
 0.20.2 (2020-11-16)
 -------------------
 - Fixes an issue which could cause hot reloading of services to break
