@@ -5,9 +5,9 @@ from tomodachi.config import merge_dicts, parse_config_files
 
 def test_merge_dicts() -> None:
     assert merge_dicts({}, {}) == {}
-    assert merge_dicts({'a': 1}, {}) == {'a': 1}
-    assert merge_dicts({}, {'b': 2}) == {'b': 2}
-    assert merge_dicts({'a': 1}, {'b': 2}) == {'a': 1, 'b': 2}
+    assert merge_dicts({"a": 1}, {}) == {"a": 1}
+    assert merge_dicts({}, {"b": 2}) == {"b": 2}
+    assert merge_dicts({"a": 1}, {"b": 2}) == {"a": 1, "b": 2}
 
     dict1 = {"number_list": [1, 3, 5], "string": "string", "dict": {"value_in_dict": True}, "replace_value": 100}
     dict2 = {"number_list": [2, 10], "dict": {"another_value_in_dict": Decimal(10.0)}, "replace_value": 200}
