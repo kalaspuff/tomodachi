@@ -3,6 +3,8 @@ import inspect
 from typing import Any, Callable, Dict, List
 
 
+TOMODACHI_MIDDLEWARE_ATTRIBUTE = "_tomodachi_middleware_argument_length"
+
 async def execute_middlewares(func: Callable, routine_func: Callable, middlewares: List, *args: Any) -> Any:
     if middlewares:
         middleware_context: Dict = {}
@@ -17,10 +19,14 @@ async def execute_middlewares(func: Callable, routine_func: Callable, middleware
 
             middleware: Callable = middlewares[idx]
 
-            arg_len = len(inspect.getfullargspec(middleware).args)
-            defaults = inspect.getfullargspec(middleware).defaults
-            if defaults:
-                arg_len = arg_len - len(defaults)
+            if getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, None) is None:
+                arg_len = len(inspect.getfullargspec(middleware).args)
+                defaults = inspect.getfullargspec(middleware).defaults
+                if defaults:
+                    arg_len = arg_len - len(defaults)
+                setattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, arg_len)
+            else:
+                arg_len = getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, None)
 
             middleware_arguments = [_func, *args, middleware_context][0:arg_len]
 
