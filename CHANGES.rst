@@ -4,8 +4,8 @@ Changes
 0.20.4 (2020-11-17)
 -------------------
 - Optimizations for HTTP based function tasks, which should lower the
-  base CPU usage for ``tomodachi.http`` between 5% - 20% for services
-  that were using middlewares or the default access log.
+  base CPU usage for ``tomodachi.http`` decorated tasks between
+  5% - 25% when using middlewares or the default access log.
 
 
 0.20.3 (2020-11-16)
