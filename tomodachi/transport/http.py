@@ -36,6 +36,9 @@ except Exception:
         pass
 
 
+http_logger = logging.getLogger("transport.http")
+
+
 # Should be implemented as lazy load instead
 class ColoramaCache:
     _is_colorama_installed: Optional[bool] = None
@@ -61,6 +64,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
         self._connection_start_time = time.time()
 
+        kwargs["access_log"] = None
         super().__init__(*args, **kwargs)  # type: ignore
 
     @staticmethod
@@ -112,7 +116,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
         if status is False:
             status = text
         status_code = str(status) if status else None
-        if status_code and not logging.getLogger("transport.http").handlers:
+        if status_code and not http_logger.handlers:
             output_text = str(text) if text else ""
             color = None
 
@@ -147,7 +151,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = "HTTP/{}.{}".format(request.version.major, request.version.minor)
-                logging.getLogger("transport.http").info(
+                http_logger.info(
                     '[{}] [{}] {} {} "{} {}{}{}" - {} "{}" -'.format(
                         RequestHandler.colorize_status("http", 499),
                         RequestHandler.colorize_status(499),
@@ -191,7 +195,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
                 if peername:
                     request_ip, _ = peername
             if self._access_log:
-                logging.getLogger("transport.http").info(
+                http_logger.info(
                     '[{}] [{}] {} {} "INVALID" {} - "" -'.format(
                         RequestHandler.colorize_status("http", status),
                         RequestHandler.colorize_status(status),
@@ -207,6 +211,17 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
 
 class Server(web_server.Server):  # type: ignore
+    __slots__ = (
+        "_loop",
+        "_connections",
+        "_kwargs",
+        "requests_count",
+        "request_handler",
+        "request_factory",
+        "_server_header",
+        "_access_log",
+    )
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._server_header = kwargs.pop("server_header", None) if kwargs else None
         self._access_log = kwargs.pop("access_log", None) if kwargs else None
@@ -228,6 +243,8 @@ class DynamicResource(web_urldispatcher.DynamicResource):  # type: ignore
 
 
 class Response(object):
+    __slots__ = ("_body", "_status", "_reason", "_headers", "content_type", "charset", "missing_content_type")
+
     def __init__(
         self,
         *,
@@ -520,7 +537,7 @@ class HttpTransport(Invoker):
                     pass
 
                 if access_log:
-                    logging.getLogger("transport.http").info(
+                    http_logger.info(
                         '[{}] {} {} "CANCELLED {}{}" {} "{}" {}'.format(
                             RequestHandler.colorize_status("websocket", 101),
                             request_ip,
@@ -541,7 +558,7 @@ class HttpTransport(Invoker):
             context["_http_open_websockets"].append(websocket)
 
             if access_log:
-                logging.getLogger("transport.http").info(
+                http_logger.info(
                     '[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
                         RequestHandler.colorize_status("websocket", 101),
                         request_ip,
@@ -589,7 +606,7 @@ class HttpTransport(Invoker):
                     pass
 
                 if access_log:
-                    logging.getLogger("transport.http").info(
+                    http_logger.info(
                         '[{}] {} {} "{} {}{}" {} "{}" {}'.format(
                             RequestHandler.colorize_status("websocket", 500),
                             request_ip,
@@ -636,9 +653,7 @@ class HttpTransport(Invoker):
                                     "Uncaught exception: {}".format(str(ws_exception))
                                 )
                             else:
-                                logging.getLogger("transport.http").warning(
-                                    'Websocket exception: "{}"'.format(ws_exception)
-                                )
+                                http_logger.warning('Websocket exception: "{}"'.format(ws_exception))
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
             except Exception:
@@ -678,20 +693,16 @@ class HttpTransport(Invoker):
             try:
                 wfh = WatchedFileHandler(filename=access_log)
             except FileNotFoundError as e:
-                logging.getLogger("transport.http").warning(
-                    'Unable to use file for access log - invalid path ("{}")'.format(access_log)
-                )
+                http_logger.warning('Unable to use file for access log - invalid path ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             except PermissionError as e:
-                logging.getLogger("transport.http").warning(
-                    'Unable to use file for access log - invalid permissions ("{}")'.format(access_log)
-                )
+                http_logger.warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             wfh.setLevel(logging.DEBUG)
-            logging.getLogger("transport.http").setLevel(logging.DEBUG)
-            logging.getLogger("transport.http").info('Logging to "{}"'.format(access_log))
+            http_logger.setLevel(logging.DEBUG)
+            http_logger.info('Logging to "{}"'.format(access_log))
             logger_handler = wfh
-            logging.getLogger("transport.http").addHandler(logger_handler)
+            http_logger.addHandler(logger_handler)
 
         async def _start_server() -> None:
             loop = asyncio.get_event_loop()
@@ -763,7 +774,7 @@ class HttpTransport(Invoker):
                                 elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
                                     pass
                                 else:
-                                    logging.getLogger("transport.http").info(
+                                    http_logger.info(
                                         '[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
                                             RequestHandler.colorize_status("http", status_code),
                                             RequestHandler.colorize_status(status_code),
@@ -785,7 +796,7 @@ class HttpTransport(Invoker):
                                         )
                                     )
                             else:
-                                logging.getLogger("transport.http").info(
+                                http_logger.info(
                                     '[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
                                         RequestHandler.colorize_status("websocket", 101),
                                         request_ip,
@@ -1058,7 +1069,7 @@ class HttpTransport(Invoker):
             except OSError as e:
                 context["_http_accept_new_requests"] = False
                 error_message = re.sub(".*: ", "", e.strerror)
-                logging.getLogger("transport.http").warning(
+                http_logger.warning(
                     "Unable to bind service [http] to http://{}:{}/ ({})".format(
                         "127.0.0.1" if host == "0.0.0.0" else host, port, error_message
                     )
@@ -1087,9 +1098,7 @@ class HttpTransport(Invoker):
 
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
-                    logging.getLogger("transport.http").info(
-                        "Closing {} websocket connection(s)".format(len(open_websockets))
-                    )
+                    http_logger.info("Closing {} websocket connection(s)".format(len(open_websockets)))
                     tasks = []
                     for websocket in open_websockets:
                         try:
@@ -1126,13 +1135,13 @@ class HttpTransport(Invoker):
                         if log_wait_message:
                             log_wait_message = False
                             if len(web_server.connections) and len(web_server.connections) != len(active_requests):
-                                logging.getLogger("transport.http").info(
+                                http_logger.info(
                                     "Waiting for {} keep-alive connection(s) to close".format(
                                         len(web_server.connections)
                                     )
                                 )
                             if active_requests:
-                                logging.getLogger("transport.http").info(
+                                http_logger.info(
                                     "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
                                         len(active_requests), termination_grace_period_seconds
                                     )
@@ -1147,7 +1156,7 @@ class HttpTransport(Invoker):
                 active_requests = context.get("_http_active_requests", set())
                 if active_requests:
                     if log_wait_message:
-                        logging.getLogger("transport.http").info(
+                        http_logger.info(
                             "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
                                 len(active_requests), termination_grace_period_seconds
                             )
@@ -1163,7 +1172,7 @@ class HttpTransport(Invoker):
                     except (Exception, asyncio.TimeoutError, asyncio.CancelledError):
                         active_requests = context.get("_http_active_requests", set())
                         if active_requests:
-                            logging.getLogger("transport.http").warning(
+                            http_logger.warning(
                                 "All requests did not gracefully finish execution - {} request(s) remaining".format(
                                     len(active_requests)
                                 )
@@ -1171,7 +1180,7 @@ class HttpTransport(Invoker):
                     context["_http_active_requests"] = set()
 
                 if len(web_server.connections):
-                    logging.getLogger("transport.http").warning(
+                    http_logger.warning(
                         "The remaining {} open TCP connections will be forcefully closed".format(
                             len(web_server.connections)
                         )
@@ -1182,7 +1191,7 @@ class HttpTransport(Invoker):
                     await app.shutdown()
 
                 if logger_handler:
-                    logging.getLogger("transport.http").removeHandler(logger_handler)
+                    http_logger.removeHandler(logger_handler)
                 await app.cleanup()
                 if stop_method:
                     await stop_method(*args, **kwargs)
@@ -1194,7 +1203,7 @@ class HttpTransport(Invoker):
                     if getattr(registry, "add_http_endpoint", None):
                         await registry.add_http_endpoint(obj, host, port, method, pattern)
 
-            logging.getLogger("transport.http").info(
+            http_logger.info(
                 "Listening [http] on http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
             )
 
