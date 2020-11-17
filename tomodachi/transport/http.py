@@ -1315,7 +1315,7 @@ def get_http_response_status_sync(
         status_code = int(getattr(value, "status", 500)) if value is not None else 500
         return status_code
 
-    if verify_transport and request is not None and request.transport is None:
+    if verify_transport and request is not None and hasattr(request, "transport") and request.transport is None:
         return 499
 
     if isinstance(value, Response) and value._status:
