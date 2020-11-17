@@ -35,6 +35,7 @@ except Exception:
     class CancelledError(Exception):  # type: ignore
         pass
 
+
 http_logger = logging.getLogger("transport.http")
 
 
@@ -218,7 +219,7 @@ class Server(web_server.Server):  # type: ignore
         "request_handler",
         "request_factory",
         "_server_header",
-        "_access_log"
+        "_access_log",
     )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -652,9 +653,7 @@ class HttpTransport(Invoker):
                                     "Uncaught exception: {}".format(str(ws_exception))
                                 )
                             else:
-                                http_logger.warning(
-                                    'Websocket exception: "{}"'.format(ws_exception)
-                                )
+                                http_logger.warning('Websocket exception: "{}"'.format(ws_exception))
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
             except Exception:
@@ -694,14 +693,10 @@ class HttpTransport(Invoker):
             try:
                 wfh = WatchedFileHandler(filename=access_log)
             except FileNotFoundError as e:
-                http_logger.warning(
-                    'Unable to use file for access log - invalid path ("{}")'.format(access_log)
-                )
+                http_logger.warning('Unable to use file for access log - invalid path ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             except PermissionError as e:
-                http_logger.warning(
-                    'Unable to use file for access log - invalid permissions ("{}")'.format(access_log)
-                )
+                http_logger.warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             wfh.setLevel(logging.DEBUG)
             http_logger.setLevel(logging.DEBUG)
@@ -1103,9 +1098,7 @@ class HttpTransport(Invoker):
 
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
-                    http_logger.info(
-                        "Closing {} websocket connection(s)".format(len(open_websockets))
-                    )
+                    http_logger.info("Closing {} websocket connection(s)".format(len(open_websockets)))
                     tasks = []
                     for websocket in open_websockets:
                         try:

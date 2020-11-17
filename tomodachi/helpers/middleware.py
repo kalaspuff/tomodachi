@@ -2,8 +2,8 @@ import functools
 import inspect
 from typing import Any, Callable, Dict, List
 
-
 TOMODACHI_MIDDLEWARE_ATTRIBUTE = "_tomodachi_middleware_argument_length"
+
 
 async def execute_middlewares(func: Callable, routine_func: Callable, middlewares: List, *args: Any) -> Any:
     if middlewares:
