@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.20.4 (2020-11-17)
+-------------------
+- Optimizations for HTTP based function tasks, which should lower the
+  base CPU usage for ``tomodachi.http`` between 5% - 20% for services
+  that were using middlewares or the default access log.
+
+
 0.20.3 (2020-11-16)
 -------------------
 - Corrects an issue with having multiple invoker decorators to the
