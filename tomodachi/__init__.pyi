@@ -19,6 +19,7 @@ from tomodachi.transport.aws_sns_sqs import aws_sns_sqs_publish as aws_sns_sqs_p
 from tomodachi.transport.http import HttpException as HttpException
 from tomodachi.transport.http import Response as HttpResponse
 from tomodachi.transport.http import get_http_response_status as get_http_response_status
+from tomodachi.transport.http import get_http_response_status_sync as get_http_response_status_sync
 from tomodachi.transport.http import http as http
 from tomodachi.transport.http import http_error as http_error
 from tomodachi.transport.http import http_static as http_static

@@ -64,8 +64,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
 
         self._connection_start_time = time.time()
 
-        kwargs["access_log"] = None
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, access_log=None, **kwargs)  # type: ignore
 
     @staticmethod
     def get_request_ip(request: Any, context: Optional[Dict] = None) -> Optional[str]:
@@ -349,6 +348,8 @@ class HttpTransport(Invoker):
             else {}
         )
 
+        middlewares = context.get("http_middleware", [])
+
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             kwargs = dict(original_kwargs)
             if "(" in pattern:
@@ -373,10 +374,18 @@ class HttpTransport(Invoker):
             if pre_handler_func:
                 await pre_handler_func(obj, request)
 
-            return_value = await execute_middlewares(
-                func, routine_func, context.get("http_middleware", []), *(obj, request)
-            )
-            response = await resolve_response(
+            return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
+            if middlewares:
+                return_value = await execute_middlewares(
+                    func, routine_func, middlewares, *(obj, request)
+                )
+            else:
+                routine = func(obj, request, **kwargs)
+                return_value = (
+                    (await routine) if isinstance(routine, Awaitable) else routine
+                )
+
+            response = resolve_response_sync(
                 return_value,
                 request=request,
                 context=context,
@@ -474,6 +483,8 @@ class HttpTransport(Invoker):
             else {}
         )
 
+        middlewares = context.get("http_middleware", [])
+
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             request._cache["error_status_code"] = status_code
 
@@ -487,10 +498,18 @@ class HttpTransport(Invoker):
                 )
                 return return_value
 
-            return_value = await execute_middlewares(
-                func, routine_func, context.get("http_middleware", []), *(obj, request)
-            )
-            response = await resolve_response(
+            return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
+            if middlewares:
+                return_value = await execute_middlewares(
+                    func, routine_func, middlewares, *(obj, request)
+                )
+            else:
+                routine = func(obj, request, **kwargs)
+                return_value = (
+                    (await routine) if isinstance(routine, Awaitable) else routine
+                )
+
+            response = resolve_response_sync(
                 return_value,
                 request=request,
                 context=context,
@@ -1218,6 +1237,17 @@ async def resolve_response(
     default_content_type: Optional[str] = None,
     default_charset: Optional[str] = None,
 ) -> Union[web.Response, web.FileResponse]:
+    return resolve_response_sync(value=value, request=request, context=context, status_code=status_code, default_content_type=default_content_type, default_charset=default_charset)
+
+
+def resolve_response_sync(
+    value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response],
+    request: Optional[web.Request] = None,
+    context: Dict = None,
+    status_code: Optional[Union[str, int]] = None,
+    default_content_type: Optional[str] = None,
+    default_charset: Optional[str] = None,
+) -> Union[web.Response, web.FileResponse]:
     if not context:
         context = {}
     if isinstance(value, Response):
@@ -1271,12 +1301,42 @@ async def get_http_response_status(
         status_code = int(getattr(value, "status", 500)) if value is not None else 500
         return status_code
     else:
-        response = await resolve_response(value, request=request)
+        response = resolve_response_sync(value, request=request)
         status_code = int(response.status) if response is not None else 500
         if verify_transport and request is not None and request.transport is None:
             return 499
         else:
             return status_code
+
+
+def get_http_response_status_sync(
+    value: Any, request: Optional[web.Request] = None, verify_transport: bool = True
+) -> Optional[int]:
+    if isinstance(value, Exception) or isinstance(value, web.HTTPException):
+        status_code = int(getattr(value, "status", 500)) if value is not None else 500
+        return status_code
+
+    if verify_transport and request is not None and request.transport is None:
+        return 499
+
+    if isinstance(value, Response) and value._status:
+        return int(value._status)
+    elif isinstance(value, (web.Response, web.FileResponse)) and value.status:
+        return int(value.status)
+    elif isinstance(value, dict):
+        _status: Optional[SupportsInt] = value.get("status")
+        if _status and isinstance(_status, (int, str, bytes)):
+            return int(_status)
+    elif isinstance(value, list) or isinstance(value, tuple):
+        _status = value[0]
+        if _status and isinstance(_status, (int, str, bytes)):
+            return int(_status)
+    elif value and hasattr(value, "_status") and getattr(value, "_status", None):
+        return int(getattr(value, "_status"))
+    elif value and hasattr(value, "status") and getattr(value, "status", None):
+        return int(getattr(value, "status"))
+
+    return int((request is not None and request._cache.get("error_status_code", 200)) or 200)
 
 
 __http = HttpTransport.decorator(HttpTransport.request_handler)
