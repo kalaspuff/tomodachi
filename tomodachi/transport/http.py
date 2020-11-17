@@ -376,14 +376,10 @@ class HttpTransport(Invoker):
 
             return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
             if middlewares:
-                return_value = await execute_middlewares(
-                    func, routine_func, middlewares, *(obj, request)
-                )
+                return_value = await execute_middlewares(func, routine_func, middlewares, *(obj, request))
             else:
                 routine = func(obj, request, **kwargs)
-                return_value = (
-                    (await routine) if isinstance(routine, Awaitable) else routine
-                )
+                return_value = (await routine) if isinstance(routine, Awaitable) else routine
 
             response = resolve_response_sync(
                 return_value,
@@ -500,14 +496,10 @@ class HttpTransport(Invoker):
 
             return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
             if middlewares:
-                return_value = await execute_middlewares(
-                    func, routine_func, middlewares, *(obj, request)
-                )
+                return_value = await execute_middlewares(func, routine_func, middlewares, *(obj, request))
             else:
                 routine = func(obj, request, **kwargs)
-                return_value = (
-                    (await routine) if isinstance(routine, Awaitable) else routine
-                )
+                return_value = (await routine) if isinstance(routine, Awaitable) else routine
 
             response = resolve_response_sync(
                 return_value,
@@ -1237,7 +1229,14 @@ async def resolve_response(
     default_content_type: Optional[str] = None,
     default_charset: Optional[str] = None,
 ) -> Union[web.Response, web.FileResponse]:
-    return resolve_response_sync(value=value, request=request, context=context, status_code=status_code, default_content_type=default_content_type, default_charset=default_charset)
+    return resolve_response_sync(
+        value=value,
+        request=request,
+        context=context,
+        status_code=status_code,
+        default_content_type=default_content_type,
+        default_charset=default_charset,
+    )
 
 
 def resolve_response_sync(
