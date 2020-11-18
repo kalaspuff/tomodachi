@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.20.5 (2020-11-18)
+-------------------
+- Await potential lingering connection responses before shutting down
+  HTTP server.
+
+
 0.20.4 (2020-11-17)
 -------------------
 - Optimizations for HTTP based function tasks, which should lower the
