@@ -1101,7 +1101,9 @@ class HttpTransport(Invoker):
                 server.close()
                 await server.wait_closed()
 
+                shutdown_sleep = 0
                 if len(web_server.connections):
+                    shutdown_sleep = 1
                     await asyncio.sleep(1)
 
                 if not tcp_keepalive:
@@ -1189,6 +1191,9 @@ class HttpTransport(Invoker):
                                 )
                             )
                     context["_http_active_requests"] = set()
+
+                if shutdown_sleep > 0:
+                    await asyncio.sleep(shutdown_sleep)
 
                 if len(web_server.connections):
                     http_logger.warning(
