@@ -183,7 +183,7 @@ class AWSSNSSQSTransport(Invoker):
         message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         filter_policy: Optional[
-            Union[str, Dict[str, List[Union[str, Dict[str, Union[bool, List]]]]]]
+            Union[str, Dict[str, List[Union[str, Dict[str, Union[str, bool, List]]]]]]
         ] = FILTER_POLICY_DEFAULT,
         **kwargs: Any,
     ) -> Any:
@@ -1233,7 +1233,7 @@ def aws_sns_sqs(
     message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
     message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
     filter_policy: Optional[
-        Union[str, Dict[str, List[Union[str, Dict[str, Union[bool, List]]]]]]
+        Union[str, Dict[str, List[Union[str, Dict[str, Union[str, bool, List]]]]]]
     ] = FILTER_POLICY_DEFAULT,
     **kwargs: Any,
 ) -> Callable:

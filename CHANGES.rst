@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.20.6 (2020-11-24)
+-------------------
+- Fixes a type annotation for the ``aws_sns_sqs`` keyword argument
+  ``filter_policy`` which could result in a ``mypy`` error if an
+  "anything-but" filter policy was used.
+
+
 0.20.5 (2020-11-18)
 -------------------
 - Await potential lingering connection responses before shutting down
