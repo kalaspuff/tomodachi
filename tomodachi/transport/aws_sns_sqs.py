@@ -11,13 +11,22 @@ import logging
 import re
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Dict, List, Literal, Mapping, Match, Optional, Sequence, Set, Tuple, Union, cast
+from typing import Any, Awaitable, Callable, Dict, List, Mapping, Match, Optional, Sequence, Set, Tuple, Union, cast
 
 import aiobotocore
 import aiohttp
 import botocore
 from botocore.parsers import ResponseParserError
-from typing_extensions import TypedDict
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
+try:
+    from typing import TypedDict
+except ImportError:
+    from typing_extensions import TypedDict  # type: ignore
 
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
