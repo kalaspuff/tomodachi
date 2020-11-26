@@ -541,8 +541,8 @@ class AWSSNSSQSTransport(Invoker):
 
     def transform_message_attributes_from_response(
         cls, message_attributes: Dict
-    ) -> Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool, object]]]]]:
-        result: Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool, object]]]]] = {}
+    ) -> Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]]:
+        result: Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]] = {}
 
         for name, values in message_attributes.items():
             value = values["Value"]
@@ -553,7 +553,7 @@ class AWSSNSSQSTransport(Invoker):
             elif values["Type"] == "Binary":
                 result[name] = base64.b64decode(value)
             elif values["Type"] == "String.Array":
-                result[name] = cast(List[Optional[Union[str, int, float, bool, object]]], json.loads(value))
+                result[name] = cast(Optional[Union[bool, List[Optional[Union[str, int, float, bool, object]]]]], json.loads(value))
 
         return result
 
