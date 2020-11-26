@@ -11,12 +11,13 @@ import logging
 import re
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Set, Tuple, Union, cast
+from typing import Any, Awaitable, Callable, Dict, List, Literal, Mapping, Match, Optional, Sequence, Set, Tuple, Union, cast
 
 import aiobotocore
 import aiohttp
 import botocore
 from botocore.parsers import ResponseParserError
+from typing_extensions import TypedDict
 
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
@@ -53,6 +54,38 @@ class AWSSNSSQSInternalServiceErrorException(AWSSNSSQSInternalServiceError):
 
 class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
     pass
+
+AnythingButFilterPolicyDict = TypedDict(
+    "AnythingButFilterPolicyDict",
+    {
+        "anything-but": Union[str, int, float, Sequence[str], Sequence[Union[int, float]]],
+    },
+    total=False,
+)
+
+NumericFilterPolicyDict = TypedDict(
+    "NumericFilterPolicyDict",
+    {
+        "numeric": Sequence[Union[int, float, Literal["<", "<=", "=", ">=", ">"]]],
+    },
+    total=False,
+)
+
+PrefixFilterPolicyDict = TypedDict(
+    "PrefixFilterPolicyDict",
+    {
+        "prefix": str,
+    },
+    total=False,
+)
+
+ExistsFilterPolicyDict = TypedDict(
+    "ExistsFilterPolicyDict",
+    {
+        "exists": bool,
+    },
+    total=False,
+)
 
 
 class AWSSNSSQSTransport(Invoker):
@@ -183,7 +216,7 @@ class AWSSNSSQSTransport(Invoker):
         message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         filter_policy: Optional[
-            Union[str, Dict[str, List[Union[str, Dict[str, Union[str, bool, List]]]]]]
+            Union[str, Mapping[str, Sequence[Optional[Union[str, int, float, AnythingButFilterPolicyDict, NumericFilterPolicyDict, PrefixFilterPolicyDict, ExistsFilterPolicyDict]]]]]
         ] = FILTER_POLICY_DEFAULT,
         **kwargs: Any,
     ) -> Any:
@@ -508,8 +541,8 @@ class AWSSNSSQSTransport(Invoker):
 
     def transform_message_attributes_from_response(
         cls, message_attributes: Dict
-    ) -> Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]]:
-        result: Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]] = {}
+    ) -> Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool, object]]]]]:
+        result: Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool, object]]]]] = {}
 
         for name, values in message_attributes.items():
             value = values["Value"]
@@ -520,7 +553,7 @@ class AWSSNSSQSTransport(Invoker):
             elif values["Type"] == "Binary":
                 result[name] = base64.b64decode(value)
             elif values["Type"] == "String.Array":
-                result[name] = cast(List[Optional[Union[str, int, float, bool]]], json.loads(value))
+                result[name] = cast(List[Optional[Union[str, int, float, bool, object]]], json.loads(value))
 
         return result
 
@@ -532,6 +565,8 @@ class AWSSNSSQSTransport(Invoker):
         for name, value in message_attributes.items():
             if isinstance(value, str):
                 result[name] = {"DataType": "String", "StringValue": value}
+            elif value is None or isinstance(value, bool):
+                result[name] = {"DataType": "String.Array", "StringValue": json.dumps(value)}
             elif isinstance(value, (int, float, decimal.Decimal)):
                 result[name] = {"DataType": "Number", "StringValue": str(value)}
             elif isinstance(value, bytes):
@@ -540,6 +575,8 @@ class AWSSNSSQSTransport(Invoker):
                 result[name] = {"DataType": "String.Array", "StringValue": json.dumps(value)}
             else:
                 result[name] = {"DataType": "String", "StringValue": str(value)}
+
+        print(result)
 
         return result
 
@@ -1233,7 +1270,7 @@ def aws_sns_sqs(
     message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
     message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
     filter_policy: Optional[
-        Union[str, Dict[str, List[Union[str, Dict[str, Union[str, bool, List]]]]]]
+        Union[str, Mapping[str, Sequence[Optional[Union[str, int, float, AnythingButFilterPolicyDict, NumericFilterPolicyDict, PrefixFilterPolicyDict, ExistsFilterPolicyDict]]]]]
     ] = FILTER_POLICY_DEFAULT,
     **kwargs: Any,
 ) -> Callable:
