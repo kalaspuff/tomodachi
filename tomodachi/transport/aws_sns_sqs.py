@@ -9,9 +9,10 @@ import inspect
 import json
 import logging
 import re
+import sys
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Set, Tuple, Union, cast
+from typing import Any, Awaitable, Callable, Dict, List, Mapping, Match, Optional, Set, Tuple, Union, cast
 
 import aiobotocore
 import aiohttp
@@ -27,11 +28,67 @@ from tomodachi.helpers.execution_context import (
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
+if sys.version_info >= (3, 8):
+    from typing import TypedDict, Literal  # isort:skip
+else:
+    from typing_extensions import TypedDict, Literal  # isort:skip
+
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
 MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
 MESSAGE_TOPIC_PREFIX = "09698c75-832b-470f-8e05-96d2dd8c4853"
 FILTER_POLICY_DEFAULT = "7e68632f-3b39-4293-b5a9-16644cf857a5"
+
+AnythingButFilterPolicyValueType = Union[str, int, float, List[str], List[int], List[float], List[Union[int, float]]]
+AnythingButFilterPolicyDict = TypedDict(
+    "AnythingButFilterPolicyDict",
+    {
+        "anything-but": AnythingButFilterPolicyValueType,
+    },
+    total=False,
+)
+
+NumericFilterPolicyValueType = List[Union[int, float, Literal["<", "<=", "=", ">=", ">"]]]
+NumericFilterPolicyDict = TypedDict(
+    "NumericFilterPolicyDict",
+    {
+        "numeric": NumericFilterPolicyValueType,
+    },
+    total=False,
+)
+
+PrefixFilterPolicyDict = TypedDict(
+    "PrefixFilterPolicyDict",
+    {
+        "prefix": str,
+    },
+    total=False,
+)
+
+ExistsFilterPolicyDict = TypedDict(
+    "ExistsFilterPolicyDict",
+    {
+        "exists": bool,
+    },
+    total=False,
+)
+
+FilterPolicyDictType = Mapping[
+    str,
+    List[
+        Optional[
+            Union[
+                str,
+                int,
+                float,
+                AnythingButFilterPolicyDict,
+                NumericFilterPolicyDict,
+                PrefixFilterPolicyDict,
+                ExistsFilterPolicyDict,
+            ]
+        ]
+    ],
+]
 
 
 class AWSSNSSQSException(Exception):
@@ -182,9 +239,7 @@ class AWSSNSSQSTransport(Invoker):
         *,
         message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
-        filter_policy: Optional[
-            Union[str, Dict[str, List[Union[str, Dict[str, Union[str, bool, List]]]]]]
-        ] = FILTER_POLICY_DEFAULT,
+        filter_policy: Optional[Union[str, FilterPolicyDictType]] = FILTER_POLICY_DEFAULT,
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
@@ -508,8 +563,10 @@ class AWSSNSSQSTransport(Invoker):
 
     def transform_message_attributes_from_response(
         cls, message_attributes: Dict
-    ) -> Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]]:
-        result: Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]] = {}
+    ) -> Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]]:
+        result: Dict[
+            str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
+        ] = {}
 
         for name, values in message_attributes.items():
             value = values["Value"]
@@ -520,7 +577,9 @@ class AWSSNSSQSTransport(Invoker):
             elif values["Type"] == "Binary":
                 result[name] = base64.b64decode(value)
             elif values["Type"] == "String.Array":
-                result[name] = cast(List[Optional[Union[str, int, float, bool]]], json.loads(value))
+                result[name] = cast(
+                    Optional[Union[bool, List[Optional[Union[str, int, float, bool, object]]]]], json.loads(value)
+                )
 
         return result
 
@@ -532,6 +591,8 @@ class AWSSNSSQSTransport(Invoker):
         for name, value in message_attributes.items():
             if isinstance(value, str):
                 result[name] = {"DataType": "String", "StringValue": value}
+            elif value is None or isinstance(value, bool):
+                result[name] = {"DataType": "String.Array", "StringValue": json.dumps(value)}
             elif isinstance(value, (int, float, decimal.Decimal)):
                 result[name] = {"DataType": "Number", "StringValue": str(value)}
             elif isinstance(value, bytes):
@@ -1232,9 +1293,7 @@ def aws_sns_sqs(
     *,
     message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
     message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
-    filter_policy: Optional[
-        Union[str, Dict[str, List[Union[str, Dict[str, Union[str, bool, List]]]]]]
-    ] = FILTER_POLICY_DEFAULT,
+    filter_policy: Optional[Union[str, FilterPolicyDictType]] = FILTER_POLICY_DEFAULT,
     **kwargs: Any,
 ) -> Callable:
     return cast(
