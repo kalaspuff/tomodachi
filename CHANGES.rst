@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.20.7 (2020-11-27)
+-------------------
+- Reworked type hinting annotations for aws sns sqs filter policies
+  as there were still cases found in the previous tomodachi version
+  that didn't work as they should, and raised mypy errors where a
+  correct filter policy had been applied.
+
+
 0.20.6 (2020-11-24)
 -------------------
 - Fixes a type annotation for the ``aws_sns_sqs`` decorator's keyword
