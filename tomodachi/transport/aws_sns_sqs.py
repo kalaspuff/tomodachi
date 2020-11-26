@@ -576,8 +576,6 @@ class AWSSNSSQSTransport(Invoker):
             else:
                 result[name] = {"DataType": "String", "StringValue": str(value)}
 
-        print(result)
-
         return result
 
     async def publish_message(cls: Any, topic_arn: str, message: Any, message_attributes: Dict, context: Dict) -> str:
