@@ -9,6 +9,7 @@ import inspect
 import json
 import logging
 import re
+import sys
 import time
 import uuid
 from typing import Any, Awaitable, Callable, Dict, List, Mapping, Match, Optional, Sequence, Set, Tuple, Union, cast
@@ -17,16 +18,6 @@ import aiobotocore
 import aiohttp
 import botocore
 from botocore.parsers import ResponseParserError
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
-
-try:
-    from typing import TypedDict
-except ImportError:
-    from typing_extensions import TypedDict  # type: ignore
 
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
@@ -37,11 +28,53 @@ from tomodachi.helpers.execution_context import (
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
+from typing import TypedDict, Literal
+if sys.version_info >= (3, 8):
+    from typing import TypedDict, Literal  # isort:skip
+else:
+    from typing_extensions import TypedDict, Literal  # isort:skip
+
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
 MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
 MESSAGE_TOPIC_PREFIX = "09698c75-832b-470f-8e05-96d2dd8c4853"
 FILTER_POLICY_DEFAULT = "7e68632f-3b39-4293-b5a9-16644cf857a5"
+
+AnythingButFilterPolicyValueType = Union[str, int, float, List[str], List[int], List[float], List[Union[int, float]]]
+AnythingButFilterPolicyDict = TypedDict(
+    "AnythingButFilterPolicyDict",
+    {
+        "anything-but": AnythingButFilterPolicyValueType,
+    },
+    total=False,
+)
+
+NumericFilterPolicyValueType = List[Union[int, float, Literal["<", "<=", "=", ">=", ">"]]]
+NumericFilterPolicyDict = TypedDict(
+    "NumericFilterPolicyDict",
+    {
+        "numeric": NumericFilterPolicyValueType,
+    },
+    total=False,
+)
+
+PrefixFilterPolicyDict = TypedDict(
+    "PrefixFilterPolicyDict",
+    {
+        "prefix": str,
+    },
+    total=False,
+)
+
+ExistsFilterPolicyDict = TypedDict(
+    "ExistsFilterPolicyDict",
+    {
+        "exists": bool,
+    },
+    total=False,
+)
+
+FilterPolicyDictType = Mapping[str, List[Optional[Union[str, int, float, AnythingButFilterPolicyDict, NumericFilterPolicyDict, PrefixFilterPolicyDict, ExistsFilterPolicyDict]]]]
 
 
 class AWSSNSSQSException(Exception):
@@ -63,38 +96,6 @@ class AWSSNSSQSInternalServiceErrorException(AWSSNSSQSInternalServiceError):
 
 class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
     pass
-
-AnythingButFilterPolicyDict = TypedDict(
-    "AnythingButFilterPolicyDict",
-    {
-        "anything-but": Union[str, int, float, Sequence[str], Sequence[Union[int, float]]],
-    },
-    total=False,
-)
-
-NumericFilterPolicyDict = TypedDict(
-    "NumericFilterPolicyDict",
-    {
-        "numeric": Sequence[Union[int, float, Literal["<", "<=", "=", ">=", ">"]]],
-    },
-    total=False,
-)
-
-PrefixFilterPolicyDict = TypedDict(
-    "PrefixFilterPolicyDict",
-    {
-        "prefix": str,
-    },
-    total=False,
-)
-
-ExistsFilterPolicyDict = TypedDict(
-    "ExistsFilterPolicyDict",
-    {
-        "exists": bool,
-    },
-    total=False,
-)
 
 
 class AWSSNSSQSTransport(Invoker):
@@ -225,7 +226,7 @@ class AWSSNSSQSTransport(Invoker):
         message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         filter_policy: Optional[
-            Union[str, Mapping[str, Sequence[Optional[Union[str, int, float, AnythingButFilterPolicyDict, NumericFilterPolicyDict, PrefixFilterPolicyDict, ExistsFilterPolicyDict]]]]]
+            Union[str, FilterPolicyDictType]
         ] = FILTER_POLICY_DEFAULT,
         **kwargs: Any,
     ) -> Any:
@@ -1277,7 +1278,7 @@ def aws_sns_sqs(
     message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
     message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
     filter_policy: Optional[
-        Union[str, Mapping[str, Sequence[Optional[Union[str, int, float, AnythingButFilterPolicyDict, NumericFilterPolicyDict, PrefixFilterPolicyDict, ExistsFilterPolicyDict]]]]]
+        Union[str, FilterPolicyDictType]
     ] = FILTER_POLICY_DEFAULT,
     **kwargs: Any,
 ) -> Callable:
