@@ -51,6 +51,9 @@ aiohttp = ">=3.5.4, <3.8.0"
 colorama = ">=0.3.9, <0.5.0"
 asahi = "^0.1.0"
 
+# typing extensions support for Python 3.7
+typing-extensions = { version = ">=3.7.4", markers = "python_version < \"3.8\"" }
+
 # derived from aiobotocore for dependency resolution speed in same cases.
 botocore = ">=1.12.252, <=1.17.44"
 
