@@ -12,7 +12,7 @@ import re
 import sys
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Dict, List, Mapping, Match, Optional, Sequence, Set, Tuple, Union, cast
+from typing import Any, Awaitable, Callable, Dict, List, Mapping, Match, Optional, Set, Tuple, Union, cast
 
 import aiobotocore
 import aiohttp
@@ -73,7 +73,22 @@ ExistsFilterPolicyDict = TypedDict(
     total=False,
 )
 
-FilterPolicyDictType = Mapping[str, List[Optional[Union[str, int, float, AnythingButFilterPolicyDict, NumericFilterPolicyDict, PrefixFilterPolicyDict, ExistsFilterPolicyDict]]]]
+FilterPolicyDictType = Mapping[
+    str,
+    List[
+        Optional[
+            Union[
+                str,
+                int,
+                float,
+                AnythingButFilterPolicyDict,
+                NumericFilterPolicyDict,
+                PrefixFilterPolicyDict,
+                ExistsFilterPolicyDict,
+            ]
+        ]
+    ],
+]
 
 
 class AWSSNSSQSException(Exception):
@@ -224,9 +239,7 @@ class AWSSNSSQSTransport(Invoker):
         *,
         message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
-        filter_policy: Optional[
-            Union[str, FilterPolicyDictType]
-        ] = FILTER_POLICY_DEFAULT,
+        filter_policy: Optional[Union[str, FilterPolicyDictType]] = FILTER_POLICY_DEFAULT,
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
@@ -551,7 +564,9 @@ class AWSSNSSQSTransport(Invoker):
     def transform_message_attributes_from_response(
         cls, message_attributes: Dict
     ) -> Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]]:
-        result: Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]] = {}
+        result: Dict[
+            str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
+        ] = {}
 
         for name, values in message_attributes.items():
             value = values["Value"]
@@ -562,7 +577,9 @@ class AWSSNSSQSTransport(Invoker):
             elif values["Type"] == "Binary":
                 result[name] = base64.b64decode(value)
             elif values["Type"] == "String.Array":
-                result[name] = cast(Optional[Union[bool, List[Optional[Union[str, int, float, bool, object]]]]], json.loads(value))
+                result[name] = cast(
+                    Optional[Union[bool, List[Optional[Union[str, int, float, bool, object]]]]], json.loads(value)
+                )
 
         return result
 
@@ -1276,9 +1293,7 @@ def aws_sns_sqs(
     *,
     message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
     message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
-    filter_policy: Optional[
-        Union[str, FilterPolicyDictType]
-    ] = FILTER_POLICY_DEFAULT,
+    filter_policy: Optional[Union[str, FilterPolicyDictType]] = FILTER_POLICY_DEFAULT,
     **kwargs: Any,
 ) -> Callable:
     return cast(
