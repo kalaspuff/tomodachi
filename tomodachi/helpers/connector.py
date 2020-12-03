@@ -5,6 +5,7 @@ from typing import Any, AsyncIterator, Awaitable, Dict, Optional
 
 import aiobotocore
 import aiohttp
+import botocore
 
 MAX_POOL_CONNECTIONS = 50
 CONNECT_TIMEOUT = 8
@@ -100,29 +101,41 @@ class ClientConnector:
 
             return self.clients.get(alias_name) or client
 
-    async def close_client(self, alias_name: str) -> None:
+    async def close_client(
+        self,
+        alias_name: Optional[str] = None,
+        client: Optional[aiobotocore.client.AioBaseClient] = None,
+        fast: bool = False,
+    ) -> None:
         while self.close_waiter:
             if self.close_waiter.done():
                 self.close_waiter = None
             else:
                 await self.close_waiter
 
-        async with self.get_lock(alias_name):
-            if not isinstance(alias_name, str):
-                if alias_name in self.clients.values():
-                    alias_name = [k for k, v in self.clients.items() if alias_name == v][0]
+        if not alias_name and client:
+            if client in self.clients.values():
+                alias_name = [k for k, v in self.clients.items() if client == v][0]
 
+        if not alias_name:
+            return
+
+        async with self.get_lock(alias_name):
             client = self.get_client(alias_name)
             if not client:
                 return
 
             try:
-                await asyncio.sleep(1)
+                if not fast:
+                    await asyncio.sleep(1)
                 task = client.close()
                 if getattr(task, "_coro", None):
                     task = task._coro
                 await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
-                await asyncio.sleep(0.25)  # SSL termination sleep
+                if not fast:
+                    await asyncio.sleep(0.25)  # SSL termination sleep
+                else:
+                    await asyncio.sleep(0)
             except Exception:
                 pass
 
@@ -141,7 +154,7 @@ class ClientConnector:
 
         return await self.create_client(alias_name, service_name=service_name)
 
-    async def close(self) -> None:
+    async def close(self, fast: bool = False) -> None:
         if self.close_waiter and not self.close_waiter.done():
             return
         self.close_waiter = asyncio.Future()
@@ -154,7 +167,8 @@ class ClientConnector:
         self.client_creation_lock_time = {}
         self.locks = {}
 
-        await asyncio.sleep(1)
+        if not fast:
+            await asyncio.sleep(1)
 
         tasks = []
         for _, client in clients.items():
@@ -170,7 +184,10 @@ class ClientConnector:
 
         try:
             await asyncio.wait(tasks, timeout=3)
-            await asyncio.sleep(0.25)  # SSL termination sleep
+            if not fast:
+                await asyncio.sleep(0.25)  # SSL termination sleep
+            else:
+                await asyncio.sleep(0)
         except Exception:
             pass
 
@@ -189,8 +206,20 @@ class ClientConnector:
 
         try:
             yield client
-        except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError):
+        except (
+            botocore.exceptions.NoRegionError,
+            botocore.exceptions.PartialCredentialsError,
+            botocore.exceptions.NoCredentialsError,
+        ):
+            await self.close_client(client=client, fast=True)
+            raise
+        except (aiohttp.client_exceptions.ServerDisconnectedError, asyncio.TimeoutError, RuntimeError):
             await self.reconnect_client(client=client)
+            raise
+        except botocore.exceptions.ClientError as e:
+            error_message = str(e)
+            if "The security token included in the request is invalid" in error_message:
+                await self.close_client(client=client, fast=True)
             raise
 
 
