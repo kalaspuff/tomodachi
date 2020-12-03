@@ -28,6 +28,8 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, str]]] = {
     "amqp_publish": ("tomodachi.transport.amqp",),
     "aws_sns_sqs": ("tomodachi.transport.aws_sns_sqs",),
     "aws_sns_sqs_publish": ("tomodachi.transport.aws_sns_sqs",),
+    "botocore_client_connector": ("tomodachi.helpers.botocore_connector", "connector"),
+    "BotocoreClientConnector": ("tomodachi.helpers.botocore_connector", "ClientConnector"),
     "HttpException": ("tomodachi.transport.http",),
     "HttpResponse": ("tomodachi.transport.http", "Response"),
     "get_http_response_status": ("tomodachi.transport.http",),

@@ -19,7 +19,7 @@ import aiohttp
 import botocore
 from botocore.parsers import ResponseParserError
 
-from tomodachi.helpers.connector import ClientConnector
+from tomodachi.helpers.botocore_connector import ClientConnector
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
