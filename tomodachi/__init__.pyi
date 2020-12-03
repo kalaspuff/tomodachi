@@ -1,6 +1,8 @@
 from typing import Any, Callable, Dict, Tuple, Type
 
 from tomodachi.__version__ import __version_info__ as __version_info__
+from tomodachi.helpers.botocore_connector import connector as botocore_client_connector
+from tomodachi.helpers.botocore_connector import ClientConnector as BotocoreClientConnector
 from tomodachi.helpers.execution_context import clear_execution_context as _clear_execution_context
 from tomodachi.helpers.execution_context import clear_services as _clear_services
 from tomodachi.helpers.execution_context import decrease_execution_context_value as decrease_execution_context_value
