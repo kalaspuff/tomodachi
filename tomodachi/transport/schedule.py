@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import inspect
 import logging
+import random
 import time
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union, cast  # noqa
 
@@ -38,17 +39,22 @@ class Scheduler(Invoker):
         )
 
         async def handler() -> None:
-            kwargs = dict(original_kwargs)
-
             increase_execution_context_value("scheduled_functions_current_tasks")
-            increase_execution_context_value("scheduled_functions_total_tasks")
             try:
+                kwargs = dict(original_kwargs)
+
+                increase_execution_context_value("scheduled_functions_total_tasks")
+
                 routine = func(*(obj,), **kwargs)
                 if isinstance(routine, Awaitable):
                     await routine
-            except Exception as e:
+
+            except (Exception, asyncio.CancelledError) as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-            decrease_execution_context_value("scheduled_functions_current_tasks")
+            except BaseException as e:
+                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+            finally:
+                decrease_execution_context_value("scheduled_functions_current_tasks")
 
         context["_schedule_scheduled_functions"] = context.get("_schedule_scheduled_functions", [])
         context["_schedule_scheduled_functions"].append((interval, timestamp, timezone, immediately, func, handler))
@@ -315,16 +321,63 @@ class Scheduler(Invoker):
         start_waiter: asyncio.Future = asyncio.Future()
 
         async def schedule_loop() -> None:
-            await start_waiter
+            sleep_task: asyncio.Future
+            current_time = time.time()
+            max_sleep_time = 300
+
+            try:
+                sleep_task = asyncio.ensure_future(asyncio.sleep(10))
+                await asyncio.wait([sleep_task, start_waiter], return_when=asyncio.FIRST_COMPLETED)
+                if not sleep_task.done():
+                    sleep_task.cancel()
+                else:
+                    logging.getLogger("transport.schedule").warning(
+                        "Scheduled loop for function '{}' cannot start yet - start waiter not done for 10 seconds".format(func.__name__)
+                    )
+                    sleep_task = asyncio.ensure_future(asyncio.sleep(110))
+                    await asyncio.wait([sleep_task, start_waiter], return_when=asyncio.FIRST_COMPLETED)
+                    if not sleep_task.done():
+                        sleep_task.cancel()
+                    else:
+                        logging.getLogger("transport.schedule").warning(
+                            "Scheduled loop for function '{}' cannot start yet - start waiter not done for 120 seconds".format(func.__name__)
+                        )
+                        logging.getLogger("exception").exception(
+                            "Scheduled loop not started for 120 seconds"
+                        )
+
+                await asyncio.sleep(0.1)
+                await start_waiter
+
+                if cls.close_waiter.done():
+                    logging.getLogger("transport.schedule").info(
+                        "Scheduled loop for function '{}' never started before service termination".format(func.__name__)
+                    )
+                else:
+                    ts0 = cls.next_call_at(current_time, interval, timestamp, timezone)
+                    for _ in range(10):
+                        ts1 = cls.next_call_at(ts0, interval, timestamp, timezone)
+                        ts2 = cls.next_call_at(ts1, interval, timestamp, timezone)
+                        if int(ts2 - ts1) // 2 < max_sleep_time:
+                            max_sleep_time = int(ts2 - ts1) // 2
+                    max_sleep_time = min(max(max_sleep_time, 10), 300)
+            except (Exception, asyncio.CancelledError) as e:
+                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+
+                await asyncio.sleep(0.1)
+                await start_waiter
+
+                if cls.close_waiter.done():
+                    logging.getLogger("transport.schedule").info(
+                        "Scheduled loop for function '{}' never started before service termination".format(func.__name__)
+                    )
 
             next_call_at = None
             prev_call_at = None
             tasks: List = []
-            current_time = time.time()
             too_many_tasks = False
             threshold = 20
             run_immediately = immediately
-            sleep_task: asyncio.Future
 
             while not cls.close_waiter.done():
                 try:
@@ -332,15 +385,26 @@ class Scheduler(Invoker):
                         last_time = current_time
                         actual_time = time.time()
                         current_time = last_time + 1 if int(last_time + 1) < int(actual_time) else actual_time
+
                         if next_call_at is None:
                             next_call_at = cls.next_call_at(current_time, interval, timestamp, timezone)
                             if prev_call_at and prev_call_at == next_call_at:
+                                if int(last_time + 60) < int(actual_time):
+                                    logging.getLogger("transport.schedule").warning(
+                                        "Scheduled tasks for function '{}' is out of time sync and may not run".format(func.__name__)
+                                    )
+                                    logging.getLogger("exception").exception(
+                                        "Scheduled task loop out of sync"
+                                    )
+
                                 next_call_at = None
                                 await asyncio.sleep(1)
                                 continue
                         sleep_diff = int(current_time + 1) - actual_time + 0.001
                         if next_call_at > time.time() + 8:
                             sleep_diff = int((next_call_at - time.time()) / 3)
+                        if sleep_diff >= max_sleep_time:
+                            sleep_diff = int(max_sleep_time - random.random() * 5)
                         if sleep_diff >= 2:
                             sleep_task = asyncio.ensure_future(asyncio.sleep(sleep_diff))
                             await asyncio.wait([sleep_task, cls.close_waiter], return_when=asyncio.FIRST_COMPLETED)
@@ -363,7 +427,7 @@ class Scheduler(Invoker):
                         if not too_many_tasks and len(tasks) >= threshold:
                             too_many_tasks = True
                             logging.getLogger("transport.schedule").warning(
-                                'Too many scheduled tasks ({}) for function "{}"'.format(threshold, func.__name__)
+                                "Too many scheduled tasks ({}) for function '{}'".format(threshold, func.__name__)
                             )
                             threshold = threshold * 2
                         await asyncio.sleep(1)
@@ -377,7 +441,7 @@ class Scheduler(Invoker):
                         continue
                     if too_many_tasks and len(tasks) < 15:
                         logging.getLogger("transport.schedule").info(
-                            'Tasks within threshold for function "{}" - resumed'.format(func.__name__)
+                            "Tasks within threshold for function '{}' - resumed".format(func.__name__)
                         )
                         threshold = 20
                     too_many_tasks = False
@@ -391,7 +455,10 @@ class Scheduler(Invoker):
                             )
                         )
                     tasks.append(task)
-                except Exception as e:
+                except (Exception, asyncio.CancelledError) as e:
+                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    await asyncio.sleep(1)
+                except BaseException as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     await asyncio.sleep(1)
 

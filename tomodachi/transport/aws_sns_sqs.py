@@ -290,7 +290,7 @@ class AWSSNSSQSTransport(Invoker):
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 try:
                     await cls.delete_message(cls, receipt_handle, queue_url, context)
-                except Exception:
+                except (Exception, asyncio.CancelledError):
                     pass
                 return
 
@@ -355,7 +355,7 @@ class AWSSNSSQSTransport(Invoker):
                             not isinstance(message, dict) or "message_attributes" not in message
                         ):
                             kwargs["message_attributes"] = message_attributes_values
-                except Exception as e:
+                except (Exception, asyncio.CancelledError, BaseException) as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.delete_message(cls, receipt_handle, queue_url, context)
@@ -393,7 +393,7 @@ class AWSSNSSQSTransport(Invoker):
                         routine = func(*(obj, message, *a), **kw)
                     else:
                         routine = func(*(obj, *a), **kw)
-                except Exception as e:
+                except (Exception, asyncio.CancelledError, BaseException) as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if issubclass(
                         e.__class__,
@@ -412,7 +412,7 @@ class AWSSNSSQSTransport(Invoker):
                 if isinstance(routine, Awaitable):
                     try:
                         return_value = await routine
-                    except Exception as e:
+                    except (Exception, asyncio.CancelledError, BaseException) as e:
                         logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                         if issubclass(
                             e.__class__,
@@ -615,7 +615,7 @@ class AWSSNSSQSTransport(Invoker):
                         client.publish(TopicArn=topic_arn, Message=message, MessageAttributes=message_attribute_values),
                         timeout=30,
                     )
-            except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
+            except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError, asyncio.CancelledError) as e:
                 if retry >= 3:
                     raise e
                 continue
@@ -651,13 +651,13 @@ class AWSSNSSQSTransport(Invoker):
             await cls.create_client("sqs", context)
 
         async def _delete_message() -> None:
-            for retry in range(1, 4):
+            for retry in range(1, 8):
                 try:
                     async with connector("tomodachi.sqs", service_name="sqs") as client:
                         await asyncio.wait_for(
-                            client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30
+                            client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=15
                         )
-                except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
+                except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError, asyncio.CancelledError) as e:
                     if retry >= 3:
                         raise e
                     continue
@@ -1075,6 +1075,15 @@ class AWSSNSSQSTransport(Invoker):
                             )
                             await asyncio.sleep(1)
                             continue
+                        except BaseException as e:
+                            error_message = str(e)
+                            logging.getLogger("transport.aws_sns_sqs").warning(
+                                "Unexpected error while receiving message from queue [sqs] on AWS ({})".format(
+                                    error_message
+                                )
+                            )
+                            await asyncio.sleep(1)
+                            continue
 
                         messages = response.get("Messages", [])
                         if not messages:
@@ -1104,6 +1113,8 @@ class AWSSNSSQSTransport(Invoker):
                                 callback(payload, receipt_handle, queue_url, message_topic, message_attributes)
                             )
                     except asyncio.CancelledError:
+                        continue
+                    except BaseException:
                         continue
 
                     tasks = [asyncio.ensure_future(func()) for func in futures if func]
