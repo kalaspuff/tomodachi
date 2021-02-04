@@ -5,6 +5,7 @@ import ipaddress
 import logging
 import os
 import pathlib
+import platform
 import re
 import time
 import uuid
@@ -1075,7 +1076,21 @@ class HttpTransport(Invoker):
                     keepalive_timeout=keepalive_timeout,
                     tcp_keepalive=tcp_keepalive,
                 )
-                server_task = loop.create_server(web_server, host, port)  # type: ignore
+                if platform.system() == "Linux":
+                    reuse_port = True
+                    if port == 0:
+                        http_logger.warning(
+                            "listen on random port (0) with SO_REUSEPORT is dangerous."
+                            " Please double check your intent."
+                        )
+                    else:
+                        http_logger.warning(
+                            "SO_REUSEPORT set to True automatically for Linux platform."
+                            " Different service must not use the same port ({})".format(port)
+                        )
+                else:
+                    reuse_port = False
+                server_task = loop.create_server(web_server, host, port, reuse_port=reuse_port)  # type: ignore
                 server = await server_task  # type: ignore
             except OSError as e:
                 context["_http_accept_new_requests"] = False
