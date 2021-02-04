@@ -12,7 +12,7 @@ import re
 import sys
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Dict, List, Mapping, Match, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Mapping, Match, Optional, Set, Tuple, Union, cast
 
 import aiobotocore
 import aiohttp
@@ -406,7 +406,7 @@ class AWSSNSSQSTransport(Invoker):
                     await cls.delete_message(cls, receipt_handle, queue_url, context)
                     return
 
-                if isinstance(routine, Awaitable):
+                if inspect.isawaitable(routine):
                     try:
                         return_value = await routine
                     except Exception as e:
@@ -502,7 +502,7 @@ class AWSSNSSQSTransport(Invoker):
                 aws_access_key_id=aws_access_key_id,
                 endpoint_url=endpoint_url,
             )
-            if isinstance(client, Awaitable):
+            if inspect.isawaitable(client):
                 cls.clients[name] = await client
             else:
                 cls.clients[name] = client
