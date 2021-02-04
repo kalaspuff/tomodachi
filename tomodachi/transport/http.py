@@ -313,6 +313,8 @@ class Response(object):
 
 
 class HttpTransport(Invoker):
+    server_port_mapping: Dict[Any, str] = {}
+
     async def request_handler(
         cls: Any,
         obj: Any,
@@ -1052,6 +1054,15 @@ class HttpTransport(Invoker):
                     "HTTP keep-alive must be enabled to use http option max_keepalive_time - a http.keepalive_timeout option value is required"
                 ) from None
 
+            reuse_port_default = True if platform.system() == "Linux" else False
+            reuse_port = True if http_options.get("reuse_port", reuse_port_default) else False
+            if reuse_port and platform.system() != "Linux":
+                http_logger.warning(
+                    "The http option reuse_port (socket.SO_REUSEPORT) can only enabled on Linux platforms - current "
+                    f"platform is {platform.system()} - will revert option setting to not reuse ports"
+                )
+                reuse_port = False
+
             context["_http_tcp_keepalive"] = tcp_keepalive
             context["_http_keepalive_timeout"] = keepalive_timeout
             context["_http_max_keepalive_requests"] = max_keepalive_requests
@@ -1076,20 +1087,19 @@ class HttpTransport(Invoker):
                     keepalive_timeout=keepalive_timeout,
                     tcp_keepalive=tcp_keepalive,
                 )
-                if platform.system() == "Linux":
-                    reuse_port = True
-                    if port == 0:
+                if reuse_port:
+                    if not port:
                         http_logger.warning(
-                            "listen on random port (0) with SO_REUSEPORT is dangerous."
-                            " Please double check your intent."
+                            "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
+                            "listening on random ports with SO_REUSEPORT is dangerous - please double check your intent"
                         )
-                    else:
+                    elif str(port) in HttpTransport.server_port_mapping.values():
                         http_logger.warning(
-                            "SO_REUSEPORT set to True automatically for Linux platform."
-                            " Different service must not use the same port ({})".format(port)
+                            "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
+                            "different service classes should not use the same port ({})".format(port)
                         )
-                else:
-                    reuse_port = False
+                if port:
+                    HttpTransport.server_port_mapping[web_server] = str(port)
                 server_task = loop.create_server(web_server, host, port, reuse_port=reuse_port)  # type: ignore
                 server = await server_task  # type: ignore
             except OSError as e:
@@ -1106,6 +1116,7 @@ class HttpTransport(Invoker):
                 socket_address = server.sockets[0].getsockname()
                 if socket_address:
                     port = int(socket_address[1])
+                    HttpTransport.server_port_mapping[web_server] = str(port)
             context["_http_port"] = port
 
             stop_method = getattr(obj, "_stop_service", None)
@@ -1115,6 +1126,8 @@ class HttpTransport(Invoker):
 
                 server.close()
                 await server.wait_closed()
+
+                HttpTransport.server_port_mapping.pop(web_server, None)
 
                 shutdown_sleep = 0
                 if len(web_server.connections):

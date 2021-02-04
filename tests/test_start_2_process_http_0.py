@@ -21,11 +21,13 @@ def test_start_2_process_http_reuse_port_request(monkeypatch: Any, capsys: Any, 
         await asyncio.sleep(1)
         async with aiohttp.ClientSession(loop=loop) as client:
             services_uuid = set()
-            for ti in range(4):
+            for ti in range(100):
                 response = await client.get("http://127.0.0.1:{}/get-uuid".format(port))
                 data = await response.read()
                 assert len(data) > 0
                 services_uuid.add(str(data))
+                if len(services_uuid) == 2:
+                    break
             assert len(services_uuid) == 2
 
     loop.run_until_complete(_async(loop))
