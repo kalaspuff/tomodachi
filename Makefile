@@ -46,7 +46,7 @@ flake8:
 
 .PHONY: mypy
 mypy:
-	poetry run mypy ./ tests/type_hinting_validation.py
+	poetry run mypy tomodachi/ tests/type_hinting_validation.py
 
 lint: flake8 mypy
 
