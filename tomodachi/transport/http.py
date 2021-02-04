@@ -1058,7 +1058,8 @@ class HttpTransport(Invoker):
             reuse_port = True if http_options.get("reuse_port", reuse_port_default) else False
             if reuse_port and platform.system() != "Linux":
                 http_logger.warning(
-                    f"The http option reuse_port (socket.SO_REUSEPORT) can only enabled on Linux platforms - current platform is {platform.system()} - will revert to not reuse ports"
+                    "The http option reuse_port (socket.SO_REUSEPORT) can only enabled on Linux platforms - current "
+                    f"platform is {platform.system()} - will revert option setting to not reuse ports"
                 )
                 reuse_port = False
 
@@ -1089,13 +1090,13 @@ class HttpTransport(Invoker):
                 if reuse_port:
                     if not port:
                         http_logger.warning(
-                            "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - listening on a random port with SO_REUSEPORT is dangerous -"
-                            " please double check your intent"
+                            "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
+                            "listening on random ports with SO_REUSEPORT is dangerous - please double check your intent"
                         )
                     elif str(port) in HttpTransport.server_port_mapping.values():
                         http_logger.warning(
-                            "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux -"
-                            " different service classes should not use the same port ({})".format(port)
+                            "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
+                            "different service classes should not use the same port ({})".format(port)
                         )
                 if port:
                     HttpTransport.server_port_mapping[web_server] = str(port)
