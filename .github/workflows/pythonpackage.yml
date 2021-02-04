@@ -1,6 +1,6 @@
 name: Python package
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -58,6 +58,6 @@ jobs:
       - name: python tomodachi.py --dependency-versions
         run: python tomodachi.py --dependency-versions
       - name: Type check with mypy
-        run: mypy ./ tests/type_hinting_validation.py
+        run: mypy tomodachi/ tests/type_hinting_validation.py
       - name: Codecov
         run: codecov --token=${{ secrets.CODECOV_TOKEN }}
