@@ -313,7 +313,7 @@ class Response(object):
 
 
 class HttpTransport(Invoker):
-    server_port_mapping = {}
+    server_port_mapping: Dict[Any, str] = {}
 
     async def request_handler(
         cls: Any,
