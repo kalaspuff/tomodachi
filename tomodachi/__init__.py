@@ -45,6 +45,8 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, str]]] = {
     "monthly": ("tomodachi.transport.schedule",),
     "schedule": ("tomodachi.transport.schedule",),
     "scheduler": ("tomodachi.transport.schedule",),
+    "aiobotocore_client_connector": ("tomodachi.helpers.aiobotocore_connector", "connector"),
+    "AiobotocoreClientConnector": ("tomodachi.helpers.aiobotocore_connector", "ClientConnector"),
     "_log": ("tomodachi.helpers.logging", "log"),
     "_log_setup": ("tomodachi.helpers.logging", "log_setup"),
 }
@@ -197,6 +199,8 @@ __all__ = [
     "increase_execution_context_value",
     "get_service",
     "get_instance",
+    "BotocoreClientConnector",
+    "botocore_client_connector",
     "amqp",
     "amqp_publish",
     "aws_sns_sqs",
