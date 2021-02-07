@@ -10,7 +10,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Set, T
 
 import aioamqp
 
-from tomodachi.helpers.dict import merge_dicts
+from tomodachi.helpers.dict import get_item_by_path, merge_dicts
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -432,6 +432,10 @@ class AmqpTransport(Invoker):
 
         cls.channel = None
         channel = await cls.connect(cls, obj, context)
+        queue_prefetch_count = get_item_by_path(context, "options.amqp.qos.queue_prefetch_count", 100)
+        global_prefetch_count = get_item_by_path(context, "options.amqp.qos.global_prefetch_count", 400)
+        await channel.basic_qos(prefetch_count=queue_prefetch_count, prefetch_size=0, connection_global=False)
+        await channel.basic_qos(prefetch_count=global_prefetch_count, prefetch_size=0, connection_global=True)
 
         async def _subscribe() -> None:
             async def declare_queue(

@@ -1,6 +1,9 @@
 from decimal import Decimal
 
+import pytest
+
 from tomodachi.config import merge_dicts, parse_config_files
+from tomodachi.helpers.dict import get_item_by_path
 
 
 def test_merge_dicts() -> None:
@@ -34,3 +37,25 @@ def test_parse_config_file() -> None:
 def test_parse_no_config_file() -> None:
     result = parse_config_files([])
     assert result is None
+
+
+def test_get_item_by_path() -> None:
+    context = {
+        "options": {
+            "http": {"port": 4711, "access_log": True},
+            "amqp": {
+                "login": "guest",
+                "password": "guest",
+                "qos": {
+                    "queue_prefetch_count": 150,
+                },
+            },
+        }
+    }
+    assert get_item_by_path(context, "options.http.port") == 4711
+    assert get_item_by_path(context, "options.amqp.qos.queue_prefetch_count", 100) == 150
+    assert get_item_by_path(context, "options.amqp.qos.global_prefetch_count", 400) == 400
+    with pytest.raises(KeyError):
+        get_item_by_path(context, "options http")
+    with pytest.raises(ValueError):
+        get_item_by_path(context, "options.http.port.access_log")

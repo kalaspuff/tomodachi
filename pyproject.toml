@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tomodachi"
-version = "0.20.7"
+version = "0.21.0"
 description = "Microservice library on asyncio - HTTP server, websockets, pub/sub messaging for AWS SNS+SQS and RabbitMQ"
 authors = ["Carl Oscar Aaro <hello@carloscar.com>"]
 keywords = ["tomodachi", "microservice", "microservices", "framework", "library", "asyncio", "aws", "sns", "sqs", "amqp", "rabbitmq", "http", "websockets", "easy", "fast", "pubsub", "events", "event based messaging", "messages", "protocol buffers", "protobuf", "async", "message attributes", "filter policy", "distributed architecture", "scalable", "python 3"]
@@ -43,7 +43,7 @@ Changelog = "https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst"
 python = "^3.7"
 
 aioamqp = ">=0.13.0, <0.15.0"
-aiobotocore = ">=0.10.4, <1.2.0"
+aiobotocore = ">=0.10.4, <1.3.0"
 tzlocal = ">=1.4"
 pytz = "*"
 cchardet = ">=2.1.6"
@@ -55,7 +55,7 @@ asahi = "^0.1.0"
 typing-extensions = { version = ">=3.7.4", markers = "python_version < \"3.8\"" }
 
 # derived from aiobotocore for dependency resolution speed in same cases.
-botocore = ">=1.12.252, <=1.17.44"
+botocore = ">=1.12.252"
 
 # extras
 protobuf = { version = ">=3.13.0", optional = true }
@@ -87,7 +87,7 @@ isort = { version = ">=5.6.0", markers = "sys_platform != \"win32\"" }
 pytest = { version = ">=6.1.0", markers = "sys_platform != \"win32\"" }
 pytest-cov = { version = ">=2.10.0", markers = "sys_platform != \"win32\"" }
 black = { version = "*", markers = "sys_platform != \"win32\"", allow-prereleases = true }
-mypy = { version = ">=0.790", markers = "sys_platform != \"win32\"" }
+mypy = { version = ">=0.800", markers = "sys_platform != \"win32\"" }
 codecov = { version = ">=2.1.10", markers = "sys_platform != \"win32\"" }
 
 [tool.poetry.scripts]
