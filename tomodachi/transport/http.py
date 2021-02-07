@@ -9,7 +9,7 @@ import platform
 import re
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
 from aiohttp import WSMsgType
 from aiohttp import __version__ as aiohttp_version
@@ -367,7 +367,7 @@ class HttpTransport(Invoker):
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response] = (
-                    (await routine) if isinstance(routine, Awaitable) else routine
+                    (await routine) if inspect.isawaitable(routine) else routine
                 )
                 return return_value
 
@@ -382,7 +382,7 @@ class HttpTransport(Invoker):
                 return_value = await execute_middlewares(func, routine_func, middlewares, *(obj, request))
             else:
                 routine = func(obj, request, **kwargs)
-                return_value = (await routine) if isinstance(routine, Awaitable) else routine
+                return_value = (await routine) if inspect.isawaitable(routine) else routine
 
             response = resolve_response_sync(
                 return_value,
@@ -493,7 +493,7 @@ class HttpTransport(Invoker):
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, Response] = (
-                    (await routine) if isinstance(routine, Awaitable) else routine
+                    (await routine) if inspect.isawaitable(routine) else routine
                 )
                 return return_value
 
@@ -502,7 +502,7 @@ class HttpTransport(Invoker):
                 return_value = await execute_middlewares(func, routine_func, middlewares, *(obj, request))
             else:
                 routine = func(obj, request, **kwargs)
-                return_value = (await routine) if isinstance(routine, Awaitable) else routine
+                return_value = (await routine) if inspect.isawaitable(routine) else routine
 
             response = resolve_response_sync(
                 return_value,
@@ -605,7 +605,7 @@ class HttpTransport(Invoker):
             try:
                 routine = func(*(obj, websocket, *a), **merge_dicts(kwargs, kw))
                 callback_functions: Optional[Union[Tuple[Callable, Callable], Tuple[Callable], Callable]] = (
-                    (await routine) if isinstance(routine, Awaitable) else routine
+                    (await routine) if inspect.isawaitable(routine) else routine
                 )
             except Exception as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))

@@ -6,7 +6,7 @@ import inspect
 import logging
 import re
 import time
-from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Match, Optional, Set, Tuple, Union, cast
 
 import aioamqp
 
@@ -314,7 +314,7 @@ class AmqpTransport(Invoker):
                     await cls.channel.basic_client_ack(delivery_tag)
                     return
 
-                if isinstance(routine, Awaitable):
+                if inspect.isawaitable(routine):
                     try:
                         return_value = await routine
                     except Exception as e:
