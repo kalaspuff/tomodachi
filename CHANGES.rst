@@ -11,12 +11,13 @@ Changes
   run several processes of a service to utilize additional CPU cores.
   The ``http.reuse_port`` option doesn't have any effect when a
   service is running on a non-Linux platform.
+  (github: **tranvietanh1991**)
 
 - Services which works as AMQP consumers now has a default prefetch
   count  value of 100, where previously the service didn't specify
   any prefetch count option, which could exhaust the host's resources
   if messages would be published faster to the queue than the
-  services could process them.
+  services could process them. (github: **tranvietanh1991**)
 
 
 0.20.7 (2020-11-27)
