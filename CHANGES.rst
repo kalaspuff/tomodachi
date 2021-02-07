@@ -19,6 +19,12 @@ Changes
   if messages would be published faster to the queue than the
   services could process them. (github: **tranvietanh1991**)
 
+- AWS SNS+SQS calls now uses a slightly changed config which will
+  increases the connection pool to 50 connections, decreases the
+  connect timeout to 8 seconds and the read timeout to 35 seconds.
+
+- Smaller performance improvements throughout the framework.
+
 
 0.20.7 (2020-11-27)
 -------------------
