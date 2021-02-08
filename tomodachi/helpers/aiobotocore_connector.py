@@ -104,7 +104,7 @@ class ClientConnector:
                         task = task._coro
                     await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
                     await asyncio.sleep(0.25)  # SSL termination sleep
-                except Exception:
+                except (Exception, RuntimeError, asyncio.CancelledError, BaseException):
                     pass
 
             return self.clients.get(alias_name) or client
@@ -151,7 +151,7 @@ class ClientConnector:
                     await asyncio.sleep(0.25)  # SSL termination sleep
                 else:
                     await asyncio.sleep(0)
-            except Exception:
+            except (Exception, RuntimeError, asyncio.CancelledError, BaseException):
                 pass
 
             self.clients[alias_name] = None
