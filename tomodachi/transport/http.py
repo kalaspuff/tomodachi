@@ -899,6 +899,13 @@ class HttpTransport(Invoker):
                     except KeyError:
                         pass
                     raise
+                except BaseException:
+                    decrease_execution_context_value("http_current_tasks")
+                    try:
+                        context["_http_active_requests"].remove(task)
+                    except KeyError:
+                        pass
+                    raise
                 decrease_execution_context_value("http_current_tasks")
                 try:
                     context["_http_active_requests"].remove(task)
