@@ -723,7 +723,9 @@ class HttpTransport(Invoker):
 
             logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
-            async def request_handler_func(request: web.Request, handler: Callable) -> Union[web.Response, web.FileResponse]:
+            async def request_handler_func(
+                request: web.Request, handler: Callable
+            ) -> Union[web.Response, web.FileResponse]:
                 response: Union[web.Response, web.FileResponse]
                 request_ip = RequestHandler.get_request_ip(request, context)
 
@@ -813,8 +815,7 @@ class HttpTransport(Invoker):
                                     RequestHandler.colorize_status("websocket", 101),
                                     request_ip,
                                     '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                                    if request._cache.get("auth")
-                                    and getattr(request._cache.get("auth"), "login", None)
+                                    if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
                                     else "-",
                                     request.path,
                                     "?{}".format(request.query_string) if request.query_string else "",
@@ -831,10 +832,7 @@ class HttpTransport(Invoker):
                             use_keepalive = False
                             if context["_http_tcp_keepalive"] and request.keep_alive and request.protocol:
                                 use_keepalive = True
-                                if (
-                                    not context["_http_keepalive_timeout"]
-                                    or context["_http_keepalive_timeout"] <= 0
-                                ):
+                                if not context["_http_keepalive_timeout"] or context["_http_keepalive_timeout"] <= 0:
                                     use_keepalive = False
                                 elif (
                                     context["_http_max_keepalive_requests"]
