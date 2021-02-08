@@ -269,7 +269,7 @@ class AmqpTransport(Invoker):
                             not isinstance(message, dict) or "routing_key" not in message
                         ):
                             kwargs["routing_key"] = routing_key
-                except Exception as e:
+                except (Exception, asyncio.CancelledError, BaseException) as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.channel.basic_client_ack(delivery_tag)
@@ -301,7 +301,7 @@ class AmqpTransport(Invoker):
                         routine = func(*(obj, message, *a), **kw)
                     else:
                         routine = func(*(obj, *a), **kw)
-                except Exception as e:
+                except (Exception, asyncio.CancelledError, BaseException) as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if issubclass(
                         e.__class__,
@@ -317,7 +317,7 @@ class AmqpTransport(Invoker):
                 if inspect.isawaitable(routine):
                     try:
                         return_value = await routine
-                    except Exception as e:
+                    except (Exception, asyncio.CancelledError, BaseException) as e:
                         logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                         if issubclass(
                             e.__class__,
