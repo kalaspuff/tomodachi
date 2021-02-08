@@ -287,6 +287,7 @@ def run(app: Optional[Union[str, List[str], Tuple[str]]] = None, *args: str, **k
     run_args = []
     if not app:
         import inspect  # noqa  # isort:skip
+
         frame = inspect.stack()[1]
         module = inspect.getmodule(frame[0])
         if not module:
@@ -317,4 +318,5 @@ def run(app: Optional[Union[str, List[str], Tuple[str]]] = None, *args: str, **k
             run_args.append(value)
 
     from tomodachi.cli import CLI  # noqa  # isort:skip
+
     CLI().run_command(run_args)

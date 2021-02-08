@@ -207,7 +207,7 @@ class CLI:
             configuration = None
             log_level = logging.INFO
 
-            env_loop = str(os.getenv('TOMODACHI_LOOP', '')).lower() or None
+            env_loop = str(os.getenv("TOMODACHI_LOOP", "")).lower() or None
 
             if env_loop or "--loop" in args:
                 if "--loop" in args:
@@ -260,7 +260,7 @@ class CLI:
                     print("Invalid config file, invalid JSON format: {}".format(str(e)))
                     sys.exit(2)
 
-            env_production = str(os.getenv('TOMODACHI_PRODUCTION', '')).lower() or None
+            env_production = str(os.getenv("TOMODACHI_PRODUCTION", "")).lower() or None
             if env_production and env_production in ("0", "no", "none", "false"):
                 env_production = None
 
