@@ -260,9 +260,14 @@ class CLI:
                     print("Invalid config file, invalid JSON format: {}".format(str(e)))
                     sys.exit(2)
 
-            if "--production" in args:
-                index = args.index("--production")
-                args.pop(index)
+            env_production = str(os.getenv('TOMODACHI_PRODUCTION', '')).lower() or None
+            if env_production and env_production in ("0", "no", "none", "false"):
+                env_production = None
+
+            if env_production or "--production" in args:
+                if "--production" in args:
+                    index = args.index("--production")
+                    args.pop(index)
                 watcher = None
             else:
                 cwd = os.getcwd()
