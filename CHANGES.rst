@@ -23,6 +23,22 @@ Changes
   increase the connection pool to 50 connections, decreases the
   connect timeout to 8 seconds and the read timeout to 35 seconds.
 
+- Possible to run services using without using the ``tomodachi``
+  CLI, by adding ``tomodachi.run()`` to the end of the Python
+  file invoked by ``python`` which will start services within
+  that file. Usually in a ``if __name__ == "__main__":``
+  if-block.
+
+- The environment variable ``TOMODACHI_LOOP`` can be used to specify
+  the event loop implementation in a similar way as the CLI
+  argument ``--loop [auto|asyncio|uvloop]`` would.
+
+- Environment variable ``TOMODACHI_PRODUCTION`` set to ``1`` can be
+  used to run the service without the file watcher for automatic
+  code reloads enabled, which then yields higher performance.
+  Equivalent as starting the service with the ``--production``
+  argument.
+
 - Smaller performance improvements throughout the framework.
 
 - Improved error handling overall in regards to non-standard
