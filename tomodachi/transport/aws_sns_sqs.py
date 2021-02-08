@@ -116,8 +116,6 @@ class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
 
 
 class AWSSNSSQSTransport(Invoker):
-    clients = None
-    clients_creation_time = None
     topics: Dict[str, str] = {}
     close_waiter = None
 
@@ -1026,6 +1024,8 @@ class AWSSNSSQSTransport(Invoker):
                                     )
                                 )
                             continue
+                        except asyncio.CancelledError:
+                            continue
                         except ResponseParserError:
                             if not is_disconnected:
                                 is_disconnected = True
@@ -1170,12 +1170,11 @@ class AWSSNSSQSTransport(Invoker):
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
+                await connector.close()
             else:
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
-
-            await connector.close()
 
         setattr(obj, "_stop_service", stop_service)
 

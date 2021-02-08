@@ -52,11 +52,18 @@ class ClientConnector:
         alias_name = str(alias_name)
         service_name = str(service_name)
 
+        exc_iteration_count = 0
         while self.close_waiter:
             if self.close_waiter.done():
                 self.close_waiter = None
             else:
-                await self.close_waiter
+                try:
+                    await self.close_waiter
+                except RuntimeError:
+                    exc_iteration_count += 1
+                    if exc_iteration_count >= 100:
+                        raise
+                    await asyncio.sleep(0.1)
 
         async with self.get_lock(alias_name):
             client = self.get_client(alias_name)
@@ -108,11 +115,18 @@ class ClientConnector:
         client: Optional[aiobotocore.client.AioBaseClient] = None,
         fast: bool = False,
     ) -> None:
+        exc_iteration_count = 0
         while self.close_waiter:
             if self.close_waiter.done():
                 self.close_waiter = None
             else:
-                await self.close_waiter
+                try:
+                    await self.close_waiter
+                except RuntimeError:
+                    exc_iteration_count += 1
+                    if exc_iteration_count >= 100:
+                        raise
+                    await asyncio.sleep(0.1)
 
         if not alias_name and client:
             if client in self.clients.values():
@@ -158,7 +172,6 @@ class ClientConnector:
     async def close(self, fast: bool = False) -> None:
         if self.close_waiter and not self.close_waiter.done():
             return
-        self.close_waiter = asyncio.Future()
 
         clients = self.clients
 
@@ -168,6 +181,10 @@ class ClientConnector:
         self.client_creation_lock_time = {}
         self.locks = {}
 
+        if not clients:
+            return
+
+        self.close_waiter = asyncio.Future()
         if not fast:
             await asyncio.sleep(1)
 
@@ -180,7 +197,7 @@ class ClientConnector:
                 if getattr(task, "_coro", None):
                     task = task._coro
                 tasks.append(asyncio.ensure_future(task))
-            except Exception:
+            except (Exception, RuntimeError, asyncio.CancelledError, BaseException):
                 pass
 
         try:
@@ -189,17 +206,25 @@ class ClientConnector:
                 await asyncio.sleep(0.25)  # SSL termination sleep
             else:
                 await asyncio.sleep(0)
-        except Exception:
+        except (Exception, RuntimeError, asyncio.CancelledError, BaseException):
             pass
 
-        self.close_waiter.set_result(None)
+        if self.close_waiter:
+            self.close_waiter.set_result(None)
 
     @asynccontextmanager
     async def __call__(
         self, alias_name: Optional[str] = None, credentials: Optional[Dict] = None, service_name: Optional[str] = None
     ) -> AsyncIterator[Any]:
+        exc_iteration_count = 0
         while self.close_waiter and not self.close_waiter.done():
-            await self.close_waiter
+            try:
+                await self.close_waiter
+            except RuntimeError:
+                exc_iteration_count += 1
+                if exc_iteration_count >= 100:
+                    raise
+                await asyncio.sleep(0.1)
 
         if not self.get_client(alias_name or service_name or ""):
             await self.create_client(alias_name, credentials, service_name)
