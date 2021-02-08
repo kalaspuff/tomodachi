@@ -52,11 +52,18 @@ class ClientConnector:
         alias_name = str(alias_name)
         service_name = str(service_name)
 
+        exc_iteration_count = 0
         while self.close_waiter:
             if self.close_waiter.done():
                 self.close_waiter = None
             else:
-                await self.close_waiter
+                try:
+                    await self.close_waiter
+                except RuntimeError:
+                    exc_iteration_count += 1
+                    if exc_iteration_count >= 100:
+                        raise
+                    await asyncio.sleep(0.1)
 
         async with self.get_lock(alias_name):
             client = self.get_client(alias_name)
@@ -108,11 +115,18 @@ class ClientConnector:
         client: Optional[aiobotocore.client.AioBaseClient] = None,
         fast: bool = False,
     ) -> None:
+        exc_iteration_count = 0
         while self.close_waiter:
             if self.close_waiter.done():
                 self.close_waiter = None
             else:
-                await self.close_waiter
+                try:
+                    await self.close_waiter
+                except RuntimeError:
+                    exc_iteration_count += 1
+                    if exc_iteration_count >= 100:
+                        raise
+                    await asyncio.sleep(0.1)
 
         if not alias_name and client:
             if client in self.clients.values():
@@ -192,14 +206,22 @@ class ClientConnector:
         except Exception:
             pass
 
-        self.close_waiter.set_result(None)
+        if self.close_waiter:
+            self.close_waiter.set_result(None)
 
     @asynccontextmanager
     async def __call__(
         self, alias_name: Optional[str] = None, credentials: Optional[Dict] = None, service_name: Optional[str] = None
     ) -> AsyncIterator[Any]:
+        exc_iteration_count = 0
         while self.close_waiter and not self.close_waiter.done():
-            await self.close_waiter
+            try:
+                await self.close_waiter
+            except RuntimeError:
+                exc_iteration_count += 1
+                if exc_iteration_count >= 100:
+                    raise
+                await asyncio.sleep(0.1)
 
         if not self.get_client(alias_name or service_name or ""):
             await self.create_client(alias_name, credentials, service_name)
