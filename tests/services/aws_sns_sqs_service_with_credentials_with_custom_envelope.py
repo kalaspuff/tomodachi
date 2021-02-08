@@ -75,11 +75,14 @@ class AWSSNSSQSService(tomodachi.Service):
 
         asyncio.ensure_future(_async())
 
-        for _ in range(30):
-            if self.test_topic_data_received:
-                break
-            await publish(self.data_uuid, "test-custom-topic")
-            await asyncio.sleep(0.1)
+        async def _async_publisher() -> None:
+            for _ in range(10):
+                if self.test_topic_data_received:
+                    break
+                await publish(self.data_uuid, "test-custom-topic")
+                await asyncio.sleep(0.5)
+
+        asyncio.ensure_future(_async_publisher())
 
     def stop_service(self) -> None:
         if not self.closer.done():
