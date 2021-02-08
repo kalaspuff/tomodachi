@@ -3,6 +3,7 @@ import logging
 import mimetypes
 import os
 import pathlib
+import platform
 from typing import Any
 
 import aiohttp
@@ -28,6 +29,10 @@ def test_start_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     loop.run_until_complete(future)
 
 
+@pytest.mark.skipif(
+    platform.system() == "Linux",
+    reason="SO_REUSEPORT is automatically enable on Linux",
+)
 def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service("tests/services/http_service_same_port.py", monkeypatch)
 
@@ -96,6 +101,13 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
 
         async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.get("http://127.0.0.1:{}/response".format(port))
+            assert response.status == 200
+            assert await response.text() == "test tomodachi response"
+            assert isinstance(response.headers, CIMultiDictProxy)
+            assert response.headers.get("X-Tomodachi-Response") == "test"
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.get("http://127.0.0.1:{}/same-response".format(port))
             assert response.status == 200
             assert await response.text() == "test tomodachi response"
             assert isinstance(response.headers, CIMultiDictProxy)
@@ -336,7 +348,7 @@ def test_access_log(monkeypatch: Any, loop: Any) -> None:
     assert os.path.exists(log_path) is True
     with open(log_path) as file:
         content = file.read()
-        assert content == "Listening [http] on http://127.0.0.1:{}/\n".format(port)
+        assert "Listening [http] on http://127.0.0.1:{}/\n".format(port) in content
 
     async def _async(loop: Any) -> None:
         async with aiohttp.ClientSession(loop=loop) as client:
@@ -390,7 +402,7 @@ def test_access_log(monkeypatch: Any, loop: Any) -> None:
 
     with open(log_path) as file:
         content = file.read()
-        assert content == "Listening [http] on http://127.0.0.1:{}/\n".format(port)
+        assert "Listening [http] on http://127.0.0.1:{}/\n".format(port) in content
 
     loop.run_until_complete(_async(loop))
     instance.stop_service()

@@ -1,6 +1,7 @@
+import inspect
 import types
 from functools import wraps
-from typing import Any, Awaitable, Callable  # noqa
+from typing import Any, Callable  # noqa
 
 
 class DecorationClass(object):
@@ -33,10 +34,10 @@ class DecorationClass(object):
             return_value = self.decorator_function(*args, **kwargs)
         else:
             return_value = self.decorator_function(self.function, *args, **kwargs)
-        return_value = (await return_value) if isinstance(return_value, Awaitable) else return_value
+        return_value = (await return_value) if inspect.isawaitable(return_value) else return_value
         if return_value is True or return_value is None:
             routine = self.function(*args, **kwargs)
-            return (await routine) if isinstance(routine, Awaitable) else routine
+            return (await routine) if inspect.isawaitable(routine) else routine
         return return_value
 
     def __repr__(self) -> str:

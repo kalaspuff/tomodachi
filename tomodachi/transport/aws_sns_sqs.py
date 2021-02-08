@@ -9,15 +9,17 @@ import inspect
 import json
 import logging
 import re
+import sys
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Dict, List, Match, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Mapping, Match, Optional, Set, Tuple, Union, cast
 
 import aiobotocore
 import aiohttp
 import botocore
 from botocore.parsers import ResponseParserError
 
+from tomodachi.helpers.aiobotocore_connector import ClientConnector
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
@@ -27,11 +29,69 @@ from tomodachi.helpers.execution_context import (
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
+if sys.version_info >= (3, 8):
+    from typing import TypedDict, Literal  # isort:skip
+else:
+    from typing_extensions import TypedDict, Literal  # isort:skip
+
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
 MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
 MESSAGE_TOPIC_PREFIX = "09698c75-832b-470f-8e05-96d2dd8c4853"
 FILTER_POLICY_DEFAULT = "7e68632f-3b39-4293-b5a9-16644cf857a5"
+
+AnythingButFilterPolicyValueType = Union[str, int, float, List[str], List[int], List[float], List[Union[int, float]]]
+AnythingButFilterPolicyDict = TypedDict(
+    "AnythingButFilterPolicyDict",
+    {
+        "anything-but": AnythingButFilterPolicyValueType,
+    },
+    total=False,
+)
+
+NumericFilterPolicyValueType = List[Union[int, float, Literal["<", "<=", "=", ">=", ">"]]]
+NumericFilterPolicyDict = TypedDict(
+    "NumericFilterPolicyDict",
+    {
+        "numeric": NumericFilterPolicyValueType,
+    },
+    total=False,
+)
+
+PrefixFilterPolicyDict = TypedDict(
+    "PrefixFilterPolicyDict",
+    {
+        "prefix": str,
+    },
+    total=False,
+)
+
+ExistsFilterPolicyDict = TypedDict(
+    "ExistsFilterPolicyDict",
+    {
+        "exists": bool,
+    },
+    total=False,
+)
+
+FilterPolicyDictType = Mapping[
+    str,
+    List[
+        Optional[
+            Union[
+                str,
+                int,
+                float,
+                AnythingButFilterPolicyDict,
+                NumericFilterPolicyDict,
+                PrefixFilterPolicyDict,
+                ExistsFilterPolicyDict,
+            ]
+        ]
+    ],
+]
+
+connector = ClientConnector()
 
 
 class AWSSNSSQSException(Exception):
@@ -182,9 +242,7 @@ class AWSSNSSQSTransport(Invoker):
         *,
         message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
-        filter_policy: Optional[
-            Union[str, Dict[str, List[Union[str, Dict[str, Union[bool, List]]]]]]
-        ] = FILTER_POLICY_DEFAULT,
+        filter_policy: Optional[Union[str, FilterPolicyDictType]] = FILTER_POLICY_DEFAULT,
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
@@ -351,7 +409,7 @@ class AWSSNSSQSTransport(Invoker):
                     await cls.delete_message(cls, receipt_handle, queue_url, context)
                     return
 
-                if isinstance(routine, Awaitable):
+                if inspect.isawaitable(routine):
                     try:
                         return_value = await routine
                     except Exception as e:
@@ -399,14 +457,11 @@ class AWSSNSSQSTransport(Invoker):
         start_func = cls.subscribe(cls, obj, context)
         return (await start_func) if start_func else None
 
-    async def create_client(cls: Any, name: str, context: Dict) -> None:
-        logging.getLogger("botocore.vendored.requests.packages.urllib3.connectionpool").setLevel(logging.WARNING)
-
-        if not cls.clients:
-            cls.clients = {}
-            cls.clients_creation_time = {}
-        asyncio.get_event_loop()
-        session = aiobotocore.get_session()
+    @staticmethod
+    async def create_client(name: str, context: Dict) -> None:
+        alias = f"tomodachi.{name}"
+        if connector.get_client(alias):
+            return
 
         config_base = context.get("options", {}).get("aws_sns_sqs", context.get("options", {}).get("aws", {}))
         aws_config_base = context.get("options", {}).get("aws", {})
@@ -436,22 +491,19 @@ class AWSSNSSQSTransport(Invoker):
             or None
         )
 
+        credentials = {
+            "region_name": region_name,
+            "aws_secret_access_key": aws_secret_access_key,
+            "aws_access_key_id": aws_access_key_id,
+            "endpoint_url": endpoint_url,
+        }
+
+        connector.setup_credentials(alias, credentials)
+
+        logging.getLogger("botocore.vendored.requests.packages.urllib3.connectionpool").setLevel(logging.WARNING)
+
         try:
-            if cls.clients_creation_time.get(name) and cls.clients_creation_time[name] + 30 > time.time():
-                return
-            create_client_func = session._create_client if hasattr(session, "_create_client") else session.create_client
-            client = create_client_func(
-                name,
-                region_name=region_name,
-                aws_secret_access_key=aws_secret_access_key,
-                aws_access_key_id=aws_access_key_id,
-                endpoint_url=endpoint_url,
-            )
-            if isinstance(client, Awaitable):
-                cls.clients[name] = await client
-            else:
-                cls.clients[name] = client
-            cls.clients_creation_time[name] = time.time()
+            await connector.create_client(alias, service_name=name)
         except (botocore.exceptions.PartialCredentialsError, botocore.exceptions.NoRegionError) as e:
             error_message = str(e)
             logging.getLogger("transport.aws_sns_sqs").warning(
@@ -469,14 +521,15 @@ class AWSSNSSQSTransport(Invoker):
             if topic_arn and isinstance(topic_arn, str):
                 return topic_arn
 
-        if not cls.clients or not cls.clients.get("sns"):
-            await cls.create_client(cls, "sns", context)
-        client = cls.clients.get("sns")
+        if not connector.get_client("tomodachi.sns"):
+            await cls.create_client("sns", context)
 
         try:
-            response = await asyncio.wait_for(
-                client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix))), timeout=30
-            )
+            async with connector("tomodachi.sns", service_name="sns") as client:
+                response = await asyncio.wait_for(
+                    client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix))),
+                    timeout=40,
+                )
         except (botocore.exceptions.NoCredentialsError, aiohttp.client_exceptions.ClientOSError) as e:
             error_message = str(e)
             logging.getLogger("transport.aws_sns_sqs").warning(
@@ -508,8 +561,10 @@ class AWSSNSSQSTransport(Invoker):
 
     def transform_message_attributes_from_response(
         cls, message_attributes: Dict
-    ) -> Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]]:
-        result: Dict[str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]] = {}
+    ) -> Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]]:
+        result: Dict[
+            str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
+        ] = {}
 
         for name, values in message_attributes.items():
             value = values["Value"]
@@ -520,7 +575,9 @@ class AWSSNSSQSTransport(Invoker):
             elif values["Type"] == "Binary":
                 result[name] = base64.b64decode(value)
             elif values["Type"] == "String.Array":
-                result[name] = cast(List[Optional[Union[str, int, float, bool]]], json.loads(value))
+                result[name] = cast(
+                    Optional[Union[bool, List[Optional[Union[str, int, float, bool, object]]]]], json.loads(value)
+                )
 
         return result
 
@@ -532,6 +589,8 @@ class AWSSNSSQSTransport(Invoker):
         for name, value in message_attributes.items():
             if isinstance(value, str):
                 result[name] = {"DataType": "String", "StringValue": value}
+            elif value is None or isinstance(value, bool):
+                result[name] = {"DataType": "String.Array", "StringValue": json.dumps(value)}
             elif isinstance(value, (int, float, decimal.Decimal)):
                 result[name] = {"DataType": "Number", "StringValue": str(value)}
             elif isinstance(value, bytes):
@@ -544,28 +603,19 @@ class AWSSNSSQSTransport(Invoker):
         return result
 
     async def publish_message(cls: Any, topic_arn: str, message: Any, message_attributes: Dict, context: Dict) -> str:
-        if not cls.clients or not cls.clients.get("sns"):
-            await cls.create_client(cls, "sns", context)
+        if not connector.get_client("tomodachi.sns"):
+            await cls.create_client("sns", context)
 
         message_attribute_values = cls.transform_message_attributes_to_botocore(cls, message_attributes)
 
         for retry in range(1, 4):
-            client = cls.clients.get("sns")
             try:
-                response = await asyncio.wait_for(
-                    client.publish(TopicArn=topic_arn, Message=message, MessageAttributes=message_attribute_values),
-                    timeout=30,
-                )
+                async with connector("tomodachi.sns", service_name="sns") as client:
+                    response = await asyncio.wait_for(
+                        client.publish(TopicArn=topic_arn, Message=message, MessageAttributes=message_attribute_values),
+                        timeout=30,
+                    )
             except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
-                await asyncio.sleep(1)
-                try:
-                    task = client.close()
-                    if getattr(task, "_coro", None):
-                        task = task._coro
-                    await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
-                except Exception:
-                    pass
-                await cls.create_client(cls, "sns", context)
                 if retry >= 3:
                     raise e
                 continue
@@ -596,28 +646,18 @@ class AWSSNSSQSTransport(Invoker):
     async def delete_message(cls: Any, receipt_handle: Optional[str], queue_url: Optional[str], context: Dict) -> None:
         if not receipt_handle:
             return
-        if not cls.clients or not cls.clients.get("sqs"):
-            await cls.create_client(cls, "sqs", context)
+
+        if not connector.get_client("tomodachi.sqs"):
+            await cls.create_client("sqs", context)
 
         async def _delete_message() -> None:
             for retry in range(1, 4):
-                if not cls.clients or not cls.clients.get("sqs"):
-                    await cls.create_client(cls, "sqs", context)
-                client = cls.clients.get("sqs")
                 try:
-                    await asyncio.wait_for(
-                        client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30
-                    )
+                    async with connector("tomodachi.sqs", service_name="sqs") as client:
+                        await asyncio.wait_for(
+                            client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=30
+                        )
                 except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
-                    await asyncio.sleep(1)
-                    try:
-                        task = client.close()
-                        if getattr(task, "_coro", None):
-                            task = task._coro
-                        await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
-                    except Exception:
-                        pass
-                    await cls.create_client(cls, "sqs", context)
                     if retry >= 3:
                         raise e
                     continue
@@ -638,14 +678,14 @@ class AWSSNSSQSTransport(Invoker):
         await _delete_message()
 
     async def create_queue(cls: Any, queue_name: str, context: Dict) -> Tuple[str, str]:
-        if not cls.clients or not cls.clients.get("sqs"):
-            await cls.create_client(cls, "sqs", context)
-        client = cls.clients.get("sqs")
+        if not connector.get_client("tomodachi.sqs"):
+            await cls.create_client("sqs", context)
 
         queue_url = ""
         try:
-            response = await client.get_queue_url(QueueName=queue_name)
-            queue_url = response.get("QueueUrl")
+            async with connector("tomodachi.sqs", service_name="sqs") as client:
+                response = await client.get_queue_url(QueueName=queue_name)
+                queue_url = response.get("QueueUrl")
         except (
             botocore.exceptions.NoCredentialsError,
             botocore.exceptions.PartialCredentialsError,
@@ -661,8 +701,9 @@ class AWSSNSSQSTransport(Invoker):
 
         if not queue_url:
             try:
-                response = await client.create_queue(QueueName=queue_name)
-                queue_url = response.get("QueueUrl")
+                async with connector("tomodachi.sqs", service_name="sqs") as client:
+                    response = await client.create_queue(QueueName=queue_name)
+                    queue_url = response.get("QueueUrl")
             except (
                 botocore.exceptions.NoCredentialsError,
                 botocore.exceptions.PartialCredentialsError,
@@ -688,7 +729,8 @@ class AWSSNSSQSTransport(Invoker):
             raise AWSSNSSQSException(error_message, log_level=context.get("log_level"))
 
         try:
-            response = await client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])
+            async with connector("tomodachi.sqs", service_name="sqs") as client:
+                response = await client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logging.getLogger("transport.aws_sns_sqs").warning(
@@ -755,9 +797,8 @@ class AWSSNSSQSTransport(Invoker):
         context: Dict,
         attributes: Optional[Dict[str, Union[str, bool]]] = None,
     ) -> Optional[List]:
-        if not cls.clients or not cls.clients.get("sns"):
-            await cls.create_client(cls, "sns", context)
-        client = cls.clients.get("sns")
+        if not connector.get_client("tomodachi.sns"):
+            await cls.create_client("sns", context)
 
         pattern = r"^arn:aws:sns:[^:]+:[^:]+:{}$".format(
             cls.encode_topic(cls.get_topic_name(topic, context))
@@ -770,10 +811,11 @@ class AWSSNSSQSTransport(Invoker):
         topic_arn_list = None
         while next_token is not None:
             try:
-                if next_token:
-                    response = await client.list_topics(NextToken=next_token)
-                else:
-                    response = await client.list_topics()
+                async with connector("tomodachi.sns", service_name="sns") as client:
+                    if next_token:
+                        response = await client.list_topics(NextToken=next_token)
+                    else:
+                        response = await client.list_topics()
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
                 logging.getLogger("transport.aws_sns_sqs").warning(
@@ -805,13 +847,11 @@ class AWSSNSSQSTransport(Invoker):
         queue_policy: Optional[Dict] = None,
         attributes: Optional[Dict[str, Union[str, bool]]] = None,
     ) -> List:
-        if not cls.clients or not cls.clients.get("sns"):
-            await cls.create_client(cls, "sns", context)
-        client = cls.clients.get("sns")
+        if not connector.get_client("tomodachi.sns"):
+            await cls.create_client("sns", context)
 
-        if not cls.clients or not cls.clients.get("sqs"):
-            await cls.create_client(cls, "sqs", context)
-        sqs_client = cls.clients.get("sqs")
+        if not connector.get_client("tomodachi.sqs"):
+            await cls.create_client("sqs", context)
 
         if not queue_policy:
             queue_policy = cls.generate_queue_policy(queue_arn, topic_arn_list, context)
@@ -824,13 +864,14 @@ class AWSSNSSQSTransport(Invoker):
         visibility_timeout = None
         message_retention_period = None
         try:
-            response = await sqs_client.get_queue_attributes(
-                QueueUrl=queue_url, AttributeNames=["Policy", "VisibilityTimeout", "MessageRetentionPeriod"]
-            )
-            current_queue_attributes = response.get("Attributes", {})
-            current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
-            current_visibility_timeout = current_queue_attributes.get("VisibilityTimeout")
-            current_message_retention_period = current_queue_attributes.get("MessageRetentionPeriod")
+            async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
+                response = await sqs_client.get_queue_attributes(
+                    QueueUrl=queue_url, AttributeNames=["Policy", "VisibilityTimeout", "MessageRetentionPeriod"]
+                )
+                current_queue_attributes = response.get("Attributes", {})
+                current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
+                current_visibility_timeout = current_queue_attributes.get("VisibilityTimeout")
+                current_message_retention_period = current_queue_attributes.get("MessageRetentionPeriod")
         except botocore.exceptions.ClientError:
             pass
 
@@ -849,7 +890,8 @@ class AWSSNSSQSTransport(Invoker):
 
         if queue_attributes:
             try:
-                response = await sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes=queue_attributes)
+                async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
+                    response = await sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes=queue_attributes)
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
                 logging.getLogger("transport.aws_sns_sqs").warning(
@@ -867,12 +909,13 @@ class AWSSNSSQSTransport(Invoker):
 
             if update_attributes and attributes:
                 try:
-                    response = await client.subscribe(
-                        TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn, Attributes=attributes
-                    )
-                    subscription_arn = response.get("SubscriptionArn")
-                    if subscription_arn and "000000000000" not in subscription_arn:
-                        update_attributes = False
+                    async with connector("tomodachi.sns", service_name="sns") as sns_client:
+                        response = await sns_client.subscribe(
+                            TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn, Attributes=attributes
+                        )
+                        subscription_arn = response.get("SubscriptionArn")
+                        if subscription_arn and "000000000000" not in subscription_arn:
+                            update_attributes = False
                 except botocore.exceptions.ClientError as e:
                     error_message = str(e)
                     if "Subscription already exists with different attributes" in error_message:
@@ -889,7 +932,8 @@ class AWSSNSSQSTransport(Invoker):
 
             if not subscription_arn:
                 try:
-                    response = await client.subscribe(TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn)
+                    async with connector("tomodachi.sns", service_name="sns") as sns_client:
+                        response = await sns_client.subscribe(TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn)
                     subscription_arn = response.get("SubscriptionArn")
                 except botocore.exceptions.ClientError as e:
                     logging.getLogger("transport.aws_sns_sqs").warning(
@@ -913,11 +957,12 @@ class AWSSNSSQSTransport(Invoker):
                                     attribute_name, topic_arn, queue_arn
                                 )
                             )
-                        await client.set_subscription_attributes(
-                            SubscriptionArn=subscription_arn,
-                            AttributeName=attribute_name,
-                            AttributeValue=attribute_value,
-                        )
+                        async with connector("tomodachi.sns", service_name="sns") as sns_client:
+                            await sns_client.set_subscription_attributes(
+                                SubscriptionArn=subscription_arn,
+                                AttributeName=attribute_name,
+                                AttributeValue=attribute_value,
+                            )
                     except botocore.exceptions.ClientError as e:
                         logging.getLogger("transport.aws_sns_sqs").warning(
                             "Unable to subscribe to topic [sns] on AWS ({})".format(error_message)
@@ -929,8 +974,8 @@ class AWSSNSSQSTransport(Invoker):
         return subscription_arn_list
 
     async def consume_queue(cls: Any, obj: Any, context: Dict, handler: Callable, queue_url: str) -> None:
-        if not cls.clients or not cls.clients.get("sqs"):
-            await cls.create_client(cls, "sqs", context)
+        if not connector.get_client("tomodachi.sqs"):
+            await cls.create_client("sqs", context)
 
         if not cls.close_waiter:
             cls.close_waiter = asyncio.Future()
@@ -954,7 +999,6 @@ class AWSSNSSQSTransport(Invoker):
 
                     return _callback
 
-                client = cls.clients.get("sqs")
                 is_disconnected = False
 
                 while not cls.close_waiter.done():
@@ -962,10 +1006,13 @@ class AWSSNSSQSTransport(Invoker):
 
                     try:
                         try:
-                            response = await asyncio.wait_for(
-                                client.receive_message(QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10),
-                                timeout=30,
-                            )
+                            async with connector("tomodachi.sqs", service_name="sqs") as client:
+                                response = await asyncio.wait_for(
+                                    client.receive_message(
+                                        QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10
+                                    ),
+                                    timeout=30,
+                                )
                             if is_disconnected:
                                 is_disconnected = False
                                 logging.getLogger("transport.aws_sns_sqs").warning("Reconnected - receiving messages")
@@ -978,16 +1025,6 @@ class AWSSNSSQSTransport(Invoker):
                                         error_message
                                     )
                                 )
-                            await asyncio.sleep(1)
-                            try:
-                                task = client.close()
-                                if getattr(task, "_coro", None):
-                                    task = task._coro
-                                await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
-                            except Exception:
-                                pass
-                            await cls.create_client(cls, "sqs", context)
-                            client = cls.clients.get("sqs")
                             continue
                         except ResponseParserError:
                             if not is_disconnected:
@@ -1122,19 +1159,12 @@ class AWSSNSSQSTransport(Invoker):
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
-
-                tasks = []
-                for _, client in cls.clients.items():
-                    task = client.close()
-                    if getattr(task, "_coro", None):
-                        task = task._coro
-                    tasks.append(asyncio.ensure_future(task))
-                await asyncio.wait(tasks, timeout=3)
-                cls.clients = None
             else:
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
+
+            await connector.close()
 
         setattr(obj, "_stop_service", stop_service)
 
@@ -1155,15 +1185,11 @@ class AWSSNSSQSTransport(Invoker):
             return None
         context["_aws_sns_sqs_subscribed"] = True
 
-        if cls.clients:
-            tasks = []
-            for _, client in cls.clients.items():
-                task = client.close()
-                if getattr(task, "_coro", None):
-                    task = task._coro
-                tasks.append(asyncio.ensure_future(task))
-            await asyncio.wait(tasks, timeout=3)
-            cls.clients = None
+        if not connector.get_client("tomodachi.sqs"):
+            await cls.create_client("sqs", context)
+
+        if not connector.get_client("tomodachi.sqs"):
+            await cls.create_client("sqs", context)
 
         async def _subscribe() -> None:
             cls.close_waiter = asyncio.Future()
@@ -1210,11 +1236,17 @@ class AWSSNSSQSTransport(Invoker):
 
                 return queue_url
 
-            for topic, competing, queue_name, func, handler, attributes in context.get("_aws_sns_sqs_subscribers", []):
-                queue_url = await setup_queue(
-                    topic, func, queue_name=queue_name, competing_consumer=competing, attributes=attributes
-                )
-                await cls.consume_queue(cls, obj, context, handler, queue_url=queue_url)
+            try:
+                for topic, competing, queue_name, func, handler, attributes in context.get(
+                    "_aws_sns_sqs_subscribers", []
+                ):
+                    queue_url = await setup_queue(
+                        topic, func, queue_name=queue_name, competing_consumer=competing, attributes=attributes
+                    )
+                    await cls.consume_queue(cls, obj, context, handler, queue_url=queue_url)
+            except Exception:
+                await connector.close(fast=True)
+                raise
 
         return _subscribe
 
@@ -1232,9 +1264,7 @@ def aws_sns_sqs(
     *,
     message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
     message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
-    filter_policy: Optional[
-        Union[str, Dict[str, List[Union[str, Dict[str, Union[bool, List]]]]]]
-    ] = FILTER_POLICY_DEFAULT,
+    filter_policy: Optional[Union[str, FilterPolicyDictType]] = FILTER_POLICY_DEFAULT,
     **kwargs: Any,
 ) -> Callable:
     return cast(

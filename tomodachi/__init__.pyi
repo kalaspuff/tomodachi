@@ -1,6 +1,8 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from tomodachi.__version__ import __version_info__ as __version_info__
+from tomodachi.helpers.aiobotocore_connector import ClientConnector as AiobotocoreClientConnector
+from tomodachi.helpers.aiobotocore_connector import connector as aiobotocore_client_connector
 from tomodachi.helpers.execution_context import clear_execution_context as _clear_execution_context
 from tomodachi.helpers.execution_context import clear_services as _clear_services
 from tomodachi.helpers.execution_context import decrease_execution_context_value as decrease_execution_context_value
@@ -19,6 +21,7 @@ from tomodachi.transport.aws_sns_sqs import aws_sns_sqs_publish as aws_sns_sqs_p
 from tomodachi.transport.http import HttpException as HttpException
 from tomodachi.transport.http import Response as HttpResponse
 from tomodachi.transport.http import get_http_response_status as get_http_response_status
+from tomodachi.transport.http import get_http_response_status_sync as get_http_response_status_sync
 from tomodachi.transport.http import http as http
 from tomodachi.transport.http import http_error as http_error
 from tomodachi.transport.http import http_static as http_static

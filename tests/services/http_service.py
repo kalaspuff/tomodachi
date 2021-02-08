@@ -74,6 +74,7 @@ class HttpService(tomodachi.Service):
     async def test_aiohttp(self, request: web.Request) -> web.Response:
         return web.Response(body="test aiohttp", status=200, headers={"X-Aiohttp": "test"})
 
+    @http("GET", r"/same-response/?")
     @http("GET", r"/response/?")
     async def test_response_object(self, request: web.Request) -> Response:
         return Response(body="test tomodachi response", status=200, headers={"X-Tomodachi-Response": "test"})

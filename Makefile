@@ -46,7 +46,7 @@ flake8:
 
 .PHONY: mypy
 mypy:
-	poetry run mypy ./
+	poetry run mypy tomodachi/ tests/type_hinting_validation.py
 
 lint: flake8 mypy
 
@@ -77,7 +77,7 @@ _git_release:
 
 .PHONY: _pypi_release
 _pypi_release:
-	poetry run twine upload dist/tomodachi-`python tomodachi/__version__.py`*
+	twine upload dist/tomodachi-`python tomodachi/__version__.py`*
 
 test: tests
 testing: tests
