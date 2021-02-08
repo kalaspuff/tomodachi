@@ -207,10 +207,21 @@ class CLI:
             configuration = None
             log_level = logging.INFO
 
-            if "--loop" in args:
-                index = args.index("--loop")
-                args.pop(index)
-                value = args.pop(index).lower()
+            env_loop = str(os.getenv("TOMODACHI_LOOP", "")).lower() or None
+
+            if env_loop or "--loop" in args:
+                if "--loop" in args:
+                    index = args.index("--loop")
+                    args.pop(index)
+                    value = args.pop(index).lower()
+
+                    if env_loop and env_loop != value:
+                        print("Invalid argument to --loop, '{}' differs from env TOMODACHI_LOOP".format(value))
+                        sys.exit(2)
+                elif env_loop:
+                    value = env_loop
+                else:
+                    value = "auto"
 
                 if value in ("auto", "default"):
                     pass
@@ -251,9 +262,14 @@ class CLI:
                     print("Invalid config file, invalid JSON format: {}".format(str(e)))
                     sys.exit(2)
 
-            if "--production" in args:
-                index = args.index("--production")
-                args.pop(index)
+            env_production = str(os.getenv("TOMODACHI_PRODUCTION", "")).lower() or None
+            if env_production and env_production in ("0", "no", "none", "false"):
+                env_production = None
+
+            if env_production or "--production" in args:
+                if "--production" in args:
+                    index = args.index("--production")
+                    args.pop(index)
                 watcher = None
             else:
                 cwd = os.getcwd()
