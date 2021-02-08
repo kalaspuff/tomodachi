@@ -30,7 +30,6 @@ def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: An
                 instance.test_topic_data_received
                 and instance.test_topic_metadata_topic
                 and instance.test_topic_service_uuid
-                and instance.wildcard_topic_data_received
                 and instance.test_topic_specified_queue_name_data_received
                 and len(instance.test_message_attribute_currencies) == 7
                 and len(instance.test_message_attribute_amounts) == 2
@@ -41,7 +40,6 @@ def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: An
         assert instance.test_topic_data_received
         assert instance.test_topic_metadata_topic == "test-topic"
         assert instance.test_topic_service_uuid == instance.uuid
-        assert instance.wildcard_topic_data_received
         assert instance.test_topic_specified_queue_name_data_received
         assert len(instance.test_message_attribute_currencies) == 7
         assert len(instance.test_message_attribute_amounts) == 2

@@ -75,7 +75,6 @@ class AWSSNSSQSService(tomodachi.Service):
 
         asyncio.ensure_future(_async())
 
-        self.data_uuid = str(uuid.uuid4())
         for _ in range(30):
             if self.test_topic_data_received:
                 break

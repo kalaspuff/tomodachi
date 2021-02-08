@@ -172,7 +172,6 @@ class ClientConnector:
     async def close(self, fast: bool = False) -> None:
         if self.close_waiter and not self.close_waiter.done():
             return
-        self.close_waiter = asyncio.Future()
 
         clients = self.clients
 
@@ -182,6 +181,10 @@ class ClientConnector:
         self.client_creation_lock_time = {}
         self.locks = {}
 
+        if not clients:
+            return
+
+        self.close_waiter = asyncio.Future()
         if not fast:
             await asyncio.sleep(1)
 
@@ -194,7 +197,7 @@ class ClientConnector:
                 if getattr(task, "_coro", None):
                     task = task._coro
                 tasks.append(asyncio.ensure_future(task))
-            except Exception:
+            except (Exception, RuntimeError, asyncio.CancelledError, BaseException):
                 pass
 
         try:
@@ -203,7 +206,7 @@ class ClientConnector:
                 await asyncio.sleep(0.25)  # SSL termination sleep
             else:
                 await asyncio.sleep(0)
-        except Exception:
+        except (Exception, RuntimeError, asyncio.CancelledError, BaseException):
             pass
 
         if self.close_waiter:

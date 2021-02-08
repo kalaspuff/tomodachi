@@ -51,7 +51,6 @@ class AWSSNSSQSService(tomodachi.Service):
 
         asyncio.ensure_future(_async())
 
-        self.data_uuid = str(uuid.uuid4())
         await publish(self.data_uuid, "test.raw.topic")
 
     def stop_service(self) -> None:

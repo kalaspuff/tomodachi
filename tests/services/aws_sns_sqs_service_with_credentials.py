@@ -38,14 +38,12 @@ class AWSSNSSQSService(tomodachi.Service):
     test_topic_service_uuid = None
     test_message_attribute_currencies: Set = set()
     test_message_attribute_amounts: Set = set()
-    wildcard_topic_data_received = False
     data_uuid = data_uuid
 
     def check_closer(self) -> None:
         if (
             self.test_topic_data_received
             and self.test_topic_specified_queue_name_data_received
-            and self.wildcard_topic_data_received
             and len(self.test_message_attribute_currencies) == 7
         ):
             if not self.closer.done():
@@ -104,13 +102,6 @@ class AWSSNSSQSService(tomodachi.Service):
 
             self.check_closer()
 
-    @aws_sns_sqs("test-topic#", queue_name="test-queue-wildcard-{}".format(data_uuid))
-    async def faked_wildcard_topic(self, metadata: Any, data: Any) -> None:
-        if data == self.data_uuid:
-            self.wildcard_topic_data_received = True
-
-            self.check_closer()
-
     async def _started_service(self) -> None:
         async def publish(data: Any, topic: str, **kwargs: Any) -> None:
             await aws_sns_sqs_publish(self, data, topic=topic, wait=False, **kwargs)
@@ -129,40 +120,41 @@ class AWSSNSSQSService(tomodachi.Service):
 
         asyncio.ensure_future(_async())
 
-        self.data_uuid = str(uuid_.uuid4())
-
-        await publish(self.data_uuid, "test-topic")
-        await publish(self.data_uuid, "test-topic-unique")
-
-        await publish(self.data_uuid, "test-topic-filtered")
-        for ma in (
-            {},
-            {"currency": "DKK"},
-            {"currency": "sek"},
-            {"currency": ["SEK"], "amount": 1338, "value": "1338.00 SEK"},
-            {"value": "100 SEK"},
-            {"currency": "100 SEK"},
-            {"currency": "NOK"},
-            {"currency": "USD", "amount": 99.50, "value": "99.50 USD"},
-            {"amount": 4000},
-            {"currency": "EUR"},
-            {"currency": ["BTC", "ETH"]},
-            {"currency": ["JPY"]},
-            {"currency": ["GBP"]},
-            {"currency": "EUR"},
-            {"currency": "SEK", "amount": 4711},
-            {"currency": "SEK", "amount": 4711},
-            {"currency": "SEK", "amount": "9001.00"},
-            {"currency": ["CNY", "USD", "JPY"]},
-            {"currency": "EUR"},
-        ):
-            await publish(self.data_uuid, "test-topic-filtered", message_attributes=ma)
-
-        for _ in range(30):
-            if self.test_topic_data_received:
-                break
+        async def _async_publisher() -> None:
             await publish(self.data_uuid, "test-topic")
-            await asyncio.sleep(0.1)
+            await publish(self.data_uuid, "test-topic-unique")
+
+            await publish(self.data_uuid, "test-topic-filtered")
+            for ma in (
+                {},
+                {"currency": "DKK"},
+                {"currency": "sek"},
+                {"currency": ["SEK"], "amount": 1338, "value": "1338.00 SEK"},
+                {"value": "100 SEK"},
+                {"currency": "100 SEK"},
+                {"currency": "NOK"},
+                {"currency": "USD", "amount": 99.50, "value": "99.50 USD"},
+                {"amount": 4000},
+                {"currency": "EUR"},
+                {"currency": ["BTC", "ETH"]},
+                {"currency": ["JPY"]},
+                {"currency": ["GBP"]},
+                {"currency": "EUR"},
+                {"currency": "SEK", "amount": 4711},
+                {"currency": "SEK", "amount": 4711},
+                {"currency": "SEK", "amount": "9001.00"},
+                {"currency": ["CNY", "USD", "JPY"]},
+                {"currency": "EUR"},
+            ):
+                await publish(self.data_uuid, "test-topic-filtered", message_attributes=ma)
+
+            for _ in range(10):
+                if self.test_topic_data_received:
+                    break
+                await publish(self.data_uuid, "test-topic")
+                await asyncio.sleep(0.5)
+
+        asyncio.ensure_future(_async_publisher())
 
     def stop_service(self) -> None:
         if not self.closer.done():
