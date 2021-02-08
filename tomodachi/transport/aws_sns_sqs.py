@@ -116,8 +116,6 @@ class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
 
 
 class AWSSNSSQSTransport(Invoker):
-    clients = None
-    clients_creation_time = None
     topics: Dict[str, str] = {}
     close_waiter = None
 
