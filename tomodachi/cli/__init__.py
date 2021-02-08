@@ -218,8 +218,10 @@ class CLI:
                     if env_loop and env_loop != value:
                         print("Invalid argument to --loop, '{}' differs from env TOMODACHI_LOOP".format(value))
                         sys.exit(2)
-                else:
+                elif env_loop:
                     value = env_loop
+                else:
+                    value = "auto"
 
                 if value in ("auto", "default"):
                     pass
