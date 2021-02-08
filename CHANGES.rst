@@ -25,6 +25,11 @@ Changes
 
 - Smaller performance improvements throughout the framework.
 
+- Improved error handling overall in regards to non-standard
+  exceptions and additional output, if scheduled tasks are unable
+  to run due to other start methods not completing their initial
+  setup.
+
 
 0.20.7 (2020-11-27)
 -------------------
