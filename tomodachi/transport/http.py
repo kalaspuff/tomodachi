@@ -5,10 +5,11 @@ import ipaddress
 import logging
 import os
 import pathlib
+import platform
 import re
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
 from aiohttp import WSMsgType
 from aiohttp import __version__ as aiohttp_version
@@ -312,6 +313,8 @@ class Response(object):
 
 
 class HttpTransport(Invoker):
+    server_port_mapping: Dict[Any, str] = {}
+
     async def request_handler(
         cls: Any,
         obj: Any,
@@ -364,7 +367,7 @@ class HttpTransport(Invoker):
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response] = (
-                    (await routine) if isinstance(routine, Awaitable) else routine
+                    (await routine) if inspect.isawaitable(routine) else routine
                 )
                 return return_value
 
@@ -379,7 +382,7 @@ class HttpTransport(Invoker):
                 return_value = await execute_middlewares(func, routine_func, middlewares, *(obj, request))
             else:
                 routine = func(obj, request, **kwargs)
-                return_value = (await routine) if isinstance(routine, Awaitable) else routine
+                return_value = (await routine) if inspect.isawaitable(routine) else routine
 
             response = resolve_response_sync(
                 return_value,
@@ -490,7 +493,7 @@ class HttpTransport(Invoker):
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, Response] = (
-                    (await routine) if isinstance(routine, Awaitable) else routine
+                    (await routine) if inspect.isawaitable(routine) else routine
                 )
                 return return_value
 
@@ -499,7 +502,7 @@ class HttpTransport(Invoker):
                 return_value = await execute_middlewares(func, routine_func, middlewares, *(obj, request))
             else:
                 routine = func(obj, request, **kwargs)
-                return_value = (await routine) if isinstance(routine, Awaitable) else routine
+                return_value = (await routine) if inspect.isawaitable(routine) else routine
 
             response = resolve_response_sync(
                 return_value,
@@ -602,7 +605,7 @@ class HttpTransport(Invoker):
             try:
                 routine = func(*(obj, websocket, *a), **merge_dicts(kwargs, kw))
                 callback_functions: Optional[Union[Tuple[Callable, Callable], Tuple[Callable], Callable]] = (
-                    (await routine) if isinstance(routine, Awaitable) else routine
+                    (await routine) if inspect.isawaitable(routine) else routine
                 )
             except Exception as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
@@ -1058,6 +1061,15 @@ class HttpTransport(Invoker):
                     "HTTP keep-alive must be enabled to use http option max_keepalive_time - a http.keepalive_timeout option value is required"
                 ) from None
 
+            reuse_port_default = True if platform.system() == "Linux" else False
+            reuse_port = True if http_options.get("reuse_port", reuse_port_default) else False
+            if reuse_port and platform.system() != "Linux":
+                http_logger.warning(
+                    "The http option reuse_port (socket.SO_REUSEPORT) can only enabled on Linux platforms - current "
+                    f"platform is {platform.system()} - will revert option setting to not reuse ports"
+                )
+                reuse_port = False
+
             context["_http_tcp_keepalive"] = tcp_keepalive
             context["_http_keepalive_timeout"] = keepalive_timeout
             context["_http_max_keepalive_requests"] = max_keepalive_requests
@@ -1082,7 +1094,20 @@ class HttpTransport(Invoker):
                     keepalive_timeout=keepalive_timeout,
                     tcp_keepalive=tcp_keepalive,
                 )
-                server_task = loop.create_server(web_server, host, port)  # type: ignore
+                if reuse_port:
+                    if not port:
+                        http_logger.warning(
+                            "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
+                            "listening on random ports with SO_REUSEPORT is dangerous - please double check your intent"
+                        )
+                    elif str(port) in HttpTransport.server_port_mapping.values():
+                        http_logger.warning(
+                            "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
+                            "different service classes should not use the same port ({})".format(port)
+                        )
+                if port:
+                    HttpTransport.server_port_mapping[web_server] = str(port)
+                server_task = loop.create_server(web_server, host, port, reuse_port=reuse_port)  # type: ignore
                 server = await server_task  # type: ignore
             except OSError as e:
                 context["_http_accept_new_requests"] = False
@@ -1098,6 +1123,7 @@ class HttpTransport(Invoker):
                 socket_address = server.sockets[0].getsockname()
                 if socket_address:
                     port = int(socket_address[1])
+                    HttpTransport.server_port_mapping[web_server] = str(port)
             context["_http_port"] = port
 
             stop_method = getattr(obj, "_stop_service", None)
@@ -1107,6 +1133,8 @@ class HttpTransport(Invoker):
 
                 server.close()
                 await server.wait_closed()
+
+                HttpTransport.server_port_mapping.pop(web_server, None)
 
                 shutdown_sleep = 0
                 if len(web_server.connections):

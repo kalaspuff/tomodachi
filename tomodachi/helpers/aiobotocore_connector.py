@@ -1,7 +1,8 @@
 import asyncio
+import inspect
 import time
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Awaitable, Dict, Optional
+from typing import Any, AsyncIterator, Dict, Optional
 
 import aiobotocore
 import aiohttp
@@ -80,7 +81,7 @@ class ClientConnector:
 
             create_client_func = session._create_client if hasattr(session, "_create_client") else session.create_client
             client_value = create_client_func(service_name, config=config, **credentials)
-            if isinstance(client_value, Awaitable):
+            if inspect.isawaitable(client_value):
                 client = await client_value
             else:
                 client = client_value

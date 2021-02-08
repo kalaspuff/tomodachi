@@ -4,7 +4,7 @@ import inspect
 import logging
 import random
 import time
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union, cast  # noqa
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast  # noqa
 
 import pytz
 import tzlocal
@@ -46,7 +46,7 @@ class Scheduler(Invoker):
                 increase_execution_context_value("scheduled_functions_total_tasks")
 
                 routine = func(*(obj,), **kwargs)
-                if isinstance(routine, Awaitable):
+                if inspect.isawaitable(routine):
                     await routine
 
             except (Exception, asyncio.CancelledError) as e:

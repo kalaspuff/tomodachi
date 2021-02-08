@@ -12,14 +12,14 @@ import re
 import sys
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Dict, List, Mapping, Match, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Mapping, Match, Optional, Set, Tuple, Union, cast
 
 import aiobotocore
 import aiohttp
 import botocore
 from botocore.parsers import ResponseParserError
 
-from tomodachi.helpers.botocore_connector import ClientConnector
+from tomodachi.helpers.aiobotocore_connector import ClientConnector
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
@@ -409,7 +409,7 @@ class AWSSNSSQSTransport(Invoker):
                     await cls.delete_message(cls, receipt_handle, queue_url, context)
                     return
 
-                if isinstance(routine, Awaitable):
+                if inspect.isawaitable(routine):
                     try:
                         return_value = await routine
                     except (Exception, asyncio.CancelledError, BaseException) as e:

@@ -1,6 +1,31 @@
 Changes
 =======
 
+0.21.0 (2021-02-xx)
+-------------------
+- Uses the socket option ``SO_REUSEPORT`` by default on Linux unless
+  specifically disabled via the ``http.reuse_port`` option set
+  to ``False``. This will allow several processes to bind to the
+  same port, which could be useful when running services via a
+  process manager such as ``supervisord`` or when it's desired to
+  run several processes of a service to utilize additional CPU cores.
+  The ``http.reuse_port`` option doesn't have any effect when a
+  service is running on a non-Linux platform.
+  (github: **tranvietanh1991**)
+
+- Services which works as AMQP consumers now has a default prefetch
+  count  value of 100, where previously the service didn't specify
+  any prefetch count option, which could exhaust the host's resources
+  if messages would be published faster to the queue than the
+  services could process them. (github: **tranvietanh1991**)
+
+- AWS SNS+SQS calls now uses a slightly changed config which will
+  increase the connection pool to 50 connections, decreases the
+  connect timeout to 8 seconds and the read timeout to 35 seconds.
+
+- Smaller performance improvements throughout the framework.
+
+
 0.20.7 (2020-11-27)
 -------------------
 - Reworked type hinting annotations for AWS SNS+SQS filter policies
