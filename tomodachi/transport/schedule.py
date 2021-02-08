@@ -332,7 +332,9 @@ class Scheduler(Invoker):
                     sleep_task.cancel()
                 else:
                     logging.getLogger("transport.schedule").warning(
-                        "Scheduled loop for function '{}' cannot start yet - start waiter not done for 10 seconds".format(func.__name__)
+                        "Scheduled loop for function '{}' cannot start yet - start waiter not done for 10 seconds".format(
+                            func.__name__
+                        )
                     )
                     sleep_task = asyncio.ensure_future(asyncio.sleep(110))
                     await asyncio.wait([sleep_task, start_waiter], return_when=asyncio.FIRST_COMPLETED)
@@ -340,18 +342,20 @@ class Scheduler(Invoker):
                         sleep_task.cancel()
                     else:
                         logging.getLogger("transport.schedule").warning(
-                            "Scheduled loop for function '{}' cannot start yet - start waiter not done for 120 seconds".format(func.__name__)
+                            "Scheduled loop for function '{}' cannot start yet - start waiter not done for 120 seconds".format(
+                                func.__name__
+                            )
                         )
-                        logging.getLogger("exception").exception(
-                            "Scheduled loop not started for 120 seconds"
-                        )
+                        logging.getLogger("exception").exception("Scheduled loop not started for 120 seconds")
 
                 await asyncio.sleep(0.1)
                 await start_waiter
 
                 if cls.close_waiter.done():
                     logging.getLogger("transport.schedule").info(
-                        "Scheduled loop for function '{}' never started before service termination".format(func.__name__)
+                        "Scheduled loop for function '{}' never started before service termination".format(
+                            func.__name__
+                        )
                     )
                 else:
                     ts0 = cls.next_call_at(current_time, interval, timestamp, timezone)
@@ -369,7 +373,9 @@ class Scheduler(Invoker):
 
                 if cls.close_waiter.done():
                     logging.getLogger("transport.schedule").info(
-                        "Scheduled loop for function '{}' never started before service termination".format(func.__name__)
+                        "Scheduled loop for function '{}' never started before service termination".format(
+                            func.__name__
+                        )
                     )
 
             next_call_at = None
@@ -391,11 +397,11 @@ class Scheduler(Invoker):
                             if prev_call_at and prev_call_at == next_call_at:
                                 if int(last_time + 60) < int(actual_time):
                                     logging.getLogger("transport.schedule").warning(
-                                        "Scheduled tasks for function '{}' is out of time sync and may not run".format(func.__name__)
+                                        "Scheduled tasks for function '{}' is out of time sync and may not run".format(
+                                            func.__name__
+                                        )
                                     )
-                                    logging.getLogger("exception").exception(
-                                        "Scheduled task loop out of sync"
-                                    )
+                                    logging.getLogger("exception").exception("Scheduled task loop out of sync")
 
                                 next_call_at = None
                                 await asyncio.sleep(1)
