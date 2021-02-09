@@ -29,14 +29,6 @@ from tomodachi.helpers.execution_context import (
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
-try:
-    CancelledError = asyncio.exceptions.CancelledError  # type: ignore
-except Exception:
-
-    class CancelledError(Exception):  # type: ignore
-        pass
-
-
 http_logger = logging.getLogger("transport.http")
 
 
@@ -51,7 +43,7 @@ class HttpException(Exception):
         self._log_level = kwargs.get("log_level") if kwargs and kwargs.get("log_level") else "INFO"
 
 
-class RequestHandler(web_protocol.RequestHandler):  # type: ignore
+class RequestHandler(web_protocol.RequestHandler):
     __slots__ = web_protocol.RequestHandler.__slots__ + (
         "_server_header",
         "_access_log",
@@ -182,12 +174,12 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
         ):
             headers[hdrs.CONNECTION] = "close"
 
-        resp: web.Response = web.Response(status=status, text=msg, headers=headers)  # type: ignore
-        resp.force_close()  # type: ignore
+        resp: web.Response = web.Response(status=status, text=msg, headers=headers)
+        resp.force_close()
 
         # some data already got sent, connection is broken
         if request.writer.output_size > 0 or self.transport is None:
-            self.force_close()  # type: ignore
+            self.force_close()
         elif self.transport is not None:
             request_ip = RequestHandler.get_request_ip(request, None)
             if not request_ip:
@@ -210,7 +202,7 @@ class RequestHandler(web_protocol.RequestHandler):  # type: ignore
         return resp
 
 
-class Server(web_server.Server):  # type: ignore
+class Server(web_server.Server):
     __slots__ = (
         "_loop",
         "_connections",
@@ -226,7 +218,7 @@ class Server(web_server.Server):  # type: ignore
         self._server_header = kwargs.pop("server_header", None) if kwargs else None
         self._access_log = kwargs.pop("access_log", None) if kwargs else None
 
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, **kwargs)
 
     def __call__(self) -> RequestHandler:
         return RequestHandler(
@@ -234,7 +226,7 @@ class Server(web_server.Server):  # type: ignore
         )
 
 
-class DynamicResource(web_urldispatcher.DynamicResource):  # type: ignore
+class DynamicResource(web_urldispatcher.DynamicResource):
     def __init__(self, pattern: Any, *, name: Optional[str] = None) -> None:
         self._routes: List = []
         self._name = name
@@ -295,14 +287,14 @@ class Response(object):
                 body_value = body.encode(charset.lower())
             except (ValueError, LookupError, UnicodeEncodeError) as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                raise web.HTTPInternalServerError() from e  # type: ignore
+                raise web.HTTPInternalServerError() from e
         elif self._body:
             body_value = self._body.encode() if not isinstance(self._body, bytes) else self._body
         else:
             body_value = b""
 
         response: web.Response = web.Response(
-            body=body_value,  # type: ignore
+            body=body_value,
             status=self._status,
             reason=self._reason,
             headers=self._headers,
@@ -441,16 +433,14 @@ class HttpTransport(Invoker):
                     or os.path.isdir(filepath)
                     or not os.path.exists(filepath)
                 ):
-                    raise web.HTTPNotFound()  # type: ignore
+                    raise web.HTTPNotFound()
 
                 pathlib.Path(filepath).open("r")
 
-                response: Union[web.Response, web.FileResponse] = FileResponse(
-                    path=filepath, chunk_size=256 * 1024  # type: ignore
-                )
+                response: Union[web.Response, web.FileResponse] = FileResponse(path=filepath, chunk_size=256 * 1024)
                 return response
             except PermissionError:
-                raise web.HTTPForbidden()  # type: ignore
+                raise web.HTTPForbidden()
 
         route_context = {"ignore_logging": ignore_logging}
         context["_http_routes"] = context.get("_http_routes", [])
@@ -539,7 +529,7 @@ class HttpTransport(Invoker):
 
         @functools.wraps(func)
         async def _func(obj: Any, request: web.Request, *a: Any, **kw: Any) -> None:
-            websocket = web.WebSocketResponse()  # type: ignore
+            websocket = web.WebSocketResponse()
 
             request_ip = RequestHandler.get_request_ip(request, context)
             try:
@@ -731,9 +721,9 @@ class HttpTransport(Invoker):
 
                 if not request_ip:
                     # Transport broken before request handling started, ignore request
-                    response = web.Response(status=499, headers={hdrs.SERVER: server_header or ""})  # type: ignore
+                    response = web.Response(status=499, headers={hdrs.SERVER: server_header or ""})
                     response._eof_sent = True
-                    response.force_close()  # type: ignore
+                    response.force_close()
 
                     return response
 
@@ -745,7 +735,7 @@ class HttpTransport(Invoker):
 
                 if access_log:
                     timer = time.time()
-                response = web.Response(status=503, headers={})  # type: ignore
+                response = web.Response(status=503, headers={})
                 try:
                     response = await handler(request)
                 except web.HTTPException as e:
@@ -761,11 +751,11 @@ class HttpTransport(Invoker):
                     if error_handler:
                         response = await error_handler(request)
                     else:
-                        response = web.HTTPInternalServerError()  # type: ignore
+                        response = web.HTTPInternalServerError()
                         response.body = b""
                 finally:
                     if not request.transport:
-                        response = web.Response(status=499, headers={})  # type: ignore
+                        response = web.Response(status=499, headers={})
                         response._eof_sent = True
 
                     request_version = (
@@ -857,10 +847,10 @@ class HttpTransport(Invoker):
                                 )
                             else:
                                 response.headers[hdrs.CONNECTION] = "close"
-                                response.force_close()  # type: ignore
+                                response.force_close()
 
                         if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
-                            response.force_close()  # type: ignore
+                            response.force_close()
 
                     if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
                         raise response
@@ -965,10 +955,8 @@ class HttpTransport(Invoker):
                     )
                 )
 
-            app: web.Application = web.Application(
-                middlewares=[middleware], client_max_size=client_max_size  # type: ignore
-            )
-            app._set_loop(None)  # type: ignore
+            app: web.Application = web.Application(middlewares=[middleware], client_max_size=client_max_size)
+            app._set_loop(None)
             for method, pattern, handler, route_context in context.get("_http_routes", []):
                 try:
                     compiled_pattern = re.compile(pattern)
@@ -977,10 +965,10 @@ class HttpTransport(Invoker):
                 ignore_logging = route_context.get("ignore_logging", False)
                 setattr(handler, "ignore_logging", ignore_logging)
                 resource = DynamicResource(compiled_pattern)
-                app.router.register_resource(resource)  # type: ignore
+                app.router.register_resource(resource)
                 if method.upper() == "GET":
-                    resource.add_route("HEAD", handler, expect_handler=None)  # type: ignore
-                resource.add_route(method.upper(), handler, expect_handler=None)  # type: ignore
+                    resource.add_route("HEAD", handler, expect_handler=None)
+                resource.add_route(method.upper(), handler, expect_handler=None)
 
             context["_http_accept_new_requests"] = True
 
@@ -1105,8 +1093,8 @@ class HttpTransport(Invoker):
                         )
                 if port:
                     HttpTransport.server_port_mapping[web_server] = str(port)
-                server_task = loop.create_server(web_server, host, port, reuse_port=reuse_port)  # type: ignore
-                server = await server_task  # type: ignore
+                server_task = loop.create_server(web_server, host, port, reuse_port=reuse_port)
+                server = await server_task
             except OSError as e:
                 context["_http_accept_new_requests"] = False
                 error_message = re.sub(".*: ", "", e.strerror)
