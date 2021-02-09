@@ -18,7 +18,9 @@ from tomodachi.helpers.execution_context import clear_execution_context, clear_s
 from tomodachi.importer import ServiceImporter
 
 try:
-    CancelledError = asyncio.exceptions.CancelledError  # type: ignore
+    asyncioexceptions = getattr(asyncio, "exceptions")
+    if asyncioexceptions:
+        CancelledError = asyncioexceptions.CancelledError
 except Exception:
 
     class CancelledError(Exception):  # type: ignore
