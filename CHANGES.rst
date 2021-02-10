@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.21.0 (2021-02-xx)
+0.21.0 (2021-02-10)
 -------------------
 - Uses the socket option ``SO_REUSEPORT`` by default on Linux unless
   specifically disabled via the ``http.reuse_port`` option set
