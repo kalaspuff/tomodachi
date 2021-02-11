@@ -11,7 +11,7 @@ pamqp = ">=2.2.0,<3"
 
 [[package]]
 name = "aiobotocore"
-version = "1.2.0"
+version = "1.2.1"
 description = "Async client for aws services using botocore and aiohttp"
 category = "main"
 optional = false
@@ -694,7 +694,7 @@ aioamqp = [
     {file = "aioamqp-0.14.0.tar.gz", hash = "sha256:eef5c23a7fedee079d8326406f5c7a5725dfe36c359373da3499fffa16f79915"},
 ]
 aiobotocore = [
-    {file = "aiobotocore-1.2.0.tar.gz", hash = "sha256:852b75ba7b7f50c89aba4693545d0c5450024886c55cd6ecefb736d474f9ea53"},
+    {file = "aiobotocore-1.2.1.tar.gz", hash = "sha256:58cc422e65fc89f7cb78eca740d241ac8e15f39f6b308cc23152711e8a987d45"},
 ]
 aiodns = [
     {file = "aiodns-2.0.0-py2.py3-none-any.whl", hash = "sha256:aaa5ac584f40fe778013df0aa6544bf157799bd3f608364b451840ed2c8688de"},
