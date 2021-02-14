@@ -1,6 +1,16 @@
 Changes
 =======
 
+0.21.1 (2021-02-14)
+-------------------
+- Added ``sentry_sdk`` to the list of modules and packages to not be
+  unloaded from ``sys.modules`` during hot reload of the running
+  when code changes has been noticed. This to prevent errors like
+  ``TypeError: run() takes 1 positional argument but X were given``
+  from ``sentry_sdk.integrations.threading`` when handling early
+  errors or leftover errors from previous session.
+
+
 0.21.0 (2021-02-10)
 -------------------
 - Uses the socket option ``SO_REUSEPORT`` by default on Linux unless
