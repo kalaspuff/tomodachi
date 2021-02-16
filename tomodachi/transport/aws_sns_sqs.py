@@ -1196,13 +1196,13 @@ class AWSSNSSQSTransport(Invoker):
             return None
         context["_aws_sns_sqs_subscribed"] = True
 
-        if not connector.get_client("tomodachi.sqs"):
-            await cls.create_client("sqs", context)
-
-        if not connector.get_client("tomodachi.sqs"):
-            await cls.create_client("sqs", context)
-
         async def _subscribe() -> None:
+            if not connector.get_client("tomodachi.sns"):
+                await cls.create_client("sns", context)
+
+            if not connector.get_client("tomodachi.sqs"):
+                await cls.create_client("sqs", context)
+
             cls.close_waiter = asyncio.Future()
 
             set_execution_context(
