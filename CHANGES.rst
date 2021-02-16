@@ -3,8 +3,16 @@ Changes
 
 0.21.2 (2021-02-16)
 -------------------
-- Bugfix for an issue which caused the `sqs.DeleteMessage` API call to be
-  called three times
+- Bugfix for an issue which caused the ``sqs.DeleteMessage`` API call
+  to be called three times for each processed SQS message (the
+  request to delete a message from the queue is idempotent) when
+  using AWS SNS+SQS via ``@tomodachi.aws_sns_sqs``.
+
+- Now properly cleaning up clients created with
+  ``tomodachi.helpers.aiobotocore_connector`` for ``aiobotocore``,
+  which previously could result in the error output
+  "Unclosed client session" if the service would fails to start,
+  for example due to initialization errors.
 
 
 0.21.1 (2021-02-14)
