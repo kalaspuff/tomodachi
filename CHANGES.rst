@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.21.2 (2021-02-16)
+-------------------
+- Bugfix for an issue which caused the `sqs.DeleteMessage` API call to be
+  called three times
+
+
 0.21.1 (2021-02-14)
 -------------------
 - Added ``sentry_sdk`` to the list of modules and packages to not be

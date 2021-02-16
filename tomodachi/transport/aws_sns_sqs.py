@@ -611,7 +611,7 @@ class AWSSNSSQSTransport(Invoker):
                 async with connector("tomodachi.sns", service_name="sns") as client:
                     response = await asyncio.wait_for(
                         client.publish(TopicArn=topic_arn, Message=message, MessageAttributes=message_attribute_values),
-                        timeout=30,
+                        timeout=40,
                     )
             except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError, asyncio.CancelledError) as e:
                 if retry >= 3:
@@ -649,14 +649,14 @@ class AWSSNSSQSTransport(Invoker):
             await cls.create_client("sqs", context)
 
         async def _delete_message() -> None:
-            for retry in range(1, 6):
+            for retry in range(1, 5):
                 try:
                     async with connector("tomodachi.sqs", service_name="sqs") as client:
                         await asyncio.wait_for(
-                            client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=15
+                            client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=12
                         )
                 except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError, asyncio.CancelledError) as e:
-                    if retry >= 5:
+                    if retry >= 4:
                         raise e
                     continue
                 except botocore.exceptions.ClientError as e:
@@ -665,7 +665,7 @@ class AWSSNSSQSTransport(Invoker):
                         "Unable to delete message [sqs] on AWS ({})".format(error_message)
                     )
                 except asyncio.TimeoutError as e:
-                    if retry >= 3:
+                    if retry >= 4:
                         error_message = "Network timeout"
                         logging.getLogger("transport.aws_sns_sqs").warning(
                             "Unable to delete message [sqs] on AWS ({})".format(error_message)
@@ -1010,7 +1010,7 @@ class AWSSNSSQSTransport(Invoker):
                                     client.receive_message(
                                         QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10
                                     ),
-                                    timeout=30,
+                                    timeout=40,
                                 )
                             if is_disconnected:
                                 is_disconnected = False
@@ -1257,6 +1257,7 @@ class AWSSNSSQSTransport(Invoker):
                     await cls.consume_queue(cls, obj, context, handler, queue_url=queue_url)
             except Exception:
                 await connector.close(fast=True)
+                await asyncio.sleep(0.5)
                 raise
 
         return _subscribe

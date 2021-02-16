@@ -11,7 +11,7 @@ import botocore
 MAX_POOL_CONNECTIONS = 50
 CONNECT_TIMEOUT = 8
 READ_TIMEOUT = 35
-CLIENT_CREATION_TIME_LOCK = 40
+CLIENT_CREATION_TIME_LOCK = 45
 
 
 class ClientConnector:
@@ -142,7 +142,7 @@ class ClientConnector:
 
             try:
                 if not fast:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.25)
                 task = client.close()
                 if getattr(task, "_coro", None):
                     task = task._coro
@@ -186,7 +186,7 @@ class ClientConnector:
 
         self.close_waiter = asyncio.Future()
         if not fast:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.25)
 
         tasks = []
         for _, client in clients.items():
