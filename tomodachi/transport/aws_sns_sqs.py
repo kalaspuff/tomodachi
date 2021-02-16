@@ -649,14 +649,14 @@ class AWSSNSSQSTransport(Invoker):
             await cls.create_client("sqs", context)
 
         async def _delete_message() -> None:
-            for retry in range(1, 8):
+            for retry in range(1, 6):
                 try:
                     async with connector("tomodachi.sqs", service_name="sqs") as client:
                         await asyncio.wait_for(
                             client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=15
                         )
                 except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError, asyncio.CancelledError) as e:
-                    if retry >= 3:
+                    if retry >= 5:
                         raise e
                     continue
                 except botocore.exceptions.ClientError as e:
@@ -672,6 +672,7 @@ class AWSSNSSQSTransport(Invoker):
                         )
                         raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
                     continue
+                break
 
         await _delete_message()
 
