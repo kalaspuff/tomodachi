@@ -45,6 +45,7 @@ class AWSSNSSQSService(tomodachi.Service):
             self.test_topic_data_received
             and self.test_topic_specified_queue_name_data_received
             and len(self.test_message_attribute_currencies) == 7
+            and len(self.test_message_attribute_amounts) == 2
         ):
             if not self.closer.done():
                 self.closer.set_result(None)
