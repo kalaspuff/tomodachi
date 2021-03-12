@@ -9,6 +9,9 @@ x.xx.x (xxxx-xx-xx)
   wasn't originating from a source using a ``JsonBase`` compatible
   envelope.
 
+- Fixes error message strings for some cases of AWS SNS + SQS
+  related cases of ``botocore.exceptions.ClientError``.
+
 
 0.21.2 (2021-02-16)
 -------------------
