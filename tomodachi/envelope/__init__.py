@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Tuple, Union
 
 __cached_defs: Dict[str, Any] = {}
 
@@ -15,11 +15,20 @@ def __getattr__(name: str) -> Any:
         try:
             module = importlib.import_module(".protobuf_base", "tomodachi.envelope")
         except Exception:  # pragma: no cover
-            from typing import Any  # noqa  # isort:skip
 
-            class ProtobufBase(object):  # type: ignore
+            class ProtobufBase(object):
                 @classmethod
                 def validate(cls, **kwargs: Any) -> None:
+                    raise Exception("google.protobuf package not installed")
+
+                @classmethod
+                async def build_message(cls, service: Any, topic: str, data: Any, **kwargs: Any) -> str:
+                    raise Exception("google.protobuf package not installed")
+
+                @classmethod
+                async def parse_message(
+                    cls, payload: str, proto_class: Any = None, validator: Any = None, **kwargs: Any
+                ) -> Union[Dict, Tuple]:
                     raise Exception("google.protobuf package not installed")
 
             __cached_defs[name] = ProtobufBase
