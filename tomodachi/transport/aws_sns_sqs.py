@@ -608,6 +608,7 @@ class AWSSNSSQSTransport(Invoker):
 
         message_attribute_values = cls.transform_message_attributes_to_botocore(cls, message_attributes)
 
+        response = {}
         for retry in range(1, 4):
             try:
                 async with connector("tomodachi.sns", service_name="sns") as client:
