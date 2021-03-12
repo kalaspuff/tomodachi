@@ -891,7 +891,11 @@ class AWSSNSSQSTransport(Invoker):
         if visibility_timeout and current_visibility_timeout and visibility_timeout != current_visibility_timeout:
             queue_attributes["VisibilityTimeout"] = visibility_timeout  # specified in seconds
 
-        if message_retention_period and current_message_retention_period and message_retention_period != current_message_retention_period:
+        if (
+            message_retention_period
+            and current_message_retention_period
+            and message_retention_period != current_message_retention_period
+        ):
             queue_attributes["MessageRetentionPeriod"] = message_retention_period  # specified in seconds
 
         if queue_attributes:
