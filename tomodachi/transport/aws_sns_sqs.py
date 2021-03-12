@@ -18,8 +18,8 @@ import aiobotocore
 import aiohttp
 import aiohttp.client_exceptions
 import botocore
-from botocore.parsers import ResponseParserError
 import botocore.exceptions
+from botocore.parsers import ResponseParserError
 
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
 from tomodachi.helpers.dict import merge_dicts
