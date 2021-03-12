@@ -37,6 +37,7 @@ class JsonBase(object):
         message_uuid = message.get("metadata", {}).get("message_uuid")
         timestamp = message.get("metadata", {}).get("timestamp")
 
+        data = None
         if message.get("metadata", {}).get("data_encoding") == "raw":
             data = message.get("data")
         elif message.get("metadata", {}).get("data_encoding") == "base64_gzip_json":
