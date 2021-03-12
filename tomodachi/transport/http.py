@@ -43,7 +43,7 @@ class HttpException(Exception):
         self._log_level = kwargs.get("log_level") if kwargs and kwargs.get("log_level") else "INFO"
 
 
-class RequestHandler(web_protocol.RequestHandler):
+class RequestHandler(web_protocol.RequestHandler):  # type: ignore
     __slots__ = web_protocol.RequestHandler.__slots__ + (
         "_server_header",
         "_access_log",
@@ -202,7 +202,7 @@ class RequestHandler(web_protocol.RequestHandler):
         return resp
 
 
-class Server(web_server.Server):
+class Server(web_server.Server):  # type: ignore
     __slots__ = (
         "_loop",
         "_connections",
@@ -226,7 +226,7 @@ class Server(web_server.Server):
         )
 
 
-class DynamicResource(web_urldispatcher.DynamicResource):
+class DynamicResource(web_urldispatcher.DynamicResource):  # type: ignore
     def __init__(self, pattern: Any, *, name: Optional[str] = None) -> None:
         self._routes: List = []
         self._name = name
