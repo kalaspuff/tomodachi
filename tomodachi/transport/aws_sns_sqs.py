@@ -18,6 +18,7 @@ import aiobotocore
 import aiohttp
 import botocore
 from botocore.parsers import ResponseParserError
+import botocore.exceptions
 
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
 from tomodachi.helpers.dict import merge_dicts
