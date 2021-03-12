@@ -946,6 +946,7 @@ class AWSSNSSQSTransport(Invoker):
                         response = await sns_client.subscribe(TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn)
                     subscription_arn = response.get("SubscriptionArn")
                 except botocore.exceptions.ClientError as e:
+                    error_message = str(e)
                     logging.getLogger("transport.aws_sns_sqs").warning(
                         "Unable to subscribe to topic [sns] on AWS ({})".format(error_message)
                     )
@@ -974,6 +975,7 @@ class AWSSNSSQSTransport(Invoker):
                                 AttributeValue=attribute_value,
                             )
                     except botocore.exceptions.ClientError as e:
+                        error_message = str(e)
                         logging.getLogger("transport.aws_sns_sqs").warning(
                             "Unable to subscribe to topic [sns] on AWS ({})".format(error_message)
                         )
