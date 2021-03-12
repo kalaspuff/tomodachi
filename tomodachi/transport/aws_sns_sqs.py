@@ -861,10 +861,14 @@ class AWSSNSSQSTransport(Invoker):
         if not queue_policy or not isinstance(queue_policy, dict):
             raise Exception("SQS policy is invalid")
 
+        current_queue_attributes = {}
         current_queue_policy = {}
         current_visibility_timeout = None
-        visibility_timeout = None
-        message_retention_period = None
+        current_message_retention_period = None
+
+        visibility_timeout = None  # not implemented yet
+        message_retention_period = None  # not implemented yet
+
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
                 response = await sqs_client.get_queue_attributes(
@@ -884,10 +888,10 @@ class AWSSNSSQSTransport(Invoker):
         ]:
             queue_attributes["Policy"] = json.dumps(queue_policy)
 
-        if visibility_timeout and visibility_timeout != current_visibility_timeout:
+        if visibility_timeout and current_visibility_timeout and visibility_timeout != current_visibility_timeout:
             queue_attributes["VisibilityTimeout"] = visibility_timeout  # specified in seconds
 
-        if message_retention_period and message_retention_period != current_message_retention_period:
+        if message_retention_period and current_message_retention_period and message_retention_period != current_message_retention_period:
             queue_attributes["MessageRetentionPeriod"] = message_retention_period  # specified in seconds
 
         if queue_attributes:
