@@ -16,6 +16,7 @@ from typing import Any, Callable, Dict, List, Mapping, Match, Optional, Set, Tup
 
 import aiobotocore
 import aiohttp
+import aiohttp.client_exceptions
 import botocore
 from botocore.parsers import ResponseParserError
 import botocore.exceptions
