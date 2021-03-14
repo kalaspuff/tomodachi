@@ -733,8 +733,7 @@ class HttpTransport(Invoker):
                     except ValueError:
                         pass
 
-                if access_log:
-                    timer = time.time()
+                timer = time.time() if access_log else 0
                 response = web.Response(status=503, headers={})
                 try:
                     response = await handler(request)

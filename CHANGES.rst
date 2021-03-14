@@ -1,6 +1,18 @@
 Changes
 =======
 
+x.xx.x (xxxx-xx-xx)
+-------------------
+- Fixes an issue causing a ``UnboundLocalError`` if an incoming
+  message to a service that had specified the enveloping
+  implementation ``JsonBase`` where JSON encoded but actually
+  wasn't originating from a source using a ``JsonBase`` compatible
+  envelope.
+
+- Fixes error message strings for some cases of AWS SNS + SQS
+  related cases of ``botocore.exceptions.ClientError``.
+
+
 0.21.2 (2021-02-16)
 -------------------
 - Bugfix for an issue which caused the ``sqs.DeleteMessage`` API call

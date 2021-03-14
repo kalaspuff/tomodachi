@@ -16,7 +16,9 @@ from typing import Any, Callable, Dict, List, Mapping, Match, Optional, Set, Tup
 
 import aiobotocore
 import aiohttp
+import aiohttp.client_exceptions
 import botocore
+import botocore.exceptions
 from botocore.parsers import ResponseParserError
 
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
@@ -606,6 +608,7 @@ class AWSSNSSQSTransport(Invoker):
 
         message_attribute_values = cls.transform_message_attributes_to_botocore(cls, message_attributes)
 
+        response = {}
         for retry in range(1, 4):
             try:
                 async with connector("tomodachi.sns", service_name="sns") as client:
@@ -858,10 +861,14 @@ class AWSSNSSQSTransport(Invoker):
         if not queue_policy or not isinstance(queue_policy, dict):
             raise Exception("SQS policy is invalid")
 
+        current_queue_attributes = {}
         current_queue_policy = {}
         current_visibility_timeout = None
-        visibility_timeout = None
-        message_retention_period = None
+        current_message_retention_period = None
+
+        visibility_timeout = None  # not implemented yet
+        message_retention_period = None  # not implemented yet
+
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
                 response = await sqs_client.get_queue_attributes(
@@ -881,10 +888,14 @@ class AWSSNSSQSTransport(Invoker):
         ]:
             queue_attributes["Policy"] = json.dumps(queue_policy)
 
-        if visibility_timeout and visibility_timeout != current_visibility_timeout:
+        if visibility_timeout and current_visibility_timeout and visibility_timeout != current_visibility_timeout:
             queue_attributes["VisibilityTimeout"] = visibility_timeout  # specified in seconds
 
-        if message_retention_period and message_retention_period != current_message_retention_period:
+        if (
+            message_retention_period
+            and current_message_retention_period
+            and message_retention_period != current_message_retention_period
+        ):
             queue_attributes["MessageRetentionPeriod"] = message_retention_period  # specified in seconds
 
         if queue_attributes:
@@ -935,6 +946,7 @@ class AWSSNSSQSTransport(Invoker):
                         response = await sns_client.subscribe(TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn)
                     subscription_arn = response.get("SubscriptionArn")
                 except botocore.exceptions.ClientError as e:
+                    error_message = str(e)
                     logging.getLogger("transport.aws_sns_sqs").warning(
                         "Unable to subscribe to topic [sns] on AWS ({})".format(error_message)
                     )
@@ -963,6 +975,7 @@ class AWSSNSSQSTransport(Invoker):
                                 AttributeValue=attribute_value,
                             )
                     except botocore.exceptions.ClientError as e:
+                        error_message = str(e)
                         logging.getLogger("transport.aws_sns_sqs").warning(
                             "Unable to subscribe to topic [sns] on AWS ({})".format(error_message)
                         )
