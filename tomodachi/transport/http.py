@@ -44,7 +44,8 @@ class HttpException(Exception):
 
 
 class RequestHandler(web_protocol.RequestHandler):
-    __slots__ = web_protocol.RequestHandler.__slots__ + (
+    __slots__ = (
+        *web_protocol.RequestHandler.__slots__,
         "_server_header",
         "_access_log",
         "_connection_start_time",
@@ -909,32 +910,33 @@ class HttpTransport(Invoker):
                 or http_options.get("max_upload_size")
                 or "100M"
             )
+            client_max_size_option_str = str(client_max_size_option).upper()
             client_max_size = (1024 ** 2) * 100
             try:
                 if (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)
-                    and (client_max_size_option.upper().endswith("G") or client_max_size_option.upper().endswith("GB"))
+                    and (client_max_size_option_str.endswith("G") or client_max_size_option_str.endswith("GB"))
                 ):
-                    client_max_size = int(re.sub(r"^([0-9]+)GB?$", r"\1", client_max_size_option.upper())) * (1024 ** 3)
+                    client_max_size = int(re.sub(cast(str, r'^([0-9]+)GB?$'), cast(str, r'\1'), client_max_size_option_str)) * (1024 ** 3)
                 elif (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)
-                    and (client_max_size_option.upper().endswith("M") or client_max_size_option.upper().endswith("MB"))
+                    and (client_max_size_option_str.endswith("M") or client_max_size_option_str.endswith("MB"))
                 ):
-                    client_max_size = int(re.sub(r"^([0-9]+)MB?$", r"\1", client_max_size_option.upper())) * (1024 ** 2)
+                    client_max_size = int(re.sub(r"^([0-9]+)MB?$", r"\1", client_max_size_option_str)) * (1024 ** 2)
                 elif (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)
-                    and (client_max_size_option.upper().endswith("K") or client_max_size_option.upper().endswith("KB"))
+                    and (client_max_size_option_str.endswith("K") or client_max_size_option_str.endswith("KB"))
                 ):
-                    client_max_size = int(re.sub(r"^([0-9]+)KB?$", r"\1", client_max_size_option.upper())) * 1024
+                    client_max_size = int(re.sub(r"^([0-9]+)KB?$", r"\1", client_max_size_option_str)) * 1024
                 elif (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)
-                    and (client_max_size_option.upper().endswith("B"))
+                    and (client_max_size_option_str.endswith("B"))
                 ):
-                    client_max_size = int(re.sub(r"^([0-9]+)B?$", r"\1", client_max_size_option.upper()))
+                    client_max_size = int(re.sub(r"^([0-9]+)B?$", r"\1", client_max_size_option_str))
                 elif client_max_size_option:
                     client_max_size = int(client_max_size_option)
             except Exception:
