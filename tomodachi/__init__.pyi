@@ -1,3 +1,4 @@
+# flake8: noqa
 from typing import Callable, Dict, List, Optional, Tuple, Type, Union
 
 from tomodachi.__version__ import __version_info__ as __version_info__
