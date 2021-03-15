@@ -4,7 +4,7 @@ import getopt
 import logging
 import os
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import tomodachi
 from tomodachi.config import parse_config_files
@@ -299,6 +299,9 @@ class CLI:
         sys.exit(0)
 
     def main(self, argv: List[str]) -> None:
+        opts: List[Tuple[str, str]] = []
+        args: List[str] = []
+
         try:
             opts, args = getopt.getopt(
                 argv, "hlvV ", ["help", "log", "version", "version", "dependency-versions", "dependencies", "deps"]
