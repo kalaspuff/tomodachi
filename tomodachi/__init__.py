@@ -61,7 +61,7 @@ def __getattr__(name: str) -> Any:
 
     if name in __available_defs:
         module_name = __available_defs[name][0]
-        real_name = name if len(__available_defs[name]) < 2 else __available_defs[name][1]
+        real_name = name if len(__available_defs[name]) < 2 else cast(Tuple[str, Optional[str]], __available_defs[name])[1]
 
         if not __imported_modules.get(module_name):
             try:
@@ -275,12 +275,12 @@ def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
     if isinstance(cls, TomodachiServiceMeta):
         return cls
 
-    result = type(cls.__name__, (cls, Service), dict(cls.__dict__))
-    return result
+    result = type(cls.__name__, (Service, cls), dict(cls.__dict__))
+    return cast(Type[TomodachiServiceMeta], result)
 
 
 def run(app: Optional[Union[str, List[str], Tuple[str]]] = None, *args: str, **kwargs: Optional[str]) -> None:
-    if hasattr(run, "__tomodachi_called") and run.__tomodachi_called:
+    if hasattr(run, "__tomodachi_called") and getattr(run, "__tomodachi_called"):
         return
     setattr(run, "__tomodachi_called", True)
 

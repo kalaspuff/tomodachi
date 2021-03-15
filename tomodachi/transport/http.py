@@ -308,8 +308,9 @@ class Response(object):
 class HttpTransport(Invoker):
     server_port_mapping: Dict[Any, str] = {}
 
+    @classmethod
     async def request_handler(
-        cls: Any,
+        cls,
         obj: Any,
         context: Dict,
         func: Any,
@@ -399,8 +400,9 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
+    @classmethod
     async def static_request_handler(
-        cls: Any,
+        cls,
         obj: Any,
         context: Dict,
         func: Any,
@@ -450,7 +452,8 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
-    async def error_handler(cls: Any, obj: Any, context: Dict, func: Any, status_code: int) -> Any:
+    @classmethod
+    async def error_handler(cls, obj: Any, context: Dict, func: Any, status_code: int) -> Any:
         default_content_type = context.get("options", {}).get("http", {}).get("content_type", "text/plain")
         default_charset = context.get("options", {}).get("http", {}).get("charset", "utf-8")
 
@@ -511,13 +514,14 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
-    async def websocket_handler(cls: Any, obj: Any, context: Dict, func: Any, url: str) -> Any:
+    @classmethod
+    async def websocket_handler(cls, obj: Any, context: Dict, func: Any, url: str) -> Any:
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
         compiled_pattern = re.compile(pattern)
 
         access_log = context.get("options", {}).get("http", {}).get("access_log", True)
 
-        async def _pre_handler_func(obj: Any, request: web.Request) -> None:
+        async def _pre_handler_func(_: Any, request: web.Request) -> None:
             request._cache["is_websocket"] = True
             request._cache["websocket_uuid"] = str(uuid.uuid4())
 
@@ -679,8 +683,9 @@ class HttpTransport(Invoker):
                 except Exception:
                     pass
 
-        return await cls.request_handler(cls, obj, context, _func, "GET", url, pre_handler_func=_pre_handler_func)
+        return await cls.request_handler(obj, context, _func, "GET", url, pre_handler_func=_pre_handler_func)
 
+    @staticmethod
     async def start_server(obj: Any, context: Dict) -> Optional[Callable]:
         if context.get("_http_server_started"):
             return None

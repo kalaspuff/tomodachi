@@ -21,8 +21,9 @@ from tomodachi.invoker import Invoker
 class Scheduler(Invoker):
     close_waiter = None
 
+    @classmethod
     async def schedule_handler(
-        cls: Any,
+        cls,
         obj: Any,
         context: Dict,
         func: Any,
@@ -59,19 +60,18 @@ class Scheduler(Invoker):
         context["_schedule_scheduled_functions"] = context.get("_schedule_scheduled_functions", [])
         context["_schedule_scheduled_functions"].append((interval, timestamp, timezone, immediately, func, handler))
 
-        start_func = cls.start_scheduler(cls, obj, context)
+        start_func = cls.start_scheduler(obj, context)
         return (await start_func) if start_func else None
 
     @classmethod
     def schedule_handler_with_interval(cls, interval: Union[str, int]) -> Callable:
-        def _func(cls: Any, obj: Any, context: Dict, func: Any) -> Any:
-            return cls.schedule_handler(cls, obj, context, func, interval=interval)
+        def _func(_: Any, obj: Any, context: Dict, func: Any) -> Any:
+            return cls.schedule_handler(obj, context, func, interval=interval)
 
         return _func
 
-    @classmethod
+    @staticmethod
     def next_call_at(
-        cls,
         current_time: float,
         interval: Optional[Union[str, int]] = None,
         timestamp: Optional[str] = None,
@@ -247,7 +247,8 @@ class Scheduler(Invoker):
 
         return int(current_time + 60 * 60 * 24 * 365 * 100)
 
-    def get_timezone(cls: Any, timezone: Optional[str] = None) -> Optional[str]:
+    @staticmethod
+    def get_timezone(timezone: Optional[str] = None) -> Optional[str]:
         if timezone:
             tz_aliases: Dict[Tuple[str, ...], str] = {
                 (
@@ -302,8 +303,9 @@ class Scheduler(Invoker):
 
         return timezone
 
+    @classmethod
     async def start_schedule_loop(
-        cls: Any,
+        cls,
         obj: Any,
         context: Dict,
         handler: Callable,
@@ -351,7 +353,7 @@ class Scheduler(Invoker):
                 await asyncio.sleep(0.1)
                 await start_waiter
 
-                if cls.close_waiter.done():
+                if not cls.close_waiter or cls.close_waiter.done():
                     logging.getLogger("transport.schedule").info(
                         "Scheduled loop for function '{}' never started before service termination".format(
                             func.__name__
@@ -371,7 +373,7 @@ class Scheduler(Invoker):
                 await asyncio.sleep(0.1)
                 await start_waiter
 
-                if cls.close_waiter.done():
+                if not cls.close_waiter or cls.close_waiter.done():
                     logging.getLogger("transport.schedule").info(
                         "Scheduled loop for function '{}' never started before service termination".format(
                             func.__name__
@@ -385,7 +387,7 @@ class Scheduler(Invoker):
             threshold = 20
             run_immediately = immediately
 
-            while not cls.close_waiter.done():
+            while cls.close_waiter and not cls.close_waiter.done():
                 try:
                     if not run_immediately:
                         last_time = current_time
@@ -503,7 +505,7 @@ class Scheduler(Invoker):
         stop_method = getattr(obj, "_stop_service", None)
 
         async def stop_service(*args: Any, **kwargs: Any) -> None:
-            if not cls.close_waiter.done():
+            if cls.close_waiter and not cls.close_waiter.done():
                 cls.close_waiter.set_result(None)
 
                 if not start_waiter.done():
@@ -530,7 +532,8 @@ class Scheduler(Invoker):
 
         loop.create_task(schedule_loop())
 
-    async def start_scheduler(cls: Any, obj: Any, context: Dict) -> Optional[Callable]:
+    @classmethod
+    async def start_scheduler(cls, obj: Any, context: Dict) -> Optional[Callable]:
         if context.get("_schedule_loop_started"):
             return None
         context["_schedule_loop_started"] = True
@@ -557,7 +560,7 @@ class Scheduler(Invoker):
                 "_schedule_scheduled_functions", []
             ):
                 await cls.start_schedule_loop(
-                    cls, obj, context, handler, func, interval, timestamp, timezone, immediately
+                    obj, context, handler, func, interval, timestamp, timezone, immediately
                 )
 
         return _schedule

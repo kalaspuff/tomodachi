@@ -36,7 +36,8 @@ class Invoker(object):
                         )
                     context = cls.context[obj]
                     obj.context = context
-                    start_func = await cls_func(cls, obj, context, func, *args, **kwargs)
+                    bound_cls_func = getattr(cls_func, "__get__")(cls)
+                    start_func = await bound_cls_func(obj, context, func, *args, **kwargs)
 
                     # Work-around if the decorators are stacked with multiple decorators for the same method
                     if getattr(func, FUNCTION_ATTRIBUTE, None):

@@ -1,8 +1,8 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Callable, Dict, List, Optional, Tuple, Type, Union
 
 from tomodachi.__version__ import __version_info__ as __version_info__
-from tomodachi.helpers.aiobotocore_connector import ClientConnector as AiobotocoreClientConnector
-from tomodachi.helpers.aiobotocore_connector import connector as aiobotocore_client_connector
+from tomodachi.helpers.aiobotocore_connector import ClientConnector as _AiobotocoreClientConnector
+from tomodachi.helpers.aiobotocore_connector import connector as _aiobotocore_client_connector
 from tomodachi.helpers.execution_context import clear_execution_context as _clear_execution_context
 from tomodachi.helpers.execution_context import clear_services as _clear_services
 from tomodachi.helpers.execution_context import decrease_execution_context_value as decrease_execution_context_value
@@ -19,7 +19,7 @@ from tomodachi.transport.amqp import amqp_publish as amqp_publish
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs as aws_sns_sqs
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs_publish as aws_sns_sqs_publish
 from tomodachi.transport.http import HttpException as HttpException
-from tomodachi.transport.http import Response as HttpResponse
+from tomodachi.transport.http import Response as _HttpResponse
 from tomodachi.transport.http import get_http_response_status as get_http_response_status
 from tomodachi.transport.http import get_http_response_status_sync as get_http_response_status_sync
 from tomodachi.transport.http import http as http
@@ -34,7 +34,10 @@ from tomodachi.transport.schedule import minutely as minutely
 from tomodachi.transport.schedule import monthly as monthly
 from tomodachi.transport.schedule import schedule as schedule
 
-def __getattr__(name: str) -> Any: ...
+
+AiobotocoreClientConnector = _AiobotocoreClientConnector
+aiobotocore_client_connector = _aiobotocore_client_connector
+HttpResponse = _HttpResponse
 
 __author__: str = ...
 __email__: str = ...

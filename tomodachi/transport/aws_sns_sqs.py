@@ -158,10 +158,10 @@ class AWSSNSSQSTransport(Invoker):
                     service, topic, data, message_attributes=message_attributes, **kwargs
                 )
 
-        topic_arn = await cls.create_topic(cls, topic, service.context, topic_prefix)
+        topic_arn = await cls.create_topic(topic, service.context, topic_prefix)
 
         async def _publish_message() -> None:
-            await cls.publish_message(cls, topic_arn, payload, cast(Dict, message_attributes), service.context)
+            await cls.publish_message(topic_arn, payload, cast(Dict, message_attributes), service.context)
 
         if wait:
             await _publish_message()
@@ -214,7 +214,7 @@ class AWSSNSSQSTransport(Invoker):
         return re.sub(r"([^a-zA-Z0-9_*#-])", encode, topic)
 
     @classmethod
-    def get_queue_name(cls, topic: str, func_name: str, _uuid: str, competing_consumer: bool, context: Dict) -> str:
+    def get_queue_name(cls, topic: str, func_name: str, _uuid: str, competing_consumer: Optional[bool], context: Dict) -> str:
         if not competing_consumer:
             queue_name = hashlib.sha256("{}{}{}".format(topic, func_name, _uuid).encode("utf-8")).hexdigest()
         else:
@@ -230,8 +230,9 @@ class AWSSNSSQSTransport(Invoker):
             return "{}{}".format(context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"), queue_name)
         return queue_name
 
+    @classmethod
     async def subscribe_handler(
-        cls: Any,
+        cls,
         obj: Any,
         context: Dict,
         func: Any,
@@ -289,7 +290,7 @@ class AWSSNSSQSTransport(Invoker):
         ) -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 try:
-                    await cls.delete_message(cls, receipt_handle, queue_url, context)
+                    await cls.delete_message(receipt_handle, queue_url, context)
                 except (Exception, asyncio.CancelledError):
                     pass
                 return
@@ -297,9 +298,7 @@ class AWSSNSSQSTransport(Invoker):
             kwargs = dict(original_kwargs)
 
             message = payload
-            message_attributes_values: Dict[
-                str, Union[str, bytes, int, float, List[Optional[Union[str, int, float, bool]]]]
-            ] = (cls.transform_message_attributes_from_response(cls, message_attributes) if message_attributes else {})
+            message_attributes_values: Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]] = (cls.transform_message_attributes_from_response(message_attributes) if message_attributes else {})
             message_uuid = None
             message_key = None
 
@@ -358,11 +357,11 @@ class AWSSNSSQSTransport(Invoker):
                 except (Exception, asyncio.CancelledError, BaseException) as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
-                        await cls.delete_message(cls, receipt_handle, queue_url, context)
+                        await cls.delete_message(receipt_handle, queue_url, context)
                     elif message is False and message_uuid:
                         pass  # incompatible envelope, should probably delete if old message
                     elif message is False:
-                        await cls.delete_message(cls, receipt_handle, queue_url, context)
+                        await cls.delete_message(receipt_handle, queue_url, context)
                     return
             else:
                 if _callback_kwargs:
@@ -406,7 +405,7 @@ class AWSSNSSQSTransport(Invoker):
                         if message_key:
                             del context["_aws_sns_sqs_received_messages"][message_key]
                         return
-                    await cls.delete_message(cls, receipt_handle, queue_url, context)
+                    await cls.delete_message(receipt_handle, queue_url, context)
                     return
 
                 if inspect.isawaitable(routine):
@@ -425,12 +424,12 @@ class AWSSNSSQSTransport(Invoker):
                             if message_key:
                                 del context["_aws_sns_sqs_received_messages"][message_key]
                             return
-                        await cls.delete_message(cls, receipt_handle, queue_url, context)
+                        await cls.delete_message(receipt_handle, queue_url, context)
                         return
                 else:
                     return_value = routine
 
-                await cls.delete_message(cls, receipt_handle, queue_url, context)
+                await cls.delete_message(receipt_handle, queue_url, context)
                 return return_value
 
             increase_execution_context_value("aws_sns_sqs_current_tasks")
@@ -454,7 +453,7 @@ class AWSSNSSQSTransport(Invoker):
         context["_aws_sns_sqs_subscribers"] = context.get("_aws_sns_sqs_subscribers", [])
         context["_aws_sns_sqs_subscribers"].append((topic, competing, queue_name, func, handler, attributes))
 
-        start_func = cls.subscribe(cls, obj, context)
+        start_func = cls.subscribe(obj, context)
         return (await start_func) if start_func else None
 
     @staticmethod
@@ -511,8 +510,9 @@ class AWSSNSSQSTransport(Invoker):
             )
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
 
+    @classmethod
     async def create_topic(
-        cls: Any, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX
+        cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX
     ) -> str:
         if not cls.topics:
             cls.topics = {}
@@ -559,8 +559,9 @@ class AWSSNSSQSTransport(Invoker):
 
         return topic_arn
 
+    @staticmethod
     def transform_message_attributes_from_response(
-        cls, message_attributes: Dict
+        message_attributes: Dict
     ) -> Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]]:
         result: Dict[
             str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
@@ -581,8 +582,9 @@ class AWSSNSSQSTransport(Invoker):
 
         return result
 
+    @staticmethod
     def transform_message_attributes_to_botocore(
-        cls, message_attributes: Dict
+        message_attributes: Dict
     ) -> Dict[str, Dict[str, Union[str, bytes]]]:
         result: Dict[str, Dict[str, Union[str, bytes]]] = {}
 
@@ -602,11 +604,12 @@ class AWSSNSSQSTransport(Invoker):
 
         return result
 
-    async def publish_message(cls: Any, topic_arn: str, message: Any, message_attributes: Dict, context: Dict) -> str:
+    @classmethod
+    async def publish_message(cls, topic_arn: str, message: Any, message_attributes: Dict, context: Dict) -> str:
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
 
-        message_attribute_values = cls.transform_message_attributes_to_botocore(cls, message_attributes)
+        message_attribute_values = cls.transform_message_attributes_to_botocore(message_attributes)
 
         response = {}
         for retry in range(1, 4):
@@ -644,7 +647,8 @@ class AWSSNSSQSTransport(Invoker):
 
         return message_id
 
-    async def delete_message(cls: Any, receipt_handle: Optional[str], queue_url: Optional[str], context: Dict) -> None:
+    @classmethod
+    async def delete_message(cls, receipt_handle: Optional[str], queue_url: Optional[str], context: Dict) -> None:
         if not receipt_handle:
             return
 
@@ -679,7 +683,8 @@ class AWSSNSSQSTransport(Invoker):
 
         await _delete_message()
 
-    async def create_queue(cls: Any, queue_name: str, context: Dict) -> Tuple[str, str]:
+    @classmethod
+    async def create_queue(cls, queue_name: str, context: Dict) -> Tuple[str, str]:
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
 
@@ -751,7 +756,7 @@ class AWSSNSSQSTransport(Invoker):
         return queue_url, queue_arn
 
     @classmethod
-    def generate_queue_policy(cls, queue_arn: str, topic_arn_list: List, context: Dict) -> Dict:
+    def generate_queue_policy(cls, queue_arn: str, topic_arn_list: Union[List, Tuple], context: Dict) -> Dict:
         if len(topic_arn_list) == 1:
             if context.get("options", {}).get("aws_sns_sqs", {}).get("queue_policy"):
                 source_arn = context.get("options", {}).get("aws_sns_sqs", {}).get("queue_policy")
@@ -791,8 +796,9 @@ class AWSSNSSQSTransport(Invoker):
         }
         return queue_policy
 
+    @classmethod
     async def subscribe_wildcard_topic(
-        cls: Any,
+        cls,
         topic: str,
         queue_arn: str,
         queue_url: str,
@@ -835,14 +841,15 @@ class AWSSNSSQSTransport(Invoker):
             queue_policy = cls.generate_queue_policy(queue_arn, topic_arn_list, context)
             cls.topics[topic] = topic_arn_list[0]
             return await cls.subscribe_topics(
-                cls, topic_arn_list, queue_arn, queue_url, context, queue_policy=queue_policy, attributes=attributes
+                topic_arn_list, queue_arn, queue_url, context, queue_policy=queue_policy, attributes=attributes
             )
 
         return None
 
+    @classmethod
     async def subscribe_topics(
-        cls: Any,
-        topic_arn_list: List,
+        cls,
+        topic_arn_list: Union[List, Tuple],
         queue_arn: str,
         queue_url: str,
         context: Dict,
@@ -985,7 +992,8 @@ class AWSSNSSQSTransport(Invoker):
 
         return subscription_arn_list
 
-    async def consume_queue(cls: Any, obj: Any, context: Dict, handler: Callable, queue_url: str) -> None:
+    @classmethod
+    async def consume_queue(cls, obj: Any, context: Dict, handler: Callable, queue_url: str) -> None:
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
 
@@ -1013,7 +1021,7 @@ class AWSSNSSQSTransport(Invoker):
 
                 is_disconnected = False
 
-                while not cls.close_waiter.done():
+                while cls.close_waiter and not cls.close_waiter.done():
                     futures = []
 
                     try:
@@ -1066,7 +1074,7 @@ class AWSSNSSQSTransport(Invoker):
                                 try:
                                     context["_aws_sns_sqs_subscribed"] = False
                                     cls.topics = {}
-                                    func = await cls.subscribe(cls, obj, context)
+                                    func = await cls.subscribe(obj, context)
                                     await func()
                                 except Exception:
                                     pass
@@ -1116,7 +1124,7 @@ class AWSSNSSQSTransport(Invoker):
                                 )
                             except ValueError:
                                 # Malformed SQS message, not in SNS format and should be discarded
-                                await cls.delete_message(cls, receipt_handle, queue_url, context)
+                                await cls.delete_message(receipt_handle, queue_url, context)
                                 logging.getLogger("transport.aws_sns_sqs").warning("Discarded malformed message")
                                 continue
 
@@ -1145,14 +1153,14 @@ class AWSSNSSQSTransport(Invoker):
 
             task = None
             while True:
-                if task and not cls.close_waiter.done():
+                if task and cls.close_waiter and not cls.close_waiter.done():
                     logging.getLogger("transport.aws_sns_sqs").warning(
                         "Resuming message receiving after trying to recover from fatal error"
                     )
                 if not task or task.done():
                     task = asyncio.ensure_future(_receive_wrapper())
-                await asyncio.wait([cls.close_waiter, task], return_when=asyncio.FIRST_COMPLETED)
-                if cls.close_waiter.done():
+                await asyncio.wait([cast(asyncio.Future, cls.close_waiter), task], return_when=asyncio.FIRST_COMPLETED)
+                if not cls.close_waiter or cls.close_waiter.done():
                     break
                 if not cls.close_waiter.done() and task.done() and task.exception():
                     try:
@@ -1175,7 +1183,7 @@ class AWSSNSSQSTransport(Invoker):
         stop_method = getattr(obj, "_stop_service", None)
 
         async def stop_service(*args: Any, **kwargs: Any) -> None:
-            if not cls.close_waiter.done():
+            if cls.close_waiter and not cls.close_waiter.done():
                 logging.getLogger("transport.aws_sns_sqs").warning("Draining message pool - awaiting running tasks")
                 cls.close_waiter.set_result(None)
 
@@ -1204,7 +1212,8 @@ class AWSSNSSQSTransport(Invoker):
 
         loop.create_task(receive_messages())
 
-    async def subscribe(cls: Any, obj: Any, context: Dict) -> Optional[Callable]:
+    @classmethod
+    async def subscribe(cls, obj: Any, context: Dict) -> Optional[Callable]:
         if context.get("_aws_sns_sqs_subscribed"):
             return None
         context["_aws_sns_sqs_subscribed"] = True
@@ -1250,13 +1259,13 @@ class AWSSNSSQSTransport(Invoker):
                 else:
                     queue_name = cls.prefix_queue_name(queue_name, context)
 
-                queue_url, queue_arn = cast(Tuple[str, str], await cls.create_queue(cls, queue_name, context))
+                queue_url, queue_arn = await cls.create_queue(queue_name, context)
 
                 if re.search(r"([*#])", topic):
-                    await cls.subscribe_wildcard_topic(cls, topic, queue_arn, queue_url, context, attributes=attributes)
+                    await cls.subscribe_wildcard_topic(topic, queue_arn, queue_url, context, attributes=attributes)
                 else:
-                    topic_arn = await cls.create_topic(cls, topic, context)
-                    await cls.subscribe_topics(cls, (topic_arn,), queue_arn, queue_url, context, attributes=attributes)
+                    topic_arn = await cls.create_topic(topic, context)
+                    await cls.subscribe_topics((topic_arn,), queue_arn, queue_url, context, attributes=attributes)
 
                 return queue_url
 
@@ -1267,7 +1276,7 @@ class AWSSNSSQSTransport(Invoker):
                     queue_url = await setup_queue(
                         topic, func, queue_name=queue_name, competing_consumer=competing, attributes=attributes
                     )
-                    await cls.consume_queue(cls, obj, context, handler, queue_url=queue_url)
+                    await cls.consume_queue(obj, context, handler, queue_url=queue_url)
             except Exception:
                 await connector.close(fast=True)
                 await asyncio.sleep(0.5)

@@ -2,11 +2,15 @@ import asyncio
 import inspect
 import time
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Awaitable, Dict, Optional, cast
 
 import aiobotocore
+import aiobotocore.client
+import aiobotocore.config
 import aiohttp
+import aiohttp.client_exceptions
 import botocore
+import botocore.exceptions
 
 MAX_POOL_CONNECTIONS = 50
 CONNECT_TIMEOUT = 8
@@ -14,7 +18,16 @@ READ_TIMEOUT = 35
 CLIENT_CREATION_TIME_LOCK = 45
 
 
-class ClientConnector:
+class ClientConnector(object):
+    __slots__ = (
+        "clients",
+        "credentials",
+        "client_creation_lock_time",
+        "aliases",
+        "locks",
+        "close_waiter",
+    )
+
     clients: Dict[str, Optional[aiobotocore.client.AioBaseClient]]
     credentials: Dict[str, Dict]
     client_creation_lock_time: Dict[str, float]
@@ -89,25 +102,25 @@ class ClientConnector:
             create_client_func = session._create_client if hasattr(session, "_create_client") else session.create_client
             client_value = create_client_func(service_name, config=config, **credentials)
             if inspect.isawaitable(client_value):
-                client = await client_value
+                client = await cast(Awaitable, client_value)
             else:
                 client = client_value
 
             old_client = self.get_client(alias_name)
-            self.clients[alias_name] = client
+            self.clients[alias_name] = cast(aiobotocore.client.AioBaseClient, client)
 
             if old_client:
                 try:
                     await asyncio.sleep(1)
                     task = old_client.close()
                     if getattr(task, "_coro", None):
-                        task = task._coro
+                        task = getattr(task, "_coro")
                     await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
                     await asyncio.sleep(0.25)  # SSL termination sleep
                 except (Exception, RuntimeError, asyncio.CancelledError, BaseException):
                     pass
 
-            return self.clients.get(alias_name) or client
+            return cast(aiobotocore.client.AioBaseClient, self.clients.get(alias_name) or client)
 
     async def close_client(
         self,
@@ -145,7 +158,7 @@ class ClientConnector:
                     await asyncio.sleep(0.25)
                 task = client.close()
                 if getattr(task, "_coro", None):
-                    task = task._coro
+                    task = getattr(task, "_coro")
                 await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
                 if not fast:
                     await asyncio.sleep(0.25)  # SSL termination sleep
@@ -195,7 +208,7 @@ class ClientConnector:
             try:
                 task = client.close()
                 if getattr(task, "_coro", None):
-                    task = task._coro
+                    task = getattr(task, "_coro")
                 tasks.append(asyncio.ensure_future(task))
             except (Exception, RuntimeError, asyncio.CancelledError, BaseException):
                 pass
