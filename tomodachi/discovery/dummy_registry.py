@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict  # noqa
+from typing import Any, Dict
 
 
 # An example discovery class which would could be extended to register which

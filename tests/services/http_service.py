@@ -1,7 +1,7 @@
 import asyncio
 import os
 import signal
-from typing import Any, Callable, Dict, Tuple, Union  # noqa
+from typing import Any, Callable, Dict, Tuple, Union
 
 from aiohttp import web
 

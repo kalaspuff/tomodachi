@@ -1,6 +1,6 @@
 import functools
 import types
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast  # noqa
+from typing import Any, Callable, Dict, Tuple, cast
 
 FUNCTION_ATTRIBUTE = "_tomodachi_function_is_invoker_function"
 START_ATTRIBUTE = "_tomodachi_deprecated_invoker_function_start_marker"

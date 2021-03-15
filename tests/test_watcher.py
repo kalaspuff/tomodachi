@@ -1,7 +1,7 @@
 import asyncio
 import os
 import sys
-from typing import Any, Dict, List, Union  # noqa
+from typing import Any, Dict, List, Union
 
 from tomodachi.watcher import Watcher
 

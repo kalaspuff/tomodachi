@@ -4,7 +4,7 @@ import importlib
 import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
-from tomodachi.__version__ import __version__, __version_info__  # noqa
+from tomodachi.__version__ import __version__, __version_info__
 
 try:
     from tomodachi.helpers.execution_context import clear_execution_context as _clear_execution_context

@@ -235,9 +235,7 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                         for dv in ["year", "month", "day", "hour", "minute"]
                     )
                     next_date_weekday = tz.localize(
-                        datetime.datetime(
-                            *cast(Tuple[int, int, int, int, int], next_date_weekday_arguments)
-                        )
+                        datetime.datetime(*cast(Tuple[int, int, int, int, int], next_date_weekday_arguments))
                     )
                     if next_date_weekday and (next_date_weekday.isoweekday() % 7) in values[4]:
                         break

@@ -1,7 +1,6 @@
 import asyncio
 import os
 import signal
-from typing import Any  # noqa
 
 import tomodachi
 from tomodachi.transport.schedule import heartbeat, schedule

@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 from types import ModuleType
-from typing import Any  # noqa
+from typing import Any
 
 
 class ServicePackageError(ImportError):

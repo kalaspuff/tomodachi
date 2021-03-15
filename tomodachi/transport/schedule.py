@@ -4,7 +4,7 @@ import inspect
 import logging
 import random
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast  # noqa
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 import pytz
 import tzlocal

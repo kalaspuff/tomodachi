@@ -1,7 +1,6 @@
 import asyncio
 import os
 import signal
-from typing import Any, Dict, Tuple  # noqa
 
 from aiohttp import web
 
