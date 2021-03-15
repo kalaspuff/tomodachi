@@ -559,9 +559,7 @@ class Scheduler(Invoker):
             for interval, timestamp, timezone, immediately, func, handler in context.get(
                 "_schedule_scheduled_functions", []
             ):
-                await cls.start_schedule_loop(
-                    obj, context, handler, func, interval, timestamp, timezone, immediately
-                )
+                await cls.start_schedule_loop(obj, context, handler, func, interval, timestamp, timezone, immediately)
 
         return _schedule
 

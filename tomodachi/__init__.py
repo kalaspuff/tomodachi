@@ -61,7 +61,9 @@ def __getattr__(name: str) -> Any:
 
     if name in __available_defs:
         module_name = __available_defs[name][0]
-        real_name = name if len(__available_defs[name]) < 2 else cast(Tuple[str, Optional[str]], __available_defs[name])[1]
+        real_name = (
+            name if len(__available_defs[name]) < 2 else cast(Tuple[str, Optional[str]], __available_defs[name])[1]
+        )
 
         if not __imported_modules.get(module_name):
             try:

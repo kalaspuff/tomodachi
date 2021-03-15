@@ -923,7 +923,9 @@ class HttpTransport(Invoker):
                     and isinstance(client_max_size_option, str)
                     and (client_max_size_option_str.endswith("G") or client_max_size_option_str.endswith("GB"))
                 ):
-                    client_max_size = int(re.sub(cast(str, r'^([0-9]+)GB?$'), cast(str, r'\1'), client_max_size_option_str)) * (1024 ** 3)
+                    client_max_size = int(
+                        re.sub(cast(str, r"^([0-9]+)GB?$"), cast(str, r"\1"), client_max_size_option_str)
+                    ) * (1024 ** 3)
                 elif (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)

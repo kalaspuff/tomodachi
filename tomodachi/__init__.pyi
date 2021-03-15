@@ -34,7 +34,6 @@ from tomodachi.transport.schedule import minutely as minutely
 from tomodachi.transport.schedule import monthly as monthly
 from tomodachi.transport.schedule import schedule as schedule
 
-
 AiobotocoreClientConnector = _AiobotocoreClientConnector
 aiobotocore_client_connector = _aiobotocore_client_connector
 HttpResponse = _HttpResponse

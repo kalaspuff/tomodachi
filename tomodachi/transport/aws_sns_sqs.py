@@ -214,7 +214,9 @@ class AWSSNSSQSTransport(Invoker):
         return re.sub(r"([^a-zA-Z0-9_*#-])", encode, topic)
 
     @classmethod
-    def get_queue_name(cls, topic: str, func_name: str, _uuid: str, competing_consumer: Optional[bool], context: Dict) -> str:
+    def get_queue_name(
+        cls, topic: str, func_name: str, _uuid: str, competing_consumer: Optional[bool], context: Dict
+    ) -> str:
         if not competing_consumer:
             queue_name = hashlib.sha256("{}{}{}".format(topic, func_name, _uuid).encode("utf-8")).hexdigest()
         else:
@@ -298,7 +300,9 @@ class AWSSNSSQSTransport(Invoker):
             kwargs = dict(original_kwargs)
 
             message = payload
-            message_attributes_values: Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]] = (cls.transform_message_attributes_from_response(message_attributes) if message_attributes else {})
+            message_attributes_values: Dict[
+                str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
+            ] = (cls.transform_message_attributes_from_response(message_attributes) if message_attributes else {})
             message_uuid = None
             message_key = None
 
@@ -511,9 +515,7 @@ class AWSSNSSQSTransport(Invoker):
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
 
     @classmethod
-    async def create_topic(
-        cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX
-    ) -> str:
+    async def create_topic(cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX) -> str:
         if not cls.topics:
             cls.topics = {}
         if cls.topics.get(topic):
@@ -561,7 +563,7 @@ class AWSSNSSQSTransport(Invoker):
 
     @staticmethod
     def transform_message_attributes_from_response(
-        message_attributes: Dict
+        message_attributes: Dict,
     ) -> Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]]:
         result: Dict[
             str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
@@ -583,9 +585,7 @@ class AWSSNSSQSTransport(Invoker):
         return result
 
     @staticmethod
-    def transform_message_attributes_to_botocore(
-        message_attributes: Dict
-    ) -> Dict[str, Dict[str, Union[str, bytes]]]:
+    def transform_message_attributes_to_botocore(message_attributes: Dict) -> Dict[str, Dict[str, Union[str, bytes]]]:
         result: Dict[str, Dict[str, Union[str, bytes]]] = {}
 
         for name, value in message_attributes.items():
