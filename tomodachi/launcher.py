@@ -81,6 +81,7 @@ class ServiceLauncher(object):
         signal.signal(signal.SIGINT, sigintHandler)
         signal.signal(signal.SIGTERM, sigtermHandler)
 
+        watcher_future = None
         if watcher:
 
             async def _watcher_restart(updated_files: Union[List, set]) -> None:
@@ -278,7 +279,7 @@ class ServiceLauncher(object):
             restarting = True
 
         if watcher:
-            if not watcher_future.done():
+            if watcher_future and not watcher_future.done():
                 try:
                     watcher_future.set_result(None)
                 except RuntimeError:  # pragma: no cover
