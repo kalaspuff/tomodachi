@@ -14,9 +14,6 @@ async def execute_middlewares(func: Callable, routine_func: Callable, middleware
             async def _func(*a: Any, **kw: Any) -> Any:
                 return await middleware_bubble(idx + 1, *a, **kw)
 
-            if middlewares and len(middlewares) <= idx + 1:
-                _func = routine_func  # noqa
-
             middleware: Callable = middlewares[idx]
 
             if getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, None) is None:
@@ -29,6 +26,8 @@ async def execute_middlewares(func: Callable, routine_func: Callable, middleware
                 arg_len = getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, None)
 
             middleware_arguments = [_func, *args, middleware_context][0:arg_len]
+            if middlewares and len(middlewares) <= idx + 1:
+                middleware_arguments[0] = routine_func
 
             return await middleware(*middleware_arguments, *ma, **mkw)
 
