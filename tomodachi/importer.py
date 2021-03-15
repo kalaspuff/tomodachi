@@ -78,6 +78,7 @@ class ServiceImporter(object):
                 pass
             if not spec.loader:
                 raise OSError
+            service_import_name = ""
             try:
                 if service_import:
                     service_import_name = (
