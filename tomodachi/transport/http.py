@@ -44,7 +44,8 @@ class HttpException(Exception):
 
 
 class RequestHandler(web_protocol.RequestHandler):
-    __slots__ = web_protocol.RequestHandler.__slots__ + (
+    __slots__ = (
+        *web_protocol.RequestHandler.__slots__,
         "_server_header",
         "_access_log",
         "_connection_start_time",
@@ -307,8 +308,9 @@ class Response(object):
 class HttpTransport(Invoker):
     server_port_mapping: Dict[Any, str] = {}
 
+    @classmethod
     async def request_handler(
-        cls: Any,
+        cls,
         obj: Any,
         context: Dict,
         func: Any,
@@ -398,8 +400,9 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
+    @classmethod
     async def static_request_handler(
-        cls: Any,
+        cls,
         obj: Any,
         context: Dict,
         func: Any,
@@ -449,7 +452,8 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
-    async def error_handler(cls: Any, obj: Any, context: Dict, func: Any, status_code: int) -> Any:
+    @classmethod
+    async def error_handler(cls, obj: Any, context: Dict, func: Any, status_code: int) -> Any:
         default_content_type = context.get("options", {}).get("http", {}).get("content_type", "text/plain")
         default_charset = context.get("options", {}).get("http", {}).get("charset", "utf-8")
 
@@ -510,13 +514,14 @@ class HttpTransport(Invoker):
         start_func = cls.start_server(obj, context)
         return (await start_func) if start_func else None
 
-    async def websocket_handler(cls: Any, obj: Any, context: Dict, func: Any, url: str) -> Any:
+    @classmethod
+    async def websocket_handler(cls, obj: Any, context: Dict, func: Any, url: str) -> Any:
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
         compiled_pattern = re.compile(pattern)
 
         access_log = context.get("options", {}).get("http", {}).get("access_log", True)
 
-        async def _pre_handler_func(obj: Any, request: web.Request) -> None:
+        async def _pre_handler_func(_: Any, request: web.Request) -> None:
             request._cache["is_websocket"] = True
             request._cache["websocket_uuid"] = str(uuid.uuid4())
 
@@ -678,8 +683,9 @@ class HttpTransport(Invoker):
                 except Exception:
                     pass
 
-        return await cls.request_handler(cls, obj, context, _func, "GET", url, pre_handler_func=_pre_handler_func)
+        return await cls.request_handler(obj, context, _func, "GET", url, pre_handler_func=_pre_handler_func)
 
+    @staticmethod
     async def start_server(obj: Any, context: Dict) -> Optional[Callable]:
         if context.get("_http_server_started"):
             return None
@@ -909,32 +915,35 @@ class HttpTransport(Invoker):
                 or http_options.get("max_upload_size")
                 or "100M"
             )
+            client_max_size_option_str = str(client_max_size_option).upper()
             client_max_size = (1024 ** 2) * 100
             try:
                 if (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)
-                    and (client_max_size_option.upper().endswith("G") or client_max_size_option.upper().endswith("GB"))
+                    and (client_max_size_option_str.endswith("G") or client_max_size_option_str.endswith("GB"))
                 ):
-                    client_max_size = int(re.sub(r"^([0-9]+)GB?$", r"\1", client_max_size_option.upper())) * (1024 ** 3)
+                    client_max_size = int(
+                        re.sub(cast(str, r"^([0-9]+)GB?$"), cast(str, r"\1"), client_max_size_option_str)
+                    ) * (1024 ** 3)
                 elif (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)
-                    and (client_max_size_option.upper().endswith("M") or client_max_size_option.upper().endswith("MB"))
+                    and (client_max_size_option_str.endswith("M") or client_max_size_option_str.endswith("MB"))
                 ):
-                    client_max_size = int(re.sub(r"^([0-9]+)MB?$", r"\1", client_max_size_option.upper())) * (1024 ** 2)
+                    client_max_size = int(re.sub(r"^([0-9]+)MB?$", r"\1", client_max_size_option_str)) * (1024 ** 2)
                 elif (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)
-                    and (client_max_size_option.upper().endswith("K") or client_max_size_option.upper().endswith("KB"))
+                    and (client_max_size_option_str.endswith("K") or client_max_size_option_str.endswith("KB"))
                 ):
-                    client_max_size = int(re.sub(r"^([0-9]+)KB?$", r"\1", client_max_size_option.upper())) * 1024
+                    client_max_size = int(re.sub(r"^([0-9]+)KB?$", r"\1", client_max_size_option_str)) * 1024
                 elif (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)
-                    and (client_max_size_option.upper().endswith("B"))
+                    and (client_max_size_option_str.endswith("B"))
                 ):
-                    client_max_size = int(re.sub(r"^([0-9]+)B?$", r"\1", client_max_size_option.upper()))
+                    client_max_size = int(re.sub(r"^([0-9]+)B?$", r"\1", client_max_size_option_str))
                 elif client_max_size_option:
                     client_max_size = int(client_max_size_option)
             except Exception:

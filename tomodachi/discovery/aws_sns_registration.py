@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict  # noqa
+from typing import Any, Dict
 
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs_publish
 

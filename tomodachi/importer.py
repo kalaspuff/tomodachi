@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 from types import ModuleType
-from typing import Any  # noqa
+from typing import Any
 
 
 class ServicePackageError(ImportError):
@@ -78,6 +78,7 @@ class ServiceImporter(object):
                 pass
             if not spec.loader:
                 raise OSError
+            service_import_name = ""
             try:
                 if service_import:
                     service_import_name = (

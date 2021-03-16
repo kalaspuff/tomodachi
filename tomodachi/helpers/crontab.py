@@ -1,6 +1,6 @@
 import datetime
 from calendar import monthrange
-from typing import Any, Dict, List, Optional, SupportsInt, Tuple, Union  # noqa
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import pytz
 
@@ -128,8 +128,8 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                         possible_values = [x for x in possible_values if x % b == (a % b)]
                 parsed = True
 
+            part_value = part
             try:
-                part_value = part
                 if "l" == part_value[0]:
                     last = True
                     part_value = part_value[1:]
@@ -230,13 +230,12 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                 for d in range(
                     next_date_weekday.day, monthrange(next_date_weekday.year, next_date_weekday.month)[1] + 1
                 ):
+                    next_date_weekday_arguments = (
+                        getattr(next_date_weekday, dv) if dv != "day" else d
+                        for dv in ["year", "month", "day", "hour", "minute"]
+                    )
                     next_date_weekday = tz.localize(
-                        datetime.datetime(
-                            *[
-                                getattr(next_date_weekday, dv) if dv != "day" else d
-                                for dv in ["year", "month", "day", "hour", "minute"]
-                            ]
-                        )
+                        datetime.datetime(*cast(Tuple[int, int, int, int, int], next_date_weekday_arguments))
                     )
                     if next_date_weekday and (next_date_weekday.isoweekday() % 7) in values[4]:
                         break

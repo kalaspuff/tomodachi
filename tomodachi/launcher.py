@@ -18,14 +18,13 @@ from tomodachi.helpers.execution_context import clear_execution_context, clear_s
 from tomodachi.helpers.safe_modules import SAFE_MODULES
 from tomodachi.importer import ServiceImporter
 
+CancelledError = asyncio.CancelledError
 try:
     asyncioexceptions = getattr(asyncio, "exceptions")
     if asyncioexceptions:
-        CancelledError = asyncioexceptions.CancelledError
-except Exception:
-
-    class CancelledError(Exception):  # type: ignore
-        pass
+        _CancelledError = asyncioexceptions.CancelledError
+except (Exception, ModuleNotFoundError, ImportError):
+    _CancelledError = asyncio.CancelledError
 
 
 class ServiceLauncher(object):
@@ -82,6 +81,7 @@ class ServiceLauncher(object):
         signal.signal(signal.SIGINT, sigintHandler)
         signal.signal(signal.SIGTERM, sigtermHandler)
 
+        watcher_future = None
         if watcher:
 
             async def _watcher_restart(updated_files: Union[List, set]) -> None:
@@ -279,7 +279,7 @@ class ServiceLauncher(object):
             restarting = True
 
         if watcher:
-            if not watcher_future.done():
+            if watcher_future and not watcher_future.done():
                 try:
                     watcher_future.set_result(None)
                 except RuntimeError:  # pragma: no cover
@@ -287,5 +287,5 @@ class ServiceLauncher(object):
                 if not watcher_future.done():  # pragma: no cover
                     try:
                         loop.run_until_complete(watcher_future)
-                    except (Exception, CancelledError):
+                    except (Exception, CancelledError, _CancelledError):
                         pass

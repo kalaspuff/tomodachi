@@ -61,6 +61,7 @@ class AmqpTransport(Invoker):
     channel: Any = None
     protocol: Any = None
     transport: Any = None
+    exchange_name: str
 
     @classmethod
     async def publish(
@@ -77,7 +78,7 @@ class AmqpTransport(Invoker):
         **kwargs: Any,
     ) -> None:
         if not cls.channel:
-            await cls.connect(cls, service, service.context)
+            await cls.connect(service, service.context)
         exchange_name = exchange_name or cls.exchange_name or "amq.topic"
 
         if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
@@ -107,7 +108,7 @@ class AmqpTransport(Invoker):
                     )
                     success = True
                 except AssertionError:
-                    await cls.connect(cls, service, service.context)
+                    await cls.connect(service, service.context)
 
         if wait:
             await _publish_message()
@@ -159,7 +160,7 @@ class AmqpTransport(Invoker):
 
     @classmethod
     def get_queue_name(
-        cls, routing_key: str, func_name: str, _uuid: str, competing_consumer: bool, context: Dict
+        cls, routing_key: str, func_name: str, _uuid: str, competing_consumer: Optional[bool], context: Dict
     ) -> str:
         if not competing_consumer:
             queue_name = hashlib.sha256("{}{}{}".format(routing_key, func_name, _uuid).encode("utf-8")).hexdigest()
@@ -176,8 +177,9 @@ class AmqpTransport(Invoker):
             return "{}{}".format(context.get("options", {}).get("amqp", {}).get("queue_name_prefix"), queue_name)
         return queue_name
 
+    @classmethod
     async def subscribe_handler(
-        cls: Any,
+        cls,
         obj: Any,
         context: Dict,
         func: Any,
@@ -349,10 +351,11 @@ class AmqpTransport(Invoker):
         context["_amqp_subscribers"] = context.get("_amqp_subscribers", [])
         context["_amqp_subscribers"].append((routing_key, exchange_name, competing, queue_name, func, handler))
 
-        start_func = cls.subscribe(cls, obj, context)
+        start_func = cls.subscribe(obj, context)
         return (await start_func) if start_func else None
 
-    async def connect(cls: Any, obj: Any, context: Dict) -> Any:
+    @classmethod
+    async def connect(cls, obj: Any, context: Dict) -> Any:
         logging.getLogger("aioamqp.protocol").setLevel(logging.WARNING)
         logging.getLogger("aioamqp.channel").setLevel(logging.WARNING)
 
@@ -365,6 +368,7 @@ class AmqpTransport(Invoker):
         heartbeat = context.get("options", {}).get("amqp", {}).get("heartbeat", 60)
 
         try:
+            protocol: Any
             transport, protocol = await aioamqp.connect(
                 host=host,
                 port=port,
@@ -416,7 +420,8 @@ class AmqpTransport(Invoker):
 
         return channel
 
-    async def subscribe(cls: Any, obj: Any, context: Dict) -> Optional[Callable]:
+    @classmethod
+    async def subscribe(cls, obj: Any, context: Dict) -> Optional[Callable]:
         if context.get("_amqp_subscribed"):
             return None
         context["_amqp_subscribed"] = True
@@ -431,7 +436,7 @@ class AmqpTransport(Invoker):
         )
 
         cls.channel = None
-        channel = await cls.connect(cls, obj, context)
+        channel = await cls.connect(obj, context)
         queue_prefetch_count = get_item_by_path(context, "options.amqp.qos.queue_prefetch_count", 100)
         global_prefetch_count = get_item_by_path(context, "options.amqp.qos.global_prefetch_count", 400)
         await channel.basic_qos(prefetch_count=queue_prefetch_count, prefetch_size=0, connection_global=False)

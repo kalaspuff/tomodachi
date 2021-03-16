@@ -1,7 +1,7 @@
 import inspect
 import types
 from functools import wraps
-from typing import Any, Callable  # noqa
+from typing import Any, Callable
 
 
 class DecorationClass(object):
