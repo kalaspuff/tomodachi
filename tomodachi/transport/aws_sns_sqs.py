@@ -12,7 +12,7 @@ import re
 import sys
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Mapping, Match, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Mapping, Match, Optional, Sequence, Set, Tuple, Union, cast
 
 import aiobotocore
 import aiohttp
@@ -51,7 +51,7 @@ AnythingButFilterPolicyDict = TypedDict(
     total=False,
 )
 
-NumericFilterPolicyValueType = List[Union[int, float, Literal["<", "<=", "=", ">=", ">"]]]
+NumericFilterPolicyValueType = Sequence[Union[int, float, Literal["<", "<=", "=", ">=", ">"]]]
 NumericFilterPolicyDict = TypedDict(
     "NumericFilterPolicyDict",
     {
@@ -76,22 +76,21 @@ ExistsFilterPolicyDict = TypedDict(
     total=False,
 )
 
-FilterPolicyDictType = Mapping[
-    str,
-    List[
-        Optional[
-            Union[
-                str,
-                int,
-                float,
-                AnythingButFilterPolicyDict,
-                NumericFilterPolicyDict,
-                PrefixFilterPolicyDict,
-                ExistsFilterPolicyDict,
-            ]
+FilterPolicyDictValueType = Sequence[
+    Optional[
+        Union[
+            str,
+            int,
+            float,
+            AnythingButFilterPolicyDict,
+            NumericFilterPolicyDict,
+            PrefixFilterPolicyDict,
+            ExistsFilterPolicyDict,
         ]
-    ],
+    ]
 ]
+
+FilterPolicyDictType = Mapping[str, FilterPolicyDictValueType]
 
 connector = ClientConnector()
 
