@@ -1,4 +1,5 @@
 from tomodachi import aws_sns_sqs
+from tomodachi.transport.aws_sns_sqs import FilterPolicyDictType, FilterPolicyDictValueType
 
 aws_sns_sqs(
     "topic", filter_policy={"currency": ["SEK", "EUR", "USD", "GBP", "CNY"], "amount": [{"numeric": [">=", 2]}]}
@@ -86,5 +87,21 @@ aws_sns_sqs(
     "topic",
     filter_policy={
         "dev.tomodachi.mypy.filter_key": ["a", "b", "c", 4711],
+    },
+)
+
+list_value = ["test"]
+
+filter_policy_1: FilterPolicyDictType = {"messageattributename": ["test"]}
+filter_policy_2: FilterPolicyDictType = {"messageattributename": list_value}
+
+filter_policy_dict_value_1: FilterPolicyDictValueType = ["test"]
+filter_policy_dict_value_2: FilterPolicyDictValueType = list_value
+
+
+aws_sns_sqs(
+    "topic",
+    filter_policy={
+        "dev.tomodachi.mypy.filter_key": list_value,
     },
 )
