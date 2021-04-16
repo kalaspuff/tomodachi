@@ -661,7 +661,7 @@ class AWSSNSSQSTransport(Invoker):
                         await asyncio.wait_for(
                             client.delete_message(ReceiptHandle=receipt_handle, QueueUrl=queue_url), timeout=12
                         )
-                except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError, asyncio.CancelledError) as e:
+                except (aiohttp.client_exceptions.ServerDisconnectedError, aiohttp.client_exceptions.ClientConnectorError, RuntimeError, asyncio.CancelledError) as e:
                     if retry >= 4:
                         raise e
                     continue
