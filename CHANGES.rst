@@ -1,7 +1,7 @@
 Changes
 =======
 
-x.xx.x (xxxx-xx-xx)
+0.21.3 (2021-06-30)
 -------------------
 - Fixes an issue causing a ``UnboundLocalError`` if an incoming
   message to a service that had specified the enveloping
@@ -12,6 +12,16 @@ x.xx.x (xxxx-xx-xx)
 - Fixes error message strings for some cases of AWS SNS + SQS
   related cases of ``botocore.exceptions.ClientError``.
 
+- Fixes the issue where some definitions of filter policies would
+  result in an error when running mypy – uses ``Sequence`` instead
+  of ``List`` in type hint definition for filter policy input types
+
+- Internal updates for developer experience – refactoring and
+  improvements for future code analysis and better support for
+  IntelliSense.
+-
+- Updates to install typeshed generated type hint annotation stubs
+  and updates to support ``mypy==0.910``.
 
 0.21.2 (2021-02-16)
 -------------------
