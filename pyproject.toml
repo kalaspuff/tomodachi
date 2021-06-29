@@ -90,6 +90,10 @@ black = { version = "*", markers = "sys_platform != \"win32\"", allow-prerelease
 mypy = { version = ">=0.800", markers = "sys_platform != \"win32\"" }
 codecov = { version = ">=2.1.10", markers = "sys_platform != \"win32\"" }
 
+types-protobuf = { version = ">=0.1.13", markers = "sys_platform != \"win32\"" }
+types-pytz = { version = ">=2021.1.0", markers = "sys_platform != \"win32\"" }
+types-tzlocal = { version = ">=0.1.1", markers = "sys_platform != \"win32\"" }
+
 [tool.poetry.scripts]
 tomodachi = "tomodachi.cli:cli_entrypoint"
 
@@ -99,7 +103,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 120
-target_version = ["py37", "py38"]
+target_version = ["py37", "py38", "py39"]
 include = '\.pyi?$'
 exclude = '\.eggs/|tomodachi\.egg-info/|\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/|proto_build/|syntax_error_service\.py|setup\.py'
 
