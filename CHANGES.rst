@@ -126,7 +126,7 @@ x.xx.x (xxxx-xx-xx)
 0.20.2 (2020-11-16)
 -------------------
 - Fixes an issue which could cause hot reloading of services to break
-  (for eaxmple when using Protocol Buffers), due to the change in
+  (for example when using Protocol Buffers), due to the change in
   pre-initialized modules from the ``tomodachi`` 0.20.0 release.
 
 
