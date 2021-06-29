@@ -14,7 +14,7 @@ Changes
 
 - Fixes the issue where some definitions of filter policies would
   result in an error when running mypy – uses ``Sequence`` instead
-  of ``List`` in type hint definition for filter policy input types
+  of ``List`` in type hint definition for filter policy input types.
 
 - Internal updates for developer experience – refactoring and
   improvements for future code analysis and better support for
