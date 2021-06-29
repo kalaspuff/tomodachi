@@ -19,7 +19,7 @@ Changes
 - Internal updates for developer experience – refactoring and
   improvements for future code analysis and better support for
   IntelliSense.
--
+
 - Updates to install typeshed generated type hint annotation stubs
   and updates to support ``mypy==0.910``.
 
