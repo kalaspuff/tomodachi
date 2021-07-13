@@ -40,6 +40,7 @@ DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
 MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
 MESSAGE_TOPIC_PREFIX = "09698c75-832b-470f-8e05-96d2dd8c4853"
+MESSAGE_TOPIC_ATTRIBUTES = "dc6c667f-4c22-4a63-85f6-3ea0c7e2db49"
 FILTER_POLICY_DEFAULT = "7e68632f-3b39-4293-b5a9-16644cf857a5"
 
 AnythingButFilterPolicyValueType = Union[str, int, float, List[str], List[int], List[float], List[Union[int, float]]]
@@ -132,6 +133,8 @@ class AWSSNSSQSTransport(Invoker):
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
         message_attributes: Optional[Dict[str, Any]] = None,
+        topic_attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES,
+        overwrite_topic_attributes: bool = False,
         **kwargs: Any,
     ) -> None:
         if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
@@ -157,7 +160,7 @@ class AWSSNSSQSTransport(Invoker):
                     service, topic, data, message_attributes=message_attributes, **kwargs
                 )
 
-        topic_arn = await cls.create_topic(topic, service.context, topic_prefix)
+        topic_arn = await cls.create_topic(topic, service.context, topic_prefix, attributes=topic_attributes, overwrite_attributes=overwrite_topic_attributes)
 
         async def _publish_message() -> None:
             await cls.publish_message(topic_arn, payload, cast(Dict, message_attributes), service.context)
@@ -514,7 +517,7 @@ class AWSSNSSQSTransport(Invoker):
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
 
     @classmethod
-    async def create_topic(cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX) -> str:
+    async def create_topic(cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX, attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES, overwrite_attributes: bool = True) -> str:
         if not cls.topics:
             cls.topics = {}
         if cls.topics.get(topic):
@@ -525,12 +528,72 @@ class AWSSNSSQSTransport(Invoker):
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
 
+        config_base = context.get("options", {}).get("aws_sns_sqs", context.get("options", {}).get("aws", {}))
+        aws_config_base = context.get("options", {}).get("aws", {})
+
+        sns_kms_master_key_id: Optional[str] = None
+        for config_value in (
+            config_base.get("aws_sns_kms_master_key_id"),
+            config_base.get("sns_kms_master_key_id"),
+            aws_config_base.get("aws_sns_kms_master_key_id"),
+            aws_config_base.get("sns_kms_master_key_id"),
+            aws_config_base.get("aws_kms_master_key_id"),
+            aws_config_base.get("kms_master_key_id"),
+            config_base.get("aws_kms_master_key_id"),
+            config_base.get("kms_master_key_id"),
+        ):
+            if config_value is not None:
+                if isinstance(config_value, str) and config_value == "":
+                    sns_kms_master_key_id = ""
+                    break
+                elif isinstance(config_value, bool) and config_value is False:
+                    sns_kms_master_key_id = ""
+                    break
+                elif isinstance(config_value, str) and config_value:
+                    sns_kms_master_key_id = config_value
+                    break
+
+        topic_attributes: Dict
+
+        if attributes is None or attributes == MESSAGE_TOPIC_ATTRIBUTES:
+            topic_attributes = {}
+        elif not isinstance(attributes, dict):
+            raise Exception("Argument 'attributes' to 'AWSSNSSQSTransport.create_topic' should be specified as a dict mapping")
+        else:
+            topic_attributes = copy.deepcopy(attributes)
+
+        if sns_kms_master_key_id is not None and "KmsMasterKeyId" not in topic_attributes:
+            topic_attributes["KmsMasterKeyId"] = sns_kms_master_key_id
+
+        update_attributes = True if topic_attributes else False
+        topic_arn = None
+
         try:
             async with connector("tomodachi.sns", service_name="sns") as client:
                 response = await asyncio.wait_for(
-                    client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix))),
+                    client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix)), Attributes=topic_attributes),
                     timeout=40,
                 )
+                topic_arn = response.get("TopicArn")
+                update_attributes = False
+
+            if topic_attributes and topic_attributes.get("KmsMasterKeyId") == "":
+                try:
+                    async with connector("tomodachi.sns", service_name="sqs") as client:
+                        topic_attributes_response = await client.get_topic_attributes(TopicArn=topic_arn)
+                        if not topic_attributes_response.get("Attributes", {}).get("KmsMasterKeyId"):
+                            update_attributes = False
+                            overwrite_attributes = False
+                except Exception:
+                    pass
+
+                if overwrite_attributes:
+                    logging.getLogger("transport.aws_sns_sqs").info(
+                        "SNS topic attribute 'KmsMasterKeyId' on SNS topic '{}' will be updated to disable server-side encryption".format(
+                            topic_arn
+                        )
+                    )
+                    update_attributes = True
         except (botocore.exceptions.NoCredentialsError, aiohttp.client_exceptions.ClientOSError) as e:
             error_message = str(e)
             logging.getLogger("transport.aws_sns_sqs").warning(
@@ -543,12 +606,68 @@ class AWSSNSSQSTransport(Invoker):
             asyncio.TimeoutError,
         ) as e:
             error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else "Network timeout"
-            logging.getLogger("transport.aws_sns_sqs").warning(
-                "Unable to create topic [sns] on AWS ({})".format(error_message)
-            )
-            raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
+            if "Topic already exists with different attributes" in error_message:
+                try:
+                    async with connector("tomodachi.sns", service_name="sns") as client:
+                        response = await asyncio.wait_for(
+                            client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix))),
+                            timeout=40,
+                        )
+                        topic_arn = response.get("TopicArn")
+                except (
+                    Exception,
+                    asyncio.TimeoutError,
+                ) as e:
+                    error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else "Network timeout"
+                    logging.getLogger("transport.aws_sns_sqs").warning(
+                        "Unable to create topic [sns] on AWS ({})".format(error_message)
+                    )
+                    raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
 
-        topic_arn = response.get("TopicArn")
+                logging.getLogger("transport.aws_sns_sqs").info(
+                    "Already existing SNS topic '{}' has different topic attributes".format(
+                        topic_arn
+                    )
+                )
+            else:
+                logging.getLogger("transport.aws_sns_sqs").warning(
+                    "Unable to create topic [sns] on AWS ({})".format(error_message)
+                )
+                raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
+
+        if update_attributes and topic_attributes and topic_arn and not overwrite_attributes:
+            logging.getLogger("transport.aws_sns_sqs").warning(
+                "Will not overwrite existing attributes on SNS topic '{}'".format(topic_arn)
+            )
+            update_attributes = False
+
+        if update_attributes and topic_attributes and topic_arn:
+            for attribute_name, attribute_value in topic_attributes.items():
+                try:
+                    logging.getLogger("transport.aws_sns_sqs").info(
+                        "Updating '{}' attribute on SNS topic '{}'".format(
+                            attribute_name, topic_arn
+                        )
+                    )
+                    async with connector("tomodachi.sns", service_name="sns") as client:
+                        await client.set_topic_attributes(
+                            TopicArn=topic_arn,
+                            AttributeName=attribute_name,
+                            AttributeValue=attribute_value,
+                        )
+                except (
+                    botocore.exceptions.NoCredentialsError,
+                    aiohttp.client_exceptions.ClientOSError,
+                    botocore.exceptions.PartialCredentialsError,
+                    botocore.exceptions.ClientError,
+                    asyncio.TimeoutError,
+                ) as e:
+                    error_message = str(e)
+                    logging.getLogger("transport.aws_sns_sqs").warning(
+                        "Unable to create topic [sns] on AWS ({})".format(error_message)
+                    )
+                    raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
+
         if not topic_arn or not isinstance(topic_arn, str):
             error_message = "Missing ARN in response"
             logging.getLogger("transport.aws_sns_sqs").warning(
@@ -1264,6 +1383,9 @@ class AWSSNSSQSTransport(Invoker):
                     queue_name = cls.prefix_queue_name(queue_name, context)
 
                 queue_url, queue_arn = await cls.create_queue(queue_name, context)
+
+                topic_attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES,
+                overwrite_topic_attributes: bool = False,
 
                 if re.search(r"([*#])", topic):
                     await cls.subscribe_wildcard_topic(topic, queue_arn, queue_url, context, attributes=attributes)
