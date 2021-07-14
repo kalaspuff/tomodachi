@@ -14,7 +14,9 @@ from run_test_service_helper import start_service
     reason="AWS configuration options missing in environment",
 )
 def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/aws_sns_sqs_service_with_credentials_with_encryption_at_rest.py", monkeypatch)
+    services, future = start_service(
+        "tests/services/aws_sns_sqs_service_with_credentials_with_encryption_at_rest.py", monkeypatch
+    )
 
     assert services is not None
     assert len(services) == 1

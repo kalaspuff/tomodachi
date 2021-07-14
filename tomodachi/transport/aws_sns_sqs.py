@@ -160,7 +160,13 @@ class AWSSNSSQSTransport(Invoker):
                     service, topic, data, message_attributes=message_attributes, **kwargs
                 )
 
-        topic_arn = await cls.create_topic(topic, service.context, topic_prefix, attributes=topic_attributes, overwrite_attributes=overwrite_topic_attributes)
+        topic_arn = await cls.create_topic(
+            topic,
+            service.context,
+            topic_prefix,
+            attributes=topic_attributes,
+            overwrite_attributes=overwrite_topic_attributes,
+        )
 
         async def _publish_message() -> None:
             await cls.publish_message(topic_arn, payload, cast(Dict, message_attributes), service.context)
@@ -517,7 +523,14 @@ class AWSSNSSQSTransport(Invoker):
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
 
     @classmethod
-    async def create_topic(cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX, attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES, overwrite_attributes: bool = True) -> str:
+    async def create_topic(
+        cls,
+        topic: str,
+        context: Dict,
+        topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
+        attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES,
+        overwrite_attributes: bool = True,
+    ) -> str:
         if not cls.topics:
             cls.topics = {}
         if cls.topics.get(topic):
@@ -562,7 +575,9 @@ class AWSSNSSQSTransport(Invoker):
         if attributes is None or attributes == MESSAGE_TOPIC_ATTRIBUTES:
             topic_attributes = {}
         elif not isinstance(attributes, dict):
-            raise Exception("Argument 'attributes' to 'AWSSNSSQSTransport.create_topic' should be specified as a dict mapping")
+            raise Exception(
+                "Argument 'attributes' to 'AWSSNSSQSTransport.create_topic' should be specified as a dict mapping"
+            )
         else:
             topic_attributes = copy.deepcopy(attributes)
 
@@ -575,7 +590,10 @@ class AWSSNSSQSTransport(Invoker):
         try:
             async with connector("tomodachi.sns", service_name="sns") as client:
                 response = await asyncio.wait_for(
-                    client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix)), Attributes=topic_attributes),
+                    client.create_topic(
+                        Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix)),
+                        Attributes=topic_attributes,
+                    ),
                     timeout=40,
                 )
                 topic_arn = response.get("TopicArn")
@@ -614,24 +632,24 @@ class AWSSNSSQSTransport(Invoker):
                 try:
                     async with connector("tomodachi.sns", service_name="sns") as client:
                         response = await asyncio.wait_for(
-                            client.create_topic(Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix))),
+                            client.create_topic(
+                                Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix))
+                            ),
                             timeout=40,
                         )
                         topic_arn = response.get("TopicArn")
                 except (
                     Exception,
                     asyncio.TimeoutError,
-                ) as e:
-                    error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else "Network timeout"
+                ) as e2:
+                    error_message2 = str(e) if not isinstance(e, asyncio.TimeoutError) else "Network timeout"
                     logging.getLogger("transport.aws_sns_sqs").warning(
-                        "Unable to create topic [sns] on AWS ({})".format(error_message)
+                        "Unable to create topic [sns] on AWS ({})".format(error_message2)
                     )
-                    raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
+                    raise AWSSNSSQSException(error_message2, log_level=context.get("log_level")) from e2
 
                 logging.getLogger("transport.aws_sns_sqs").info(
-                    "Already existing SNS topic '{}' has different topic attributes".format(
-                        topic_arn
-                    )
+                    "Already existing SNS topic '{}' has different topic attributes".format(topic_arn)
                 )
             else:
                 logging.getLogger("transport.aws_sns_sqs").warning(
@@ -649,9 +667,7 @@ class AWSSNSSQSTransport(Invoker):
             for attribute_name, attribute_value in topic_attributes.items():
                 try:
                     logging.getLogger("transport.aws_sns_sqs").info(
-                        "Updating '{}' attribute on SNS topic '{}'".format(
-                            attribute_name, topic_arn
-                        )
+                        "Updating '{}' attribute on SNS topic '{}'".format(attribute_name, topic_arn)
                     )
                     async with connector("tomodachi.sns", service_name="sns") as client:
                         await client.set_topic_attributes(
@@ -1025,8 +1041,22 @@ class AWSSNSSQSTransport(Invoker):
                     )
 
         sqs_kms_data_key_reuse_period_option = (
-            config_base.get("aws_sqs_kms_data_key_reuse_period", config_base.get("sqs_kms_data_key_reuse_period", config_base.get("aws_kms_data_key_reuse_period", config_base.get("kms_data_key_reuse_period"))))
-            or aws_config_base.get("aws_sqs_kms_data_key_reuse_period", aws_config_base.get("sqs_kms_data_key_reuse_period", aws_config_base.get("aws_kms_data_key_reuse_period", aws_config_base.get("kms_data_key_reuse_period"))))
+            config_base.get(
+                "aws_sqs_kms_data_key_reuse_period",
+                config_base.get(
+                    "sqs_kms_data_key_reuse_period",
+                    config_base.get("aws_kms_data_key_reuse_period", config_base.get("kms_data_key_reuse_period")),
+                ),
+            )
+            or aws_config_base.get(
+                "aws_sqs_kms_data_key_reuse_period",
+                aws_config_base.get(
+                    "sqs_kms_data_key_reuse_period",
+                    aws_config_base.get(
+                        "aws_kms_data_key_reuse_period", aws_config_base.get("kms_data_key_reuse_period")
+                    ),
+                ),
+            )
             or None
         )
         sqs_kms_data_key_reuse_period: Optional[int] = None
@@ -1034,7 +1064,9 @@ class AWSSNSSQSTransport(Invoker):
             sqs_kms_data_key_reuse_period = None
         if sqs_kms_data_key_reuse_period_option is True:
             raise ValueError(
-                "Bad value for aws_sns_sqs option sqs_kms_data_key_reuse_period: {}".format(str(sqs_kms_data_key_reuse_period_option))
+                "Bad value for aws_sns_sqs option sqs_kms_data_key_reuse_period: {}".format(
+                    str(sqs_kms_data_key_reuse_period_option)
+                )
             )
         try:
             if sqs_kms_data_key_reuse_period_option is not None:
@@ -1043,7 +1075,9 @@ class AWSSNSSQSTransport(Invoker):
                 sqs_kms_data_key_reuse_period = None
         except Exception:
             raise ValueError(
-                "Bad value for aws_sns_sqs option sqs_kms_data_key_reuse_period: {}".format(str(sqs_kms_data_key_reuse_period_option))
+                "Bad value for aws_sns_sqs option sqs_kms_data_key_reuse_period: {}".format(
+                    str(sqs_kms_data_key_reuse_period_option)
+                )
             ) from None
 
         current_queue_attributes = {}
@@ -1059,7 +1093,14 @@ class AWSSNSSQSTransport(Invoker):
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
                 response = await sqs_client.get_queue_attributes(
-                    QueueUrl=queue_url, AttributeNames=["Policy", "VisibilityTimeout", "MessageRetentionPeriod", "KmsMasterKeyId", "KmsDataKeyReusePeriodSeconds"]
+                    QueueUrl=queue_url,
+                    AttributeNames=[
+                        "Policy",
+                        "VisibilityTimeout",
+                        "MessageRetentionPeriod",
+                        "KmsMasterKeyId",
+                        "KmsDataKeyReusePeriodSeconds",
+                    ],
                 )
                 current_queue_attributes = response.get("Attributes", {})
                 current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
@@ -1084,28 +1125,40 @@ class AWSSNSSQSTransport(Invoker):
             queue_attributes["Policy"] = json.dumps(queue_policy)
 
         if visibility_timeout and current_visibility_timeout and visibility_timeout != current_visibility_timeout:
-            queue_attributes["VisibilityTimeout"] = str(visibility_timeout)  # SQS.SetQueueAttributes "Attributes" are mapped string -> string
+            queue_attributes["VisibilityTimeout"] = str(
+                visibility_timeout
+            )  # SQS.SetQueueAttributes "Attributes" are mapped string -> string
 
         if (
             message_retention_period
             and current_message_retention_period
             and message_retention_period != current_message_retention_period
         ):
-            queue_attributes["MessageRetentionPeriod"] = str(message_retention_period)  # SQS.SetQueueAttributes "Attributes" are mapped string -> string
+            queue_attributes["MessageRetentionPeriod"] = str(
+                message_retention_period
+            )  # SQS.SetQueueAttributes "Attributes" are mapped string -> string
 
-        if sqs_kms_master_key_id is not None and current_kms_master_key_id != sqs_kms_master_key_id and (current_kms_master_key_id or sqs_kms_master_key_id):
+        if (
+            sqs_kms_master_key_id is not None
+            and current_kms_master_key_id != sqs_kms_master_key_id
+            and (current_kms_master_key_id or sqs_kms_master_key_id)
+        ):
             queue_attributes["KmsMasterKeyId"] = sqs_kms_master_key_id
 
-        if sqs_kms_data_key_reuse_period is not None and current_kms_data_key_reuse_period_seconds != sqs_kms_data_key_reuse_period and (current_kms_master_key_id or sqs_kms_master_key_id):
-            queue_attributes["KmsDataKeyReusePeriodSeconds"] = str(sqs_kms_data_key_reuse_period)  # SQS.SetQueueAttributes "Attributes" are mapped string -> string
+        if (
+            sqs_kms_data_key_reuse_period is not None
+            and current_kms_data_key_reuse_period_seconds != sqs_kms_data_key_reuse_period
+            and (current_kms_master_key_id or sqs_kms_master_key_id)
+        ):
+            queue_attributes["KmsDataKeyReusePeriodSeconds"] = str(
+                sqs_kms_data_key_reuse_period
+            )  # SQS.SetQueueAttributes "Attributes" are mapped string -> string
 
         if queue_attributes:
             if current_queue_policy:
                 for attribute_name, _ in queue_attributes.items():
                     logging.getLogger("transport.aws_sns_sqs").info(
-                        "Updating '{}' attribute on SQS queue '{}'".format(
-                            attribute_name, queue_arn
-                        )
+                        "Updating '{}' attribute on SQS queue '{}'".format(attribute_name, queue_arn)
                     )
 
             try:

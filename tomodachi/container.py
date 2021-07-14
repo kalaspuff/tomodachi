@@ -194,8 +194,12 @@ class ServiceContainer(object):
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
             if started_futures and any(started_futures):
-                started_futures_result = await asyncio.wait([asyncio.ensure_future(func()) for func in started_futures if func])
-                exception = [v.exception() for v in [value for value in started_futures_result if value][0] if v.exception()]
+                started_futures_result = await asyncio.wait(
+                    [asyncio.ensure_future(func()) for func in started_futures if func]
+                )
+                exception = [
+                    v.exception() for v in [value for value in started_futures_result if value][0] if v.exception()
+                ]
                 if exception:
                     self.logger.warning("Failed to start service (exception raised in '_started_service')")
                     started_futures = set()

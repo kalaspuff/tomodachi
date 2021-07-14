@@ -6,7 +6,6 @@ import uuid as uuid_
 from typing import Any, Dict, Set
 
 import tomodachi
-from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
 from tomodachi.envelope.json_base import JsonBase
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
 
