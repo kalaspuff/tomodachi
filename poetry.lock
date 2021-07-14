@@ -618,7 +618,7 @@ python-versions = "*"
 
 [[package]]
 name = "types-protobuf"
-version = "3.17.0"
+version = "3.17.1"
 description = "Typing stubs for protobuf"
 category = "dev"
 optional = false
@@ -1330,8 +1330,8 @@ types-futures = [
     {file = "types_futures-0.1.6-py3-none-any.whl", hash = "sha256:7cb32c3fb4885089d78873a28ad33db3d5300661eac8b3ad327f4f5616fdf742"},
 ]
 types-protobuf = [
-    {file = "types-protobuf-3.17.0.tar.gz", hash = "sha256:00f6c405c67f0144b92e0baab6610c4d4356c2927ee86f77aa71ac2a8648cb8a"},
-    {file = "types_protobuf-3.17.0-py3-none-any.whl", hash = "sha256:dd7df3487c1dc9011653472d3bc7dd486c6b73151707fda12cdef30a0501fd1e"},
+    {file = "types-protobuf-3.17.1.tar.gz", hash = "sha256:33514ab11504bff1ea14aeaf77bc020492ab6a4f458534c4640b2f7a229fe550"},
+    {file = "types_protobuf-3.17.1-py3-none-any.whl", hash = "sha256:9f549a477f870b49cf0159636cdc9650da2a80cb5d38ae4956709cbfd521ba73"},
 ]
 types-pytz = [
     {file = "types-pytz-2021.1.0.tar.gz", hash = "sha256:addfa2a1a27b324b6beb422faa4737962532bbab3793481d5bdebbffb8f9f243"},
