@@ -62,7 +62,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
     @aws_sns_sqs(
         "encrypted-test-topic-filtered",
-        queue_name="encrypted-test-queue-filter-currency-{}".format(data_uuid),
+        queue_name="encrypted-test-queue-fc-{}".format(data_uuid),
         filter_policy={"currency": ["SEK", "EUR", "USD", "GBP", "CNY"]},
     )
     async def test_filter_policy_currency(
@@ -75,7 +75,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
     @aws_sns_sqs(
         "encrypted-test-topic-filtered",
-        queue_name="encrypted-test-queue-filter-amount-{}".format(data_uuid),
+        queue_name="encrypted-test-queue-fa-{}".format(data_uuid),
         filter_policy={"currency": ["SEK", "EUR", "USD", "GBP", "CNY"], "amount": [{"numeric": [">=", 99.51]}]},
     )
     async def test_filter_policy_amount(
@@ -86,7 +86,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
             self.check_closer()
 
-    @aws_sns_sqs("encrypted-test-topic-unique", queue_name="test-queue-{}".format(data_uuid))
+    @aws_sns_sqs("encrypted-test-topic-unique", queue_name="encrypted-test-queue-{}".format(data_uuid))
     async def test_specified_queue_name(self, data: Any, metadata: Any, service: Any) -> None:
         if data == self.data_uuid:
             if self.test_topic_specified_queue_name_data_received:
@@ -95,7 +95,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
             self.check_closer()
 
-    @aws_sns_sqs("encrypted-test-topic-unique", queue_name="test-queue-{}".format(data_uuid))
+    @aws_sns_sqs("encrypted-test-topic-unique", queue_name="encrypted-test-queue-{}".format(data_uuid))
     async def test_specified_queue_name_again(self, data: Any, metadata: Any, service: Any) -> None:
         if data == self.data_uuid:
             if self.test_topic_specified_queue_name_data_received:
