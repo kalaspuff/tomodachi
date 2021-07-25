@@ -1,7 +1,23 @@
 Changes
 =======
 
-0.21.3 (2021-06-30)
+0.21.4 (2021-07-xx)
+-------------------
+- Encryption at rest for AWS SNS and/or AWS SQS which can optionally be configured by specifying the KMS key alias or KMS key id as a tomodachi service option ``options.aws_sns_sqs.sns_kms_master_key_id`` (to configure encryption at rest on the SNS topics for which the tomodachi service handles the SNS -> SQS subscriptions) and/or ``options.aws_sns_sqs.sqs_kms_master_key_id`` (to configure encryption at rest for the SQS queues which the service is consuming).
+
+  Note that an option value set to empty string (``""``) or ``False`` will unset the KMS master key id and thus disable encryption at rest. (The AWS APIs for SNS and SQS uses empty string value to the KMSMasterKeyId attribute to disable encryption with KMS if it was previously enabled).
+
+  If instead an option is completely unset or set to ``None`` value no changes will be done to the KMS related attributes on an existing topic or queue.
+
+  If it's expected that the services themselves, via their IAM credentials or assumed role, are responsible for creating queues and topics, these options could be used to provide encryption at rest without additional manual intervention
+
+  *However, do not use these options if you instead are using IaC tooling to handle the topics, queues and subscriptions or that they for example are created / updated as a part of deployments. To not have the service update any attributes keep the options unset or set to a* ``None`` *value.*
+
+  | https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-server-side-encryption.html
+  | https://docs.aws.amazon.com/sns/latest/dg/sns-server-side-encryption.html#sse-key-terms.
+
+
+  0.21.3 (2021-06-30)
 -------------------
 - Fixes an issue causing a ``UnboundLocalError`` if an incoming
   message to a service that had specified the enveloping
@@ -22,6 +38,7 @@ Changes
 
 - Updates to install typeshed generated type hint annotation stubs
   and updates to support ``mypy==0.910``.
+
 
 0.21.2 (2021-02-16)
 -------------------
