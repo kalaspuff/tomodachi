@@ -19,6 +19,7 @@ from aiohttp.http import HttpVersion
 from aiohttp.streams import EofStream
 from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
+import yarl
 
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
@@ -425,22 +426,31 @@ class HttpTransport(Invoker):
         if not path.endswith("/"):
             path = "{}/".format(path)
 
+        base_path = os.path.realpath(path)
+
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
-            result = compiled_pattern.match(request.path)
+            normalized_request_path = yarl.URL._normalize_path(request.path)
+            if not normalized_request_path.startswith("/"):
+                raise web.HTTPNotFound()
+
+            result = compiled_pattern.match(normalized_request_path)
             filename = result.groupdict()["filename"] if result else ""
             filepath = "{}{}".format(path, filename)
 
             try:
+                realpath = os.path.realpath(filepath)
+
                 if (
-                    os.path.commonprefix((os.path.realpath(filepath), os.path.realpath(path))) != os.path.realpath(path)
-                    or os.path.isdir(filepath)
-                    or not os.path.exists(filepath)
+                    os.path.commonprefix((realpath, base_path)) != base_path
+                    or not os.path.isdir(base_path)
+                    or not os.path.exists(realpath)
+                    or os.path.isdir(realpath)
                 ):
                     raise web.HTTPNotFound()
 
-                pathlib.Path(filepath).open("r")
+                pathlib.Path(realpath).open("r")
 
-                response: Union[web.Response, web.FileResponse] = FileResponse(path=filepath, chunk_size=256 * 1024)
+                response: Union[web.Response, web.FileResponse] = FileResponse(path=realpath, chunk_size=256 * 1024)
                 return response
             except PermissionError:
                 raise web.HTTPForbidden()
