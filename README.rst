@@ -391,10 +391,8 @@ quite this small, but as a template to get started.
     class Service(tomodachi.Service):
         name = "example"
         options = {
-            "http": {
-                "port": 80,
-                "content_type": "application/json; charset=utf-8"
-            }
+            "http.port": 80,
+            "http.content_type": "application/json; charset=utf-8",
         }
 
         _healthy = True
@@ -598,21 +596,17 @@ A ``tomodachi.Service`` extended service class may specify a class attribute nam
     class Service(tomodachi.Service):
         name = "http-example"
         options = {
-            "http": {
-                "port": 80,
-                "content_type": "application/json; charset=utf-8",
-                "real_ip_from": [
-                    "127.0.0.1/32",
-                    "10.0.0.0/8",
-                    "172.16.0.0/12",
-                    "192.168.0.0/16"
-                ],
-                "keepalive_timeout": 5,
-                "max_keepalive_requests": 20,
-            },
-            "watcher": {
-                "ignored_dirs": ["node_modules"],
-            },
+            "http.port": 80,
+            "http.content_type": "application/json; charset=utf-8",
+            "http.real_ip_from": [
+                "127.0.0.1/32",
+                "10.0.0.0/8",
+                "172.16.0.0/12",
+                "192.168.0.0/16",
+            ],
+            "http.keepalive_timeout": 5,
+            "http.max_keepalive_requests": 20,
+            "watcher.ignored_dirs": ["node_modules"],
         }
 
         @tomodachi.http("GET", r"/health")
