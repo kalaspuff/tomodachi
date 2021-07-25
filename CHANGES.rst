@@ -1,7 +1,6 @@
 Changes
 =======
 
-
 0.21.4 (2021-07-xx)
 -------------------
 - Encryption at rest for AWS SNS and/or AWS SQS which can optionally be configured by specifying the KMS key alias or KMS key id as a tomodachi service option ``options.aws_sns_sqs.sns_kms_master_key_id`` (to configure encryption at rest on the SNS topics for which the tomodachi service handles the SNS -> SQS subscriptions) and/or ``options.aws_sns_sqs.sqs_kms_master_key_id`` (to configure encryption at rest for the SQS queues which the service is consuming).
