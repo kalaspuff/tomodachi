@@ -11,6 +11,7 @@ import time
 import uuid
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
+import yarl
 from aiohttp import WSMsgType
 from aiohttp import __version__ as aiohttp_version
 from aiohttp import hdrs, web, web_protocol, web_server, web_urldispatcher
@@ -19,7 +20,6 @@ from aiohttp.http import HttpVersion
 from aiohttp.streams import EofStream
 from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
-import yarl
 
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
