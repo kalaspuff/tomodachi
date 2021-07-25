@@ -418,15 +418,18 @@ class HttpTransport(Invoker):
             pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", base_url)))
         compiled_pattern = re.compile(pattern)
 
-        if path.startswith("/"):
-            path = os.path.dirname(path)
-        else:
+        if path in ("", "/"):
+            # Hopefully noone wants to do this intentionally, and if anyone accidentally does we'll catch it here
+            raise Exception("Invalid path '{}' for static route".format(path))
+
+        if not path.startswith("/"):
             path = "{}/{}".format(os.path.dirname(context.get("context", {}).get("_service_file_path")), path)
 
         if not path.endswith("/"):
             path = "{}/".format(path)
 
-        base_path = os.path.realpath(path)
+        if os.path.realpath(path) == "/":
+            raise Exception("Invalid path '{}' for static route resolves to '/'".format(path))
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             normalized_request_path = yarl.URL._normalize_path(request.path)
@@ -435,15 +438,17 @@ class HttpTransport(Invoker):
 
             result = compiled_pattern.match(normalized_request_path)
             filename = result.groupdict()["filename"] if result else ""
-            filepath = "{}{}".format(path, filename)
+
+            basepath = os.path.realpath(path)
+            realpath = os.path.realpath("{}/{}".format(basepath, filename))
 
             try:
-                realpath = os.path.realpath(filepath)
-
                 if (
-                    os.path.commonprefix((realpath, base_path)) != base_path
-                    or not os.path.isdir(base_path)
+                    realpath == basepath
+                    or os.path.commonprefix((realpath, basepath)) != basepath
                     or not os.path.exists(realpath)
+                    or not os.path.isdir(basepath)
+                    or basepath == "/"
                     or os.path.isdir(realpath)
                 ):
                     raise web.HTTPNotFound()
