@@ -19,7 +19,7 @@ class ExampleHttpService(tomodachi.Service):
     discovery = [DummyRegistry]
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
-    options = {"http": {"port": 4711, "content_type": "text/plain; charset=utf-8", "access_log": True}}
+    options = {"http.port": 4711, "http.content_type": "text/plain; charset=utf-8", "http.access_log": True}
 
     @http("GET", r"/example/?")
     async def example(self, request: web.Request) -> str:

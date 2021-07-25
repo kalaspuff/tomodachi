@@ -21,7 +21,7 @@ class ExampleAmqpService(tomodachi.Service):
     message_envelope = JsonBase
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
-    options = {"amqp": {"queue_ttl": 60}}
+    options = {"amqp.queue_ttl": 60}
 
     @amqp("example.route1")
     async def route1a(self, data: Any) -> None:

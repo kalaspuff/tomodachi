@@ -5,7 +5,7 @@ import tomodachi
 
 class Service(tomodachi.Service):
     name = "example"
-    options = {"http": {"port": 80, "content_type": "application/json; charset=utf-8"}}
+    options = {"http.port": 80, "http.content_type": "application/json; charset=utf-8"}
 
     _healthy = True
 
