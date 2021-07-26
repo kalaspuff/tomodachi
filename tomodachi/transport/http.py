@@ -11,6 +11,7 @@ import time
 import uuid
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
+import yarl
 from aiohttp import WSMsgType
 from aiohttp import __version__ as aiohttp_version
 from aiohttp import hdrs, web, web_protocol, web_server, web_urldispatcher
@@ -417,30 +418,44 @@ class HttpTransport(Invoker):
             pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", base_url)))
         compiled_pattern = re.compile(pattern)
 
-        if path.startswith("/"):
-            path = os.path.dirname(path)
-        else:
+        if path in ("", "/"):
+            # Hopefully noone wants to do this intentionally, and if anyone accidentally does we'll catch it here
+            raise Exception("Invalid path '{}' for static route".format(path))
+
+        if not path.startswith("/"):
             path = "{}/{}".format(os.path.dirname(context.get("context", {}).get("_service_file_path")), path)
 
         if not path.endswith("/"):
             path = "{}/".format(path)
 
+        if os.path.realpath(path) == "/":
+            raise Exception("Invalid path '{}' for static route resolves to '/'".format(path))
+
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
-            result = compiled_pattern.match(request.path)
+            normalized_request_path = yarl.URL._normalize_path(request.path)
+            if not normalized_request_path.startswith("/"):
+                raise web.HTTPNotFound()
+
+            result = compiled_pattern.match(normalized_request_path)
             filename = result.groupdict()["filename"] if result else ""
-            filepath = "{}{}".format(path, filename)
+
+            basepath = os.path.realpath(path)
+            realpath = os.path.realpath("{}/{}".format(basepath, filename))
 
             try:
                 if (
-                    os.path.commonprefix((os.path.realpath(filepath), os.path.realpath(path))) != os.path.realpath(path)
-                    or os.path.isdir(filepath)
-                    or not os.path.exists(filepath)
+                    realpath == basepath
+                    or os.path.commonprefix((realpath, basepath)) != basepath
+                    or not os.path.exists(realpath)
+                    or not os.path.isdir(basepath)
+                    or basepath == "/"
+                    or os.path.isdir(realpath)
                 ):
                     raise web.HTTPNotFound()
 
-                pathlib.Path(filepath).open("r")
+                pathlib.Path(realpath).open("r")
 
-                response: Union[web.Response, web.FileResponse] = FileResponse(path=filepath, chunk_size=256 * 1024)
+                response: Union[web.Response, web.FileResponse] = FileResponse(path=realpath, chunk_size=256 * 1024)
                 return response
             except PermissionError:
                 raise web.HTTPForbidden()
