@@ -16,8 +16,12 @@ Changes
   | https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-server-side-encryption.html
   | https://docs.aws.amazon.com/sns/latest/dg/sns-server-side-encryption.html#sse-key-terms.
 
+- Fixes an issue where a GET request to an endpoint serving static files via ``@http_static`` could be crafted to probe the directory structure setup (but not read file content outside of its permitted path), by applying directory traversal techniques. This could expose the internal directory structure of the file system in the container or environment that the service is hosted on. Limited to if ``@http_static`` handlers were used within the service and those endpoints could be accessed.
 
-  0.21.3 (2021-06-30)
+- Additional validation for the path used in the ``@http_static`` decorator to prevent a developer from accidentally supplying a ``"/"`` or ``""`` value to the ``path`` argument, which in those cases could lead to unintended files being exposed via the static file handler.
+
+
+0.21.3 (2021-06-30)
 -------------------
 - Fixes an issue causing a ``UnboundLocalError`` if an incoming
   message to a service that had specified the enveloping
