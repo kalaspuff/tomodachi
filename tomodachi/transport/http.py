@@ -423,7 +423,7 @@ class HttpTransport(Invoker):
             raise Exception("Invalid path '{}' for static route".format(path))
 
         if not path.startswith("/"):
-            path = "{}/{}".format(os.path.dirname(context.get("context", {}).get("_service_file_path")), path)
+            path = "{}/{}".format(os.path.dirname(context.get("context", {}).get("_service_file_path", "")), path)
 
         if not path.endswith("/"):
             path = "{}/".format(path)
@@ -443,16 +443,21 @@ class HttpTransport(Invoker):
             realpath = os.path.realpath("{}/{}".format(basepath, filename))
 
             try:
-                if (
-                    realpath == basepath
-                    or os.path.commonprefix((realpath, basepath)) != basepath
-                    or not os.path.exists(realpath)
-                    or not os.path.isdir(basepath)
-                    or basepath == "/"
-                    or os.path.isdir(realpath)
+                if any(
+                    [
+                        not realpath,
+                        not basepath,
+                        realpath == basepath,
+                        os.path.commonprefix((realpath, basepath)) != basepath,
+                        not os.path.exists(realpath),
+                        not os.path.isdir(basepath),
+                        basepath == "/",
+                        os.path.isdir(realpath),
+                    ]
                 ):
                     raise web.HTTPNotFound()
 
+                # deepcode ignore PT: Input data to pathlib.Path is sanitized
                 pathlib.Path(realpath).open("r")
 
                 response: Union[web.Response, web.FileResponse] = FileResponse(path=realpath, chunk_size=256 * 1024)
@@ -842,18 +847,27 @@ class HttpTransport(Invoker):
                             use_keepalive = False
                             if context["_http_tcp_keepalive"] and request.keep_alive and request.protocol:
                                 use_keepalive = True
-                                if not context["_http_keepalive_timeout"] or context["_http_keepalive_timeout"] <= 0:
-                                    use_keepalive = False
-                                elif (
-                                    context["_http_max_keepalive_requests"]
-                                    and request.protocol._request_count >= context["_http_max_keepalive_requests"]
-                                ):
-                                    use_keepalive = False
-                                elif (
-                                    context["_http_max_keepalive_time"]
-                                    and time.time()
-                                    > getattr(request.protocol, "_connection_start_time", 0)
-                                    + context["_http_max_keepalive_time"]
+                                if any(
+                                    [
+                                        # keep-alive timeout not set or is non-positive
+                                        (
+                                            not context["_http_keepalive_timeout"]
+                                            or context["_http_keepalive_timeout"] <= 0
+                                        ),
+                                        # keep-alive request count has passed configured max for this connection
+                                        (
+                                            context["_http_max_keepalive_requests"]
+                                            and request.protocol._request_count
+                                            >= context["_http_max_keepalive_requests"]
+                                        ),
+                                        # keep-alive time has passed configured max for this connection
+                                        (
+                                            context["_http_max_keepalive_time"]
+                                            and time.time()
+                                            > getattr(request.protocol, "_connection_start_time", 0)
+                                            + context["_http_max_keepalive_time"]
+                                        ),
+                                    ]
                                 ):
                                     use_keepalive = False
 
@@ -1013,7 +1027,7 @@ class HttpTransport(Invoker):
                     "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
                 )
             try:
-                keepalive_timeout = int(keepalive_timeout_option)
+                keepalive_timeout = int(keepalive_timeout_option) if keepalive_timeout_option is not None else 0
             except Exception:
                 raise ValueError(
                     "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
