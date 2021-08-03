@@ -272,10 +272,21 @@ class CLI:
                     args.pop(index)
                 watcher = None
             else:
-                cwd = os.getcwd()
-                root_directories = [os.getcwd()]
+                cwd = os.path.realpath(os.getcwd())
+                root_directories = [cwd]
                 for arg in set(args):
-                    root_directories.append(os.path.dirname("{}/{}".format(os.path.realpath(cwd), arg)))
+                    if not arg.startswith("/") and not arg.startswith("~"):
+                        root_directories.append(os.path.realpath(os.path.dirname(os.path.join(cwd, arg))))
+                    else:
+                        root_directories.append(os.path.realpath(os.path.dirname(arg)))
+                for p in str(os.getenv("PYTHONPATH", "")).split(os.pathsep):
+                    if not p:
+                        continue
+                    if not p.startswith("/") and not p.startswith("~"):
+                        root_directories.append(os.path.realpath(os.path.join(cwd, p)))
+                    else:
+                        root_directories.append(os.path.realpath(p))
+
                 from tomodachi.watcher import Watcher  # noqa  #  isort:skip
 
                 watcher = Watcher(root=root_directories, configuration=configuration)
