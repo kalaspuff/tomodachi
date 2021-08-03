@@ -246,7 +246,7 @@ class AWSSNSSQSTransport(Invoker):
         obj: Any,
         context: Dict,
         func: Any,
-        topic: str,
+        topic: Optional[str] = None,
         callback_kwargs: Optional[Union[List, Set, Tuple]] = None,
         competing: Optional[bool] = None,
         queue_name: Optional[str] = None,
@@ -1497,8 +1497,8 @@ class AWSSNSSQSTransport(Invoker):
             )
 
             async def setup_queue(
-                topic: str,
                 func: Callable,
+                topic: Optional[str] = None,
                 queue_name: Optional[str] = None,
                 competing_consumer: Optional[bool] = None,
                 attributes: Optional[Dict[str, Union[str, bool]]] = None,
@@ -1512,18 +1512,19 @@ class AWSSNSSQSTransport(Invoker):
 
                 if queue_name is None:
                     queue_name = cls.get_queue_name(
-                        cls.encode_topic(topic), func.__name__, _uuid, competing_consumer, context
+                        cls.encode_topic(topic or ""), func.__name__, _uuid, competing_consumer, context
                     )
                 else:
                     queue_name = cls.prefix_queue_name(queue_name, context)
 
                 queue_url, queue_arn = await cls.create_queue(queue_name, context)
 
-                if re.search(r"([*#])", topic):
-                    await cls.subscribe_wildcard_topic(topic, queue_arn, queue_url, context, attributes=attributes)
-                else:
-                    topic_arn = await cls.create_topic(topic, context)
-                    await cls.subscribe_topics((topic_arn,), queue_arn, queue_url, context, attributes=attributes)
+                if topic:
+                    if re.search(r"([*#])", topic):
+                        await cls.subscribe_wildcard_topic(topic, queue_arn, queue_url, context, attributes=attributes)
+                    else:
+                        topic_arn = await cls.create_topic(topic, context)
+                        await cls.subscribe_topics((topic_arn,), queue_arn, queue_url, context, attributes=attributes)
 
                 return queue_url
 
@@ -1532,7 +1533,7 @@ class AWSSNSSQSTransport(Invoker):
                     "_aws_sns_sqs_subscribers", []
                 ):
                     queue_url = await setup_queue(
-                        topic, func, queue_name=queue_name, competing_consumer=competing, attributes=attributes
+                        func, topic=topic, queue_name=queue_name, competing_consumer=competing, attributes=attributes
                     )
                     await cls.consume_queue(obj, context, handler, queue_url=queue_url)
             except Exception:
@@ -1549,7 +1550,7 @@ publish = AWSSNSSQSTransport.publish
 
 
 def aws_sns_sqs(
-    topic: str,
+    topic: Optional[str] = None,
     callback_kwargs: Optional[Union[List, Set, Tuple]] = None,
     competing: Optional[bool] = None,
     queue_name: Optional[str] = None,
@@ -1562,7 +1563,7 @@ def aws_sns_sqs(
     return cast(
         Callable,
         __aws_sns_sqs(
-            topic,
+            topic=topic,
             callback_kwargs=callback_kwargs,
             competing=competing,
             queue_name=queue_name,
