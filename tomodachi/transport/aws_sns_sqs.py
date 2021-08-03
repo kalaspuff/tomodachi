@@ -1249,6 +1249,9 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     async def consume_queue(cls, obj: Any, context: Dict, handler: Callable, queue_url: str) -> None:
+        max_number_of_messages = 10
+        wait_time_seconds = 20
+
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
 
@@ -1284,7 +1287,7 @@ class AWSSNSSQSTransport(Invoker):
                             async with connector("tomodachi.sqs", service_name="sqs") as client:
                                 response = await asyncio.wait_for(
                                     client.receive_message(
-                                        QueueUrl=queue_url, WaitTimeSeconds=20, MaxNumberOfMessages=10
+                                        QueueUrl=queue_url, WaitTimeSeconds=wait_time_seconds, MaxNumberOfMessages=max_number_of_messages
                                     ),
                                     timeout=40,
                                 )
