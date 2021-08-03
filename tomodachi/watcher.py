@@ -20,7 +20,16 @@ class Watcher(object):
         self.watched_files: Dict[str, float] = {}
         self.watched_files_crc: Dict[str, str] = {}
         self.root: List[str] = []
-        self.ignored_dirs = ["__pycache__", ".git", ".svn", "__ignored__", "__temporary__", "__tmp__", ".mypy_cache", ".pytest_cache"]
+        self.ignored_dirs = [
+            "__pycache__",
+            ".git",
+            ".svn",
+            "__ignored__",
+            "__temporary__",
+            "__tmp__",
+            ".mypy_cache",
+            ".pytest_cache",
+        ]
         self.watched_file_endings = [".py", ".pyi", ".json", ".yml", ".html", ".phtml"]
 
         if not root:

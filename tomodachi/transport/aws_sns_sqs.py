@@ -1287,7 +1287,9 @@ class AWSSNSSQSTransport(Invoker):
                             async with connector("tomodachi.sqs", service_name="sqs") as client:
                                 response = await asyncio.wait_for(
                                     client.receive_message(
-                                        QueueUrl=queue_url, WaitTimeSeconds=wait_time_seconds, MaxNumberOfMessages=max_number_of_messages
+                                        QueueUrl=queue_url,
+                                        WaitTimeSeconds=wait_time_seconds,
+                                        MaxNumberOfMessages=max_number_of_messages,
                                     ),
                                     timeout=40,
                                 )
