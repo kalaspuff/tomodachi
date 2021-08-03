@@ -1,6 +1,17 @@
 Changes
 =======
 
+0.21.5 (2021-08-xx)
+-------------------
+- If a ``PYTHONPATH`` environment value is set and a service is started
+  without the ``--production`` flag, the paths specified in ``PYTHONPATH``
+  will be added to the list of directories to watch for code changes and
+  in the event of any changes done to files on those directories, the
+  service will restart. Previously only code changes in the directory or
+  sub directory of the current working directory + the directory of the
+  started service (or services) were monitored.
+
+
 0.21.4 (2021-07-26)
 -------------------
 - Encryption at rest for AWS SNS and/or AWS SQS which can optionally be configured by specifying the KMS key alias or KMS key id as a tomodachi service option ``options.aws_sns_sqs.sns_kms_master_key_id`` (to configure encryption at rest on the SNS topics for which the tomodachi service handles the SNS -> SQS subscriptions) and/or ``options.aws_sns_sqs.sqs_kms_master_key_id`` (to configure encryption at rest for the SQS queues which the service is consuming).
