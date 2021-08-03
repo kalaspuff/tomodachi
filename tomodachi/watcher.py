@@ -8,8 +8,9 @@ from typing import Any, Callable, Dict, List, Optional
 
 def crc(file_path: str) -> str:
     prev = 0
-    for line in open(file_path, "rb"):
-        prev = zlib.crc32(line, prev)
+    with open(file_path, "rb") as f:
+        for line in f:
+            prev = zlib.crc32(line, prev)
 
     return "%X" % (prev & 0xFFFFFFFF)
 
@@ -87,18 +88,18 @@ class Watcher(object):
         if self.watched_files and self.watched_files != watched_files:
             added = [
                 k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1) :]
-                for k in watched_files.keys()
-                if k not in self.watched_files.keys()
+                for k in watched_files
+                if k not in self.watched_files
             ]
             removed = [
                 k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1) :]
-                for k in self.watched_files.keys()
-                if k not in watched_files.keys()
+                for k in self.watched_files
+                if k not in watched_files
             ]
             updated = [
                 k[((len(self.root[0]) if k.startswith(self.root[0]) else -1) + 1) :]
-                for k in watched_files.keys()
-                if k in self.watched_files.keys() and self.watched_files[k] != watched_files[k]
+                for k in watched_files
+                if k in self.watched_files and self.watched_files[k] != watched_files[k]
             ]
             self.watched_files = watched_files
             self.watched_files_crc = watched_files_crc

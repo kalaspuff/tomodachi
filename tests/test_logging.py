@@ -15,10 +15,12 @@ def test_logging_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
 
     loop.run_until_complete(future)
 
-    log_content = str(open(log_path).read().strip())
-    assert "_start_service" in log_content
-    assert "_started_service" in log_content
-    assert "_stop_service" in log_content
+    with open(log_path) as f:
+        log_content = str(f.read().strip())
+
+        assert "_start_service" in log_content
+        assert "_started_service" in log_content
+        assert "_stop_service" in log_content
 
     try:
         os.remove(log_path)

@@ -265,9 +265,7 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                         next_date_weekday = None
                         break
 
-            if use_weekdays and not next_date and next_date_weekday:
-                next_date = next_date_weekday
-            elif use_weekdays and next_date and next_date_weekday and next_date_weekday < next_date:
+            if use_weekdays and next_date_weekday and (not next_date or next_date_weekday < next_date):
                 next_date = next_date_weekday
 
             if not next_date:

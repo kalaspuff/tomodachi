@@ -1,6 +1,6 @@
-# This is a list of Python modules that shouldn't be unloaded during hot reload.
+# This is a set of Python modules that shouldn't be unloaded during hot reload.
 
-SAFE_MODULES = [
+SAFE_MODULES = {
     "__future__",
     "__main__",
     "_abc",
@@ -593,4 +593,4 @@ SAFE_MODULES = [
     "yarl._url",
     "zipimport",
     "zlib",
-]
+}
