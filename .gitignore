@@ -111,3 +111,4 @@ examples/configs/*credentials.json
 
 # Snyk
 /.dccache
+/.dcignore
