@@ -526,8 +526,8 @@ HTTP endpoints:
 
 AWS SNS+SQS messaging:
 ----------------------
-``@tomodachi.aws_sns_sqs(topic, competing=True, queue_name=None, filter_policy=None, **kwargs)``
-  This would set up an **AWS SQS queue**, subscribing to messages on the **AWS SNS topic** ``topic``, whereafter it will start consuming messages from the queue.
+``@tomodachi.aws_sns_sqs(topic=None, competing=True, queue_name=None, filter_policy=None, **kwargs)``
+  This would set up an **AWS SQS queue**, subscribing to messages on the **AWS SNS topic** ``topic`` (if a ``topic`` is specified), whereafter it will start consuming messages from the queue.
 
   The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message. Since ``tomodachi`` version 0.19.x this value has a changed default value and will now default to ``True`` as this is the most likely use-case for pub/sub in distributed architectures.
 
