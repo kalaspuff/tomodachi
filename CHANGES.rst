@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.21.5 (2021-08-xx)
+0.21.5 (2021-08-04)
 -------------------
 - If a ``PYTHONPATH`` environment value is set and a service is started
   without the ``--production`` flag, the paths specified in ``PYTHONPATH``
