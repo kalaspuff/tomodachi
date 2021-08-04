@@ -11,6 +11,10 @@ Changes
   sub directory of the current working directory + the directory of the
   started service (or services) were monitored.
 
+- The ``topic`` argument to the ``@tomodachi.aws_sns_sqs`` decorator is
+  now optional, which is useful if subscribing to a SQS queue where the SNS
+  topic or the topic subscriptions are set up apart from the service code,
+  for example during deployment or as infra.
 
 0.21.4 (2021-07-26)
 -------------------
