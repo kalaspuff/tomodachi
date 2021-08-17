@@ -194,9 +194,8 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                         *[
                             getattr(next_date, dv) if dv != attr[0] else new_value
                             for dv in ["year", "month", "day", "hour", "minute"]
-                        ],
-                        tzinfo=tz,
-                    )
+                        ]
+                    ).replace(tzinfo=tz)
                 except ValueError:
                     next_date = None
                     break
@@ -217,9 +216,8 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                         *[
                             getattr(next_date_weekday, dv) if dv != attr[0] else new_value
                             for dv in ["year", "month", "day", "hour", "minute"]
-                        ],
-                        tzinfo=tz,
-                    )
+                        ]
+                    ).replace(tzinfo=tz)
                 except ValueError:
                     next_date_weekday = None
                     break
