@@ -98,11 +98,15 @@ class Scheduler(Invoker):
                         datetime_object.year,
                     )
                     second_modifier = 1
-                    if datetime_object.replace(tzinfo=tz) > datetime.datetime.fromtimestamp(current_time).replace(tzinfo=local_tz):
+                    if datetime_object.replace(tzinfo=tz) > datetime.datetime.fromtimestamp(current_time).replace(
+                        tzinfo=local_tz
+                    ):
                         second_modifier = -60
                     next_at = get_next_datetime(
                         interval,
-                        datetime.datetime.fromtimestamp(current_time + second_modifier).replace(tzinfo=local_tz).astimezone(tz)
+                        datetime.datetime.fromtimestamp(current_time + second_modifier)
+                        .replace(tzinfo=local_tz)
+                        .astimezone(tz),
                     )
                     if not next_at:
                         return int(current_time + 60 * 60 * 24 * 365 * 100)
@@ -120,7 +124,8 @@ class Scheduler(Invoker):
                         datetime_object.year,
                     )
                     next_at = get_next_datetime(
-                        interval, datetime.datetime.fromtimestamp(current_time + 1).replace(tzinfo=local_tz).astimezone(tz)
+                        interval,
+                        datetime.datetime.fromtimestamp(current_time + 1).replace(tzinfo=local_tz).astimezone(tz),
                     )
                     if not next_at:
                         return int(current_time + 60 * 60 * 24 * 365 * 100)
@@ -141,11 +146,15 @@ class Scheduler(Invoker):
                     interval = "{} {} * * *".format(datetime_object.minute, datetime_object.hour)
                     second_modifier = 1
 
-                    if datetime_object.replace(tzinfo=tz) > datetime.datetime.fromtimestamp(current_time).replace(tzinfo=local_tz):
+                    if datetime_object.replace(tzinfo=tz) > datetime.datetime.fromtimestamp(current_time).replace(
+                        tzinfo=local_tz
+                    ):
                         second_modifier = -60
                     next_at = get_next_datetime(
                         interval,
-                        datetime.datetime.fromtimestamp(current_time + second_modifier).replace(tzinfo=local_tz).astimezone(tz),
+                        datetime.datetime.fromtimestamp(current_time + second_modifier)
+                        .replace(tzinfo=local_tz)
+                        .astimezone(tz),
                     )
                     if not next_at:
                         return int(current_time + 60 * 60 * 24 * 365 * 100)
@@ -157,7 +166,8 @@ class Scheduler(Invoker):
                     datetime_object = datetime.datetime.strptime(timestamp, "%H:%M")
                     interval = "{} {} * * *".format(datetime_object.minute, datetime_object.hour)
                     next_at = get_next_datetime(
-                        interval, datetime.datetime.fromtimestamp(current_time + 1).replace(tzinfo=local_tz).astimezone(tz)
+                        interval,
+                        datetime.datetime.fromtimestamp(current_time + 1).replace(tzinfo=local_tz).astimezone(tz),
                     )
                     if not next_at:
                         return int(current_time + 60 * 60 * 24 * 365 * 100)
@@ -234,7 +244,8 @@ class Scheduler(Invoker):
 
             try:
                 next_at = get_next_datetime(
-                    interval_value, datetime.datetime.fromtimestamp(current_time + 1).replace(tzinfo=local_tz).astimezone(tz)
+                    interval_value,
+                    datetime.datetime.fromtimestamp(current_time + 1).replace(tzinfo=local_tz).astimezone(tz),
                 )
                 if not next_at:
                     return int(current_time + 60 * 60 * 24 * 365 * 100)

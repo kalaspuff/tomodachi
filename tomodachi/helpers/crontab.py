@@ -191,12 +191,12 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                 new_value = min(possible_values)
                 try:
                     next_date = datetime.datetime(
-                            *[
-                                getattr(next_date, dv) if dv != attr[0] else new_value
-                                for dv in ["year", "month", "day", "hour", "minute"]
-                            ],
-                            tzinfo=tz
-                        )
+                        *[
+                            getattr(next_date, dv) if dv != attr[0] else new_value
+                            for dv in ["year", "month", "day", "hour", "minute"]
+                        ],
+                        tzinfo=tz,
+                    )
                 except ValueError:
                     next_date = None
                     break
@@ -214,12 +214,12 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                 new_value = min(possible_values)
                 try:
                     next_date_weekday = datetime.datetime(
-                            *[
-                                getattr(next_date_weekday, dv) if dv != attr[0] else new_value
-                                for dv in ["year", "month", "day", "hour", "minute"]
-                            ],
-                            tzinfo=tz
-                        )
+                        *[
+                            getattr(next_date_weekday, dv) if dv != attr[0] else new_value
+                            for dv in ["year", "month", "day", "hour", "minute"]
+                        ],
+                        tzinfo=tz,
+                    )
                 except ValueError:
                     next_date_weekday = None
                     break
@@ -232,7 +232,9 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                         getattr(next_date_weekday, dv) if dv != "day" else d
                         for dv in ["year", "month", "day", "hour", "minute"]
                     )
-                    next_date_weekday = datetime.datetime(*cast(Tuple[int, int, int, int, int], next_date_weekday_arguments), tzinfo=tz)
+                    next_date_weekday = datetime.datetime(
+                        *cast(Tuple[int, int, int, int, int], next_date_weekday_arguments), tzinfo=tz
+                    )
                     if next_date_weekday and (next_date_weekday.isoweekday() % 7) in values[4]:
                         break
 
