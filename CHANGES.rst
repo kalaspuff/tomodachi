@@ -3,9 +3,9 @@ Changes
 
 0.21.6 (2021-08-17)
 -------------------
-- Now pins the `tzlocal` version to not use the 3.x releases as it would
+- Now pins the ``tzlocal`` version to not use the 3.x releases as it would
   currently break services using scheduled functions (the ``@schedule``
-  decorator, et al) if `tzlocal` 3.0 is installed.
+  decorator, et al) if ``tzlocal`` 3.0 is installed.
 
 - Updated classifiers to identify that the library works on Python 3.10.
 
