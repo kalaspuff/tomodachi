@@ -1,6 +1,17 @@
 Changes
 =======
 
+0.21.6 (2021-08-17)
+-------------------
+- Now pins the `tzlocal` version to not use the 3.x releases as it would
+  currently break services using scheduled functions (the ``@schedule``
+  decorator, et al) if `tzlocal` 3.0 is installed.
+
+- Updated classifiers to identify that the library works on Python 3.10.
+
+- Added the new ``Framework :: aiohttp`` classifier.
+
+
 0.21.5 (2021-08-04)
 -------------------
 - If a ``PYTHONPATH`` environment value is set and a service is started
@@ -356,7 +367,7 @@ Changes
 - Added ``aiodns`` as an optional installation, as it's recommended for
   running DNS resolution on the event loop when using ``aiohttp``.
 
-- Updated identifiers for support of Python 3.9.
+- Updated classifiers for support of Python 3.9.
 
 - Dropped support for Python 3.6.
 
