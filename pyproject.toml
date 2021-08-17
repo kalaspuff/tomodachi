@@ -13,6 +13,7 @@ documentation = "https://tomodachi.dev/docs"
 
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Framework :: aiohttp",
     "Framework :: AsyncIO",
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
