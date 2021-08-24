@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.21.7 (2021-08-24)
+-------------------
+- Support for ``aiobotocore`` 1.4.x release, which previously resulted in a
+  ``AttributeError: module 'aiobotocore' has no attribute 'get_session'``
+  exception.
+
+
 0.21.6 (2021-08-17)
 -------------------
 - Now pins the ``tzlocal`` version to not use the 3.x releases as it would

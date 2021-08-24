@@ -7,6 +7,7 @@ from typing import Any, AsyncIterator, Awaitable, Dict, Optional, cast
 import aiobotocore
 import aiobotocore.client
 import aiobotocore.config
+import aiobotocore.session
 import aiohttp
 import aiohttp.client_exceptions
 import botocore
@@ -94,7 +95,7 @@ class ClientConnector(object):
 
             self.aliases[alias_name] = service_name
 
-            session = aiobotocore.get_session()
+            session = aiobotocore.session.get_session()
             config = aiobotocore.config.AioConfig(
                 connect_timeout=CONNECT_TIMEOUT, read_timeout=READ_TIMEOUT, max_pool_connections=MAX_POOL_CONNECTIONS
             )
