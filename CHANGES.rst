@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.21.7 (2021-08-24)
+-------------------
+- Pins ``aiobotocore`` to use up to 1.3.x releases, since the 1.4.x
+  versions session handling currently causes issues when used.
+
+
 0.21.6 (2021-08-17)
 -------------------
 - Now pins the ``tzlocal`` version to not use the 3.x releases as it would
