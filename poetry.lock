@@ -11,7 +11,7 @@ pamqp = ">=2.2.0,<3"
 
 [[package]]
 name = "aiobotocore"
-version = "1.4.0"
+version = "1.3.3"
 description = "Async client for aws services using botocore and aiohttp"
 category = "main"
 optional = false
@@ -762,7 +762,7 @@ uvloop = ["uvloop"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "ce57ca84749154585ae31638743f980f64f38f241ba670ac8491b306e6e166b4"
+content-hash = "0b788c45e8301ed53aea6ac53092fd1602a648494793fac20f00c34ad6c18d83"
 
 [metadata.files]
 aioamqp = [
@@ -770,7 +770,7 @@ aioamqp = [
     {file = "aioamqp-0.14.0.tar.gz", hash = "sha256:eef5c23a7fedee079d8326406f5c7a5725dfe36c359373da3499fffa16f79915"},
 ]
 aiobotocore = [
-    {file = "aiobotocore-1.4.0.tar.gz", hash = "sha256:b61d7fbad0014f64bf6d24c272d8aaf7560178b147e36beebe7e9ee889fde216"},
+    {file = "aiobotocore-1.3.3.tar.gz", hash = "sha256:b6bae95c55ef822d790bf8ebf6aed3d09b33e2817fa5f10e16a77028332963c2"},
 ]
 aiodns = [
     {file = "aiodns-3.0.0-py3-none-any.whl", hash = "sha256:2b19bc5f97e5c936638d28e665923c093d8af2bf3aa88d35c43417fa25d136a2"},
