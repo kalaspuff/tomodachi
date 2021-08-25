@@ -4,11 +4,13 @@ ifndef VERBOSE
 endif
 
 VERSION := $(shell python tomodachi/__version__.py)
-RELEASED := $(shell git tag | grep ^${VERSION}$$)
+RELEASED := $(shell [[ -d .git ]] && git tag | grep ^${VERSION}$$)
 
 default:
 	@echo "Current version info collected: ${VERSION}."
-	if [[ "${RELEASED}" ]]; then echo "Version is already released."; else echo "Version can be released."; fi
+	if [[ -d .git ]]; then \
+		if [[ "${RELEASED}" ]]; then echo "Version is already released (git tag exists)."; else echo "Version can be released."; fi \
+	fi
 	@echo ""
 	@echo "Usage:"
 	@echo "  make install        | install package"
