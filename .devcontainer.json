@@ -1,12 +1,12 @@
 {
     "remoteEnv": {
-        "PYTHONPATH": "${containerWorkspaceFolder}/app:${containerEnv:PYTHONPATH}"
+        "PYTHONPATH": "${containerWorkspaceFolder}:${containerEnv:PYTHONPATH}"
     },
     "settings": {
         "python.pythonPath": "/usr/local/bin/python",
         "python.linting.enabled": true,
         "python.linting.flake8Args": [
-            "--config=${workspaceFolder}/app/tox.ini"
+            "--config=${workspaceFolder}/tox.ini"
         ],
         "python.linting.flake8Enabled": true,
         "python.linting.mypyEnabled": true,
@@ -16,7 +16,7 @@
         "python.testing.pytestPath": "/usr/local/bin/pytest",
         "python.testing.cwd": "${workspaceFolder}",
         "python.testing.pytestArgs": [
-            "${workspaceFolder}/app/tests"
+            "${workspaceFolder}/tests"
         ],
         "python.formatting.provider": "black",
         "python.formatting.blackPath": "/usr/local/bin/black",
@@ -24,7 +24,7 @@
         "python.linting.mypyPath": "/usr/local/bin/mypy",
         "python.sortImports.path": "/usr/local/bin/isort",
         "python.analysis.extraPaths": [
-            "./app/tomodachi"
+            "./tomodachi"
         ],
     },
     "build": {
