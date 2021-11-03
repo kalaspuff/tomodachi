@@ -43,5 +43,8 @@ class SchedulerService(tomodachi.Service):
         if not self.closer.done():
             self.closer.set_result(None)
 
+    async def _stopping_service(self) -> None:
+        self.function_order.append("_stopping_service")
+
     async def _stop_service(self) -> None:
         self.function_order.append("_stop_service")
