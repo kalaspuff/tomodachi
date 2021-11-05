@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tomodachi"
-version = "0.21.5"
+version = "0.21.7"
 description = "Microservice library on asyncio - HTTP server, websockets, pub/sub messaging for AWS SNS+SQS and RabbitMQ"
 authors = ["Carl Oscar Aaro <hello@carloscar.com>"]
 keywords = ["tomodachi", "microservice", "microservices", "framework", "library", "asyncio", "aws", "sns", "sqs", "amqp", "rabbitmq", "http", "websockets", "easy", "fast", "pubsub", "events", "event based messaging", "messages", "protocol buffers", "protobuf", "async", "message attributes", "filter policy", "distributed architecture", "scalable", "python 3"]
@@ -45,7 +45,7 @@ Changelog = "https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst"
 python = "^3.7"
 
 aioamqp = ">=0.13.0, <0.15.0"
-aiobotocore = ">=0.10.4, <2.0.0"
+aiobotocore = ">=0.10.4, <1.4.0"
 tzlocal = ">=1.4,<3.0"
 pytz = "*"
 cchardet = ">=2.1.6"
