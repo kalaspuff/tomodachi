@@ -190,14 +190,12 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                     break
                 new_value = min(possible_values)
                 try:
-                    next_date = tz.localize(
-                        datetime.datetime(
-                            *[
-                                getattr(next_date, dv) if dv != attr[0] else new_value
-                                for dv in ["year", "month", "day", "hour", "minute"]
-                            ]
-                        )
-                    )
+                    next_date = datetime.datetime(
+                        *[
+                            getattr(next_date, dv) if dv != attr[0] else new_value
+                            for dv in ["year", "month", "day", "hour", "minute"]
+                        ]
+                    ).replace(tzinfo=tz)
                 except ValueError:
                     next_date = None
                     break
@@ -214,14 +212,12 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                     break
                 new_value = min(possible_values)
                 try:
-                    next_date_weekday = tz.localize(
-                        datetime.datetime(
-                            *[
-                                getattr(next_date_weekday, dv) if dv != attr[0] else new_value
-                                for dv in ["year", "month", "day", "hour", "minute"]
-                            ]
-                        )
-                    )
+                    next_date_weekday = datetime.datetime(
+                        *[
+                            getattr(next_date_weekday, dv) if dv != attr[0] else new_value
+                            for dv in ["year", "month", "day", "hour", "minute"]
+                        ]
+                    ).replace(tzinfo=tz)
                 except ValueError:
                     next_date_weekday = None
                     break
@@ -234,8 +230,8 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                         getattr(next_date_weekday, dv) if dv != "day" else d
                         for dv in ["year", "month", "day", "hour", "minute"]
                     )
-                    next_date_weekday = tz.localize(
-                        datetime.datetime(*cast(Tuple[int, int, int, int, int], next_date_weekday_arguments))
+                    next_date_weekday = datetime.datetime(
+                        *cast(Tuple[int, int, int, int, int], next_date_weekday_arguments), tzinfo=tz
                     )
                     if next_date_weekday and (next_date_weekday.isoweekday() % 7) in values[4]:
                         break
@@ -272,14 +268,14 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
                 next_date = original_date
                 if next_date:
                     try:
-                        next_date = tz.localize(datetime.datetime(next_date.year, next_date.month, next_date.day + 1))
+                        next_date = datetime.datetime(next_date.year, next_date.month, next_date.day + 1, tzinfo=tz)
                     except ValueError:
                         try:
                             if next_date:
-                                next_date = tz.localize(datetime.datetime(next_date.year, next_date.month + 1, 1))
+                                next_date = datetime.datetime(next_date.year, next_date.month + 1, 1, tzinfo=tz)
                         except ValueError:
                             if next_date:
-                                next_date = tz.localize(datetime.datetime(next_date.year + 1, 1, 1))
+                                next_date = datetime.datetime(next_date.year + 1, 1, 1, tzinfo=tz)
             else:
                 break
 
@@ -300,7 +296,7 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
 
     tz: Any = now_date.tzinfo
     calculated_dates = [
-        calculate_date(tz.localize(d) if tz else d, last_day, last_weekday)
+        calculate_date(d.replace(tzinfo=tz) if tz else d, last_day, last_weekday)
         for d in [
             datetime.datetime(
                 now_date.year,
