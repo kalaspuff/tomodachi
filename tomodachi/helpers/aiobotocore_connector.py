@@ -240,9 +240,11 @@ class ClientConnector(object):
                     raise
                 await asyncio.sleep(0.1)
 
-        if not self.get_client(alias_name or service_name or ""):
+        client_name = alias_name or service_name or ""
+
+        if not self.get_client(client_name):
             await self.create_client(alias_name, credentials, service_name)
-        client = self.get_client(alias_name or service_name or "")
+        client = self.get_client(client_name)
 
         try:
             yield client
@@ -254,7 +256,7 @@ class ClientConnector(object):
             await self.close_client(client=client, fast=True)
             raise
         except (aiohttp.client_exceptions.ServerDisconnectedError, asyncio.TimeoutError, RuntimeError):
-            await self.reconnect_client(client=client)
+            await self.reconnect_client(client_name, client=client)
             raise
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
