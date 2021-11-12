@@ -27,5 +27,6 @@ def test_start_process_schedule(monkeypatch: Any, capsys: Any, loop: Any) -> Non
         "every_fifth_second",
         "every_fifth_second",
         "stop_service",
+        "_stopping_service",
         "_stop_service",
     ]

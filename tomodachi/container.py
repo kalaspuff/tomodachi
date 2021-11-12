@@ -184,6 +184,7 @@ class ServiceContainer(object):
                             await registry._register_service(instance)
 
                     started_futures.add(getattr(instance, "_started_service", None))
+                    stop_futures.add(getattr(instance, "_stopping_service", None))
                     stop_futures.add(getattr(instance, "_stop_service", None))
 
                     self.logger.info('Started service "{}" [id: {}]'.format(name, instance.uuid))
