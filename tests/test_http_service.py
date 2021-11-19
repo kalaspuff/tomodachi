@@ -325,7 +325,7 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
                 await ws.close()
                 assert instance.websocket_received_data == data
 
-        async with aiohttp.ClientSession(loop=loop, headers={"Bad-Header\nBroken": "broken\nvalue"}) as client:
+        async with aiohttp.ClientSession(loop=loop}) as client:
             response = await client.get("http://127.0.0.1:{}/\u0000bad-data".format(port))
             assert response is not None
             assert response.status == 400
