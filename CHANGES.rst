@@ -1,6 +1,26 @@
 Changes
 =======
 
+0.21.8 (2021-11-19)
+-------------------
+- Adds the possibility to add a function called ``_stopping_service`` to the
+  ``tomodachi`` Service class, which is run as soon as a termination signal
+  is received by the service. (github: **justcallmelarry**)
+
+- Fix for potential exceptions on botocore session client raising a
+  ``RuntimeError``, resulting in a tomodachi "Client has never been created
+  in the first place" exception on reconnection to AWS APIs.
+
+- Added Python 3.10 to the CI test matrix run via GitHub Actions.
+
+- Additional updates for compatibility with typing libraries to improve
+  support for installations on Python 3.10.
+
+- Supports ``aiohttp`` 3.8.x versions.
+
+- Supports ``tzlocal`` 3.x and 4.x releases.
+
+
 0.21.7 (2021-08-24)
 -------------------
 - Pins ``aiobotocore`` to use up to 1.3.x releases, since the 1.4.x
