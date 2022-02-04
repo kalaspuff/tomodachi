@@ -357,6 +357,21 @@ Run the service 😎
     > id = 1234
 
 
+Getting an instance of a service
+-----------------------------------------------------
+If the a Service instance is needed outside the Service class itself, it can be acquired with ``tomodachi.get_service``. If multiple Service instances exist within the same event loop, the name of the Service can be used to get the correct one.
+
+.. code:: python
+
+    import tomodachi
+
+    # Get the instance of the active Service.
+    service = tomodachi.get_service()
+
+    # Get the instance of the Service by service name.
+    service = tomodachi.get_service(service_name)
+
+
 Example of a microservice containerized in Docker 🐳
 ----------------------------------------------------
 A great way to distribute and operate microservices are usually to run them in containers or
