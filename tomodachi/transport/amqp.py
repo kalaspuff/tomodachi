@@ -292,45 +292,19 @@ class AmqpTransport(Invoker):
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
-                try:
-                    if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
-                        routine = func(*(obj, message, *a))
-                    elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
-                        routine = func(*(obj, message, *a), **merge_dicts(kwargs, kw))
-                    elif len(merge_dicts(kwargs, kw)):
-                        routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
-                    elif len(values.args[1:]):
-                        routine = func(*(obj, message, *a), **kw)
-                    else:
-                        routine = func(*(obj, *a), **kw)
-                except (Exception, asyncio.CancelledError, BaseException) as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                    if issubclass(
-                        e.__class__,
-                        (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException),
-                    ):
-                        if message_key:
-                            del context["_amqp_received_messages"][message_key]
-                        await cls.channel.basic_client_nack(delivery_tag)
-                        return
-                    await cls.channel.basic_client_ack(delivery_tag)
-                    return
+                if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
+                    routine = func(*(obj, message, *a))
+                elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
+                    routine = func(*(obj, message, *a), **merge_dicts(kwargs, kw))
+                elif len(merge_dicts(kwargs, kw)):
+                    routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
+                elif len(values.args[1:]):
+                    routine = func(*(obj, message, *a), **kw)
+                else:
+                    routine = func(*(obj, *a), **kw)
 
                 if inspect.isawaitable(routine):
-                    try:
-                        return_value = await routine
-                    except (Exception, asyncio.CancelledError, BaseException) as e:
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                        if issubclass(
-                            e.__class__,
-                            (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException),
-                        ):
-                            if message_key:
-                                del context["_amqp_received_messages"][message_key]
-                            await cls.channel.basic_client_nack(delivery_tag)
-                            return
-                        await cls.channel.basic_client_ack(delivery_tag)
-                        return
+                    return_value = await routine
                 else:
                     return_value = routine
 
@@ -339,9 +313,21 @@ class AmqpTransport(Invoker):
 
             increase_execution_context_value("amqp_current_tasks")
             increase_execution_context_value("amqp_total_tasks")
-            return_value = await execute_middlewares(
-                func, routine_func, context.get("message_middleware", []), *(obj, message, routing_key)
-            )
+            try:
+                return_value = await execute_middlewares(
+                    func, routine_func, context.get("message_middleware", []), *(obj, message, routing_key)
+                )
+            except (Exception, asyncio.CancelledError, BaseException) as e:
+                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                if issubclass(
+                    e.__class__,
+                    (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException),
+                ):
+                    if message_key:
+                        del context["_amqp_received_messages"][message_key]
+                    await cls.channel.basic_client_nack(delivery_tag)
+                else:
+                    await cls.channel.basic_client_ack(delivery_tag)
             decrease_execution_context_value("amqp_current_tasks")
 
             return return_value

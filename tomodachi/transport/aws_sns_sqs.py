@@ -393,51 +393,19 @@ class AWSSNSSQSTransport(Invoker):
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
-                try:
-                    if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
-                        routine = func(*(obj, message, *a))
-                    elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
-                        routine = func(*(obj, message, *a), **merge_dicts(kwargs, kw))
-                    elif len(merge_dicts(kwargs, kw)):
-                        routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
-                    elif len(values.args[1:]):
-                        routine = func(*(obj, message, *a), **kw)
-                    else:
-                        routine = func(*(obj, *a), **kw)
-                except (Exception, asyncio.CancelledError, BaseException) as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                    if issubclass(
-                        e.__class__,
-                        (
-                            AWSSNSSQSInternalServiceError,
-                            AWSSNSSQSInternalServiceErrorException,
-                            AWSSNSSQSInternalServiceException,
-                        ),
-                    ):
-                        if message_key:
-                            del context["_aws_sns_sqs_received_messages"][message_key]
-                        return
-                    await cls.delete_message(receipt_handle, queue_url, context)
-                    return
+                if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
+                    routine = func(*(obj, message, *a))
+                elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
+                    routine = func(*(obj, message, *a), **merge_dicts(kwargs, kw))
+                elif len(merge_dicts(kwargs, kw)):
+                    routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
+                elif len(values.args[1:]):
+                    routine = func(*(obj, message, *a), **kw)
+                else:
+                    routine = func(*(obj, *a), **kw)
 
                 if inspect.isawaitable(routine):
-                    try:
-                        return_value = await routine
-                    except (Exception, asyncio.CancelledError, BaseException) as e:
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                        if issubclass(
-                            e.__class__,
-                            (
-                                AWSSNSSQSInternalServiceError,
-                                AWSSNSSQSInternalServiceErrorException,
-                                AWSSNSSQSInternalServiceException,
-                            ),
-                        ):
-                            if message_key:
-                                del context["_aws_sns_sqs_received_messages"][message_key]
-                            return
-                        await cls.delete_message(receipt_handle, queue_url, context)
-                        return
+                    return_value = await routine
                 else:
                     return_value = routine
 
@@ -446,9 +414,25 @@ class AWSSNSSQSTransport(Invoker):
 
             increase_execution_context_value("aws_sns_sqs_current_tasks")
             increase_execution_context_value("aws_sns_sqs_total_tasks")
-            return_value = await execute_middlewares(
-                func, routine_func, context.get("message_middleware", []), *(obj, message, topic)
-            )
+            try:
+                return_value = await execute_middlewares(
+                    func, routine_func, context.get("message_middleware", []), *(obj, message, topic)
+                )
+            except (Exception, asyncio.CancelledError, BaseException) as e:
+                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                return_value = None
+                if issubclass(
+                    e.__class__,
+                    (
+                        AWSSNSSQSInternalServiceError,
+                        AWSSNSSQSInternalServiceErrorException,
+                        AWSSNSSQSInternalServiceException,
+                    ),
+                ):
+                    if message_key:
+                        del context["_aws_sns_sqs_received_messages"][message_key]
+                else:
+                    await cls.delete_message(receipt_handle, queue_url, context)
             decrease_execution_context_value("aws_sns_sqs_current_tasks")
 
             return return_value
