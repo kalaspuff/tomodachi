@@ -4,7 +4,7 @@ import getopt
 import logging
 import os
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, cast
 
 import tomodachi
 from tomodachi.config import parse_config_files
@@ -141,11 +141,11 @@ class CLI:
             # Optional
             import google.protobuf  # noqa  # isort:skip
 
-            protobuf_version = (
-                google.protobuf.__version__.decode()
-                if isinstance(google.protobuf.__version__, bytes)
-                else str(google.protobuf.__version__)
-            )
+            protobuf_version_ = google.protobuf.__version__
+            if isinstance(protobuf_version_, bytes):
+                protobuf_version = cast(bytes, protobuf_version_).decode()
+            else:
+                protobuf_version = str(protobuf_version_)
             if output_versions:
                 print("protobuf/{}".format(protobuf_version))
         except ModuleNotFoundError:  # pragma: no cover
