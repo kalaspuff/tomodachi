@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import time
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Awaitable, Dict, Optional, cast
+from typing import Any, AsyncIterator, Dict, Optional, cast
 
 import aiobotocore
 import aiobotocore.client

@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 import zlib
-from typing import Any, Dict, Tuple, Union, cast
+from typing import Any, Dict, Tuple, Union
 
 from tomodachi.envelope.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
 
