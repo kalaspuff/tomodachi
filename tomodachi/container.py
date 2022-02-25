@@ -7,7 +7,7 @@ import sys
 import types
 import uuid
 from types import ModuleType, TracebackType
-from typing import Any, Dict, Optional, Set, cast
+from typing import Any, Dict, Optional, Set, Type, cast
 
 import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
@@ -30,7 +30,7 @@ class ServiceContainer(object):
         self._close_waiter: asyncio.Future = asyncio.Future()
         self.started_waiter: asyncio.Future = asyncio.Future()
 
-        def catch_uncaught_exceptions(type_: type, value: BaseException, traceback: TracebackType) -> None:
+        def catch_uncaught_exceptions(type_: Type[BaseException], value: BaseException, traceback: Optional[TracebackType]) -> Any:
             raise value
 
         sys.excepthook = catch_uncaught_exceptions

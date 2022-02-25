@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, cast
 
 TOMODACHI_MIDDLEWARE_ATTRIBUTE = "_tomodachi_middleware_argument_length"
 
@@ -23,7 +23,7 @@ async def execute_middlewares(func: Callable, routine_func: Callable, middleware
                     arg_len = arg_len - len(defaults)
                 setattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, arg_len)
             else:
-                arg_len = getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, None)
+                arg_len = cast(int, getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE))
 
             middleware_arguments = [_func, *args, middleware_context][0:arg_len]
             if middlewares and len(middlewares) <= idx + 1:

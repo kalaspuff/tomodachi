@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 import zlib
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple, Union, cast
 
 from tomodachi.envelope.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
 
@@ -28,8 +28,8 @@ class ProtobufBase(object):
             data_encoding = "gzip_proto"
 
         message = SNSSQSMessage()
-        message.service.name = getattr(service, "name", None)
-        message.service.uuid = getattr(service, "uuid", None)
+        message.service.name = str(getattr(service, "name", None) or "")
+        message.service.uuid = str(getattr(service, "uuid", None) or "")
         message.metadata.message_uuid = "{}.{}".format(getattr(service, "uuid", ""), str(uuid.uuid4()))
         message.metadata.protocol_version = PROTOCOL_VERSION
         message.metadata.timestamp = time.time()

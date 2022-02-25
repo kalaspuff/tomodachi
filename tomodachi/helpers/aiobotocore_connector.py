@@ -103,7 +103,7 @@ class ClientConnector(object):
             create_client_func = session._create_client if hasattr(session, "_create_client") else session.create_client
             client_value = create_client_func(service_name, config=config, **credentials)
             if inspect.isawaitable(client_value):
-                client = await cast(Awaitable, client_value)
+                client = await client_value
             else:
                 client = client_value
 
