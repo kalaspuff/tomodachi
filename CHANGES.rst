@@ -1,6 +1,17 @@
 Changes
 =======
 
+0.22.0 (2022-02-25)
+-------------------
+- Handle exceptions lower in the stack for messaging services (AMQP and AWS
+  SNS+SQS handlers), which now allows catching exceptions in middlewares, 
+  which was previously not possible. (github: **justcallmelarry**)
+
+- Improved documentation for uses of ``tomodachi.get_service`` 
+  (github: **justcallmelarry**)
+  
+- Type hint annotation improvements.
+
 0.21.8 (2021-11-19)
 -------------------
 - Adds the possibility to add a function called ``_stopping_service`` to the
