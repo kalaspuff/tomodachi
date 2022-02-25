@@ -30,7 +30,9 @@ class ServiceContainer(object):
         self._close_waiter: asyncio.Future = asyncio.Future()
         self.started_waiter: asyncio.Future = asyncio.Future()
 
-        def catch_uncaught_exceptions(type_: Type[BaseException], value: BaseException, traceback: Optional[TracebackType]) -> Any:
+        def catch_uncaught_exceptions(
+            type_: Type[BaseException], value: BaseException, traceback: Optional[TracebackType]
+        ) -> Any:
             raise value
 
         sys.excepthook = catch_uncaught_exceptions
