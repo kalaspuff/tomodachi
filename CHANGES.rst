@@ -8,7 +8,7 @@ Changes
   which was previously not possible. (github: **justcallmelarry**)
 
 - Improved documentation for uses of ``tomodachi.get_service`` 
-  (github: **justcallmelarry**)
+  (github: **jmfederico**)
   
 - Type hint annotation improvements.
 
