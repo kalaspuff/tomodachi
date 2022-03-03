@@ -307,7 +307,7 @@ class CLI:
             logging.Formatter(fmt="%(asctime)s.%(msecs).03d", datefmt="%Y-%m-%d %H:%M:%S")
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
-        sys.exit(0)
+        sys.exit(tomodachi.SERVICE_EXIT_CODE)
 
     def main(self, argv: List[str]) -> None:
         opts: List[Tuple[str, str]] = []
