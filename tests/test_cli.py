@@ -162,6 +162,21 @@ def test_cli_start_service_stopped_with_exit_code_1(monkeypatch: Any, capsys: An
     assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
 
 
+def test_cli_start_service_stopped_with_exit_code_128(monkeypatch: Any, capsys: Any) -> None:
+    monkeypatch.setattr(logging.root, "handlers", [])
+
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
+        tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_exit_code_128.py"])
+
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 128
+
+    out, err = capsys.readouterr()
+    assert err != ""
+    assert "Starting tomodachi services" in out
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
+
+
 def test_cli_start_exception_service(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(logging.root, "handlers", [])
 

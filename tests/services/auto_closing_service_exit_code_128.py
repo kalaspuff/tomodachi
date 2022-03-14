@@ -16,6 +16,7 @@ class AutoClosingService(tomodachi.Service):
     stop = False
 
     async def _start_service(self) -> None:
+        tomodachi.SERVICE_EXIT_CODE = 128
         self.start = True
 
     async def _started_service(self) -> None:

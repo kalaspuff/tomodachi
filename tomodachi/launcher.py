@@ -7,8 +7,9 @@ import platform
 import signal
 import sys
 import time
-from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
+from typing import Any, Dict, List, Optional, Set, Union, cast
 
+import tomodachi
 import tomodachi.__version__
 import tomodachi.container
 import tomodachi.importer
@@ -211,6 +212,8 @@ class ServiceLauncher(object):
                 print("File watcher is active - code changes will automatically restart services")
                 print("Quit running services with <ctrl+c>")
                 print()
+
+            tomodachi.SERVICE_EXIT_CODE = 0
 
             cls._close_waiter = asyncio.Future()
             cls._stopped_waiter = asyncio.Future()
