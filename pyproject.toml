@@ -51,7 +51,7 @@ pytz = "*"
 cchardet = ">=2.1.6"
 aiohttp = ">=3.5.4,<3.9.0"
 colorama = ">=0.3.9, <0.5.0"
-asahi = "^0.1.0"
+asahi = ">=0.1,<0.3"
 
 # typing extensions support for Python 3.7
 typing-extensions = { version = ">=3.7.4", markers = "python_version < \"3.8\"" }
