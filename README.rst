@@ -380,7 +380,7 @@ Stopping a service can be achieved by either sending a ``SIGINT`` <ctrl+c> or ``
 * ``SIGTERM`` signal
 * ``tomodachi.exit()`` or ``tomodachi.exit(exit_code)``
 
-The process' exit code can also be altered by changing the value of ``tomodachi.SERVICE_EXIT_CODE``, however using ``tomodachi.exit`` with a integer argument will override any previous value set to ``tomodachi.SERVICE_EXIT_CODE``.
+The process' exit code can also be altered by changing the value of ``tomodachi.SERVICE_EXIT_CODE``, however using ``tomodachi.exit`` with an integer argument will override any previous value set to ``tomodachi.SERVICE_EXIT_CODE``.
 
 All above mentioned ways of initiating the termination flow of the service will perform a graceful shutdown of the service which will try to await open HTTP handlers and await currently running tasks using tomodachi's scheduling functionality as well as await tasks processing messages from queues such as AWS SQS or RabbitMQ.
 
