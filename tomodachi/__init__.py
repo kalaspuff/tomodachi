@@ -54,6 +54,7 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
 __imported_modules: Dict[str, Any] = {}
 __cached_defs: Dict[str, Any] = {}
 
+DEFAULT_SERVICE_EXIT_CODE: int = 0
 SERVICE_EXIT_CODE: int = 0
 
 def __getattr__(name: str) -> Any:

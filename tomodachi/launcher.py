@@ -213,7 +213,7 @@ class ServiceLauncher(object):
                 print("Quit running services with <ctrl+c>")
                 print()
 
-            tomodachi.SERVICE_EXIT_CODE = 0
+            tomodachi.SERVICE_EXIT_CODE = tomodachi.DEFAULT_SERVICE_EXIT_CODE
 
             cls._close_waiter = asyncio.Future()
             cls._stopped_waiter = asyncio.Future()
