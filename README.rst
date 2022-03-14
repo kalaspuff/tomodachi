@@ -380,7 +380,9 @@ Stopping a service can be achieved by either sending a ``SIGINT`` <ctrl+c> or ``
 * ``SIGTERM`` signal
 * ``tomodachi.exit()`` or ``tomodachi.exit(exit_code)``
 
-All above mentioned ways of initiating the termination flow of the service will perform a graceful shutdown of the service which will try to await open HTTP handlers and await currently running tasks using tomodachi's scheduling functionality as well as await tasks processing messages from queues such as AWS SQS or RabbitMQ. Some tasks may timeout during termination according to used configuration if they are long running tasks. Additionally container handlers may impose additional timeouts for how long termination are allowed to take. If no ongoing tasks are to be awaited and the service lifecycle can be cleanly terminated the shutdown usually happens within milliseconds.
+All above mentioned ways of initiating the termination flow of the service will perform a graceful shutdown of the service which will try to await open HTTP handlers and await currently running tasks using tomodachi's scheduling functionality as well as await tasks processing messages from queues such as AWS SQS or RabbitMQ.
+
+Some tasks may timeout during termination according to used configuration (see options such as ``http.termination_grace_period_seconds``) if they are long running tasks. Additionally container handlers may impose additional timeouts for how long termination are allowed to take. If no ongoing tasks are to be awaited and the service lifecycle can be cleanly terminated the shutdown usually happens within milliseconds.
 
 
 Example of a microservice containerized in Docker 🐳
