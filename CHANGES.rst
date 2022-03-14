@@ -1,15 +1,30 @@
 Changes
 =======
 
+0.22.1 (2022-03-14)
+-------------------
+- Added an additional way of gracefully triggering shutdown of a running
+  service, by using the new ``tomodachi.exit()`` function, which will
+  initiate the termination processing flow in the same way as signaling
+  ``SIGINT`` or ``SIGTERM``. The ``tomodachi.exit()`` call can additionally
+  take an optional exit code as an argument to support new ways of catching
+  service operation.
+
+- The process' exit code can also be altered by changing the value of
+  ``tomodachi.SERVICE_EXIT_CODE``, however using the new ``tomodachi.exit``
+  call with an integer argument will override any previous value set to
+  ``tomodachi.SERVICE_EXIT_CODE``. The default value is set to ``0``.
+
+
 0.22.0 (2022-02-25)
 -------------------
 - Handle exceptions lower in the stack for messaging services (AMQP and AWS
-  SNS+SQS handlers), which now allows catching exceptions in middlewares, 
+  SNS+SQS handlers), which now allows catching exceptions in middlewares,
   which was previously not possible. (github: **justcallmelarry**)
 
-- Improved documentation for uses of ``tomodachi.get_service`` 
+- Improved documentation for uses of ``tomodachi.get_service``
   (github: **jmfederico**)
-  
+
 - Type hint annotation improvements.
 
 0.21.8 (2021-11-19)
