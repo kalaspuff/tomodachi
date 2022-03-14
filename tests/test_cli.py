@@ -207,7 +207,9 @@ def test_cli_start_service_production_mode(monkeypatch: Any, capsys: Any) -> Non
     monkeypatch.setattr(logging.root, "handlers", [])
 
     with pytest.raises(SystemExit):
-        tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_exit_call.py", "--production"])
+        tomodachi.cli.cli_entrypoint(
+            ["tomodachi", "run", "tests/services/auto_closing_service_exit_call.py", "--production"]
+        )
 
     out, err = capsys.readouterr()
     assert err != ""
@@ -219,7 +221,13 @@ def test_cli_start_service_with_config(monkeypatch: Any, capsys: Any) -> None:
 
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(
-            ["tomodachi", "run", "tests/services/auto_closing_service_exit_call.py", "-c", "tests/configs/config_file.json"]
+            [
+                "tomodachi",
+                "run",
+                "tests/services/auto_closing_service_exit_call.py",
+                "-c",
+                "tests/configs/config_file.json",
+            ]
         )
 
     out, err = capsys.readouterr()

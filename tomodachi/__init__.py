@@ -57,6 +57,7 @@ __cached_defs: Dict[str, Any] = {}
 DEFAULT_SERVICE_EXIT_CODE: int = 0
 SERVICE_EXIT_CODE: int = 0
 
+
 def __getattr__(name: str) -> Any:
     if name in __cached_defs:
         return __cached_defs[name]
