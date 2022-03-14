@@ -54,6 +54,9 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
 __imported_modules: Dict[str, Any] = {}
 __cached_defs: Dict[str, Any] = {}
 
+DEFAULT_SERVICE_EXIT_CODE: int = 0
+SERVICE_EXIT_CODE: int = 0
+
 
 def __getattr__(name: str) -> Any:
     if name in __cached_defs:
@@ -279,6 +282,18 @@ def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
 
     result = type(cls.__name__, (Service, cls), dict(cls.__dict__))
     return cast(Type[TomodachiServiceMeta], result)
+
+
+def exit(exit_code: Optional[int] = None) -> None:
+    import logging  # noqa # isort:skip
+    import sys  # noqa # isort:skip
+    from tomodachi.launcher import ServiceLauncher  # noqa  # isort:skip
+
+    exit_code = exit_code if exit_code is not None else SERVICE_EXIT_CODE
+    logging.getLogger("system").warning(f"Termination initiatied via tomodachi.exit call [exit_code: {exit_code}]")
+    ServiceLauncher.restart_services = False
+    setattr(sys.modules[__name__], "SERVICE_EXIT_CODE", exit_code)
+    ServiceLauncher.stop_services()
 
 
 def run(app: Optional[Union[str, List[str], Tuple[str]]] = None, *args: str, **kwargs: Optional[str]) -> None:

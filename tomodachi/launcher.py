@@ -9,6 +9,7 @@ import sys
 import time
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
+import tomodachi
 import tomodachi.__version__
 import tomodachi.container
 import tomodachi.importer
@@ -34,28 +35,30 @@ class ServiceLauncher(object):
     services: Set = set()
 
     @classmethod
+    def stop_services(cls) -> None:
+        asyncio.ensure_future(cls._stop_services())
+
+    @classmethod
+    async def _stop_services(cls) -> None:
+        if cls._close_waiter and not cls._close_waiter.done():
+            cls._close_waiter.set_result(None)
+            for service in cls.services:
+                try:
+                    service.stop_service()
+                except Exception:
+                    pass
+            if cls._stopped_waiter:
+                cls._stopped_waiter.set_result(None)
+        if cls._stopped_waiter:
+            await cls._stopped_waiter
+
+    @classmethod
     def run_until_complete(
         cls,
         service_files: Union[List, set],
         configuration: Optional[Dict] = None,
         watcher: Any = None,
     ) -> None:
-        def stop_services() -> None:
-            asyncio.ensure_future(_stop_services())
-
-        async def _stop_services() -> None:
-            if cls._close_waiter and not cls._close_waiter.done():
-                cls._close_waiter.set_result(None)
-                for service in cls.services:
-                    try:
-                        service.stop_service()
-                    except Exception:
-                        pass
-                if cls._stopped_waiter:
-                    cls._stopped_waiter.set_result(None)
-            if cls._stopped_waiter:
-                await cls._stopped_waiter
-
         def sigintHandler(*args: Any) -> None:
             sys.stdout.write("\b\b\r")
             sys.stdout.flush()
@@ -74,7 +77,7 @@ class ServiceLauncher(object):
             asyncio.set_event_loop(loop)
 
         for signame in ("SIGINT", "SIGTERM"):
-            loop.add_signal_handler(getattr(signal, signame), stop_services)
+            loop.add_signal_handler(getattr(signal, signame), cls.stop_services)
 
         signal.siginterrupt(signal.SIGTERM, False)
         signal.siginterrupt(signal.SIGUSR1, False)
@@ -113,7 +116,7 @@ class ServiceLauncher(object):
                             return
 
                 logging.getLogger("watcher.restart").warning("Restarting services")
-                stop_services()
+                cls.stop_services()
 
             watcher_future = loop.run_until_complete(watcher.watch(loop=loop, callback_func=_watcher_restart))
 
@@ -209,6 +212,8 @@ class ServiceLauncher(object):
                 print("File watcher is active - code changes will automatically restart services")
                 print("Quit running services with <ctrl+c>")
                 print()
+
+            tomodachi.SERVICE_EXIT_CODE = tomodachi.DEFAULT_SERVICE_EXIT_CODE
 
             cls._close_waiter = asyncio.Future()
             cls._stopped_waiter = asyncio.Future()
