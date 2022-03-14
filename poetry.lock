@@ -95,14 +95,14 @@ extras = ["asahi-extras (>=0.1.0,<0.2.0)"]
 
 [[package]]
 name = "asahi-extras"
-version = "0.1.1"
+version = "0.2.0"
 description = "Optional installer utility and companion package to 'asahi'"
 category = "main"
 optional = true
-python-versions = ">=3.6,<4.0"
+python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
-asahi = ">=0.1.0,<0.2.0"
+asahi = ">=0.1.0"
 
 [[package]]
 name = "async-timeout"
@@ -913,8 +913,8 @@ asahi = [
     {file = "asahi-0.1.1.tar.gz", hash = "sha256:81b7961286d8dc4be28aa6d7f437e916fdb8968030286d99224547080ca12d67"},
 ]
 asahi-extras = [
-    {file = "asahi-extras-0.1.1.tar.gz", hash = "sha256:83526d16c619318894a92e0a6f2c603b401eb29cdda059848a10635154737706"},
-    {file = "asahi_extras-0.1.1-py3-none-any.whl", hash = "sha256:750e9d3c302e0667712b0abaeaf76db4f4a74413b5f76ae1f0333d9219f74fea"},
+    {file = "asahi-extras-0.2.0.tar.gz", hash = "sha256:d65f3976498ce280ee2abc7aac2559b452b0ee0e2305cdda3b6ec7f2e2d8f1b7"},
+    {file = "asahi_extras-0.2.0-py3-none-any.whl", hash = "sha256:55d07be7ab842482b3f32ad723b20cdc651566b28d497a85e798b73ab67dc255"},
 ]
 async-timeout = [
     {file = "async-timeout-4.0.2.tar.gz", hash = "sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15"},
