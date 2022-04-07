@@ -1,5 +1,13 @@
 Changes
 =======
+0.22.2 (2022-04-07)
+-------------------
+- Fixes an issue with live reloading on code changes (development mode)
+  with services utilizing ``protobuf`` messages, which in same edge cases
+  could trigger a repeated
+  ``TypeError("A Message class can only inherit from Message")`` that would
+  prevent the service from restarting correctly.
+
 
 0.22.1 (2022-03-14)
 -------------------
