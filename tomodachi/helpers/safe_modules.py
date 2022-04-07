@@ -322,6 +322,7 @@ SAFE_MODULES = {
     "gettext",
     "google",
     "google.protobuf",
+    "google.protobuf.message",
     "grp",
     "hashlib",
     "heapq",
