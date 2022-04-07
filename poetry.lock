@@ -1,13 +1,13 @@
 [[package]]
 name = "aioamqp"
-version = "0.14.0"
+version = "0.15.0"
 description = "AMQP implementation using asyncio"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 
 [package.dependencies]
-pamqp = ">=2.2.0,<3"
+pamqp = ">=3.1.0"
 
 [[package]]
 name = "aiobotocore"
@@ -448,14 +448,15 @@ pyparsing = ">=2.0.2,<3.0.5 || >3.0.5"
 
 [[package]]
 name = "pamqp"
-version = "2.3.0"
+version = "3.1.0"
 description = "RabbitMQ Focused AMQP low-level library"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 
 [package.extras]
-codegen = ["lxml"]
+codegen = ["lxml", "requests", "yapf"]
+testing = ["coverage", "flake8", "flake8-comprehensions", "flake8-deprecated", "flake8-import-order", "flake8-print", "flake8-quotes", "flake8-rst-docstrings", "flake8-tuple", "yapf"]
 
 [[package]]
 name = "pathspec"
@@ -813,12 +814,12 @@ uvloop = ["uvloop"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "38d561c097806aad5e0949aee33fa0bbbe972c866a832b71a6b128b26906b0cf"
+content-hash = "1d2e438975058cf5643d4b4de7d24be87c9229321741c1aece87285d38fd36fd"
 
 [metadata.files]
 aioamqp = [
-    {file = "aioamqp-0.14.0-py35.py36.py37.py38-none-any.whl", hash = "sha256:55fa703a70e71bc958ad546b9ee0c68387cab366c82fc44c0742d6ad0303745a"},
-    {file = "aioamqp-0.14.0.tar.gz", hash = "sha256:eef5c23a7fedee079d8326406f5c7a5725dfe36c359373da3499fffa16f79915"},
+    {file = "aioamqp-0.15.0-py37.py38.py39.py310-none-any.whl", hash = "sha256:0f38cc4db8db6fd062504b7c4b6703c800d2130d14d5492cf47d727de1929740"},
+    {file = "aioamqp-0.15.0.tar.gz", hash = "sha256:fcad924d7658e65ef074522a7e9527e0b0adad09b10774340ea9f3fd277452d8"},
 ]
 aiobotocore = [
     {file = "aiobotocore-1.3.3.tar.gz", hash = "sha256:b6bae95c55ef822d790bf8ebf6aed3d09b33e2817fa5f10e16a77028332963c2"},
@@ -1383,8 +1384,7 @@ packaging = [
     {file = "packaging-21.3.tar.gz", hash = "sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb"},
 ]
 pamqp = [
-    {file = "pamqp-2.3.0-py2.py3-none-any.whl", hash = "sha256:2f81b5c186f668a67f165193925b6bfd83db4363a6222f599517f29ecee60b02"},
-    {file = "pamqp-2.3.0.tar.gz", hash = "sha256:5cd0f5a85e89f20d5f8e19285a1507788031cfca4a9ea6f067e3cf18f5e294e8"},
+    {file = "pamqp-3.1.0.tar.gz", hash = "sha256:e4f0886d72c6166637a5513626148bf5a7e818073a558980e9aaed8b4ccf30da"},
 ]
 pathspec = [
     {file = "pathspec-0.9.0-py2.py3-none-any.whl", hash = "sha256:7d15c4ddb0b5c802d161efc417ec1a2558ea2653c2e8ad9c19098201dc1c993a"},
