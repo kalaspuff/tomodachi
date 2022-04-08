@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextvars
 import importlib
 import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
@@ -56,6 +57,20 @@ __cached_defs: Dict[str, Any] = {}
 
 DEFAULT_SERVICE_EXIT_CODE: int = 0
 SERVICE_EXIT_CODE: int = 0
+
+__context: Dict[str, contextvars.ContextVar] = {}
+
+
+def get_contextvar(key: str) -> contextvars.ContextVar:
+    if key not in __context:
+        __context[key] = contextvars.ContextVar(f"tomodachi.{key}", default=None)
+    return __context[key]
+
+
+def context(key: str) -> Any:
+    if key not in __context:
+        return None
+    return __context[key].get()
 
 
 def __getattr__(name: str) -> Any:
@@ -212,6 +227,7 @@ __all__ = [
     "increase_execution_context_value",
     "get_service",
     "get_instance",
+    "exit",
     "AiobotocoreClientConnector",
     "aiobotocore_client_connector",
     "amqp",
@@ -235,8 +251,8 @@ __all__ = [
     "daily",
     "monthly",
     "CLASS_ATTRIBUTE",
+    "SERVICE_EXIT_CODE",
 ]
-
 
 class TomodachiServiceMeta(type):
     def __new__(

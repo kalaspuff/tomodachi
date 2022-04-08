@@ -30,6 +30,7 @@ from tomodachi.helpers.execution_context import (
 )
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
+from tomodachi import get_contextvar
 
 if sys.version_info >= (3, 8):
     from typing import TypedDict, Literal  # isort:skip
@@ -297,6 +298,7 @@ class AWSSNSSQSTransport(Invoker):
             queue_url: Optional[str] = None,
             message_topic: str = "",
             message_attributes: Optional[Dict] = None,
+            approximate_receive_count: Optional[int] = None,
         ) -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 try:
@@ -306,6 +308,11 @@ class AWSSNSSQSTransport(Invoker):
                 return
 
             kwargs = dict(original_kwargs)
+
+            # set values to contextvars
+            get_contextvar("aws_sns_sqs.receipt_handle").set(receipt_handle)
+            get_contextvar("aws_sns_sqs.queue_url").set(queue_url)
+            get_contextvar("aws_sns_sqs.approximate_receive_count").set(approximate_receive_count)
 
             message = payload
             message_attributes_values: Dict[
@@ -366,6 +373,10 @@ class AWSSNSSQSTransport(Invoker):
                             not isinstance(message, dict) or "message_attributes" not in message
                         ):
                             kwargs["message_attributes"] = message_attributes_values
+                        if "approximate_receive_count" in _callback_kwargs and (
+                            not isinstance(message, dict) or "approximate_receive_count" not in message
+                        ):
+                            kwargs["approximate_receive_count"] = approximate_receive_count
                 except (Exception, asyncio.CancelledError, BaseException) as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
@@ -387,6 +398,8 @@ class AWSSNSSQSTransport(Invoker):
                         kwargs["queue_url"] = queue_url
                     if "message_attributes" in _callback_kwargs:
                         kwargs["message_attributes"] = message_attributes_values
+                    if "approximate_receive_count" in _callback_kwargs:
+                        kwargs["approximate_receive_count"] = approximate_receive_count
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
                     del kwargs[values.args[1]]
@@ -1255,9 +1268,10 @@ class AWSSNSSQSTransport(Invoker):
                     queue_url: Optional[str],
                     message_topic: str,
                     message_attributes: Dict,
+                    approximate_receive_count: Optional[int],
                 ) -> Callable:
                     async def _callback() -> None:
-                        await handler(payload, receipt_handle, queue_url, message_topic, message_attributes)
+                        await handler(payload, receipt_handle, queue_url, message_topic, message_attributes, approximate_receive_count)
 
                     return _callback
 
@@ -1274,6 +1288,7 @@ class AWSSNSSQSTransport(Invoker):
                                         QueueUrl=queue_url,
                                         WaitTimeSeconds=wait_time_seconds,
                                         MaxNumberOfMessages=max_number_of_messages,
+                                        AttributeNames=["ApproximateFirstReceiveTimestamp", "ApproximateReceiveCount"]
                                     ),
                                     timeout=40,
                                 )
@@ -1359,11 +1374,12 @@ class AWSSNSSQSTransport(Invoker):
                             receipt_handle = message.get("ReceiptHandle")
                             try:
                                 message_body = json.loads(message.get("Body"))
+                                topic_arn = message_body.get("TopicArn")
                                 message_topic = (
                                     cls.get_topic_name_without_prefix(
-                                        cls.decode_topic(cls.get_topic_from_arn(message_body.get("TopicArn"))), context
+                                        cls.decode_topic(cls.get_topic_from_arn(topic_arn)), context
                                     )
-                                    if message_body.get("TopicArn")
+                                    if topic_arn
                                     else ""
                                 )
                             except ValueError:
@@ -1374,9 +1390,10 @@ class AWSSNSSQSTransport(Invoker):
 
                             payload = message_body.get("Message")
                             message_attributes = message_body.get("MessageAttributes", {})
+                            approximate_receive_count: Optional[int] = int(message.get("Attributes", {}).get("ApproximateReceiveCount", 0)) or None
 
                             futures.append(
-                                callback(payload, receipt_handle, queue_url, message_topic, message_attributes)
+                                callback(payload, receipt_handle, queue_url, message_topic, message_attributes, approximate_receive_count)
                             )
                     except asyncio.CancelledError:
                         continue
