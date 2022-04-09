@@ -254,6 +254,7 @@ __all__ = [
     "SERVICE_EXIT_CODE",
 ]
 
+
 class TomodachiServiceMeta(type):
     def __new__(
         cls: Type[TomodachiServiceMeta], name: str, bases: Tuple[type, ...], attributedict: Dict
