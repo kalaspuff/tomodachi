@@ -845,8 +845,8 @@ class AWSSNSSQSTransport(Invoker):
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
 
-        queue_name = queue_arn.split(':')[-1]
-        account_id = queue_arn.split(':')[-2]
+        queue_name = queue_arn.split(":")[-1]
+        account_id = queue_arn.split(":")[-2]
 
         queue_url = None
         try:
@@ -1618,11 +1618,12 @@ class AWSSNSSQSTransport(Invoker):
                     )
                 elif queue_name.startswith("arn:aws:sqs:"):
                     queue_arn = queue_name
-                    queue_name = queue_arn.split(':')[-1]
+                    queue_name = queue_arn.split(":")[-1]
                     queue_url = await cls.get_queue_url_from_arn(queue_arn, context)
                     if not queue_url:
                         raise AWSSNSSQSException(
-                            "AWS SQS queue with specific ARN ({}) does not exist".format(queue_arn), log_level=context.get("log_level")
+                            "AWS SQS queue with specific ARN ({}) does not exist".format(queue_arn),
+                            log_level=context.get("log_level"),
                         )
 
                 else:
@@ -1657,7 +1658,8 @@ class AWSSNSSQSTransport(Invoker):
                         dlq_url = await cls.get_queue_url_from_arn(dlq_arn, context)
                         if not dlq_url:
                             raise AWSSNSSQSException(
-                                "AWS SQS dead-letter queue with specific ARN ({}) does not exist".format(queue_arn), log_level=context.get("log_level")
+                                "AWS SQS dead-letter queue with specific ARN ({}) does not exist".format(queue_arn),
+                                log_level=context.get("log_level"),
                             )
                     else:
                         dlq_url, dlq_arn = await cls.create_queue(
@@ -1669,7 +1671,7 @@ class AWSSNSSQSTransport(Invoker):
                     if re.search(r"([*#])", topic):
                         await cls.subscribe_wildcard_topic(
                             topic,
-                            queue_arn,
+                            cast(str, queue_arn),
                             queue_url,
                             context,
                             attributes=attributes,
@@ -1680,7 +1682,7 @@ class AWSSNSSQSTransport(Invoker):
                         topic_arn = await cls.create_topic(topic, context)
                         await cls.subscribe_topics(
                             (topic_arn,),
-                            queue_arn,
+                            cast(str, queue_arn),
                             queue_url,
                             context,
                             attributes=attributes,
