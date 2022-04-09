@@ -43,6 +43,8 @@ MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
 MESSAGE_TOPIC_PREFIX = "09698c75-832b-470f-8e05-96d2dd8c4853"
 MESSAGE_TOPIC_ATTRIBUTES = "dc6c667f-4c22-4a63-85f6-3ea0c7e2db49"
 FILTER_POLICY_DEFAULT = "7e68632f-3b39-4293-b5a9-16644cf857a5"
+DEAD_LETTER_QUEUE_DEFAULT = "22ebae61-1aab-4b2e-840f-008da1f45472"
+MAX_RECEIVE_COUNT_DEFAULT = -1
 
 AnythingButFilterPolicyValueType = Union[str, int, float, List[str], List[int], List[float], List[Union[int, float]]]
 AnythingButFilterPolicyDict = TypedDict(
@@ -255,6 +257,9 @@ class AWSSNSSQSTransport(Invoker):
         message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         filter_policy: Optional[Union[str, FilterPolicyDictType]] = FILTER_POLICY_DEFAULT,
+        visibility_timeout: Optional[int] = None,
+        dead_letter_queue_name: Optional[str] = DEAD_LETTER_QUEUE_DEFAULT,
+        max_receive_count: Optional[int] = MAX_RECEIVE_COUNT_DEFAULT,
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
@@ -460,7 +465,7 @@ class AWSSNSSQSTransport(Invoker):
             attributes["FilterPolicy"] = json.dumps(filter_policy)
 
         context["_aws_sns_sqs_subscribers"] = context.get("_aws_sns_sqs_subscribers", [])
-        context["_aws_sns_sqs_subscribers"].append((topic, competing, queue_name, func, handler, attributes))
+        context["_aws_sns_sqs_subscribers"].append((topic, competing, queue_name, func, handler, attributes, visibility_timeout, dead_letter_queue_name, max_receive_count))
 
         start_func = cls.subscribe(obj, context)
         return (await start_func) if start_func else None
@@ -944,6 +949,8 @@ class AWSSNSSQSTransport(Invoker):
         queue_url: str,
         context: Dict,
         attributes: Optional[Dict[str, Union[str, bool]]] = None,
+        visibility_timeout: Optional[int] = None,
+        redrive_policy: Optional[Dict[str, Union[str, int]]] = None,
     ) -> Optional[List]:
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
@@ -981,7 +988,7 @@ class AWSSNSSQSTransport(Invoker):
             queue_policy = cls.generate_queue_policy(queue_arn, topic_arn_list, context)
             cls.topics[topic] = topic_arn_list[0]
             return await cls.subscribe_topics(
-                topic_arn_list, queue_arn, queue_url, context, queue_policy=queue_policy, attributes=attributes
+                topic_arn_list, queue_arn, queue_url, context, queue_policy=queue_policy, attributes=attributes, visibility_timeout=visibility_timeout, redrive_policy=redrive_policy
             )
 
         return None
@@ -995,6 +1002,8 @@ class AWSSNSSQSTransport(Invoker):
         context: Dict,
         queue_policy: Optional[Dict] = None,
         attributes: Optional[Dict[str, Union[str, bool]]] = None,
+        visibility_timeout: Optional[int] = None,
+        redrive_policy: Optional[Dict[str, Union[str, int]]] = None,
     ) -> List:
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
@@ -1007,6 +1016,9 @@ class AWSSNSSQSTransport(Invoker):
 
         if not queue_policy or not isinstance(queue_policy, dict):
             raise Exception("SQS policy is invalid")
+
+        if redrive_policy is not None and not isinstance(redrive_policy, dict):
+            raise Exception("SQS redrive policy is invalid")
 
         config_base = context.get("options", {}).get("aws_sns_sqs", context.get("options", {}).get("aws", {}))
         aws_config_base = context.get("options", {}).get("aws", {})
@@ -1077,14 +1089,19 @@ class AWSSNSSQSTransport(Invoker):
                 )
             ) from None
 
+        if redrive_policy:
+            dead_letter_target_arn = redrive_policy.get("deadLetterTargetArn") or redrive_policy.get("dead_letter_target_arn")
+            max_receive_count = redrive_policy.get("maxReceiveCount") or redrive_policy.get("max_receive_count")
+            redrive_policy = {"deadLetterTargetArn": dead_letter_target_arn, "maxReceiveCount": max_receive_count}
+
         current_queue_attributes = {}
         current_queue_policy = {}
         current_visibility_timeout = None
         current_message_retention_period = None
+        current_redrive_policy = None
         current_kms_master_key_id = None
         current_kms_data_key_reuse_period_seconds = None
 
-        visibility_timeout = None  # not implemented yet
         message_retention_period = None  # not implemented yet
 
         try:
@@ -1093,6 +1110,7 @@ class AWSSNSSQSTransport(Invoker):
                     QueueUrl=queue_url,
                     AttributeNames=[
                         "Policy",
+                        "RedrivePolicy",
                         "VisibilityTimeout",
                         "MessageRetentionPeriod",
                         "KmsMasterKeyId",
@@ -1102,6 +1120,8 @@ class AWSSNSSQSTransport(Invoker):
                 current_queue_attributes = response.get("Attributes", {})
                 current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
                 current_visibility_timeout = current_queue_attributes.get("VisibilityTimeout")
+                if current_queue_attributes:
+                    current_redrive_policy = json.loads(current_queue_attributes.get("RedrivePolicy") or "{}")
                 if current_visibility_timeout:
                     current_visibility_timeout = int(current_visibility_timeout)
                 current_message_retention_period = current_queue_attributes.get("MessageRetentionPeriod")
@@ -1125,6 +1145,9 @@ class AWSSNSSQSTransport(Invoker):
             queue_attributes["VisibilityTimeout"] = str(
                 visibility_timeout
             )  # SQS.SetQueueAttributes "Attributes" are mapped string -> string
+
+        if redrive_policy is not None and current_redrive_policy is not None and redrive_policy != current_redrive_policy:
+            queue_attributes["RedrivePolicy"] = json.dumps(redrive_policy)
 
         if (
             message_retention_period
@@ -1288,7 +1311,7 @@ class AWSSNSSQSTransport(Invoker):
                                         QueueUrl=queue_url,
                                         WaitTimeSeconds=wait_time_seconds,
                                         MaxNumberOfMessages=max_number_of_messages,
-                                        AttributeNames=["ApproximateFirstReceiveTimestamp", "ApproximateReceiveCount"]
+                                        AttributeNames=["ApproximateReceiveCount"]
                                     ),
                                     timeout=40,
                                 )
@@ -1505,6 +1528,9 @@ class AWSSNSSQSTransport(Invoker):
                 queue_name: Optional[str] = None,
                 competing_consumer: Optional[bool] = None,
                 attributes: Optional[Dict[str, Union[str, bool]]] = None,
+                visibility_timeout: Optional[int] = None,
+                dead_letter_queue_name: Optional[str] = DEAD_LETTER_QUEUE_DEFAULT,
+                max_receive_count: Optional[int] = MAX_RECEIVE_COUNT_DEFAULT,
             ) -> str:
                 _uuid = obj.uuid
 
@@ -1522,21 +1548,39 @@ class AWSSNSSQSTransport(Invoker):
 
                 queue_url, queue_arn = await cls.create_queue(queue_name, context)
 
+                redrive_policy: Optional[Dict[str, Union[str, int]]] = None
+                if dead_letter_queue_name is None and max_receive_count in (MAX_RECEIVE_COUNT_DEFAULT, None):
+                    max_receive_count = None
+                    redrive_policy = {}
+                elif dead_letter_queue_name != DEAD_LETTER_QUEUE_DEFAULT or max_receive_count != MAX_RECEIVE_COUNT_DEFAULT:
+                    if dead_letter_queue_name in (DEAD_LETTER_QUEUE_DEFAULT, None, False, True, "") or not isinstance(max_receive_count, int) or max_receive_count is True or max_receive_count < 1:
+                        raise AWSSNSSQSException(
+                            "Invalid values specified for dead-letter queue parameters (dead_letter_queue_name and max_receive_count)", log_level=context.get("log_level")
+                        )
+                    dlq_name = dead_letter_queue_name
+                    dlq_arn: str
+                    if dlq_name.startswith("arn:aws:sqs:"):
+                        dlq_arn = dlq_name
+                    else:
+                        dlq_name = cls.prefix_queue_name(dlq_name, context)
+                        _, dlq_arn = await cls.create_queue(dlq_name, context)
+                    redrive_policy = {"deadLetterTargetArn": dlq_arn, "maxReceiveCount": max_receive_count}
+
                 if topic:
                     if re.search(r"([*#])", topic):
-                        await cls.subscribe_wildcard_topic(topic, queue_arn, queue_url, context, attributes=attributes)
+                        await cls.subscribe_wildcard_topic(topic, queue_arn, queue_url, context, attributes=attributes, visibility_timeout=visibility_timeout, redrive_policy=redrive_policy)
                     else:
                         topic_arn = await cls.create_topic(topic, context)
-                        await cls.subscribe_topics((topic_arn,), queue_arn, queue_url, context, attributes=attributes)
+                        await cls.subscribe_topics((topic_arn,), queue_arn, queue_url, context, attributes=attributes, visibility_timeout=visibility_timeout, redrive_policy=redrive_policy)
 
                 return queue_url
 
             try:
-                for topic, competing, queue_name, func, handler, attributes in context.get(
+                for topic, competing, queue_name, func, handler, attributes, visibility_timeout, dead_letter_queue_name, max_receive_count in context.get(
                     "_aws_sns_sqs_subscribers", []
                 ):
                     queue_url = await setup_queue(
-                        func, topic=topic, queue_name=queue_name, competing_consumer=competing, attributes=attributes
+                        func, topic=topic, queue_name=queue_name, competing_consumer=competing, attributes=attributes, visibility_timeout=visibility_timeout, dead_letter_queue_name=dead_letter_queue_name, max_receive_count=max_receive_count
                     )
                     await cls.consume_queue(obj, context, handler, queue_url=queue_url)
             except Exception:
