@@ -1037,7 +1037,16 @@ class AWSSNSSQSTransport(Invoker):
             raise Exception("SQS policy is invalid")
 
         if redrive_policy is not None and not isinstance(redrive_policy, dict):
-            raise Exception("SQS redrive policy is invalid")
+            raise Exception("SQS redrive_policy is invalid")
+
+        if visibility_timeout is not None and (
+            not isinstance(visibility_timeout, int)
+            or visibility_timeout < 0
+            or visibility_timeout > 43200
+            or visibility_timeout is True
+            or visibility_timeout is False
+        ):
+            raise Exception("SQS visibility_timeout is invalid")
 
         config_base = context.get("options", {}).get("aws_sns_sqs", context.get("options", {}).get("aws", {}))
         aws_config_base = context.get("options", {}).get("aws", {})
