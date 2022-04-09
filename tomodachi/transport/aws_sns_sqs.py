@@ -1108,13 +1108,6 @@ class AWSSNSSQSTransport(Invoker):
                 )
             ) from None
 
-        if redrive_policy:
-            dead_letter_target_arn = redrive_policy.get("deadLetterTargetArn") or redrive_policy.get(
-                "dead_letter_target_arn"
-            )
-            max_receive_count = redrive_policy.get("maxReceiveCount") or redrive_policy.get("max_receive_count")
-            redrive_policy = {"deadLetterTargetArn": dead_letter_target_arn, "maxReceiveCount": max_receive_count}
-
         current_queue_attributes = {}
         current_queue_policy = {}
         current_visibility_timeout = None
@@ -1598,7 +1591,9 @@ class AWSSNSSQSTransport(Invoker):
                     or max_receive_count != MAX_RECEIVE_COUNT_DEFAULT
                 ):
                     if (
-                        dead_letter_queue_name in (DEAD_LETTER_QUEUE_DEFAULT, None, False, True, "")
+                        not isinstance(dead_letter_queue_name, str)
+                        or not dead_letter_queue_name.strip()
+                        or dead_letter_queue_name == DEAD_LETTER_QUEUE_DEFAULT
                         or not isinstance(max_receive_count, int)
                         or max_receive_count is True
                         or max_receive_count < 1
@@ -1607,13 +1602,13 @@ class AWSSNSSQSTransport(Invoker):
                             "Invalid values specified for dead-letter queue parameters (dead_letter_queue_name and max_receive_count)",
                             log_level=context.get("log_level"),
                         )
-                    dlq_name = dead_letter_queue_name
                     dlq_arn: str
-                    if dlq_name.startswith("arn:aws:sqs:"):
-                        dlq_arn = dlq_name
+                    if dead_letter_queue_name.startswith("arn:aws:sqs:"):
+                        dlq_arn = dead_letter_queue_name
                     else:
-                        dlq_name = cls.prefix_queue_name(dlq_name, context)
-                        _, dlq_arn = await cls.create_queue(dlq_name, context)
+                        _, dlq_arn = await cls.create_queue(
+                            cls.prefix_queue_name(dead_letter_queue_name, context), context
+                        )
                     redrive_policy = {"deadLetterTargetArn": dlq_arn, "maxReceiveCount": max_receive_count}
 
                 if topic:
