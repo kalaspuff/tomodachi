@@ -5,7 +5,6 @@ import tomodachi
 from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.discovery import AWSSNSRegistration
 from tomodachi.envelope import JsonBase
-from tomodachi.transport.aws_sns_sqs import AWSSNSSQSInternalServiceError
 
 
 class ExampleAWSSNSSQSService(tomodachi.Service):
