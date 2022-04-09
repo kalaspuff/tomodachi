@@ -841,6 +841,34 @@ class AWSSNSSQSTransport(Invoker):
         await _delete_message()
 
     @classmethod
+    async def get_queue_url_from_arn(cls, queue_arn: str, context: Dict) -> Optional[str]:
+        if not connector.get_client("tomodachi.sqs"):
+            await cls.create_client("sqs", context)
+
+        queue_name = queue_arn.split(':')[-1]
+        account_id = queue_arn.split(':')[-2]
+
+        queue_url = None
+        try:
+            async with connector("tomodachi.sqs", service_name="sqs") as client:
+                response = await client.get_queue_url(QueueName=queue_name, QueueOwnerAWSAccountId=account_id)
+                queue_url = response.get("QueueUrl")
+        except (
+            botocore.exceptions.NoCredentialsError,
+            botocore.exceptions.PartialCredentialsError,
+            aiohttp.client_exceptions.ClientOSError,
+        ) as e:
+            error_message = str(e)
+            logging.getLogger("transport.aws_sns_sqs").warning(
+                "Unable to connect [sqs] to AWS ({})".format(error_message)
+            )
+            raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
+        except botocore.exceptions.ClientError:
+            pass
+
+        return queue_url
+
+    @classmethod
     async def create_queue(cls, queue_name: str, context: Dict) -> Tuple[str, str]:
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
@@ -1579,17 +1607,29 @@ class AWSSNSSQSTransport(Invoker):
 
                 if queue_name and competing_consumer is False:
                     raise AWSSNSSQSException(
-                        "Queue with predefined queue name must be competing", log_level=context.get("log_level")
+                        "AWS SQS queue with predefined queue name must be competing", log_level=context.get("log_level")
                     )
 
+                queue_url = None
+                queue_arn = None
                 if queue_name is None:
                     queue_name = cls.get_queue_name(
                         cls.encode_topic(topic or ""), func.__name__, _uuid, competing_consumer, context
                     )
+                elif queue_name.startswith("arn:aws:sqs:"):
+                    queue_arn = queue_name
+                    queue_name = queue_arn.split(':')[-1]
+                    queue_url = await cls.get_queue_url_from_arn(queue_arn, context)
+                    if not queue_url:
+                        raise AWSSNSSQSException(
+                            "AWS SQS queue with specific ARN ({}) does not exist".format(queue_arn), log_level=context.get("log_level")
+                        )
+
                 else:
                     queue_name = cls.prefix_queue_name(queue_name, context)
 
-                queue_url, queue_arn = await cls.create_queue(queue_name, context)
+                if not queue_url:
+                    queue_url, queue_arn = await cls.create_queue(queue_name, context)
 
                 redrive_policy: Optional[Dict[str, Union[str, int]]] = None
                 if dead_letter_queue_name is None and max_receive_count in (MAX_RECEIVE_COUNT_DEFAULT, None):
@@ -1614,8 +1654,13 @@ class AWSSNSSQSTransport(Invoker):
                     dlq_arn: str
                     if dead_letter_queue_name.startswith("arn:aws:sqs:"):
                         dlq_arn = dead_letter_queue_name
+                        dlq_url = await cls.get_queue_url_from_arn(dlq_arn, context)
+                        if not dlq_url:
+                            raise AWSSNSSQSException(
+                                "AWS SQS dead-letter queue with specific ARN ({}) does not exist".format(queue_arn), log_level=context.get("log_level")
+                            )
                     else:
-                        _, dlq_arn = await cls.create_queue(
+                        dlq_url, dlq_arn = await cls.create_queue(
                             cls.prefix_queue_name(dead_letter_queue_name, context), context
                         )
                     redrive_policy = {"deadLetterTargetArn": dlq_arn, "maxReceiveCount": max_receive_count}

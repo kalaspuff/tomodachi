@@ -5,6 +5,7 @@ import tomodachi
 from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.discovery import AWSSNSRegistration
 from tomodachi.envelope import JsonBase
+from tomodachi.transport.aws_sns_sqs import AWSSNSSQSInternalServiceError
 
 
 class ExampleAWSSNSSQSService(tomodachi.Service):
@@ -22,24 +23,28 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
     options = {
-        "aws_sns_sqs.region_name": None,  # specify AWS region (example: 'eu-west-1')
-        "aws_sns_sqs.aws_access_key_id": None,  # specify AWS access key (example: 'AKIAXNTIENCJIY2STOCI')
-        "aws_sns_sqs.aws_secret_access_key": None,  # specify AWS secret key (example: 'f7sha92hNotarealsecretkeyn29ShnSYQi3nzgA')
-        "aws_endpoint_urls.sns": None,  # For example 'http://localhost:4575' if localstack is used for testing
-        "aws_endpoint_urls.sqs": None,  # For example 'http://localhost:4576' if localstack is used for testing
+        "aws_sns_sqs.region_name": "eu-west-1",  # specify AWS region (example: 'eu-west-1')
+        "aws_sns_sqs.aws_access_key_id": "AKIAXNTIENCJIY2STOCI",  # specify AWS access key (example: 'AKIAXNTIENCJIY2STOCI')
+        "aws_sns_sqs.aws_secret_access_key": "f7sha92hNotarealsecretkeyn29ShnSYQi3nzgA",  # specify AWS secret key (example: 'f7sha92hNotarealsecretkeyn29ShnSYQi3nzgA')
+        "aws_endpoint_urls.sns": "http://localhost:4567",  # For example 'http://localhost:4575' if localstack is used for testing
+        "aws_endpoint_urls.sqs": "http://localhost:4567",  # For example 'http://localhost:4576' if localstack is used for testing
     }
 
-    @aws_sns_sqs("example-route1")
+    @aws_sns_sqs("example-route1", queue_name="queue-1")
     async def route1a(self, data: Any) -> None:
         self.log('Received data (function: route1a) - "{}"'.format(data))
 
-    @aws_sns_sqs("example-route1")
+    @aws_sns_sqs("example-route1", queue_name="queue-2")
     async def route1b(self, data: Any) -> None:
         self.log('Received data (function: route1b) - "{}"'.format(data))
 
-    @aws_sns_sqs("example-route2")
+    @aws_sns_sqs("example-route2", queue_name="queue-3")
     async def route2(self, data: Any) -> None:
         self.log('Received data (function: route2) - "{}"'.format(data))
+
+    @aws_sns_sqs("example-route4", queue_name="queue-4")
+    async def dlq(self, data: Any) -> None:
+        self.log('Received data (function: dlq) - "{}"'.format(data))
 
     async def _started_service(self) -> None:
         async def publish(data: Any, topic: str) -> None:
