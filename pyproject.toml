@@ -68,6 +68,7 @@ Brotli = { version = "^1.0.9", optional = true }
 # extras management
 asahi-extras = { version = "*", optional = true }
 
+
 [tool.poetry.extras]
 protobuf = ["protobuf"]
 uvloop = ["uvloop"]
@@ -88,6 +89,7 @@ flake8-isort = { version = ">=4.0.0", markers = "sys_platform != \"win32\"" }
 isort = { version = ">=5.6.0", markers = "sys_platform != \"win32\"" }
 pytest = { version = ">=6.1.0", markers = "sys_platform != \"win32\"" }
 pytest-cov = { version = ">=2.10.0", markers = "sys_platform != \"win32\"" }
+pytest-aiohttp = "^1.0.4"
 black = { version = "*", markers = "sys_platform != \"win32\"", allow-prereleases = true }
 mypy = { version = ">=0.800", markers = "sys_platform != \"win32\"" }
 codecov = { version = ">=2.1.10", markers = "sys_platform != \"win32\"" }

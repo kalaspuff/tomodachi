@@ -404,3 +404,43 @@ def test_access_log(monkeypatch: Any, loop: Any) -> None:
     loop.run_until_complete(future)
 
     assert os.path.exists(log_path) is False
+
+
+
+from tomodachi.transport.http import HttpTransport
+from tomodachi.invoker import FUNCTION_ATTRIBUTE, INVOKER_TASK_START_KEYWORD, START_ATTRIBUTE
+import inspect
+
+from tests.services.http_service import HttpService
+
+class GetResolvers:
+
+    @staticmethod
+    def get_http_resolvers(cls):
+        invoker_functions = []
+        for name, fn in inspect.getmembers(cls):
+            if inspect.isfunction(fn) and getattr(fn, FUNCTION_ATTRIBUTE, None):
+                setattr(fn, START_ATTRIBUTE, True)  # deprecated
+                invoker_functions.append((name, fn))
+        return invoker_functions
+
+
+async def test_transport(aiohttp_client):
+
+    s = GetResolvers.get_http_resolvers(HttpService)
+
+    breakpoint()
+
+    context = {
+        "_http_routes": (),
+    }
+    app, server = await HttpTransport.get_server(context)
+
+    client = await aiohttp_client(app)
+    resp = await client.get("/")
+
+    assert resp == {}
+
+
+
+

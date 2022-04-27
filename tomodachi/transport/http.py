@@ -20,6 +20,7 @@ from aiohttp.http import HttpVersion
 from aiohttp.streams import EofStream
 from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
+from contextvars import ContextVar
 
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
@@ -30,178 +31,15 @@ from tomodachi.helpers.execution_context import (
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
+from .middlewares import request_middleware
+from .handlers import RequestHandler
+
 http_logger = logging.getLogger("transport.http")
-
-
-# Should be implemented as lazy load instead
-class ColoramaCache:
-    _is_colorama_installed: Optional[bool] = None
-    _colorama: Any = None
 
 
 class HttpException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._log_level = kwargs.get("log_level") if kwargs and kwargs.get("log_level") else "INFO"
-
-
-class RequestHandler(web_protocol.RequestHandler):
-    __slots__ = (
-        *web_protocol.RequestHandler.__slots__,
-        "_server_header",
-        "_access_log",
-        "_connection_start_time",
-        "_keepalive",
-    )
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._server_header = kwargs.pop("server_header", None) if kwargs else None
-        self._access_log = kwargs.pop("access_log", None) if kwargs else None
-
-        self._connection_start_time = time.time()
-
-        super().__init__(*args, access_log=None, **kwargs)  # type: ignore
-
-    @staticmethod
-    def get_request_ip(request: Any, context: Optional[Dict] = None) -> Optional[str]:
-        if request._cache.get("request_ip"):
-            return str(request._cache.get("request_ip", ""))
-
-        if request.transport:
-            if not context:
-                context = {}
-            real_ip_header = context.get("options", {}).get("http", {}).get("real_ip_header", "X-Forwarded-For")
-            real_ip_from = context.get("options", {}).get("http", {}).get("real_ip_from", [])
-            if isinstance(real_ip_from, str):
-                real_ip_from = [real_ip_from]
-
-            peername = request.transport.get_extra_info("peername")
-            request_ip = None
-            if peername:
-                request_ip, _ = peername
-            if (
-                real_ip_header
-                and real_ip_from
-                and request.headers.get(real_ip_header)
-                and request_ip
-                and len(real_ip_from)
-            ):
-                if any([ipaddress.ip_address(request_ip) in ipaddress.ip_network(cidr) for cidr in real_ip_from]):
-                    request_ip = request.headers.get(real_ip_header).split(",")[0].strip().split(" ")[0].strip()
-
-            request._cache["request_ip"] = request_ip
-            return request_ip
-
-        return None
-
-    @staticmethod
-    def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]] = False) -> str:
-        if ColoramaCache._is_colorama_installed is None:
-            try:
-                import colorama  # noqa  # isort:skip
-
-                ColoramaCache._is_colorama_installed = True
-                ColoramaCache._colorama = colorama
-            except Exception:
-                ColoramaCache._is_colorama_installed = False
-
-        if ColoramaCache._is_colorama_installed is False:
-            return str(text) if text else ""
-
-        if status is False:
-            status = text
-        status_code = str(status) if status else None
-        if status_code and not http_logger.handlers:
-            output_text = str(text) if text else ""
-            color = None
-
-            if status_code == "101":
-                color = ColoramaCache._colorama.Fore.CYAN
-            elif status_code[0] == "2":
-                color = ColoramaCache._colorama.Fore.GREEN
-            elif status_code[0] == "3" or status_code == "499":
-                color = ColoramaCache._colorama.Fore.YELLOW
-            elif status_code[0] == "4":
-                color = ColoramaCache._colorama.Fore.RED
-            elif status_code[0] == "5":
-                color = ColoramaCache._colorama.Fore.WHITE + ColoramaCache._colorama.Back.RED
-
-            if color:
-                return "{}{}{}".format(color, output_text, ColoramaCache._colorama.Style.RESET_ALL)
-            return output_text
-
-        return str(text) if text else ""
-
-    def handle_error(
-        self, request: Any, status: int = 500, exc: Any = None, message: Optional[str] = None
-    ) -> web.Response:
-        """Handle errors.
-
-        Returns HTTP response with specific status code. Logs additional
-        information. It always closes current connection."""
-        if self.transport is None:
-            # client has been disconnected during writing.
-            if self._access_log:
-                request_ip = RequestHandler.get_request_ip(request, None)
-                version_string = None
-                if isinstance(request.version, HttpVersion):
-                    version_string = "HTTP/{}.{}".format(request.version.major, request.version.minor)
-                http_logger.info(
-                    '[{}] [{}] {} {} "{} {}{}{}" - {} "{}" -'.format(
-                        RequestHandler.colorize_status("http", 499),
-                        RequestHandler.colorize_status(499),
-                        request_ip or "",
-                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                        if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                        else "-",
-                        request.method,
-                        request.path,
-                        "?{}".format(request.query_string) if request.query_string else "",
-                        " {}".format(version_string) if version_string else "",
-                        request.content_length if request.content_length is not None else "-",
-                        request.headers.get("User-Agent", "").replace('"', ""),
-                    )
-                )
-
-        headers: CIMultiDict = CIMultiDict({})
-        headers[hdrs.CONTENT_TYPE] = "text/plain; charset=utf-8"
-
-        msg = "" if status == 500 or not message else message
-
-        headers[hdrs.CONTENT_LENGTH] = str(len(msg))
-        headers[hdrs.SERVER] = self._server_header or ""
-
-        if isinstance(request.version, HttpVersion) and (request.version.major, request.version.minor) in (
-            (1, 0),
-            (1, 1),
-        ):
-            headers[hdrs.CONNECTION] = "close"
-
-        resp: web.Response = web.Response(status=status, text=msg, headers=headers)
-        resp.force_close()
-
-        # some data already got sent, connection is broken
-        if request.writer.output_size > 0 or self.transport is None:
-            self.force_close()
-        elif self.transport is not None:
-            request_ip = RequestHandler.get_request_ip(request, None)
-            if not request_ip:
-                peername = request.transport.get_extra_info("peername")
-                if peername:
-                    request_ip, _ = peername
-            if self._access_log:
-                http_logger.info(
-                    '[{}] [{}] {} {} "INVALID" {} - "" -'.format(
-                        RequestHandler.colorize_status("http", status),
-                        RequestHandler.colorize_status(status),
-                        request_ip or "",
-                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                        if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                        else "-",
-                        len(msg),
-                    )
-                )
-
-        return resp
 
 
 class Server(web_server.Server):
@@ -705,8 +543,180 @@ class HttpTransport(Invoker):
 
         return await cls.request_handler(obj, context, _func, "GET", url, pre_handler_func=_pre_handler_func)
 
-    @staticmethod
-    async def start_server(obj: Any, context: Dict) -> Optional[Callable]:
+    @classmethod
+    async def get_server(cls, context) -> Server:
+        http_options = context.get("options", {}).get("http", {})
+
+        client_max_size_option = (
+            http_options.get("client_max_size")
+            or http_options.get("max_buffer_size")
+            or http_options.get("max_upload_size")
+            or "100M"
+        )
+        client_max_size_option_str = str(client_max_size_option).upper()
+        client_max_size = (1024**2) * 100
+        try:
+            if (
+                client_max_size_option
+                and isinstance(client_max_size_option, str)
+                and (client_max_size_option_str.endswith("G") or client_max_size_option_str.endswith("GB"))
+            ):
+                client_max_size = int(
+                    re.sub(cast(str, r"^([0-9]+)GB?$"), cast(str, r"\1"), client_max_size_option_str)
+                ) * (1024**3)
+            elif (
+                client_max_size_option
+                and isinstance(client_max_size_option, str)
+                and (client_max_size_option_str.endswith("M") or client_max_size_option_str.endswith("MB"))
+            ):
+                client_max_size = int(re.sub(r"^([0-9]+)MB?$", r"\1", client_max_size_option_str)) * (1024**2)
+            elif (
+                client_max_size_option
+                and isinstance(client_max_size_option, str)
+                and (client_max_size_option_str.endswith("K") or client_max_size_option_str.endswith("KB"))
+            ):
+                client_max_size = int(re.sub(r"^([0-9]+)KB?$", r"\1", client_max_size_option_str)) * 1024
+            elif (
+                client_max_size_option
+                and isinstance(client_max_size_option, str)
+                and (client_max_size_option_str.endswith("B"))
+            ):
+                client_max_size = int(re.sub(r"^([0-9]+)B?$", r"\1", client_max_size_option_str))
+            elif client_max_size_option:
+                client_max_size = int(client_max_size_option)
+        except Exception:
+            raise ValueError(
+                "Bad value for http option client_max_size: {}".format(str(client_max_size_option))
+            ) from None
+        if client_max_size >= 0 and client_max_size < 1024:
+            raise ValueError(
+                "Too low value for http option client_max_size: {} ({})".format(
+                    str(client_max_size_option), client_max_size_option
+                )
+            )
+        if client_max_size > 1024**3:
+            raise ValueError(
+                "Too high value for http option client_max_size: {} ({})".format(
+                    str(client_max_size_option), client_max_size_option
+                )
+            )
+
+        app: web.Application = web.Application(middlewares=[request_middleware], client_max_size=client_max_size)
+        app._set_loop(None)
+        for method, pattern, handler, route_context in context.get("_http_routes", []):
+            try:
+                compiled_pattern = re.compile(pattern)
+            except re.error as exc:
+                raise ValueError("Bad http route pattern '{}': {}".format(pattern, exc)) from None
+            ignore_logging = route_context.get("ignore_logging", False)
+            setattr(handler, "ignore_logging", ignore_logging)
+            resource = DynamicResource(compiled_pattern)
+            app.router.register_resource(resource)
+            if method.upper() == "GET":
+                resource.add_route("HEAD", handler, expect_handler=None)
+            resource.add_route(method.upper(), handler, expect_handler=None)
+
+        context["_http_accept_new_requests"] = True
+
+        # Configuration settings for keep-alive could use some refactoring
+
+        keepalive_timeout_option = http_options.get("keepalive_timeout", 0) or http_options.get(
+            "keepalive_expiry", 0
+        )
+        keepalive_timeout = 0
+        if keepalive_timeout_option is None or keepalive_timeout_option is False:
+            keepalive_timeout_option = 0
+        if keepalive_timeout_option is True:
+            raise ValueError(
+                "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
+            )
+        try:
+            keepalive_timeout = int(keepalive_timeout_option) if keepalive_timeout_option is not None else 0
+        except Exception:
+            raise ValueError(
+                "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
+            ) from None
+
+        tcp_keepalive = False
+        if keepalive_timeout > 0:
+            tcp_keepalive = True
+        else:
+            tcp_keepalive = False
+            keepalive_timeout = 0
+
+        max_keepalive_requests_option = http_options.get("max_keepalive_requests", None)
+        max_keepalive_requests = None
+        if max_keepalive_requests_option is None or max_keepalive_requests_option is False:
+            max_keepalive_requests_option = None
+        if max_keepalive_requests_option is True:
+            raise ValueError(
+                "Bad value for http option max_keepalive_requests: {}".format(str(max_keepalive_requests_option))
+            )
+        try:
+            if max_keepalive_requests_option is not None:
+                max_keepalive_requests = int(max_keepalive_requests_option)
+            if max_keepalive_requests == 0:
+                max_keepalive_requests = None
+        except Exception:
+            raise ValueError(
+                "Bad value for http option max_keepalive_requests: {}".format(str(max_keepalive_requests_option))
+            ) from None
+        if not tcp_keepalive and max_keepalive_requests:
+            raise ValueError(
+                "HTTP keep-alive must be enabled to use http option max_keepalive_requests - a http.keepalive_timeout option value is required"
+            ) from None
+
+        max_keepalive_time_option = http_options.get("max_keepalive_time", None)
+        max_keepalive_time = None
+        if max_keepalive_time_option is None or max_keepalive_time_option is False:
+            max_keepalive_time_option = None
+        if max_keepalive_time_option is True:
+            raise ValueError(
+                "Bad value for http option max_keepalive_time: {}".format(str(max_keepalive_time_option))
+            )
+        try:
+            if max_keepalive_time_option is not None:
+                max_keepalive_time = int(max_keepalive_time_option)
+            if max_keepalive_time == 0:
+                max_keepalive_time = None
+        except Exception:
+            raise ValueError(
+                "Bad value for http option max_keepalive_time: {}".format(str(max_keepalive_time_option))
+            ) from None
+        if not tcp_keepalive and max_keepalive_time:
+            raise ValueError(
+                "HTTP keep-alive must be enabled to use http option max_keepalive_time - a http.keepalive_timeout option value is required"
+            ) from None
+
+        context["_http_tcp_keepalive"] = tcp_keepalive
+        context["_http_keepalive_timeout"] = keepalive_timeout
+        context["_http_max_keepalive_requests"] = max_keepalive_requests
+        context["_http_max_keepalive_time"] = max_keepalive_time
+
+        set_execution_context(
+            {
+                "http_enabled": True,
+                "http_current_tasks": 0,
+                "http_total_tasks": 0,
+                "aiohttp_version": aiohttp_version,
+            }
+        )
+
+        # Set application context
+        app["context"] = context
+
+        app.freeze()
+        return app, Server(
+            app._handle,
+            request_factory=app._make_request,
+            server_header=http_options.get("server_header", "tomodachi"),
+            access_log=http_options.get("access_log", True),
+            keepalive_timeout=keepalive_timeout,
+            tcp_keepalive=tcp_keepalive,
+        )
+
+    @classmethod
+    async def start_server(cls, obj: Any, context: Dict) -> Optional[Callable]:
         if context.get("_http_server_started"):
             return None
         context["_http_server_started"] = True
@@ -736,387 +746,24 @@ class HttpTransport(Invoker):
 
         async def _start_server() -> None:
             loop = asyncio.get_event_loop()
-
             logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
-            async def request_handler_func(
-                request: web.Request, handler: Callable
-            ) -> Union[web.Response, web.FileResponse]:
-                response: Union[web.Response, web.FileResponse]
-                request_ip = RequestHandler.get_request_ip(request, context)
+            try:
+                app, web_server = await cls.get_server(context)
+                port = http_options.get("port", 9700)
+                host = http_options.get("host", "0.0.0.0")
+                if port is True:
+                    raise ValueError("Bad value for http option port: {}".format(str(port)))
 
-                if not request_ip:
-                    # Transport broken before request handling started, ignore request
-                    response = web.Response(status=499, headers={hdrs.SERVER: server_header or ""})
-                    response._eof_sent = True
-                    response.force_close()
-
-                    return response
-
-                if request.headers.get("Authorization"):
-                    try:
-                        request._cache["auth"] = BasicAuth.decode(request.headers.get("Authorization", ""))
-                    except ValueError:
-                        pass
-
-                timer = time.time() if access_log else 0
-                response = web.Response(status=503, headers={})
-                try:
-                    response = await handler(request)
-                except web.HTTPException as e:
-                    error_handler = context.get("_http_error_handler", {}).get(e.status, None)
-                    if error_handler:
-                        response = await error_handler(request)
-                    else:
-                        response = e
-                        response.body = str(e).encode("utf-8")
-                except Exception as e:
-                    error_handler = context.get("_http_error_handler", {}).get(500, None)
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                    if error_handler:
-                        response = await error_handler(request)
-                    else:
-                        response = web.HTTPInternalServerError()
-                        response.body = b""
-                finally:
-                    if not request.transport:
-                        response = web.Response(status=499, headers={})
-                        response._eof_sent = True
-
-                    request_version = (
-                        (request.version.major, request.version.minor)
-                        if isinstance(request.version, HttpVersion)
-                        else (1, 0)
+                reuse_port_default = True if platform.system() == "Linux" else False
+                reuse_port = True if http_options.get("reuse_port", reuse_port_default) else False
+                if reuse_port and platform.system() != "Linux":
+                    http_logger.warning(
+                        "The http option reuse_port (socket.SO_REUSEPORT) can only enabled on Linux platforms - current "
+                        f"platform is {platform.system()} - will revert option setting to not reuse ports"
                     )
+                    reuse_port = False
 
-                    if access_log:
-                        request_time = time.time() - timer
-                        version_string = None
-                        if isinstance(request.version, HttpVersion):
-                            version_string = "HTTP/{}.{}".format(request_version[0], request_version[1])
-
-                        if not request._cache.get("is_websocket"):
-                            status_code = response.status if response is not None else 500
-                            ignore_logging = getattr(handler, "ignore_logging", False)
-                            if ignore_logging is True:
-                                pass
-                            elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
-                                pass
-                            else:
-                                http_logger.info(
-                                    '[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                        RequestHandler.colorize_status("http", status_code),
-                                        RequestHandler.colorize_status(status_code),
-                                        request_ip,
-                                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                                        if request._cache.get("auth")
-                                        and getattr(request._cache.get("auth"), "login", None)
-                                        else "-",
-                                        request.method,
-                                        request.path,
-                                        "?{}".format(request.query_string) if request.query_string else "",
-                                        " {}".format(version_string) if version_string else "",
-                                        response.content_length
-                                        if response is not None and response.content_length is not None
-                                        else "-",
-                                        request.content_length if request.content_length is not None else "-",
-                                        request.headers.get("User-Agent", "").replace('"', ""),
-                                        "{0:.5f}s".format(round(request_time, 5)),
-                                    )
-                                )
-                        else:
-                            http_logger.info(
-                                '[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
-                                    RequestHandler.colorize_status("websocket", 101),
-                                    request_ip,
-                                    '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                                    if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                                    else "-",
-                                    request.path,
-                                    "?{}".format(request.query_string) if request.query_string else "",
-                                    request._cache.get("websocket_uuid", ""),
-                                    request.headers.get("User-Agent", "").replace('"', ""),
-                                    "{0:.5f}s".format(round(request_time, 5)),
-                                )
-                            )
-
-                    if response is not None:
-                        response.headers[hdrs.SERVER] = server_header or ""
-
-                        if request_version in ((1, 0), (1, 1)) and not request._cache.get("is_websocket"):
-                            use_keepalive = False
-                            if context["_http_tcp_keepalive"] and request.keep_alive and request.protocol:
-                                use_keepalive = True
-                                if any(
-                                    [
-                                        # keep-alive timeout not set or is non-positive
-                                        (
-                                            not context["_http_keepalive_timeout"]
-                                            or context["_http_keepalive_timeout"] <= 0
-                                        ),
-                                        # keep-alive request count has passed configured max for this connection
-                                        (
-                                            context["_http_max_keepalive_requests"]
-                                            and request.protocol._request_count
-                                            >= context["_http_max_keepalive_requests"]
-                                        ),
-                                        # keep-alive time has passed configured max for this connection
-                                        (
-                                            context["_http_max_keepalive_time"]
-                                            and time.time()
-                                            > getattr(request.protocol, "_connection_start_time", 0)
-                                            + context["_http_max_keepalive_time"]
-                                        ),
-                                    ]
-                                ):
-                                    use_keepalive = False
-
-                            if use_keepalive:
-                                response.headers[hdrs.CONNECTION] = "keep-alive"
-                                response.headers[hdrs.KEEP_ALIVE] = "timeout={}{}".format(
-                                    request.protocol._keepalive_timeout,
-                                    ", max={}".format(context["_http_max_keepalive_requests"])
-                                    if context["_http_max_keepalive_requests"]
-                                    else "",
-                                )
-                            else:
-                                response.headers[hdrs.CONNECTION] = "close"
-                                response.force_close()
-
-                        if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
-                            response.force_close()
-
-                    if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
-                        raise response
-
-                    return response
-
-            @web.middleware
-            async def middleware(request: web.Request, handler: Callable) -> Union[web.Response, web.FileResponse]:
-                increase_execution_context_value("http_current_tasks")
-                increase_execution_context_value("http_total_tasks")
-                task = asyncio.ensure_future(request_handler_func(request, handler))
-                context["_http_active_requests"] = context.get("_http_active_requests", set())
-                context["_http_active_requests"].add(task)
-                try:
-                    await asyncio.shield(task)
-                except asyncio.CancelledError:
-                    try:
-                        await task
-                        decrease_execution_context_value("http_current_tasks")
-                        try:
-                            context["_http_active_requests"].remove(task)
-                        except KeyError:
-                            pass
-                        return task.result()
-                    except Exception:
-                        decrease_execution_context_value("http_current_tasks")
-                        try:
-                            context["_http_active_requests"].remove(task)
-                        except KeyError:
-                            pass
-                        raise
-                except Exception:
-                    decrease_execution_context_value("http_current_tasks")
-                    try:
-                        context["_http_active_requests"].remove(task)
-                    except KeyError:
-                        pass
-                    raise
-                except BaseException:
-                    decrease_execution_context_value("http_current_tasks")
-                    try:
-                        context["_http_active_requests"].remove(task)
-                    except KeyError:
-                        pass
-                    raise
-                decrease_execution_context_value("http_current_tasks")
-                try:
-                    context["_http_active_requests"].remove(task)
-                except KeyError:
-                    pass
-
-                return task.result()
-
-            client_max_size_option = (
-                http_options.get("client_max_size")
-                or http_options.get("max_buffer_size")
-                or http_options.get("max_upload_size")
-                or "100M"
-            )
-            client_max_size_option_str = str(client_max_size_option).upper()
-            client_max_size = (1024**2) * 100
-            try:
-                if (
-                    client_max_size_option
-                    and isinstance(client_max_size_option, str)
-                    and (client_max_size_option_str.endswith("G") or client_max_size_option_str.endswith("GB"))
-                ):
-                    client_max_size = int(
-                        re.sub(cast(str, r"^([0-9]+)GB?$"), cast(str, r"\1"), client_max_size_option_str)
-                    ) * (1024**3)
-                elif (
-                    client_max_size_option
-                    and isinstance(client_max_size_option, str)
-                    and (client_max_size_option_str.endswith("M") or client_max_size_option_str.endswith("MB"))
-                ):
-                    client_max_size = int(re.sub(r"^([0-9]+)MB?$", r"\1", client_max_size_option_str)) * (1024**2)
-                elif (
-                    client_max_size_option
-                    and isinstance(client_max_size_option, str)
-                    and (client_max_size_option_str.endswith("K") or client_max_size_option_str.endswith("KB"))
-                ):
-                    client_max_size = int(re.sub(r"^([0-9]+)KB?$", r"\1", client_max_size_option_str)) * 1024
-                elif (
-                    client_max_size_option
-                    and isinstance(client_max_size_option, str)
-                    and (client_max_size_option_str.endswith("B"))
-                ):
-                    client_max_size = int(re.sub(r"^([0-9]+)B?$", r"\1", client_max_size_option_str))
-                elif client_max_size_option:
-                    client_max_size = int(client_max_size_option)
-            except Exception:
-                raise ValueError(
-                    "Bad value for http option client_max_size: {}".format(str(client_max_size_option))
-                ) from None
-            if client_max_size >= 0 and client_max_size < 1024:
-                raise ValueError(
-                    "Too low value for http option client_max_size: {} ({})".format(
-                        str(client_max_size_option), client_max_size_option
-                    )
-                )
-            if client_max_size > 1024**3:
-                raise ValueError(
-                    "Too high value for http option client_max_size: {} ({})".format(
-                        str(client_max_size_option), client_max_size_option
-                    )
-                )
-
-            app: web.Application = web.Application(middlewares=[middleware], client_max_size=client_max_size)
-            app._set_loop(None)
-            for method, pattern, handler, route_context in context.get("_http_routes", []):
-                try:
-                    compiled_pattern = re.compile(pattern)
-                except re.error as exc:
-                    raise ValueError("Bad http route pattern '{}': {}".format(pattern, exc)) from None
-                ignore_logging = route_context.get("ignore_logging", False)
-                setattr(handler, "ignore_logging", ignore_logging)
-                resource = DynamicResource(compiled_pattern)
-                app.router.register_resource(resource)
-                if method.upper() == "GET":
-                    resource.add_route("HEAD", handler, expect_handler=None)
-                resource.add_route(method.upper(), handler, expect_handler=None)
-
-            context["_http_accept_new_requests"] = True
-
-            port = http_options.get("port", 9700)
-            host = http_options.get("host", "0.0.0.0")
-            if port is True:
-                raise ValueError("Bad value for http option port: {}".format(str(port)))
-
-            # Configuration settings for keep-alive could use some refactoring
-
-            keepalive_timeout_option = http_options.get("keepalive_timeout", 0) or http_options.get(
-                "keepalive_expiry", 0
-            )
-            keepalive_timeout = 0
-            if keepalive_timeout_option is None or keepalive_timeout_option is False:
-                keepalive_timeout_option = 0
-            if keepalive_timeout_option is True:
-                raise ValueError(
-                    "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
-                )
-            try:
-                keepalive_timeout = int(keepalive_timeout_option) if keepalive_timeout_option is not None else 0
-            except Exception:
-                raise ValueError(
-                    "Bad value for http option keepalive_timeout: {}".format(str(keepalive_timeout_option))
-                ) from None
-
-            tcp_keepalive = False
-            if keepalive_timeout > 0:
-                tcp_keepalive = True
-            else:
-                tcp_keepalive = False
-                keepalive_timeout = 0
-
-            max_keepalive_requests_option = http_options.get("max_keepalive_requests", None)
-            max_keepalive_requests = None
-            if max_keepalive_requests_option is None or max_keepalive_requests_option is False:
-                max_keepalive_requests_option = None
-            if max_keepalive_requests_option is True:
-                raise ValueError(
-                    "Bad value for http option max_keepalive_requests: {}".format(str(max_keepalive_requests_option))
-                )
-            try:
-                if max_keepalive_requests_option is not None:
-                    max_keepalive_requests = int(max_keepalive_requests_option)
-                if max_keepalive_requests == 0:
-                    max_keepalive_requests = None
-            except Exception:
-                raise ValueError(
-                    "Bad value for http option max_keepalive_requests: {}".format(str(max_keepalive_requests_option))
-                ) from None
-            if not tcp_keepalive and max_keepalive_requests:
-                raise ValueError(
-                    "HTTP keep-alive must be enabled to use http option max_keepalive_requests - a http.keepalive_timeout option value is required"
-                ) from None
-
-            max_keepalive_time_option = http_options.get("max_keepalive_time", None)
-            max_keepalive_time = None
-            if max_keepalive_time_option is None or max_keepalive_time_option is False:
-                max_keepalive_time_option = None
-            if max_keepalive_time_option is True:
-                raise ValueError(
-                    "Bad value for http option max_keepalive_time: {}".format(str(max_keepalive_time_option))
-                )
-            try:
-                if max_keepalive_time_option is not None:
-                    max_keepalive_time = int(max_keepalive_time_option)
-                if max_keepalive_time == 0:
-                    max_keepalive_time = None
-            except Exception:
-                raise ValueError(
-                    "Bad value for http option max_keepalive_time: {}".format(str(max_keepalive_time_option))
-                ) from None
-            if not tcp_keepalive and max_keepalive_time:
-                raise ValueError(
-                    "HTTP keep-alive must be enabled to use http option max_keepalive_time - a http.keepalive_timeout option value is required"
-                ) from None
-
-            reuse_port_default = True if platform.system() == "Linux" else False
-            reuse_port = True if http_options.get("reuse_port", reuse_port_default) else False
-            if reuse_port and platform.system() != "Linux":
-                http_logger.warning(
-                    "The http option reuse_port (socket.SO_REUSEPORT) can only enabled on Linux platforms - current "
-                    f"platform is {platform.system()} - will revert option setting to not reuse ports"
-                )
-                reuse_port = False
-
-            context["_http_tcp_keepalive"] = tcp_keepalive
-            context["_http_keepalive_timeout"] = keepalive_timeout
-            context["_http_max_keepalive_requests"] = max_keepalive_requests
-            context["_http_max_keepalive_time"] = max_keepalive_time
-
-            set_execution_context(
-                {
-                    "http_enabled": True,
-                    "http_current_tasks": 0,
-                    "http_total_tasks": 0,
-                    "aiohttp_version": aiohttp_version,
-                }
-            )
-
-            try:
-                app.freeze()
-                web_server = Server(
-                    app._handle,
-                    request_factory=app._make_request,
-                    server_header=server_header or "",
-                    access_log=access_log,
-                    keepalive_timeout=keepalive_timeout,
-                    tcp_keepalive=tcp_keepalive,
-                )
                 if reuse_port:
                     if not port:
                         http_logger.warning(
@@ -1164,6 +811,7 @@ class HttpTransport(Invoker):
                     shutdown_sleep = 1
                     await asyncio.sleep(1)
 
+                tcp_keepalive = context["_http_tcp_keepalive"]
                 if not tcp_keepalive:
                     context["_http_accept_new_requests"] = False
 
