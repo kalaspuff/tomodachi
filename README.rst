@@ -395,8 +395,11 @@ To be able to initialize connections to external resources or to perform gracefu
 | Magic function name   | When is the function called?                   | What is suitable to put here                   |
 +=======================+================================================+================================================+
 | ``_start_service``    | Called before invokers / servers have started. | Initialize connections to databases, etc.      |
++-----------------------+------------------------------------------------+------------------------------------------------+
 | ``_started_service``  | Called after invokers / server have started.   | Start reporting or start tasks to run once.    |
++-----------------------+------------------------------------------------+------------------------------------------------+
 | ``_stopping_service`` | Called on termination signal.                  | Cancel eventual internal long-running tasks.   |
++-----------------------+------------------------------------------------+------------------------------------------------+
 | ``_stop_service``     | Called after tasks have gracefully finished.   | Close connections to databases, etc.           |
 +-----------------------+------------------------------------------------+------------------------------------------------+
 
