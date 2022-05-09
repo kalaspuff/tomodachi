@@ -5,7 +5,7 @@ import uuid as uuid_
 from typing import Any
 
 import tomodachi
-from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish, AWSSNSSQSInternalServiceError
+from tomodachi.transport.aws_sns_sqs import AWSSNSSQSInternalServiceError, aws_sns_sqs, aws_sns_sqs_publish
 
 data_uuid = str(uuid_.uuid4())
 
