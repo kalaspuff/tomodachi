@@ -31,14 +31,17 @@ class AWSSNSSQSService(tomodachi.Service):
     data_uuid = data_uuid
 
     def check_closer(self) -> None:
-        if (
-            self.test_topic_data_received_count == 3
-            and self.test_dlq_data_received_after_count == 3
-        ):
+        if self.test_topic_data_received_count == 3 and self.test_dlq_data_received_after_count == 3:
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @aws_sns_sqs("test-topic-redrive", queue_name="test-queue-{}".format(data_uuid), visibility_timeout=3, dead_letter_queue_name="test-queue-dlq-{}".format(data_uuid), max_receive_count=3)
+    @aws_sns_sqs(
+        "test-topic-redrive",
+        queue_name="test-queue-{}".format(data_uuid),
+        visibility_timeout=3,
+        dead_letter_queue_name="test-queue-dlq-{}".format(data_uuid),
+        max_receive_count=3,
+    )
     async def test_redrive(self, data: Any, metadata: Any, service: Any) -> None:
         if data == self.data_uuid:
             self.test_topic_data_received_count += 1

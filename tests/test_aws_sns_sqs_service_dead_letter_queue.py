@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 import time
 from typing import Any
@@ -26,10 +25,7 @@ def test_start_aws_sns_sqs_service_dead_letter_queue(monkeypatch: Any, capsys: A
     async def _async(loop: Any) -> None:
         loop_until = time.time() + 18
         while loop_until > time.time():
-            if (
-                instance.test_topic_data_received_count == 3
-                and instance.test_dlq_data_received_after_count == 3
-            ):
+            if instance.test_topic_data_received_count == 3 and instance.test_dlq_data_received_after_count == 3:
                 break
             await asyncio.sleep(0.5)
 
