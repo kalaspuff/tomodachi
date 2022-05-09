@@ -44,6 +44,7 @@ MESSAGE_TOPIC_PREFIX = "09698c75-832b-470f-8e05-96d2dd8c4853"
 MESSAGE_TOPIC_ATTRIBUTES = "dc6c667f-4c22-4a63-85f6-3ea0c7e2db49"
 FILTER_POLICY_DEFAULT = "7e68632f-3b39-4293-b5a9-16644cf857a5"
 DEAD_LETTER_QUEUE_DEFAULT = "22ebae61-1aab-4b2e-840f-008da1f45472"
+VISIBILITY_TIMEOUT_DEFAULT = -1
 MAX_RECEIVE_COUNT_DEFAULT = -1
 
 AnythingButFilterPolicyValueType = Union[str, int, float, List[str], List[int], List[float], List[Union[int, float]]]
@@ -257,7 +258,7 @@ class AWSSNSSQSTransport(Invoker):
         message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         filter_policy: Optional[Union[str, FilterPolicyDictType]] = FILTER_POLICY_DEFAULT,
-        visibility_timeout: Optional[int] = None,
+        visibility_timeout: Optional[int] = VISIBILITY_TIMEOUT_DEFAULT,
         dead_letter_queue_name: Optional[str] = DEAD_LETTER_QUEUE_DEFAULT,
         max_receive_count: Optional[int] = MAX_RECEIVE_COUNT_DEFAULT,
         **kwargs: Any,
@@ -313,11 +314,6 @@ class AWSSNSSQSTransport(Invoker):
                 return
 
             kwargs = dict(original_kwargs)
-
-            # set values to contextvars
-            get_contextvar("aws_sns_sqs.receipt_handle").set(receipt_handle)
-            get_contextvar("aws_sns_sqs.queue_url").set(queue_url)
-            get_contextvar("aws_sns_sqs.approximate_receive_count").set(approximate_receive_count)
 
             message = payload
             message_attributes_values: Dict[
@@ -1066,6 +1062,9 @@ class AWSSNSSQSTransport(Invoker):
 
         if redrive_policy is not None and not isinstance(redrive_policy, dict):
             raise Exception("SQS redrive_policy is invalid")
+
+        if visibility_timeout == VISIBILITY_TIMEOUT_DEFAULT:
+            visibility_timeout = None
 
         if visibility_timeout is not None and (
             not isinstance(visibility_timeout, int)
