@@ -17,9 +17,9 @@ Changes
           competing=True,
           queue_name=None,
           filter_policy=FILTER_POLICY_DEFAULT,
-          visibility_timeout=VISIBILITY_TIMEOUT_DEFAULT,
-          dead_letter_queue_name=DEAD_LETTER_QUEUE_DEFAULT,
-          max_receive_count=MAX_RECEIVE_COUNT_DEFAULT,
+          visibility_timeout=VISIBILITY_TIMEOUT_DEFAULT,     # affects MessageVisibility
+          dead_letter_queue_name=DEAD_LETTER_QUEUE_DEFAULT,  # affects RedrivePolicy
+          max_receive_count=MAX_RECEIVE_COUNT_DEFAULT,       # affects RedrivePolicy
           **kwargs,
       )
 
