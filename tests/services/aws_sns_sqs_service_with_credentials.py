@@ -3,12 +3,12 @@ import json
 import os
 import signal
 import uuid as uuid_
-from typing import Any, Dict, Set
+from typing import Any, Dict, List, Set
 
 import tomodachi
 from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
 from tomodachi.envelope.json_base import JsonBase
-from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
+from tomodachi.transport.aws_sns_sqs import AWSSNSSQSInternalServiceError, aws_sns_sqs, aws_sns_sqs_publish
 
 data_uuid = str(uuid_.uuid4())
 
@@ -38,6 +38,8 @@ class AWSSNSSQSService(tomodachi.Service):
     test_topic_service_uuid = None
     test_message_attribute_currencies: Set = set()
     test_message_attribute_amounts: Set = set()
+    test_fifo_failed = False
+    test_fifo_messages: List[str] = []
     data_uuid = data_uuid
 
     def check_closer(self) -> None:
@@ -46,6 +48,7 @@ class AWSSNSSQSService(tomodachi.Service):
             and self.test_topic_specified_queue_name_data_received
             and len(self.test_message_attribute_currencies) == 7
             and len(self.test_message_attribute_amounts) == 2
+            and len(self.test_fifo_messages) == 3
         ):
             if not self.closer.done():
                 self.closer.set_result(None)
@@ -58,6 +61,18 @@ class AWSSNSSQSService(tomodachi.Service):
             self.test_topic_service_uuid = service.get("uuid")
 
             self.check_closer()
+
+    @aws_sns_sqs("test-fifo-topic", fifo=True)
+    async def test_fifo(self, data: Any, metadata: Any, service: Any) -> None:
+        # Fail the second message once in order to ensure that the third
+        # message won't be handled until the second has been processed
+        # successfully.
+        if data == "2" and not self.test_fifo_failed:
+            self.test_fifo_failed = True
+            raise AWSSNSSQSInternalServiceError("boom")
+
+        self.test_fifo_messages.append(data)
+        self.check_closer()
 
     @aws_sns_sqs(
         "test-topic-filtered",
@@ -109,7 +124,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
         async def _async() -> None:
             async def sleep_and_kill() -> None:
-                await asyncio.sleep(30.0)
+                await asyncio.sleep(90.0)
                 if not self.closer.done():
                     self.closer.set_result(None)
 
@@ -156,6 +171,13 @@ class AWSSNSSQSService(tomodachi.Service):
                 await asyncio.sleep(0.5)
 
         asyncio.ensure_future(_async_publisher())
+
+        # Send three consecutive messages on a FIFO topic. These messages belong to
+        # the same group and should be thus handled sequentially.
+        await aws_sns_sqs_publish(self, "1", topic="test-fifo-topic", group_id="group-1", deduplication_id="1")
+        await aws_sns_sqs_publish(self, "1", topic="test-fifo-topic", group_id="group-1", deduplication_id="1")
+        await aws_sns_sqs_publish(self, "2", topic="test-fifo-topic", group_id="group-1", deduplication_id="2")
+        await aws_sns_sqs_publish(self, "3", topic="test-fifo-topic", group_id="group-1", deduplication_id="3")
 
     def stop_service(self) -> None:
         if not self.closer.done():

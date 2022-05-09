@@ -3,6 +3,7 @@ import base64
 import binascii
 import copy
 import decimal
+import enum
 import functools
 import hashlib
 import inspect
@@ -102,6 +103,25 @@ FilterPolicyDictType = Mapping[str, FilterPolicyDictValueType]
 connector = ClientConnector()
 
 
+def str_to_bool(value: str) -> bool:
+    """Converts a string containing either "true" or "false" (case-insensitive) into its boolean counterpart.
+
+    >>> str_to_bool("TRUE")
+    True
+    >>> str_to_bool("false")
+    False
+    >>> str_to_bool("foobar")
+    Traceback (most recent call last)
+    ...
+    ValueError: "foobar" is not a valid boolean
+    """
+    mappings = {"true": True, "false": False}
+    try:
+        return mappings[value.lower()]
+    except KeyError:
+        raise ValueError(f"{value!r} is not a valid boolean")
+
+
 class AWSSNSSQSException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._log_level = kwargs.get("log_level") if kwargs and kwargs.get("log_level") else "INFO"
@@ -141,6 +161,8 @@ class AWSSNSSQSTransport(Invoker):
         message_attributes: Optional[Dict[str, Any]] = None,
         topic_attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES,
         overwrite_topic_attributes: bool = False,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
@@ -175,7 +197,14 @@ class AWSSNSSQSTransport(Invoker):
         )
 
         async def _publish_message() -> None:
-            await cls.publish_message(topic_arn, payload, cast(Dict, message_attributes), service.context)
+            await cls.publish_message(
+                topic_arn,
+                payload,
+                cast(Dict, message_attributes),
+                service.context,
+                group_id=group_id,
+                deduplication_id=deduplication_id,
+            )
 
         if wait:
             await _publish_message()
@@ -184,14 +213,22 @@ class AWSSNSSQSTransport(Invoker):
             loop.create_task(_publish_message())
 
     @classmethod
-    def get_topic_name(cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX) -> str:
+    def get_topic_name(
+        cls,
+        topic: str,
+        context: Dict,
+        fifo: bool,
+        topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
+    ) -> str:
         topic_prefix = (
             context.get("options", {}).get("aws_sns_sqs", {}).get("topic_prefix", "")
             if topic_prefix == MESSAGE_TOPIC_PREFIX
             else (topic_prefix or "")
         )
         if topic_prefix:
-            return "{}{}".format(topic_prefix, topic)
+            topic = "{}{}".format(topic_prefix, topic)
+        if fifo:
+            topic += ".fifo"
         return topic
 
     @classmethod
@@ -225,11 +262,18 @@ class AWSSNSSQSTransport(Invoker):
         def encode(match: Match) -> str:
             return "___" + binascii.hexlify(match.group(1).encode("utf-8")).decode("utf-8") + "_"
 
-        return re.sub(r"([^a-zA-Z0-9_*#-])", encode, topic)
+        topic = re.sub(r"(?!\.fifo)([^a-zA-Z0-9_*#-])", encode, topic)
+        return topic
 
     @classmethod
     def get_queue_name(
-        cls, topic: str, func_name: str, _uuid: str, competing_consumer: Optional[bool], context: Dict
+        cls,
+        topic: str,
+        func_name: str,
+        _uuid: str,
+        competing_consumer: Optional[bool],
+        context: Dict,
+        fifo: bool,
     ) -> str:
         if not competing_consumer:
             queue_name = hashlib.sha256("{}{}{}".format(topic, func_name, _uuid).encode("utf-8")).hexdigest()
@@ -237,7 +281,12 @@ class AWSSNSSQSTransport(Invoker):
             queue_name = hashlib.sha256(topic.encode("utf-8")).hexdigest()
 
         if context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"):
-            return "{}{}".format(context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"), queue_name)
+            queue_name = "{}{}".format(
+                context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"), queue_name
+            )
+
+        if fifo:
+            queue_name += ".fifo"
         return queue_name
 
     @classmethod
@@ -263,6 +312,7 @@ class AWSSNSSQSTransport(Invoker):
         visibility_timeout: Optional[int] = VISIBILITY_TIMEOUT_DEFAULT,
         dead_letter_queue_name: Optional[str] = DEAD_LETTER_QUEUE_DEFAULT,
         max_receive_count: Optional[int] = MAX_RECEIVE_COUNT_DEFAULT,
+        fifo: bool = False,
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
@@ -481,6 +531,7 @@ class AWSSNSSQSTransport(Invoker):
                 visibility_timeout,
                 dead_letter_queue_name,
                 max_receive_count,
+                fifo,
             )
         )
 
@@ -549,6 +600,7 @@ class AWSSNSSQSTransport(Invoker):
         topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
         attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES,
         overwrite_attributes: bool = True,
+        fifo: bool = False,
     ) -> str:
         if not cls.topics:
             cls.topics = {}
@@ -600,6 +652,10 @@ class AWSSNSSQSTransport(Invoker):
         else:
             topic_attributes = copy.deepcopy(attributes)
 
+        if fifo:
+            topic_attributes["FifoTopic"] = "true"
+            topic_attributes["ContentBasedDeduplication"] = "false"
+
         if sns_kms_master_key_id is not None and "KmsMasterKeyId" not in topic_attributes:
             topic_attributes["KmsMasterKeyId"] = sns_kms_master_key_id
 
@@ -610,7 +666,7 @@ class AWSSNSSQSTransport(Invoker):
             async with connector("tomodachi.sns", service_name="sns") as client:
                 response = await asyncio.wait_for(
                     client.create_topic(
-                        Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix)),
+                        Name=cls.encode_topic(cls.get_topic_name(topic, context, fifo, topic_prefix)),
                         Attributes=topic_attributes,
                     ),
                     timeout=40,
@@ -652,7 +708,7 @@ class AWSSNSSQSTransport(Invoker):
                     async with connector("tomodachi.sns", service_name="sns") as client:
                         response = await asyncio.wait_for(
                             client.create_topic(
-                                Name=cls.encode_topic(cls.get_topic_name(topic, context, topic_prefix))
+                                Name=cls.encode_topic(cls.get_topic_name(topic, context, fifo, topic_prefix))
                             ),
                             timeout=40,
                         )
@@ -762,18 +818,38 @@ class AWSSNSSQSTransport(Invoker):
         return result
 
     @classmethod
-    async def publish_message(cls, topic_arn: str, message: Any, message_attributes: Dict, context: Dict) -> str:
+    async def publish_message(
+        cls,
+        topic_arn: str,
+        message: Any,
+        message_attributes: Dict,
+        context: Dict,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+    ) -> str:
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
 
         message_attribute_values = cls.transform_message_attributes_to_botocore(message_attributes)
+
+        fifo_attrs = {}
+        if group_id is not None:
+            fifo_attrs = {
+                "MessageGroupId": group_id,
+                "MessageDeduplicationId": deduplication_id or str(uuid.uuid4()),
+            }
 
         response = {}
         for retry in range(1, 4):
             try:
                 async with connector("tomodachi.sns", service_name="sns") as client:
                     response = await asyncio.wait_for(
-                        client.publish(TopicArn=topic_arn, Message=message, MessageAttributes=message_attribute_values),
+                        client.publish(
+                            TopicArn=topic_arn,
+                            Message=message,
+                            MessageAttributes=message_attribute_values,
+                            **fifo_attrs,
+                        ),
                         timeout=40,
                     )
             except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError, asyncio.CancelledError) as e:
@@ -874,7 +950,7 @@ class AWSSNSSQSTransport(Invoker):
         return queue_url
 
     @classmethod
-    async def create_queue(cls, queue_name: str, context: Dict) -> Tuple[str, str]:
+    async def create_queue(cls, queue_name: str, context: Dict, fifo: bool) -> Tuple[str, str]:
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
 
@@ -897,9 +973,19 @@ class AWSSNSSQSTransport(Invoker):
             pass
 
         if not queue_url:
+            queue_attrs = (
+                {
+                    "FifoQueue": "true",
+                    "ContentBasedDeduplication": "false",
+                    "DeduplicationScope": "messageGroup",
+                    "FifoThroughputLimit": "perMessageGroupId",
+                }
+                if fifo
+                else {}
+            )
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
-                    response = await client.create_queue(QueueName=queue_name)
+                    response = await client.create_queue(QueueName=queue_name, Attributes=queue_attrs)
                     queue_url = response.get("QueueUrl")
             except (
                 botocore.exceptions.NoCredentialsError,
@@ -927,7 +1013,9 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as client:
-                response = await client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])
+                response = await client.get_queue_attributes(
+                    QueueUrl=queue_url, AttributeNames=["QueueArn", "FifoQueue"]
+                )
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logging.getLogger("transport.aws_sns_sqs").warning(
@@ -941,6 +1029,16 @@ class AWSSNSSQSTransport(Invoker):
             logging.getLogger("transport.aws_sns_sqs").warning(
                 "Unable to get queue attributes [sqs] on AWS ({})".format(error_message)
             )
+            raise AWSSNSSQSException(error_message, log_level=context.get("log_level"))
+
+        queue_fifo = str_to_bool(response.get("Attributes", {}).get("FifoQueue", "false"))
+        if fifo is not queue_fifo:
+            queue_types = {False: "FIFO", True: "Standard"}
+            error_message = (
+                f"AWS SQS queue configured as {queue_types[queue_fifo]}, "
+                f"but the handler expected {queue_types[fifo]}."
+            )
+            logging.getLogger("transport.aws_sns_sqs").warning("Queue [sqs] type mismatch ({})".format(error_message))
             raise AWSSNSSQSException(error_message, log_level=context.get("log_level"))
 
         return queue_url, queue_arn
@@ -993,6 +1091,7 @@ class AWSSNSSQSTransport(Invoker):
         queue_arn: str,
         queue_url: str,
         context: Dict,
+        fifo: bool,
         attributes: Optional[Dict[str, Union[str, bool]]] = None,
         visibility_timeout: Optional[int] = None,
         redrive_policy: Optional[Dict[str, Union[str, int]]] = None,
@@ -1001,7 +1100,7 @@ class AWSSNSSQSTransport(Invoker):
             await cls.create_client("sns", context)
 
         pattern = r"^arn:aws:sns:[^:]+:[^:]+:{}$".format(
-            cls.encode_topic(cls.get_topic_name(topic, context))
+            cls.encode_topic(cls.get_topic_name(topic, context, fifo))
             .replace(cls.encode_topic("*"), "((?!{}).)*".format(cls.encode_topic(".")))
             .replace(cls.encode_topic("#"), ".*")
         )
@@ -1373,6 +1472,11 @@ class AWSSNSSQSTransport(Invoker):
                 while cls.close_waiter and not cls.close_waiter.done():
                     futures = []
 
+                    # In case of FIFO queues, we have to cannot receive more
+                    # than one message at a time, because otherwise we will not
+                    # be able to ensure their execution order.
+                    message_limit = 1 if queue_url.endswith(".fifo") else max_number_of_messages
+
                     try:
                         try:
                             async with connector("tomodachi.sqs", service_name="sqs") as client:
@@ -1610,6 +1714,7 @@ class AWSSNSSQSTransport(Invoker):
                 visibility_timeout: Optional[int] = None,
                 dead_letter_queue_name: Optional[str] = DEAD_LETTER_QUEUE_DEFAULT,
                 max_receive_count: Optional[int] = MAX_RECEIVE_COUNT_DEFAULT,
+                fifo: bool = False,
             ) -> str:
                 _uuid = obj.uuid
 
@@ -1622,7 +1727,12 @@ class AWSSNSSQSTransport(Invoker):
                 queue_arn = None
                 if queue_name is None:
                     queue_name = cls.get_queue_name(
-                        cls.encode_topic(topic or ""), func.__name__, _uuid, competing_consumer, context
+                        cls.encode_topic(topic or ""),
+                        func.__name__,
+                        _uuid,
+                        competing_consumer,
+                        context,
+                        fifo,
                     )
                 elif queue_name.startswith("arn:aws:sqs:"):
                     queue_arn = queue_name
@@ -1638,7 +1748,7 @@ class AWSSNSSQSTransport(Invoker):
                     queue_name = cls.prefix_queue_name(queue_name, context)
 
                 if not queue_url:
-                    queue_url, queue_arn = await cls.create_queue(queue_name, context)
+                    queue_url, queue_arn = await cls.create_queue(queue_name, context, fifo)
 
                 redrive_policy: Optional[Dict[str, Union[str, int]]] = None
                 if dead_letter_queue_name is None and max_receive_count in (MAX_RECEIVE_COUNT_DEFAULT, None):
@@ -1685,6 +1795,7 @@ class AWSSNSSQSTransport(Invoker):
                             attributes=attributes,
                             visibility_timeout=visibility_timeout,
                             redrive_policy=redrive_policy,
+                            fifo=fifo,
                         )
                     else:
                         topic_arn = await cls.create_topic(topic, context)
@@ -1711,6 +1822,7 @@ class AWSSNSSQSTransport(Invoker):
                     visibility_timeout,
                     dead_letter_queue_name,
                     max_receive_count,
+                    fifo,
                 ) in context.get("_aws_sns_sqs_subscribers", []):
                     queue_url = await setup_queue(
                         func,
@@ -1721,6 +1833,7 @@ class AWSSNSSQSTransport(Invoker):
                         visibility_timeout=visibility_timeout,
                         dead_letter_queue_name=dead_letter_queue_name,
                         max_receive_count=max_receive_count,
+                        fifo=fifo,
                     )
                     await cls.consume_queue(obj, context, handler, queue_url=queue_url)
             except Exception:

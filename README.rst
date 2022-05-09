@@ -589,6 +589,7 @@ AWS SNS+SQS messaging:
         visibility_timeout=VISIBILITY_TIMEOUT_DEFAULT,
         dead_letter_queue_name=DEAD_LETTER_QUEUE_DEFAULT,
         max_receive_count=MAX_RECEIVE_COUNT_DEFAULT,
+        fifo=True,
         **kwargs,
     )
 
@@ -598,6 +599,8 @@ Usage:
   The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message. Since ``tomodachi`` version 0.19.x this value has a changed default value and will now default to ``True`` as this is the most likely use-case for pub/sub in distributed architectures.
 
   Unless ``queue_name`` is specified an auto generated queue name will be used. Additional prefixes to both ``topic`` and ``queue_name`` can be assigned by setting the ``options.aws_sns_sqs.topic_prefix`` and ``options.aws_sns_sqs.queue_name_prefix`` dict values.
+
+  AWS supports two types of queues and topics, namely ``standard`` and ``FIFO``. The major difference between these is that the latter guarantees correct ordering and at-most-once delivery. By default, tomodachi creates ``standard`` queues and topics. To create them as ``FIFO`` instead, set ``fifo`` to ``True``.
 
   The ``filter_policy`` value of specified as a keyword argument will be applied on the SNS subscription (for the specified topic and queue) as the ``"FilterPolicy`` attribute. This will apply a filter on SNS messages using the chosen "message attributes" and/or their values specified in the filter. Make note that the filter policy dict structure differs somewhat from the actual message attributes, as values to the keys in the filter policy must be a dict (object) or list (array). Example: A filter policy value of ``{"event": ["order_paid"], "currency": ["EUR", "USD"]}`` would set up the SNS subscription to receive messages on the topic only where the message attribute ``"event"`` is ``"order_paid"`` and the ``"currency"`` value is either ``"EUR"`` or ``"USD"``.
 
