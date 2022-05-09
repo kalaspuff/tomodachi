@@ -400,7 +400,7 @@ To be able to initialize connections to external resources or to perform gracefu
 | ``_stop_service``     | Called after tasks have gracefully finished.   | Close connections to databases, etc.           |
 +-----------------------+------------------------------------------------+------------------------------------------------+
 
-Changes to a service settings / configuration (by for example modifying the `options` values) should be done in the ``__init__`` function instead of in any of the lifecycle function hooks.
+Changes to a service settings / configuration (by for example modifying the ``options`` values) should be done in the ``__init__`` function instead of in any of the lifecycle function hooks.
 
 Good practice – in general, make use of the ``_start_service`` (for setting up connections) in addition to the ``_stop_service`` (to close connections) lifecycle hooks. The other hooks may be used for more uncommon use-cases.
 
