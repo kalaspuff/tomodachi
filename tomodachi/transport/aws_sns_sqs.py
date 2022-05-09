@@ -433,6 +433,7 @@ class AWSSNSSQSTransport(Invoker):
                     func, routine_func, context.get("message_middleware", []), *(obj, message, topic)
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
+                # todo: don't log exception in case the error is of a AWSSNSSQSInternalServiceError (et. al) type
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(
