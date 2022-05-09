@@ -103,25 +103,6 @@ FilterPolicyDictType = Mapping[str, FilterPolicyDictValueType]
 connector = ClientConnector()
 
 
-def str_to_bool(value: str) -> bool:
-    """Converts a string containing either "true" or "false" (case-insensitive) into its boolean counterpart.
-
-    >>> str_to_bool("TRUE")
-    True
-    >>> str_to_bool("false")
-    False
-    >>> str_to_bool("foobar")
-    Traceback (most recent call last)
-    ...
-    ValueError: "foobar" is not a valid boolean
-    """
-    mappings = {"true": True, "false": False}
-    try:
-        return mappings[value.lower()]
-    except KeyError:
-        raise ValueError(f"{value!r} is not a valid boolean")
-
-
 class AWSSNSSQSException(Exception):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._log_level = kwargs.get("log_level") if kwargs and kwargs.get("log_level") else "INFO"
@@ -192,6 +173,7 @@ class AWSSNSSQSTransport(Invoker):
             topic,
             service.context,
             topic_prefix,
+            fifo=group_id is not None,
             attributes=topic_attributes,
             overwrite_attributes=overwrite_topic_attributes,
         )
@@ -1013,9 +995,7 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as client:
-                response = await client.get_queue_attributes(
-                    QueueUrl=queue_url, AttributeNames=["QueueArn", "FifoQueue"]
-                )
+                response = await client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logging.getLogger("transport.aws_sns_sqs").warning(
@@ -1031,9 +1011,9 @@ class AWSSNSSQSTransport(Invoker):
             )
             raise AWSSNSSQSException(error_message, log_level=context.get("log_level"))
 
-        queue_fifo = str_to_bool(response.get("Attributes", {}).get("FifoQueue", "false"))
+        queue_fifo = queue_name.endswith(".fifo")
         if fifo is not queue_fifo:
-            queue_types = {False: "FIFO", True: "Standard"}
+            queue_types = {False: "Standard", True: "FIFO"}
             error_message = (
                 f"AWS SQS queue configured as {queue_types[queue_fifo]}, "
                 f"but the handler expected {queue_types[fifo]}."
@@ -1484,7 +1464,7 @@ class AWSSNSSQSTransport(Invoker):
                                     client.receive_message(
                                         QueueUrl=queue_url,
                                         WaitTimeSeconds=wait_time_seconds,
-                                        MaxNumberOfMessages=max_number_of_messages,
+                                        MaxNumberOfMessages=message_limit,
                                         AttributeNames=["ApproximateReceiveCount"],
                                     ),
                                     timeout=40,
@@ -1781,7 +1761,7 @@ class AWSSNSSQSTransport(Invoker):
                             )
                     else:
                         dlq_url, dlq_arn = await cls.create_queue(
-                            cls.prefix_queue_name(dead_letter_queue_name, context), context
+                            cls.prefix_queue_name(dead_letter_queue_name, context), context, fifo
                         )
                     redrive_policy = {"deadLetterTargetArn": dlq_arn, "maxReceiveCount": max_receive_count}
 
@@ -1798,7 +1778,7 @@ class AWSSNSSQSTransport(Invoker):
                             fifo=fifo,
                         )
                     else:
-                        topic_arn = await cls.create_topic(topic, context)
+                        topic_arn = await cls.create_topic(topic, context, fifo=fifo)
                         await cls.subscribe_topics(
                             (topic_arn,),
                             cast(str, queue_arn),

@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from run_test_service_helper import start_service
-from tomodachi.transport.aws_sns_sqs import AWSSNSSQSException, AWSSNSSQSTransport, str_to_bool
+from tomodachi.transport.aws_sns_sqs import AWSSNSSQSException, AWSSNSSQSTransport
 
 
 def test_get_standard_topic_name(monkeypatch: Any) -> None:
@@ -150,13 +150,3 @@ def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -
     out, err = capsys.readouterr()
     assert "The security token included in the request is invalid" in err
     assert out == ""
-
-
-@pytest.mark.parametrize("test_input,expected", [("true", True), ("TRUE", True), ("false", False), ("FALSE", False)])
-def test_str_to_bool_handles_correct_input(test_input: str, expected: bool) -> None:
-    assert str_to_bool(test_input) is expected
-
-
-def test_str_to_bool_handles_incorrect_input() -> None:
-    with pytest.raises(ValueError, match="'foobar' is not a valid boolean"):
-        str_to_bool("foobar")
