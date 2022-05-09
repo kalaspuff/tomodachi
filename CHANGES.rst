@@ -1,5 +1,29 @@
 Changes
 =======
+0.22.3 (2022-05-xx)
+-------------------
+- Support for assigning values to AWS SQS queue attributes value
+  ``VisibilityTimeout`` and ``RedrivePolicy`` that is used to assign a
+  queue to use a dead-letter queue after a number of failed attempts to
+  consume a message. By default no changes will be done to the existing
+  queue attributes and a change will only be triggered by assigning
+  values to the ``visibility_timeout`` or both of
+  ``dead_letter_queue_name`` + ``max_receive_count`` keyword arguments.
+
+  .. code:: python
+
+      @tomodachi.aws_sns_sqs(
+          topic=None,
+          competing=True,
+          queue_name=None,
+          filter_policy=FILTER_POLICY_DEFAULT,
+          visibility_timeout=VISIBILITY_TIMEOUT_DEFAULT,
+          dead_letter_queue_name=DEAD_LETTER_QUEUE_DEFAULT,
+          max_receive_count=MAX_RECEIVE_COUNT_DEFAULT,
+          **kwargs,
+      )
+
+
 0.22.2 (2022-04-07)
 -------------------
 - Fixes an issue with live reloading on code changes (development mode)
