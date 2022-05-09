@@ -556,7 +556,19 @@ HTTP endpoints:
 
 AWS SNS+SQS messaging:
 ----------------------
-``@tomodachi.aws_sns_sqs(topic=None, competing=True, queue_name=None, filter_policy=None, **kwargs)``
+.. code:: python
+
+    @tomodachi.aws_sns_sqs(
+        topic=None,
+        competing=True,
+        queue_name=None,
+        filter_policy=FILTER_POLICY_DEFAULT,
+        visibility_timeout=VISIBILITY_TIMEOUT_DEFAULT,
+        dead_letter_queue_name=DEAD_LETTER_QUEUE_DEFAULT,
+        max_receive_count=MAX_RECEIVE_COUNT_DEFAULT,
+        **kwargs
+    )
+
   This would set up an **AWS SQS queue**, subscribing to messages on the **AWS SNS topic** ``topic`` (if a ``topic`` is specified), whereafter it will start consuming messages from the queue.
 
   The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message. Since ``tomodachi`` version 0.19.x this value has a changed default value and will now default to ``True`` as this is the most likely use-case for pub/sub in distributed architectures.
@@ -568,6 +580,10 @@ AWS SNS+SQS messaging:
   If ``filter_policy`` is not specified as an argument (default), the queue will receive messages on the topic as per already specified if using an existing subscription, or receive all messages on the topic if a new subscription is set up (default). Changing the ``filter_policy`` on an existing subscription may take several minutes to propagate. Read more about the filter policy format on AWS. https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html
 
   Related to the above mentioned filter policy, the ``aws_sns_sqs_publish`` function (which is used for publishing messages) can specify "message attributes" using the ``message_attributes`` keyword argument. Values should be specified as a simple ``dict`` with keys and values. Example: ``{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}``.
+
+  The ``visibility_timeout`` value will set the queue attribute ``VisibilityTimeout`` if specified.  To use already defined values for a queue (default), do not supply any value to the ``visiblity_timeout`` keyword – ``tomodachi`` will then not modify the visibility timeout.
+
+  Similarly the values for ``dead_letter_queue_name`` in tandem with the ``max_receive_count`` value will modify the queue attribute ``RedrivePolicy`` in regards to the potential use of a dead-letter queue to which messages will be delivered if they have been picked up by consumers ``max_receive_count`` number of times but haven't been deleted from the queue. The value for ``dead_letter_queue_name`` should either be a ARN for an SQS queue, which in that case requires the queue to have been created in advance, or a alphanumeric queue name, which in that case will be set up similar to the queue name you specify in regards to prefixes, etc. Both ``dead_letter_queue_name`` and ``max_receive_count`` needs to be specified together, as they both affect the redrive policy. To diable the use of DLQ, use a ``None`` value for the ``dead_letter_queue_name`` keyword and the ``RedrivePolicy`` will be removed from the queue attribute. To use the already defined values for a queue, do not supply any values to the keyword arguments in the decorator. ``tomodachi`` will then not modify the queue attribute and leave it as is.
 
   Depending on the service ``message_envelope`` (previously named ``message_protocol``) attribute if used, parts of the enveloped data would be distributed to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_envelope`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
 
