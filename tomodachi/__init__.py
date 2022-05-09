@@ -228,6 +228,7 @@ __all__ = [
     "get_service",
     "get_instance",
     "exit",
+    "context",
     "AiobotocoreClientConnector",
     "aiobotocore_client_connector",
     "amqp",
