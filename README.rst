@@ -387,6 +387,68 @@ All above mentioned ways of initiating the termination flow of the service will 
 Some tasks may timeout during termination according to used configuration (see options such as ``http.termination_grace_period_seconds``) if they are long running tasks. Additionally container handlers may impose additional timeouts for how long termination are allowed to take. If no ongoing tasks are to be awaited and the service lifecycle can be cleanly terminated the shutdown usually happens within milliseconds.
 
 
+Function hooks for service lifecycle changes
+--------------------------------------------
+To be able to initialize connections to external resources or to perform graceful shutdown of connections made by a service, there's a few functions a service can specify to hook into lifecycle changes of a service.
+
+| Magic function name    | When is the function called?                   | What is suitable to put here                 |
+|========================+================================================+==============================================|
+| ``_start_service``     | Called before invokers / servers have started. | Initialize connections to databases, etc.    |
+| ``_started_service``   | Called after invokers / server have started.   | Start reporting or start tasks to run once.  |
+| ``_stopping_service``  | Called on termination signal.                  | Cancel eventual internal long-running tasks. |
+| ``_stop_service``      | Called after tasks have gracefully finished.   | Close connections to databases, etc.         |
+
+Changes to a service settings / configuration (by for example modifying the `options` values) should generally be done in the ``__init__`` function.
+
+For good lifecycle management, make use of the ``_start_service`` in addition with the ``_stop_service`` hooks. The other two are more uncommon to specify, but may be used for some specific use-cases.
+
+
+**Lifecycle functions are defined as class functions and will be called by the tomodachi process on lifecycle changes:**
+
+.. code:: python
+
+    import tomodachi
+
+
+    class Service(tomodachi.Service):
+        name = "example"
+
+        async def _start_service(self):
+            # The _start_service function is called during initialization,
+            # before consumers or an eventual HTTP server has started.
+            # It's suitable to setup or connect to external resources here.
+            # Any exception raised will terminate the service before running
+            # invoker functionality.
+            return
+
+        async def _started_service(self):
+            # The _started_service function is called after invoker
+            # functions have been set up and the service is up and running.
+            # The service is basically ready to start to receive messages
+            # and incoming calls. Still, any exception raised will terminate
+            # the service by performing graceful shutdown.
+            return
+
+        async def _stopping_service(self):
+            # The _stopping_service function is called the moment the
+            # service is instructed to terminate - usually this happens
+            # when a termination signal is received by the service.
+            # This hook can be used to cancel ongoing tasks or similar.
+            # _stopping_service is run simultanously as the HTTP server is
+            # instructed to shutdown as well as when no further messages will
+            # be consumed by the service. Note that some ongoing tasks may
+            # still execute when this call is done.
+            return
+
+        async def _stop_service(self):
+            # Finally the _stop_service function is called after HTTP server,
+            # scheduled functions and consumers have gracefully stopped.
+            # Previously ongoing tasks should have been awaited their completion.
+            # This is the place to close connections to external services and
+            # clean up eventual tasks you may have started previously.
+            return
+
+
 Example of a microservice containerized in Docker 🐳
 ----------------------------------------------------
 A great way to distribute and operate microservices are usually to run them in containers or

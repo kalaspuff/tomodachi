@@ -23,6 +23,14 @@ Changes
           **kwargs,
       )
 
+- Added documentation to describe the "magic" functions that hooks into the
+  service lifecycle.
+
+  * ``_start_service``
+  * ``_started_service``
+  * ``_stopping_service``
+  * ``_stop_service``
+
 
 0.22.2 (2022-04-07)
 -------------------
