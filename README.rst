@@ -540,23 +540,59 @@ As shown, there's different ways to trigger your microservice function in which 
 
 HTTP endpoints:
 ---------------
-``@tomodachi.http(method, url, ignore_logging=[200])``
+.. code:: python
+
+    @tomodachi.http(method, url, ignore_logging=[200])
+    
+Usage:
   Sets up an **HTTP endpoint** for the specified ``method`` (``GET``, ``PUT``, ``POST``, ``DELETE``) on the regexp ``url``.
   Optionally specify ``ignore_logging`` as a dict or tuple containing the status codes you do not wish to log the access of. Can also be set to ``True`` to ignore everything except status code 500.
 
-``@tomodachi.http_static(path, url)``
+----
+
+.. code:: python
+
+    @tomodachi.http_static(path, url)
+    
+Usage:
   Sets up an **HTTP endpoint for static content** available as ``GET`` / ``HEAD`` from the ``path`` on disk on the base regexp ``url``.
 
-``@tomodachi.websocket(url)``
+----
+
+.. code:: python
+
+    @tomodachi.websocket(url)
+
+Usage:
   Sets up a **websocket endpoint** on the regexp ``url``. The invoked function is called upon websocket connection and should return a two value tuple containing callables for a function receiving frames (first callable) and a function called on websocket close (second callable). The passed arguments to the function beside the class object is first the ``websocket`` response connection which can be used to send frames to the client, and optionally also the ``request`` object.
 
-``@tomodachi.http_error(status_code)``
+----
+
+.. code:: python
+
+    @tomodachi.http_error(status_code)
+
+Usage:
   A function which will be called if the **HTTP request would result in a 4XX** ``status_code``. You may use this for example to set up a custom handler on "404 Not Found" or "403 Forbidden" responses.
 
+----
 
 AWS SNS+SQS messaging:
 ----------------------
-``@tomodachi.aws_sns_sqs(topic=None, competing=True, queue_name=None, filter_policy=None, **kwargs)``
+.. code:: python
+
+    @tomodachi.aws_sns_sqs(
+        topic=None,
+        competing=True,
+        queue_name=None,
+        filter_policy=FILTER_POLICY_DEFAULT,
+        visibility_timeout=VISIBILITY_TIMEOUT_DEFAULT,
+        dead_letter_queue_name=DEAD_LETTER_QUEUE_DEFAULT,
+        max_receive_count=MAX_RECEIVE_COUNT_DEFAULT,
+        **kwargs,
+    )
+
+Usage:
   This would set up an **AWS SQS queue**, subscribing to messages on the **AWS SNS topic** ``topic`` (if a ``topic`` is specified), whereafter it will start consuming messages from the queue.
 
   The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message. Since ``tomodachi`` version 0.19.x this value has a changed default value and will now default to ``True`` as this is the most likely use-case for pub/sub in distributed architectures.
@@ -569,15 +605,31 @@ AWS SNS+SQS messaging:
 
   Related to the above mentioned filter policy, the ``aws_sns_sqs_publish`` function (which is used for publishing messages) can specify "message attributes" using the ``message_attributes`` keyword argument. Values should be specified as a simple ``dict`` with keys and values. Example: ``{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}``.
 
+  The ``visibility_timeout`` value will set the queue attribute ``VisibilityTimeout`` if specified.  To use already defined values for a queue (default), do not supply any value to the ``visiblity_timeout`` keyword – ``tomodachi`` will then not modify the visibility timeout.
+
+  Similarly the values for ``dead_letter_queue_name`` in tandem with the ``max_receive_count`` value will modify the queue attribute ``RedrivePolicy`` in regards to the potential use of a dead-letter queue to which messages will be delivered if they have been picked up by consumers ``max_receive_count`` number of times but haven't been deleted from the queue. The value for ``dead_letter_queue_name`` should either be a ARN for an SQS queue, which in that case requires the queue to have been created in advance, or a alphanumeric queue name, which in that case will be set up similar to the queue name you specify in regards to prefixes, etc. Both ``dead_letter_queue_name`` and ``max_receive_count`` needs to be specified together, as they both affect the redrive policy. To diable the use of DLQ, use a ``None`` value for the ``dead_letter_queue_name`` keyword and the ``RedrivePolicy`` will be removed from the queue attribute. To use the already defined values for a queue, do not supply any values to the keyword arguments in the decorator. ``tomodachi`` will then not modify the queue attribute and leave it as is.
+
   Depending on the service ``message_envelope`` (previously named ``message_protocol``) attribute if used, parts of the enveloped data would be distributed to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_envelope`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
 
   If you're utilizing ``from tomodachi.envelope import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_envelope`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages. Custom enveloping classes can be built to fit your existing architecture or for even more control of tracing and shared metadata between services.
 
   Encryption at rest for AWS SNS and/or AWS SQS can optionally be configured by specifying the KMS key alias or KMS key id as tomodachi service options ``options.aws_sns_sqs.sns_kms_master_key_id`` (to configure encryption at rest on the SNS topics for which the tomodachi service handles the SNS -> SQS subscriptions) and ``options.aws_sns_sqs.sqs_kms_master_key_id`` (to configure encryption at rest for the SQS queues which the service is consuming). Note that an option value set to an empty string (``""``) or ``False`` will unset the KMS master key id and thus disable encryption at rest. If instead an option is completely unset or set to ``None`` value no changes will be done to the KMS related attributes on an existing topic or queue. It's generally not advised to change the KMS master key id/alias values for resources currently in use. If it's expected that the services themselves, via their IAM credentials or assumed role, are responsible for creating queues and topics, these options could be desirable to use. Do not use these options if you instead are using IaC tooling to handle the topics, queues and subscriptions or that they for example are created / updated as a part of deployments. Read more at https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-server-side-encryption.html and https://docs.aws.amazon.com/sns/latest/dg/sns-server-side-encryption.html#sse-key-terms.
 
+----
+
 AMQP messaging (RabbitMQ):
 --------------------------
-``@tomodachi.amqp(routing_key, exchange_name="amq.topic", competing=True, queue_name=None, **kwargs)``
+.. code:: python
+
+    @tomodachi.amqp(
+        routing_key, 
+        exchange_name="amq.topic", 
+        competing=True, 
+        queue_name=None, 
+        **kwargs,
+    )
+
+Usage:
   Sets up the method to be called whenever a **AMQP / RabbitMQ message is received** for the specified ``routing_key``. By default the ``'amq.topic'`` topic exchange would be used, it may also be overridden by setting the ``options.amqp.exchange_name`` dict value on the service class.
 
   The ``competing`` value is used when the same queue name should be used for several services of the same type and thus "compete" for who should consume the message. Since ``tomodachi`` version 0.19.x this value has a changed default value and will now default to ``True`` as this is the most likely use-case for pub/sub in distributed architectures.
@@ -588,19 +640,46 @@ AMQP messaging (RabbitMQ):
 
   If you're utilizing ``from tomodachi.envelope import ProtobufBase`` and using ``ProtobufBase`` as the specified service ``message_envelope`` you may also pass a keyword argument ``proto_class`` into the decorator, describing the protobuf (Protocol Buffers) generated Python class to use for decoding incoming messages. Custom enveloping classes can be built to fit your existing architecture or for even more control of tracing and shared metadata between services.
 
+----
 
 Scheduled functions / cron / triggered on time interval:
 --------------------------------------------------------
-``@tomodachi.schedule(interval=None, timestamp=None, timezone=None, immediately=False)``
+.. code:: python
+
+    @tomodachi.schedule(
+        interval=None, 
+        timestamp=None, 
+        timezone=None, 
+        immediately=False,
+    )
+
+Usage:
   A **scheduled function** invoked on either a specified ``interval`` (you may use the popular cron notation as a str for fine-grained interval or specify an integer value of seconds) or a specific ``timestamp``. The ``timezone`` will default to your local time unless explicitly stated.
 
   When using an integer ``interval`` you may also specify wether the function should be called ``immediately`` on service start or wait the full ``interval`` seconds before its first invokation.
 
-``@tomodachi.heartbeat``
+----
+
+.. code:: python
+
+    @tomodachi.heartbeat
+    
+Usage:
   A function which will be **invoked every second**.
 
-``@tomodachi.minutely``, ``@tomodachi.hourly``, ``@tomodachi.daily``, ``@tomodachi.monthly``
+----
+
+.. code:: python
+
+    @tomodachi.minutely
+    @tomodachi.hourly
+    @tomodachi.daily
+    @tomodachi.monthly
+    
+Usage:
   A scheduled function which will be invoked once **every minute / hour / day / month**.
+
+----
 
 **A word on scheduled tasks in distributed contexts:** What is your use-case for scheduling function triggers or functions that trigger on an interval. These types of scheduling may not be optimal in clusters with many pods in the same replication set, as all the services running the same code will very likely execute at the same timestamp / interval (which in same cases may correlated with exactly when they were last deployed). As such these functions are quite naive and should only be used with some care, so that it triggering the functions several times doesn't incur unnecessary costs or come as a bad surprise if the functions aren't completely idempotent. To perform a task on a specific timestamp or on an interval where only one of the available services of the same type in a cluster should trigger is a common thing to solve and there are several solutions to pick from., some kind of distributed consensus needs to be reached. Tooling exists, but what you need may differ depending on your use-case. There's algorithms for distributed consensus and leader election, Paxos or Raft, that luckily have already been implemented to solutions like the strongly consistent and distributed key-value stores *etcd* and *TiKV*. Even primitive solutions such as *Redis*  ``SETNX`` commands would work, but could be costly or hard to manage access levels around. If you're on k8s there's even a simple "leader election" API available that just creates a 15 seconds lease. Solutions are many and if you are in need, go hunting and find one that suits your use-case, there's probably tooling and libraries available to call it from your service functions.
 
