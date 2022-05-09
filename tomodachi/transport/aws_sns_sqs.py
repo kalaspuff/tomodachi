@@ -47,6 +47,8 @@ DEAD_LETTER_QUEUE_DEFAULT = "22ebae61-1aab-4b2e-840f-008da1f45472"
 VISIBILITY_TIMEOUT_DEFAULT = -1
 MAX_RECEIVE_COUNT_DEFAULT = -1
 
+SET_CONTEXTVAR_VALUES = False
+
 AnythingButFilterPolicyValueType = Union[str, int, float, List[str], List[int], List[float], List[Union[int, float]]]
 AnythingButFilterPolicyDict = TypedDict(
     "AnythingButFilterPolicyDict",
@@ -314,6 +316,12 @@ class AWSSNSSQSTransport(Invoker):
                 return
 
             kwargs = dict(original_kwargs)
+
+            if SET_CONTEXTVAR_VALUES:
+                # experimental featureset - set values to contextvars
+                get_contextvar("aws_sns_sqs.receipt_handle").set(receipt_handle)
+                get_contextvar("aws_sns_sqs.queue_url").set(queue_url)
+                get_contextvar("aws_sns_sqs.approximate_receive_count").set(approximate_receive_count)
 
             message = payload
             message_attributes_values: Dict[
