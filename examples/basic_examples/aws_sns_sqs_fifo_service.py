@@ -7,8 +7,6 @@ from tomodachi.discovery import AWSSNSRegistration
 from tomodachi.envelope import JsonBase
 from tomodachi.transport.aws_sns_sqs import AWSSNSSQSInternalServiceError
 
-failed = False
-
 
 class ExampleAWSSNSSQSService(tomodachi.Service):
     name = "example-aws-sns-sqs-fifo-service"

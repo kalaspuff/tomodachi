@@ -589,7 +589,7 @@ AWS SNS+SQS messaging:
         visibility_timeout=VISIBILITY_TIMEOUT_DEFAULT,
         dead_letter_queue_name=DEAD_LETTER_QUEUE_DEFAULT,
         max_receive_count=MAX_RECEIVE_COUNT_DEFAULT,
-        fifo=True,
+        fifo=False,
         **kwargs,
     )
 
