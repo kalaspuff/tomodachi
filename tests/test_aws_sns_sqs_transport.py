@@ -58,6 +58,26 @@ def test_queue_name(monkeypatch: Any) -> None:
     )
     assert queue_name == "prefix-c6fb053c1b70aabd10bfefd087166b532b7c79ed12d24f2d43a9999c724797fd"
 
+    with pytest.raises(Exception) as e:
+        AWSSNSSQSTransport.get_queue_name(
+            "test-topic",
+            "func",
+            _uuid,
+            True,
+            {"options": {"aws_sns_sqs": {"queue_name_prefix": "too-long-prefix-----------"}}},
+        )
+    assert "too-long-prefix-----------c6fb053c1b70aabd10bfefd087166b532b7c79ed12d24f2d43a9999c724797fd" in str(e)
+
+    with pytest.raises(Exception) as e:
+        AWSSNSSQSTransport.get_queue_name(
+            "test-topic",
+            "func",
+            _uuid,
+            True,
+            {"options": {"aws_sns_sqs": {"queue_name_prefix": "invalid#character-"}}},
+        )
+    assert "invalid#character-c6fb053c1b70aabd10bfefd087166b532b7c79ed12d24f2d43a9999c724797fd" in str(e)
+
 
 def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service("tests/services/dummy_service.py", monkeypatch)
