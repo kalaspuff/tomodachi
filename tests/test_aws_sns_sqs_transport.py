@@ -12,11 +12,6 @@ def test_topic_name(monkeypatch: Any) -> None:
     topic_name = AWSSNSSQSTransport.get_topic_name("test-topic", {})
     assert topic_name == "test-topic"
 
-    topic_name = AWSSNSSQSTransport.get_topic_name(
-        "test-topic", {"options": {"aws_sns_sqs": {"topic_prefix": "prefix-"}}}
-    )
-    assert topic_name == "prefix-test-topic"
-
 
 def test_encode_topic(monkeypatch: Any) -> None:
     topic_name = AWSSNSSQSTransport.encode_topic("test-topic")
@@ -79,3 +74,27 @@ def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -
     out, err = capsys.readouterr()
     assert "The security token included in the request is invalid" in err
     assert out == ""
+
+
+def test_validate_topic() -> None:
+    with pytest.raises(Exception) as e:
+        AWSSNSSQSTransport.validate_topic_name("#")
+    assert "#" in str(e)
+    with pytest.raises(Exception) as e:
+        AWSSNSSQSTransport.validate_queue_name(
+            "XS8zQl3sdze1kjyZmxDrRW1PN2o2OZAJts6SgUYCy5NsaGpb6MyWUOwHzVPpzMnmBSI12Buuu43Upz2evMysWbA8T7fTo02TvNTZtLc4MJok4N7IUkK9EDtBzXcdEbRLGLPGuRJtEiaiWqfbDPDMWapkB2jKwFLgxsYGark4lpZ1gxly6wnhhBTXDTGwoW39NYnadTUA8v8QyPqPhFDLRfh9CNBmNtcnWq6nsSZ0QTQb2aMETPZ7rIQ5DC2X16pif"
+        )
+    assert "XS8zQl3sd" in str(e)
+    assert AWSSNSSQSTransport.validate_topic_name("abcd") is None
+
+
+def test_validate_queue_name() -> None:
+    with pytest.raises(Exception) as e:
+        AWSSNSSQSTransport.validate_queue_name("#")
+    assert "#" in str(e)
+    with pytest.raises(Exception) as e:
+        AWSSNSSQSTransport.validate_queue_name(
+            "vKbED4a66BaGI0cGF0iP8HNF202Sk2XuFnEuJI59GX5VfgEzLaMIU10cVscG7E8vvLIU0MhL7kmsPEy81"
+        )
+    assert "vKbED4a66BaGI0cGF0iP8HNF202Sk2XuFnEuJI59GX5VfgEzLaMIU10cVscG7E8vvLIU0MhL7kmsPEy81" in str(e)
+    assert AWSSNSSQSTransport.validate_queue_name("abcd") is None

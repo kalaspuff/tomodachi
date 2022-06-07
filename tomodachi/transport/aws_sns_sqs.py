@@ -9,6 +9,7 @@ import inspect
 import json
 import logging
 import re
+import string
 import sys
 import time
 import uuid
@@ -236,8 +237,7 @@ class AWSSNSSQSTransport(Invoker):
         else:
             queue_name = hashlib.sha256(topic.encode("utf-8")).hexdigest()
 
-        if context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"):
-            return "{}{}".format(context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"), queue_name)
+        queue_name = cls.prefix_queue_name(queue_name, context)
         return queue_name
 
     @classmethod
@@ -245,6 +245,28 @@ class AWSSNSSQSTransport(Invoker):
         if context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"):
             return "{}{}".format(context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"), queue_name)
         return queue_name
+
+    @classmethod
+    def validate_queue_name(cls, queue_name: str) -> None:
+        if len(queue_name) > 80:
+            raise Exception("Queue name ({}) is too long.".format(queue_name))
+        if not set(queue_name) <= set(string.digits + string.ascii_letters + "-" + "_"):
+            raise Exception(
+                "Queue name ({}) may only contain alphanumeric characters, hyphens (-), and underscores (_).".format(
+                    queue_name
+                )
+            )
+
+    @classmethod
+    def validate_topic_name(cls, topic: str) -> None:
+        if len(topic) > 256:
+            raise Exception("Topic name ({}) is too long.".format(topic))
+        if not set(topic) <= set(string.digits + string.ascii_letters + "-" + "_"):
+            raise Exception(
+                "Topic name ({}) may only contain alphanumeric characters, hyphens (-), and underscores (_).".format(
+                    topic
+                )
+            )
 
     @classmethod
     async def subscribe_handler(
@@ -550,6 +572,9 @@ class AWSSNSSQSTransport(Invoker):
         attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES,
         overwrite_attributes: bool = True,
     ) -> str:
+
+        cls.validate_topic_name(topic)
+
         if not cls.topics:
             cls.topics = {}
         if cls.topics.get(topic):
@@ -875,6 +900,7 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     async def create_queue(cls, queue_name: str, context: Dict) -> Tuple[str, str]:
+        cls.validate_queue_name(queue_name)
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
 
