@@ -387,6 +387,69 @@ All above mentioned ways of initiating the termination flow of the service will 
 Some tasks may timeout during termination according to used configuration (see options such as ``http.termination_grace_period_seconds``) if they are long running tasks. Additionally container handlers may impose additional timeouts for how long termination are allowed to take. If no ongoing tasks are to be awaited and the service lifecycle can be cleanly terminated the shutdown usually happens within milliseconds.
 
 
+Function hooks for service lifecycle changes
+--------------------------------------------
+To be able to initialize connections to external resources or to perform graceful shutdown of connections made by a service, there's a few functions a service can specify to hook into lifecycle changes of a service.
+
++-----------------------+------------------------------------------------+------------------------------------------------+
+| Magic function name   | When is the function called?                   | What is suitable to put here                   |
++=======================+================================================+================================================+
+| ``_start_service``    | Called before invokers / servers have started. | Initialize connections to databases, etc.      |
++-----------------------+------------------------------------------------+------------------------------------------------+
+| ``_started_service``  | Called after invokers / server have started.   | Start reporting or start tasks to run once.    |
++-----------------------+------------------------------------------------+------------------------------------------------+
+| ``_stopping_service`` | Called on termination signal.                  | Cancel eventual internal long-running tasks.   |
++-----------------------+------------------------------------------------+------------------------------------------------+
+| ``_stop_service``     | Called after tasks have gracefully finished.   | Close connections to databases, etc.           |
++-----------------------+------------------------------------------------+------------------------------------------------+
+
+Changes to a service settings / configuration (by for example modifying the ``options`` values) should be done in the ``__init__`` function instead of in any of the lifecycle function hooks.
+
+Good practice – in general, make use of the ``_start_service`` (for setting up connections) in addition to the ``_stop_service`` (to close connections) lifecycle hooks. The other hooks may be used for more uncommon use-cases.
+
+
+**Lifecycle functions are defined as class functions and will be called by the tomodachi process on lifecycle changes:**
+
+.. code:: python
+
+    import tomodachi
+
+
+    class Service(tomodachi.Service):
+        name = "example"
+
+        async def _start_service(self):
+            # The _start_service function is called during initialization,
+            # before consumers or an eventual HTTP server has started.
+            # It's suitable to setup or connect to external resources here.
+            return
+
+        async def _started_service(self):
+            # The _started_service function is called after invoker
+            # functions have been set up and the service is up and running.
+            # The service is ready to process messages and requests.
+            return
+
+        async def _stopping_service(self):
+            # The _stopping_service function is called the moment the
+            # service is instructed to terminate - usually this happens
+            # when a termination signal is received by the service.
+            # This hook can be used to cancel ongoing tasks or similar.
+            # Note that some tasks may be processing during this time.
+            return
+
+        async def _stop_service(self):
+            # Finally the _stop_service function is called after HTTP server,
+            # scheduled functions and consumers have gracefully stopped.
+            # Previously ongoing tasks have been awaited for completion.
+            # This is the place to close connections to external services and
+            # clean up eventual tasks you may have started previously.
+            return
+
+
+Exceptions raised in ``_start_service`` or ``_started_service`` will gracefully terminate the service.
+
+
 Example of a microservice containerized in Docker 🐳
 ----------------------------------------------------
 A great way to distribute and operate microservices are usually to run them in containers or
@@ -543,7 +606,7 @@ HTTP endpoints:
 .. code:: python
 
     @tomodachi.http(method, url, ignore_logging=[200])
-    
+
 Usage:
   Sets up an **HTTP endpoint** for the specified ``method`` (``GET``, ``PUT``, ``POST``, ``DELETE``) on the regexp ``url``.
   Optionally specify ``ignore_logging`` as a dict or tuple containing the status codes you do not wish to log the access of. Can also be set to ``True`` to ignore everything except status code 500.
@@ -553,7 +616,7 @@ Usage:
 .. code:: python
 
     @tomodachi.http_static(path, url)
-    
+
 Usage:
   Sets up an **HTTP endpoint for static content** available as ``GET`` / ``HEAD`` from the ``path`` on disk on the base regexp ``url``.
 
@@ -608,9 +671,9 @@ Usage:
 
   Related to the above mentioned filter policy, the ``aws_sns_sqs_publish`` function (which is used for publishing messages) can specify "message attributes" using the ``message_attributes`` keyword argument. Values should be specified as a simple ``dict`` with keys and values. Example: ``{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}``.
 
-  The ``visibility_timeout`` value will set the queue attribute ``VisibilityTimeout`` if specified.  To use already defined values for a queue (default), do not supply any value to the ``visiblity_timeout`` keyword – ``tomodachi`` will then not modify the visibility timeout.
+  The ``visibility_timeout`` value will set the queue attribute ``VisibilityTimeout`` if specified.  To use already defined values for a queue (default), do not supply any value to the ``visibility_timeout`` keyword – ``tomodachi`` will then not modify the visibility timeout.
 
-  Similarly the values for ``dead_letter_queue_name`` in tandem with the ``max_receive_count`` value will modify the queue attribute ``RedrivePolicy`` in regards to the potential use of a dead-letter queue to which messages will be delivered if they have been picked up by consumers ``max_receive_count`` number of times but haven't been deleted from the queue. The value for ``dead_letter_queue_name`` should either be a ARN for an SQS queue, which in that case requires the queue to have been created in advance, or a alphanumeric queue name, which in that case will be set up similar to the queue name you specify in regards to prefixes, etc. Both ``dead_letter_queue_name`` and ``max_receive_count`` needs to be specified together, as they both affect the redrive policy. To diable the use of DLQ, use a ``None`` value for the ``dead_letter_queue_name`` keyword and the ``RedrivePolicy`` will be removed from the queue attribute. To use the already defined values for a queue, do not supply any values to the keyword arguments in the decorator. ``tomodachi`` will then not modify the queue attribute and leave it as is.
+  Similarly the values for ``dead_letter_queue_name`` in tandem with the ``max_receive_count`` value will modify the queue attribute ``RedrivePolicy`` in regards to the potential use of a dead-letter queue to which messages will be delivered if they have been picked up by consumers ``max_receive_count`` number of times but haven't been deleted from the queue. The value for ``dead_letter_queue_name`` should either be a ARN for an SQS queue, which in that case requires the queue to have been created in advance, or a alphanumeric queue name, which in that case will be set up similar to the queue name you specify in regards to prefixes, etc. Both ``dead_letter_queue_name`` and ``max_receive_count`` needs to be specified together, as they both affect the redrive policy. To disable the use of DLQ, use a ``None`` value for the ``dead_letter_queue_name`` keyword and the ``RedrivePolicy`` will be removed from the queue attribute. To use the already defined values for a queue, do not supply any values to the keyword arguments in the decorator. ``tomodachi`` will then not modify the queue attribute and leave it as is.
 
   Depending on the service ``message_envelope`` (previously named ``message_protocol``) attribute if used, parts of the enveloped data would be distributed to different keyword arguments of the decorated function. It's usually safe to just use ``data`` as an argument. You can also specify a specific ``message_envelope`` value as a keyword argument to the decorator for specifying a specific enveloping method to use instead of the global one set for the service.
 
@@ -625,10 +688,10 @@ AMQP messaging (RabbitMQ):
 .. code:: python
 
     @tomodachi.amqp(
-        routing_key, 
-        exchange_name="amq.topic", 
-        competing=True, 
-        queue_name=None, 
+        routing_key,
+        exchange_name="amq.topic",
+        competing=True,
+        queue_name=None,
         **kwargs,
     )
 
@@ -650,9 +713,9 @@ Scheduled functions / cron / triggered on time interval:
 .. code:: python
 
     @tomodachi.schedule(
-        interval=None, 
-        timestamp=None, 
-        timezone=None, 
+        interval=None,
+        timestamp=None,
+        timezone=None,
         immediately=False,
     )
 
@@ -666,7 +729,7 @@ Usage:
 .. code:: python
 
     @tomodachi.heartbeat
-    
+
 Usage:
   A function which will be **invoked every second**.
 
@@ -678,7 +741,7 @@ Usage:
     @tomodachi.hourly
     @tomodachi.daily
     @tomodachi.monthly
-    
+
 Usage:
   A scheduled function which will be invoked once **every minute / hour / day / month**.
 

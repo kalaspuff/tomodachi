@@ -105,6 +105,9 @@ examples/configs/*credentials.json
 .vscode
 *.code-workspace
 
+# Pycharm
+.idea
+
 # Legacy build tools
 /requirements.txt
 /setup.py
