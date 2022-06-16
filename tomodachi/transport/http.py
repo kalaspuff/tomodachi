@@ -257,7 +257,7 @@ class HttpTransport(Invoker):
         compiled_pattern = re.compile(pattern)
 
         if path in ("", "/"):
-            # Hopefully noone wants to do this intentionally, and if anyone accidentally does we'll catch it here
+            # Hopefully no one wants to do this intentionally, and if anyone accidentally does we'll catch it here
             raise Exception("Invalid path '{}' for static route".format(path))
 
         if not path.startswith("/"):
@@ -777,6 +777,7 @@ class HttpTransport(Invoker):
                         )
                 if port:
                     HttpTransport.server_port_mapping[web_server] = str(port)
+
                 server_task = loop.create_server(web_server, host, port, reuse_port=reuse_port)
                 server = await server_task
             except OSError as e:

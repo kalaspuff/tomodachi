@@ -11,6 +11,7 @@ import pytest
 from multidict import CIMultiDictProxy
 
 from run_test_service_helper import start_service
+from services.http_service import HttpService
 
 
 def test_start_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
@@ -58,276 +59,229 @@ def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any, loop: Any)
     assert "address already in use" in err or "address in use" in err
 
 
-def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/http_service.py", monkeypatch)
-    instance = services.get("test_http")
-    port = instance.context.get("_http_port")
+@pytest.mark.service(service_class=HttpService)
+async def test_request_http_service(test_service) -> None:
+    client, instance = test_service
 
-    async def _async(loop: Any) -> None:
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/test".format(port))
-            assert response.status == 200
-            assert await response.text() == "test"
-            assert response.headers.get("Server") == "tomodachi"
+    response = await client.get("/test")
+    assert response.status == 200
+    assert await response.text() == "test"
+    assert response.headers.get("Server") == "tomodachi"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.post("http://127.0.0.1:{}/test".format(port))
-            assert response.status == 405
+    response = await client.post("/test")
+    assert response.status == 405
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.head("http://127.0.0.1:{}/test".format(port))
-            assert response.status == 200
+    response = await client.head("/test")
+    assert response.status == 200
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/dict".format(port))
-            assert response.status == 200
-            assert await response.text() == "test dict"
-            assert isinstance(response.headers, CIMultiDictProxy)
-            assert response.headers.get("X-Dict") == "test"
+    response = await client.get("/dict")
+    assert response.status == 200
+    assert await response.text() == "test dict"
+    assert isinstance(response.headers, CIMultiDictProxy)
+    assert response.headers.get("X-Dict") == "test"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/tuple".format(port))
-            assert response.status == 200
-            assert await response.text() == "test tuple"
-            assert isinstance(response.headers, CIMultiDictProxy)
-            assert response.headers.get("X-Tuple") == "test"
+    response = await client.get("/tuple")
+    assert response.status == 200
+    assert await response.text() == "test tuple"
+    assert isinstance(response.headers, CIMultiDictProxy)
+    assert response.headers.get("X-Tuple") == "test"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/aiohttp".format(port))
-            assert response.status == 200
-            assert await response.text() == "test aiohttp"
-            assert isinstance(response.headers, CIMultiDictProxy)
-            assert response.headers.get("X-Aiohttp") == "test"
+    response = await client.get("/aiohttp")
+    assert response.status == 200
+    assert await response.text() == "test aiohttp"
+    assert isinstance(response.headers, CIMultiDictProxy)
+    assert response.headers.get("X-Aiohttp") == "test"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/response".format(port))
-            assert response.status == 200
-            assert await response.text() == "test tomodachi response"
-            assert isinstance(response.headers, CIMultiDictProxy)
-            assert response.headers.get("X-Tomodachi-Response") == "test"
+    response = await client.get("/response")
+    assert response.status == 200
+    assert await response.text() == "test tomodachi response"
+    assert isinstance(response.headers, CIMultiDictProxy)
+    assert response.headers.get("X-Tomodachi-Response") == "test"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/same-response".format(port))
-            assert response.status == 200
-            assert await response.text() == "test tomodachi response"
-            assert isinstance(response.headers, CIMultiDictProxy)
-            assert response.headers.get("X-Tomodachi-Response") == "test"
+    response = await client.get("/same-response")
+    assert response.status == 200
+    assert await response.text() == "test tomodachi response"
+    assert isinstance(response.headers, CIMultiDictProxy)
+    assert response.headers.get("X-Tomodachi-Response") == "test"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            _id = "123456789"
-            response = await client.get("http://127.0.0.1:{}/test/{}".format(port, _id))
-            assert response.status == 200
-            assert await response.text() == "test {}".format(_id)
+    _id = "123456789"
+    response = await client.get("/test/{}".format(_id))
+    assert response.status == 200
+    assert await response.text() == "test {}".format(_id)
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/non-existant-url".format(port))
-            assert response.status == 404
-            assert await response.text() == "test 404"
+    response = await client.get("/non-existant-url")
+    assert response.status == 404
+    assert await response.text() == "test 404"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/exception".format(port))
-            assert response is not None
-            assert response.status == 500
-            assert isinstance(response.headers, CIMultiDictProxy)
-            assert response.headers.get("Server") == "tomodachi"
+    response = await client.get("/exception")
+    assert response is not None
+    assert response.status == 500
+    assert isinstance(response.headers, CIMultiDictProxy)
+    assert response.headers.get("Server") == "tomodachi"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = None
-            with pytest.raises(asyncio.TimeoutError):
-                response = await asyncio.shield(
-                    client.get("http://127.0.0.1:{}/slow-exception".format(port), timeout=0.1)
-                )
-            assert response is None
+    response = None
+    with pytest.raises(asyncio.TimeoutError):
+        response = await client.get("/slow-exception", timeout=0.1)
+    assert response is None
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            assert instance.slow_request is False
-            response = None
-            with pytest.raises(asyncio.TimeoutError):
-                response = await asyncio.shield(client.get("http://127.0.0.1:{}/slow".format(port), timeout=0.1))
-            assert response is None
-            assert instance.slow_request is False
+    assert instance.slow_request is False
+    response = None
+    with pytest.raises(asyncio.TimeoutError):
+        response = await client.get("/slow", timeout=0.1)
 
-            await asyncio.sleep(2.0)
-            assert instance.slow_request is True
+    response = await client.get("/slow", timeout=3.0)
+    assert response is not None
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/slow".format(port), timeout=3.0)
-            assert response is not None
+    response = await client.get("/test-weird-content-type")
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == "test"
+    assert response.headers.get("Content-Type").strip() == "text/plain; ".strip()
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/test-weird-content-type".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == "test"
-            assert response.headers.get("Content-Type").strip() == "text/plain; ".strip()
+    response = await client.get("/test-charset")
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == "test"
+    assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/test-charset".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == "test"
-            assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
+    response = await client.get("/test-charset")
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == "test"
+    assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/test-charset".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == "test"
-            assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
+    response = await client.get("/test-charset-encoding-correct")
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == "test åäö"
+    assert response.headers.get("Content-Type") == "text/plain; charset=iso-8859-1"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/test-charset-encoding-correct".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == "test åäö"
-            assert response.headers.get("Content-Type") == "text/plain; charset=iso-8859-1"
+    response = await client.get("/test-charset-encoding-error")
+    assert response is not None
+    assert response.status == 500
+    assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/test-charset-encoding-error".format(port))
-            assert response is not None
-            assert response.status == 500
-            assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
+    response = await client.get("/test-charset-invalid")
+    assert response is not None
+    assert response.status == 500
+    assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/test-charset-invalid".format(port))
-            assert response is not None
-            assert response.status == 500
-            assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
+    response = await client.get("/empty-data")
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == ""
+    assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/empty-data".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == ""
-            assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
+    response = await client.get("/byte-data")
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == "test åäö"
+    assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/byte-data".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == "test åäö"
-            assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
+    response = await client.get("/none-data")
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == ""
+    assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/none-data".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == ""
-            assert response.headers.get("Content-Type") == "text/plain; charset=utf-8"
+    response = await client.get("/forwarded-for")
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == "127.0.0.1"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/forwarded-for".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == "127.0.0.1"
+    response = await client.get(
+        "/forwarded-for", headers={"X-Forwarded-For": "192.168.0.1, 10.0.0.1"}
+    )
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == "192.168.0.1"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get(
-                "http://127.0.0.1:{}/forwarded-for".format(port), headers={"X-Forwarded-For": "192.168.0.1, 10.0.0.1"}
-            )
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == "192.168.0.1"
+    response = await client.get(
+        "/authorization",
+        headers={"Authorization": "Basic YXV0aHVzZXI6c2VjcmV0YWY="},
+    )
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == "authuser"
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get(
-                "http://127.0.0.1:{}/authorization".format(port),
-                headers={"Authorization": "Basic YXV0aHVzZXI6c2VjcmV0YWY="},
-            )
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == "authuser"
+    response = await client.get(
+        "/authorization", headers={"Authorization": "Basic 0123456789"}
+    )
+    assert response is not None
+    assert response.status == 200
+    assert await response.text() == ""
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get(
-                "http://127.0.0.1:{}/authorization".format(port), headers={"Authorization": "Basic 0123456789"}
-            )
-            assert response is not None
-            assert response.status == 200
-            assert await response.text() == ""
+    assert instance.middleware_called is False
+    response = await client.get("/test", headers={"X-Use-Middleware": "Set"})
+    assert response.status == 200
+    assert await response.text() == "test"
+    assert instance.middleware_called is True
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            assert instance.middleware_called is False
-            response = await client.get("http://127.0.0.1:{}/test".format(port), headers={"X-Use-Middleware": "Set"})
-            assert response.status == 200
-            assert await response.text() == "test"
-            assert instance.middleware_called is True
+    assert instance.function_triggered is False
+    response = await client.get(
+        "/middleware-before", headers={"X-Use-Middleware": "Before"}
+    )
+    assert response.status == 200
+    assert await response.text() == "before"
+    assert instance.function_triggered is False
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            assert instance.function_triggered is False
-            response = await client.get(
-                "http://127.0.0.1:{}/middleware-before".format(port), headers={"X-Use-Middleware": "Before"}
-            )
-            assert response.status == 200
-            assert await response.text() == "before"
-            assert instance.function_triggered is False
+    response = await client.get(
+        "/middleware-before", headers={"X-Use-Middleware": "After"}
+    )
+    assert response.status == 200
+    assert await response.text() == "after"
+    assert instance.function_triggered is True
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get(
-                "http://127.0.0.1:{}/middleware-before".format(port), headers={"X-Use-Middleware": "After"}
-            )
-            assert response.status == 200
-            assert await response.text() == "after"
-            assert instance.function_triggered is True
+    # f = pathlib.Path("{}/tests/static_files/image.png".format(os.path.realpath(os.getcwd()))).open("r")
+    # ct, encoding = mimetypes.guess_type(str(f.name))
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            f = pathlib.Path("{}/tests/static_files/image.png".format(os.path.realpath(os.getcwd()))).open("r")
-            ct, encoding = mimetypes.guess_type(str(f.name))
+    # response = await client.get("/static/image.png")
+    # assert response is not None
+    # assert response.status == 200
+    # assert response.headers.get("Content-Type") == "image/png"
+    # assert response.headers.get("Content-Type") == ct
 
-            response = await client.get("http://127.0.0.1:{}/static/image.png".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert response.headers.get("Content-Type") == "image/png"
-            assert response.headers.get("Content-Type") == ct
+    # with open(str(f.name), "rb") as fobj:
+    #     data = fobj.read(20000)
+    #     assert (await response.read()) == data
 
-            with open(str(f.name), "rb") as fobj:
-                data = fobj.read(20000)
-                assert (await response.read()) == data
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            f = pathlib.Path("{}/tests/static_files/image.png".format(os.path.realpath(os.getcwd()))).open("r")
-            ct, encoding = mimetypes.guess_type(str(f.name))
+    # f = pathlib.Path("{}/tests/static_files/image.png".format(os.path.realpath(os.getcwd()))).open("r")
+    # ct, encoding = mimetypes.guess_type(str(f.name))
 
-            response = await client.get("http://127.0.0.1:{}/download/image.png/image".format(port))
-            assert response is not None
-            assert response.status == 200
-            assert response.headers.get("Content-Type") == "image/png"
-            assert response.headers.get("Content-Type") == ct
+    # response = await client.get("/download/image.png/image")
+    # assert response is not None
+    # assert response.status == 200
+    # assert response.headers.get("Content-Type") == "image/png"
+    # assert response.headers.get("Content-Type") == ct
 
-            with open(str(f.name), "rb") as fobj:
-                data = fobj.read(20000)
-                assert (await response.read()) == data
+    # with open(str(f.name), "rb") as fobj:
+    #     data = fobj.read(20000)
+    #     assert (await response.read()) == data
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            response = await client.get("http://127.0.0.1:{}/static/image-404.png".format(port))
-            assert response is not None
-            assert response.status == 404
+    response = await client.get("/static/image-404.png")
+    assert response is not None
+    assert response.status == 404
 
-        assert instance.websocket_connected is False
-        async with aiohttp.ClientSession(loop=loop) as client:
-            async with client.ws_connect("http://127.0.0.1:{}/websocket-simple".format(port)) as ws:
-                await ws.close()
-                assert instance.websocket_connected is True
+    assert instance.websocket_connected is False
+    ws = await client.ws_connect("/websocket-simple")
+    await ws.close()
+    assert instance.websocket_connected is True
 
-        assert instance.websocket_header is None
-        async with aiohttp.ClientSession(loop=loop) as client:
-            async with client.ws_connect("http://127.0.0.1:{}/websocket-header".format(port)) as ws:
-                await ws.close()
-                assert instance.websocket_header is not None
-                assert "Python" in instance.websocket_header
-                assert "aiohttp" in instance.websocket_header
+    assert instance.websocket_header is None
+    ws = await client.ws_connect("/websocket-header")
+    await ws.close()
+    assert instance.websocket_header is not None
+    assert "Python" in instance.websocket_header
+    assert "aiohttp" in instance.websocket_header
 
-        async with aiohttp.ClientSession(loop=loop) as client:
-            async with client.ws_connect("http://127.0.0.1:{}/websocket-data".format(port)) as ws:
-                data = "9e2546ef-7fe1-4f94-a3fc-5dc85a771a17"
-                assert instance.websocket_received_data != data
-                await ws.send_str(data)
-                await ws.close()
-                assert instance.websocket_received_data == data
+    ws = await client.ws_connect("/websocket-data")
+    data = "9e2546ef-7fe1-4f94-a3fc-5dc85a771a17"
+    assert instance.websocket_received_data != data
+    await ws.send_str(data)
+    await ws.close()
+    assert instance.websocket_received_data == data
 
-    loop.run_until_complete(_async(loop))
-    instance.stop_service()
-    loop.run_until_complete(future)
 
 
 def test_access_log(monkeypatch: Any, loop: Any) -> None:
@@ -406,41 +360,26 @@ def test_access_log(monkeypatch: Any, loop: Any) -> None:
     assert os.path.exists(log_path) is False
 
 
+@pytest.mark.service(service_class=HttpService)
+async def test_http_service(test_service):
+    test_client, service = test_service
+    response = await test_client.get("/test")
+    assert response.status == 200
+    assert response.headers.get("Server") == "tomodachi"
+    assert await response.text() == "test"
 
-from tomodachi.transport.http import HttpTransport
-from tomodachi.invoker import FUNCTION_ATTRIBUTE, INVOKER_TASK_START_KEYWORD, START_ATTRIBUTE
-import inspect
+    ws = await test_client.ws_connect("/websocket-data")
+    data = "9e2546ef-7fe1-4f94-a3fc-5dc85a771a17"
+    assert service.websocket_received_data != data
+    await ws.send_str(data)
+    await ws.close()
+    assert service.websocket_received_data == data
 
-from tests.services.http_service import HttpService
-
-class GetResolvers:
-
-    @staticmethod
-    def get_http_resolvers(cls):
-        invoker_functions = []
-        for name, fn in inspect.getmembers(cls):
-            if inspect.isfunction(fn) and getattr(fn, FUNCTION_ATTRIBUTE, None):
-                setattr(fn, START_ATTRIBUTE, True)  # deprecated
-                invoker_functions.append((name, fn))
-        return invoker_functions
-
-
-async def test_transport(aiohttp_client):
-
-    s = GetResolvers.get_http_resolvers(HttpService)
-
-    breakpoint()
-
-    context = {
-        "_http_routes": (),
-    }
-    app, server = await HttpTransport.get_server(context)
-
-    client = await aiohttp_client(app)
-    resp = await client.get("/")
-
-    assert resp == {}
-
-
-
+    filename = "static_files/image.png"
+    filepath = pathlib.Path(__file__).parent / filename
+    ct, encoding = mimetypes.guess_type(str(filename))
+    response = await test_client.get("/static/image.png")
+    assert response.status == 200
+    assert response.headers.get("Content-Type") == "image/png"
+    assert response.headers.get("Content-Type") == ct
 
