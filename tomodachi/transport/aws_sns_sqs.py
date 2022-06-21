@@ -453,11 +453,11 @@ class AWSSNSSQSTransport(Invoker):
                 else:
                     return_value = routine
 
-                await cls.delete_message(receipt_handle, queue_url, context)
                 return return_value
 
             increase_execution_context_value("aws_sns_sqs_current_tasks")
             increase_execution_context_value("aws_sns_sqs_total_tasks")
+            keep_message_in_queue = False
             try:
                 return_value = await execute_middlewares(
                     func, routine_func, context.get("message_middleware", []), *(obj, message, topic)
@@ -474,10 +474,12 @@ class AWSSNSSQSTransport(Invoker):
                         AWSSNSSQSInternalServiceException,
                     ),
                 ):
+                    keep_message_in_queue = True
                     if message_key:
                         del context["_aws_sns_sqs_received_messages"][message_key]
-                else:
-                    await cls.delete_message(receipt_handle, queue_url, context)
+
+            if not keep_message_in_queue:
+                await cls.delete_message(receipt_handle, queue_url, context)
             decrease_execution_context_value("aws_sns_sqs_current_tasks")
 
             return return_value
