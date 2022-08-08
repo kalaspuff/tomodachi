@@ -24,7 +24,7 @@ def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: An
     assert instance.uuid is not None
 
     async def _async(loop: Any) -> None:
-        loop_until = time.time() + 10
+        loop_until = time.time() + 90
         while loop_until > time.time():
             if (
                 instance.test_topic_data_received
@@ -33,6 +33,7 @@ def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: An
                 and instance.test_topic_specified_queue_name_data_received
                 and len(instance.test_message_attribute_currencies) == 7
                 and len(instance.test_message_attribute_amounts) == 2
+                and len(instance.test_fifo_messages) == 3
             ):
                 break
             await asyncio.sleep(0.5)
@@ -56,6 +57,8 @@ def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: An
             json.dumps({"currency": "SEK", "amount": 4711}, sort_keys=True),
             json.dumps({"currency": ["SEK"], "amount": 1338, "value": "1338.00 SEK"}, sort_keys=True),
         }
+        assert instance.test_fifo_failed
+        assert instance.test_fifo_messages == ["1", "2", "3"]
 
     loop.run_until_complete(_async(loop))
     instance.stop_service()
