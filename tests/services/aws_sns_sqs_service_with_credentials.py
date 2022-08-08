@@ -62,7 +62,7 @@ class AWSSNSSQSService(tomodachi.Service):
 
             self.check_closer()
 
-    @aws_sns_sqs("test-fifo-topic", fifo=True)
+    @aws_sns_sqs("test-fifo-topic", queue_name="test-fifo-queue-{}".format(data_uuid), fifo=True)
     async def test_fifo(self, data: Any, metadata: Any, service: Any) -> None:
         # Fail the second message once in order to ensure that the third
         # message won't be handled until the second has been processed

@@ -3,7 +3,6 @@ import base64
 import binascii
 import copy
 import decimal
-import enum
 import functools
 import hashlib
 import inspect
@@ -210,7 +209,7 @@ class AWSSNSSQSTransport(Invoker):
         )
         if topic_prefix:
             topic = "{}{}".format(topic_prefix, topic)
-        if fifo:
+        if fifo and not topic.endswith(".fifo"):
             topic += ".fifo"
         return topic
 
@@ -268,7 +267,7 @@ class AWSSNSSQSTransport(Invoker):
                 context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"), queue_name
             )
 
-        if fifo:
+        if fifo and not queue_name.endswith(".fifo"):
             queue_name += ".fifo"
         return queue_name
 
