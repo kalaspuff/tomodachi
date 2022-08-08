@@ -1,5 +1,20 @@
 Changes
 =======
+
+0.22.4 (2022-08-XX)
+-------------------
+- Fixes a bug where SQS messages wouldn't get deleted from the queue if
+  a middleware function catches an exception without reraising it. This
+  is because the ``delete_message`` is not called from within ``routine_func``
+  (due to the exception breaking normal control flow), but the message
+  deletion from middleware bubble is also skipped, as no exception is
+  propagated from it. (github: **technomunk**)
+
+- Adds basic support for FIFO queues & topics on AWS SQS queues managed by
+  a ``tomodachi`` service decorated function, which can be used where one
+  needs guaranteed ordering of the consumed messages. (github: **kjagiello**)
+
+
 0.22.3 (2022-05-xx)
 -------------------
 - Support for assigning values to AWS SQS queue attributes value
@@ -24,7 +39,7 @@ Changes
       )
 
 - Added documentation to describe the "magic" functions that hooks into the
-  service lifecycle; ``_start_service``, ``_started_service``, ``_stopping_service``, 
+  service lifecycle; ``_start_service``, ``_started_service``, ``_stopping_service``,
   ``_stop_service``.
 
 
