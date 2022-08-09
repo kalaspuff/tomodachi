@@ -14,6 +14,9 @@ Changes
   a ``tomodachi`` service decorated function, which can be used where one
   needs guaranteed ordering of the consumed messages. (github: **kjagiello**)
 
+- Updates to the internal ``tomodachi.envelope.ProtobufBase`` envelope to now also
+  support newer versions of protobuf.
+
 
 0.22.3 (2022-05-xx)
 -------------------
