@@ -64,15 +64,17 @@ class AWSSNSSQSService(tomodachi.Service):
 
     @aws_sns_sqs("test-fifo-topic", queue_name="test-fifo-queue-{}.fifo".format(data_uuid), fifo=True)
     async def test_fifo(self, data: Any, metadata: Any, service: Any) -> None:
-        # Fail the second message once in order to ensure that the third
-        # message won't be handled until the second has been processed
-        # successfully.
-        if data == "2" and not self.test_fifo_failed:
-            self.test_fifo_failed = True
-            raise AWSSNSSQSInternalServiceError("boom")
+        data_val, data_uuid_match = data.split(".")
+        if data_uuid_match == self.data_uuid:
+            # Fail the second message once in order to ensure that the third
+            # message won't be handled until the second has been processed
+            # successfully.
+            if data_val == "2" and not self.test_fifo_failed:
+                self.test_fifo_failed = True
+                raise AWSSNSSQSInternalServiceError("boom")
 
-        self.test_fifo_messages.append(data)
-        self.check_closer()
+            self.test_fifo_messages.append(data_val)
+            self.check_closer()
 
     @aws_sns_sqs(
         "test-topic-filtered",
@@ -174,10 +176,10 @@ class AWSSNSSQSService(tomodachi.Service):
 
         # Send three consecutive messages on a FIFO topic. These messages belong to
         # the same group and should be thus handled sequentially.
-        await aws_sns_sqs_publish(self, "1", topic="test-fifo-topic", group_id="group-1", deduplication_id="1")
-        await aws_sns_sqs_publish(self, "1", topic="test-fifo-topic", group_id="group-1", deduplication_id="1")
-        await aws_sns_sqs_publish(self, "2", topic="test-fifo-topic", group_id="group-1", deduplication_id="2")
-        await aws_sns_sqs_publish(self, "3", topic="test-fifo-topic", group_id="group-1", deduplication_id="3")
+        await aws_sns_sqs_publish(self, "1.{}".format(data_uuid), topic="test-fifo-topic", group_id="group-1.{}".format(data_uuid), deduplication_id="1.{}".format(data_uuid))
+        await aws_sns_sqs_publish(self, "1.{}".format(data_uuid), topic="test-fifo-topic", group_id="group-1.{}".format(data_uuid), deduplication_id="1.{}".format(data_uuid))
+        await aws_sns_sqs_publish(self, "2.{}".format(data_uuid), topic="test-fifo-topic", group_id="group-1.{}".format(data_uuid), deduplication_id="2.{}".format(data_uuid))
+        await aws_sns_sqs_publish(self, "3.{}".format(data_uuid), topic="test-fifo-topic", group_id="group-1.{}".format(data_uuid), deduplication_id="3.{}".format(data_uuid))
 
     def stop_service(self) -> None:
         if not self.closer.done():
