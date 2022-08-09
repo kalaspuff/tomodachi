@@ -176,10 +176,34 @@ class AWSSNSSQSService(tomodachi.Service):
 
         # Send three consecutive messages on a FIFO topic. These messages belong to
         # the same group and should be thus handled sequentially.
-        await aws_sns_sqs_publish(self, "1.{}".format(data_uuid), topic="test-fifo-topic", group_id="group-1.{}".format(data_uuid), deduplication_id="1.{}".format(data_uuid))
-        await aws_sns_sqs_publish(self, "1.{}".format(data_uuid), topic="test-fifo-topic", group_id="group-1.{}".format(data_uuid), deduplication_id="1.{}".format(data_uuid))
-        await aws_sns_sqs_publish(self, "2.{}".format(data_uuid), topic="test-fifo-topic", group_id="group-1.{}".format(data_uuid), deduplication_id="2.{}".format(data_uuid))
-        await aws_sns_sqs_publish(self, "3.{}".format(data_uuid), topic="test-fifo-topic", group_id="group-1.{}".format(data_uuid), deduplication_id="3.{}".format(data_uuid))
+        await aws_sns_sqs_publish(
+            self,
+            "1.{}".format(data_uuid),
+            topic="test-fifo-topic",
+            group_id="group-1.{}".format(data_uuid),
+            deduplication_id="1.{}".format(data_uuid),
+        )
+        await aws_sns_sqs_publish(
+            self,
+            "1.{}".format(data_uuid),
+            topic="test-fifo-topic",
+            group_id="group-1.{}".format(data_uuid),
+            deduplication_id="1.{}".format(data_uuid),
+        )
+        await aws_sns_sqs_publish(
+            self,
+            "2.{}".format(data_uuid),
+            topic="test-fifo-topic",
+            group_id="group-1.{}".format(data_uuid),
+            deduplication_id="2.{}".format(data_uuid),
+        )
+        await aws_sns_sqs_publish(
+            self,
+            "3.{}".format(data_uuid),
+            topic="test-fifo-topic",
+            group_id="group-1.{}".format(data_uuid),
+            deduplication_id="3.{}".format(data_uuid),
+        )
 
     def stop_service(self) -> None:
         if not self.closer.done():
