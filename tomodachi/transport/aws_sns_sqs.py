@@ -244,7 +244,7 @@ class AWSSNSSQSTransport(Invoker):
         def encode(match: Match) -> str:
             return "___" + binascii.hexlify(match.group(1).encode("utf-8")).decode("utf-8") + "_"
 
-        topic = re.sub(r"(?!\.fifo)([^a-zA-Z0-9_*#-])", encode, topic)
+        topic = re.sub(r"(?!\.fifo$)([^a-zA-Z0-9_*#-])", encode, topic)
         return topic
 
     @classmethod
