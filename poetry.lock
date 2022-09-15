@@ -659,7 +659,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "types-protobuf"
-version = "3.20.2"
+version = "3.20.3"
 description = "Typing stubs for protobuf"
 category = "dev"
 optional = false
@@ -1540,8 +1540,8 @@ typed-ast = [
     {file = "typed_ast-1.5.4.tar.gz", hash = "sha256:39e21ceb7388e4bb37f4c679d72707ed46c2fbf2a5609b8b8ebc4b067d977df2"},
 ]
 types-protobuf = [
-    {file = "types-protobuf-3.20.2.tar.gz", hash = "sha256:cfb76b5eba514807796603006134ccc361432dd061a8ccb8db2cf9108a454369"},
-    {file = "types_protobuf-3.20.2-py3-none-any.whl", hash = "sha256:e5aa38c2ea7a765f5d572a961e92b150c2eb8504b56a525eaae745a41b4d8fdc"},
+    {file = "types-protobuf-3.20.3.tar.gz", hash = "sha256:aae6404a9c902970da33977d1bc44cebae4957a5ceeced650b9afafb36051bb2"},
+    {file = "types_protobuf-3.20.3-py3-none-any.whl", hash = "sha256:7344c65ff8ff915e5e997e0ac16b1c0ad6ee7fca11df5a64f550aedb264fdb23"},
 ]
 types-pytz = [
     {file = "types-pytz-2022.2.1.0.tar.gz", hash = "sha256:47cfb19c52b9f75896440541db392fd312a35b279c6307a531db71152ea63e2b"},
