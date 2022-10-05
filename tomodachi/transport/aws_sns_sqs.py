@@ -877,6 +877,10 @@ class AWSSNSSQSTransport(Invoker):
                     )
                     raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
                 continue
+            # SNS sometimes sends empty response with 408 errors
+            except ResponseParserError as e:
+                if retry >= 3 or "Further retries may succeed" not in str(e):
+                    raise e
             break
 
         message_id = response.get("MessageId")
