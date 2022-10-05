@@ -667,7 +667,7 @@ python-versions = "*"
 
 [[package]]
 name = "types-pytz"
-version = "2022.2.1.0"
+version = "2022.4.0.0"
 description = "Typing stubs for pytz"
 category = "dev"
 optional = false
@@ -1559,8 +1559,8 @@ types-protobuf = [
     {file = "types_protobuf-3.20.4-py3-none-any.whl", hash = "sha256:5082437afe64ce3b31c8db109eae86e02fda11e4d5f9ac59cb8578a8a138aa70"},
 ]
 types-pytz = [
-    {file = "types-pytz-2022.2.1.0.tar.gz", hash = "sha256:47cfb19c52b9f75896440541db392fd312a35b279c6307a531db71152ea63e2b"},
-    {file = "types_pytz-2022.2.1.0-py3-none-any.whl", hash = "sha256:50ead2254b524a3d4153bc65d00289b66898060d2938e586170dce918dbaf3b3"},
+    {file = "types-pytz-2022.4.0.0.tar.gz", hash = "sha256:17d66e4b16e80ceae0787726f3a22288df7d3f9fdebeb091dc64b92c0e4ea09d"},
+    {file = "types_pytz-2022.4.0.0-py3-none-any.whl", hash = "sha256:950b0f3d64ed5b03a3e29c1e38fe2be8371c933c8e97922d0352345336eb8af4"},
 ]
 types-tzlocal = [
     {file = "types-tzlocal-4.2.2.tar.gz", hash = "sha256:51e9a39e2acae2a03325923dc04804ad9749aeb6037c6d67792ab3374ded5976"},
