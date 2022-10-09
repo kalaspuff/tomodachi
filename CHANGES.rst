@@ -7,6 +7,10 @@ Changes
   Drops support for ``aiobotocore`` versions prior 1.3.0, but will now supporting
   newer versions. (github: **drestrepom**)
 
+- Fixes an issue to now retry calls where AWS SNS intermittently responds with
+  408 responses without any body, which trips up ``botocore.parser.QueryParser``.
+  (github: **technomunk**)
+
 
 0.22.3 (2022-08-09)
 -------------------
