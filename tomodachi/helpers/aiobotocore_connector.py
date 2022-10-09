@@ -1,7 +1,7 @@
 import asyncio
 import inspect
 import time
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any, AsyncIterator, Dict, Optional, cast
 
 import aiobotocore
@@ -22,6 +22,7 @@ CLIENT_CREATION_TIME_LOCK = 45
 class ClientConnector(object):
     __slots__ = (
         "clients",
+        "_clients_context",
         "credentials",
         "client_creation_lock_time",
         "aliases",
@@ -30,6 +31,7 @@ class ClientConnector(object):
     )
 
     clients: Dict[str, Optional[aiobotocore.client.AioBaseClient]]
+    _clients_context: Dict[str, AsyncExitStack]
     credentials: Dict[str, Dict]
     client_creation_lock_time: Dict[str, float]
     aliases: Dict[str, str]
@@ -38,6 +40,7 @@ class ClientConnector(object):
 
     def __init__(self) -> None:
         self.clients = {}
+        self._clients_context = {}
         self.credentials = {}
         self.aliases = {}
         self.client_creation_lock_time = {}
@@ -99,9 +102,10 @@ class ClientConnector(object):
             config = aiobotocore.config.AioConfig(
                 connect_timeout=CONNECT_TIMEOUT, read_timeout=READ_TIMEOUT, max_pool_connections=MAX_POOL_CONNECTIONS
             )
-
-            create_client_func = session._create_client if hasattr(session, "_create_client") else session.create_client
-            client_value = create_client_func(service_name, config=config, **credentials)
+            context_stack = AsyncExitStack()
+            client_value = context_stack.enter_async_context(
+                session.create_client(service_name, config=config, **credentials)
+            )
             if inspect.isawaitable(client_value):
                 client = await client_value
             else:
@@ -109,6 +113,7 @@ class ClientConnector(object):
 
             old_client = self.get_client(alias_name)
             self.clients[alias_name] = cast(aiobotocore.client.AioBaseClient, client)
+            self._clients_context[alias_name] = context_stack
 
             if old_client:
                 try:
@@ -151,7 +156,8 @@ class ClientConnector(object):
 
         async with self.get_lock(alias_name):
             client = self.get_client(alias_name)
-            if not client:
+            context_stack = self._clients_context.get(alias_name)
+            if not client or not context_stack:
                 return
 
             try:
@@ -160,7 +166,13 @@ class ClientConnector(object):
                 task = client.close()
                 if getattr(task, "_coro", None):
                     task = getattr(task, "_coro")
-                await asyncio.wait([asyncio.ensure_future(task)], timeout=3)
+                await asyncio.wait(
+                    [
+                        asyncio.ensure_future(task),
+                        asyncio.ensure_future(context_stack.aclose())
+                    ],
+                    timeout=3
+                )
                 if not fast:
                     await asyncio.sleep(0.25)  # SSL termination sleep
                 else:
