@@ -10,7 +10,9 @@ from tomodachi.importer import ServiceImporter
 from tomodachi.launcher import ServiceLauncher
 
 
-def start_service(filename: str, monkeypatch: Any = None, wait: bool = True, loop: Optional[asyncio.AbstractEventLoop] = None) -> Tuple:
+def start_service(
+    filename: str, monkeypatch: Any = None, wait: bool = True, loop: Optional[asyncio.AbstractEventLoop] = None
+) -> Tuple:
     if not loop:
         if sys.version_info.major == 3 and sys.version_info.minor < 10:
             loop = asyncio.get_event_loop()
@@ -26,7 +28,10 @@ def start_service(filename: str, monkeypatch: Any = None, wait: bool = True, loo
 
     return loop.run_until_complete(_async())
 
-async def _start_service(filename: str, monkeypatch: Any = None, wait: bool = True, loop: Optional[asyncio.AbstractEventLoop] = None) -> Tuple:
+
+async def _start_service(
+    filename: str, monkeypatch: Any = None, wait: bool = True, loop: Optional[asyncio.AbstractEventLoop] = None
+) -> Tuple:
     if monkeypatch:
         monkeypatch.setattr(logging.root, "handlers", [])
 

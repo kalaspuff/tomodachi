@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import signal
 import uuid as uuid_
 from typing import Any, Dict, Set
 

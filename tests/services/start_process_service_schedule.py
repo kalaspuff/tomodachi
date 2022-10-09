@@ -1,6 +1,4 @@
 import asyncio
-import os
-import signal
 
 import tomodachi
 from tomodachi.transport.schedule import schedule

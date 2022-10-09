@@ -246,11 +246,11 @@ class ServiceLauncher(object):
                 )
 
                 async def _run_until_complete() -> Any:
-                    return await asyncio.wait([asyncio.ensure_future(service.run_until_complete()) for service in cls.services])
+                    return await asyncio.wait(
+                        [asyncio.ensure_future(service.run_until_complete()) for service in cls.services]
+                    )
 
-                result = loop.run_until_complete(
-                    _run_until_complete()
-                )
+                result = loop.run_until_complete(_run_until_complete())
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
                     raise cast(Exception, exception[0])

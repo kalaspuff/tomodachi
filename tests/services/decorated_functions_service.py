@@ -1,6 +1,4 @@
 import asyncio
-import os
-import signal
 from typing import Any
 
 from aiohttp import web
