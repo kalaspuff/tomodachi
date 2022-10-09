@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.22.3 (2022-08-XX)
+0.22.3 (2022-08-09)
 -------------------
 - Support for assigning values to AWS SQS queue attributes value
   ``VisibilityTimeout`` and ``RedrivePolicy`` that is used to assign a
