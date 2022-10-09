@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.23.0 (2022-10-XX)
+-------------------
+- Properly handles ``aiobotocore`` client using an async contextmanager.
+  Drops support for ``aiobotocore`` versions prior 1.3.0, but will now supporting
+  newer versions. (github: **drestrepom**)
+
+
 0.22.3 (2022-08-09)
 -------------------
 - Support for assigning values to AWS SQS queue attributes value
