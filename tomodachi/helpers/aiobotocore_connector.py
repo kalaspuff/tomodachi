@@ -167,11 +167,7 @@ class ClientConnector(object):
                 if getattr(task, "_coro", None):
                     task = getattr(task, "_coro")
                 await asyncio.wait(
-                    [
-                        asyncio.ensure_future(task),
-                        asyncio.ensure_future(context_stack.aclose())
-                    ],
-                    timeout=3
+                    [asyncio.ensure_future(task), asyncio.ensure_future(context_stack.aclose())], timeout=3
                 )
                 if not fast:
                     await asyncio.sleep(0.25)  # SSL termination sleep

@@ -13,7 +13,7 @@ class HttpService(tomodachi.Service):
     name = "test_http"
     options = {"http": {"port": 53250, "access_log": True, "real_ip_from": "127.0.0.1"}}
     uuid = None
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     function_order = []
 
     @http("GET", r"/get-uuid/?")
@@ -22,6 +22,7 @@ class HttpService(tomodachi.Service):
 
     async def _start_service(self) -> None:
         self.function_order.append("_start_service")
+        self.closer = asyncio.Future()
 
     async def _started_service(self) -> None:
         self.function_order.append("_started_service")
@@ -36,7 +37,7 @@ class HttpService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 
@@ -54,7 +55,7 @@ class HttpService2(tomodachi.Service):
     name = "test_http2"
     options = {"http": {"port": 53250, "access_log": True, "real_ip_from": "127.0.0.1"}}
     uuid = None
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     function_order = []
 
     @http("GET", r"/get-uuid/?")
@@ -63,6 +64,7 @@ class HttpService2(tomodachi.Service):
 
     async def _start_service(self) -> None:
         self.function_order.append("_start_service")
+        self.closer = asyncio.Future()
 
     async def _started_service(self) -> None:
         self.function_order.append("_started_service")
@@ -77,7 +79,7 @@ class HttpService2(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 

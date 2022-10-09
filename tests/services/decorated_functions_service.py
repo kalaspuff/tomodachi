@@ -41,7 +41,7 @@ class HttpService(tomodachi.Service):
     options = {"http": {"port": None, "access_log": True, "real_ip_from": "127.0.0.1"}}
     invocation_count = 0
     uuid = None
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
 
     @http("GET", r"/count/1/?")
     @count_invocations_1
@@ -68,6 +68,9 @@ class HttpService(tomodachi.Service):
     async def count_0(self, request: web.Request) -> str:
         return str(self.invocation_count)
 
+    async def _start_service(self) -> None:
+        self.closer = asyncio.Future()
+
     async def _started_service(self) -> None:
         async def _async() -> None:
             async def sleep_and_kill() -> None:
@@ -79,7 +82,7 @@ class HttpService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 

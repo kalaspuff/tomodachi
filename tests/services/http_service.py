@@ -33,7 +33,7 @@ class HttpService(tomodachi.Service):
     discovery = [DummyRegistry]
     options = {"http": {"port": None, "access_log": True, "real_ip_from": "127.0.0.1"}}
     uuid = None
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     http_middleware = [middleware_function]
     slow_request = False
     middleware_called = False
@@ -157,6 +157,9 @@ class HttpService(tomodachi.Service):
 
         return _receive
 
+    async def _start_service(self) -> None:
+        self.closer = asyncio.Future()
+
     async def _started_service(self) -> None:
         async def _async() -> None:
             async def sleep_and_kill() -> None:
@@ -168,7 +171,7 @@ class HttpService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 

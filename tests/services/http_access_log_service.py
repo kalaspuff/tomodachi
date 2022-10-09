@@ -13,7 +13,7 @@ class HttpService(tomodachi.Service):
     name = "test_http"
     options = {"http": {"port": None, "access_log": "/tmp/03c2ad00-d47d-4569-84a3-0958f88f6c14.log"}}
     uuid = None
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     slow_request = False
 
     def __init__(self) -> None:
@@ -42,6 +42,9 @@ class HttpService(tomodachi.Service):
     async def test_404(self, request: web.Request) -> str:
         return "test 404"
 
+    async def _start_service(self) -> None:
+        self.closer = asyncio.Future()
+
     async def _started_service(self) -> None:
         async def _async() -> None:
             async def sleep_and_kill() -> None:
@@ -53,7 +56,7 @@ class HttpService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 

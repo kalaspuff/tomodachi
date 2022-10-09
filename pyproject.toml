@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tomodachi"
-version = "0.22.3"
+version = "0.23.0"
 description = "Microservice library on asyncio - HTTP server, websockets, pub/sub messaging for AWS SNS+SQS and RabbitMQ"
 authors = ["Carl Oscar Aaro <hello@carloscar.com>"]
 keywords = ["tomodachi", "microservice", "microservices", "framework", "library", "asyncio", "aws", "sns", "sqs", "amqp", "rabbitmq", "http", "websockets", "easy", "fast", "pubsub", "events", "event based messaging", "messages", "protocol buffers", "protobuf", "async", "message attributes", "filter policy", "distributed architecture", "scalable", "python 3"]
@@ -57,7 +57,7 @@ asahi = ">=0.1,<0.3"
 typing-extensions = { version = ">=3.7.4", markers = "python_version < \"3.8\"" }
 
 # derived from aiobotocore for dependency resolution speed in same cases.
-botocore = ">=1.12.252"
+botocore = ">=1.20.106"
 
 # extras
 protobuf = { version = ">=3.13.0", optional = true }
@@ -85,6 +85,7 @@ color = ["asahi-extras"]      # ["colorama"]
 flake8 = { version = ">=3.8.4", markers = "sys_platform != \"win32\"" }
 flake8-black = { version = ">=0.2.0", markers = "sys_platform != \"win32\"" }
 flake8-isort = { version = ">=4.0.0", markers = "sys_platform != \"win32\"" }
+flake8-pyproject = { version = ">=1.1.0", markers = "sys_platform != \"win32\"" }
 isort = { version = ">=5.6.0", markers = "sys_platform != \"win32\"" }
 pytest = { version = ">=6.1.0", markers = "sys_platform != \"win32\"" }
 pytest-cov = { version = ">=2.10.0", markers = "sys_platform != \"win32\"" }
@@ -105,12 +106,42 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 120
-target_version = ["py37", "py38", "py39"]
+target_version = ["py37", "py38", "py39", "py310"]
 include = '\.pyi?$'
 exclude = '\.eggs/|tomodachi\.egg-info/|\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/|proto_build/|syntax_error_service\.py|setup\.py'
 
 [tool.isort]
 profile = "black"
 line_length = 120
+src_paths = ["tomodachi", "tests", "examples"]
 known_first_party = "tomodachi,run_test_service_helper,proto_build"
-skip = ".mypy_cache,__pycache__,tomodachi.egg-info,.eggs,syntax_error_service.py,.vscode,dist"
+skip = [".mypy_cache", ".pytest_cache", "__pycache__", "tomodachi.egg-info", ".eggs", "syntax_error_service.py", ".git", ".venv", ".vscode", "build", "dist", "tmp"]
+
+[tool.mypy]
+pretty = true
+files = ["$MYPY_CONFIG_FILE_DIR/tomodachi", "$MYPY_CONFIG_FILE_DIR/tests", "$MYPY_CONFIG_FILE_DIR/examples"]
+ignore_missing_imports = false
+show_error_codes = true
+no_implicit_reexport = true
+no_implicit_optional = true
+strict_equality = true
+strict_optional = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+local_partial_types = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+
+# [tool.pytest.ini_options]
+# filterwarnings = ["ignore:There is no current event loop:DeprecationWarning"]
+
+[tool.flake8]
+ignore = ["E203", "E501", "W503"]
+exclude = ["tomodachi.egg-info", ".git", ".mypy_cache", ".pytest_cache", ".venv", ".vscode", "__pycache__", "build", "dist", "proto_build", "tmp"]
+
+[tool.coverage.run]
+omit = "setup.py,tomodachi.py,tests/*,tomodachi/__main__.py,tomodachi/__version__.py"

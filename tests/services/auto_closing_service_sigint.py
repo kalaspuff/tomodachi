@@ -23,7 +23,7 @@ class AutoClosingService(tomodachi.Service):
     async def _started_service(self) -> None:
         self.started = True
         await asyncio.sleep(0.1)
-        os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
     async def _stop_service(self) -> None:
         self.stop = True

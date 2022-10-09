@@ -339,3 +339,7 @@ def cli_entrypoint(argv: Optional[List[str]] = None) -> None:
             argv = ["tomodachi"]
 
     CLI().main(argv[1:])
+#    try:
+#        CLI().main(argv[1:])
+#    except KeyboardInterrupt:
+#        raise SystemExit()

@@ -13,7 +13,7 @@ from run_test_service_helper import start_service
     reason="AWS configuration options missing in environment",
 )
 def test_start_aws_sns_sqs_service_dead_letter_queue(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/aws_sns_sqs_service_dead_letter_queue.py", monkeypatch)
+    services, future = start_service("tests/services/aws_sns_sqs_service_dead_letter_queue.py", monkeypatch, loop=loop)
 
     assert services is not None
     assert len(services) == 1

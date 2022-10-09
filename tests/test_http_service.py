@@ -14,7 +14,7 @@ from run_test_service_helper import start_service
 
 
 def test_start_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/http_service.py", monkeypatch)
+    services, future = start_service("tests/services/http_service.py", monkeypatch, loop=loop)
 
     assert services is not None
     assert len(services) == 1
@@ -34,7 +34,7 @@ def test_start_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     reason="SO_REUSEPORT is automatically enable on Linux",
 )
 def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/http_service_same_port.py", monkeypatch)
+    services, future = start_service("tests/services/http_service_same_port.py", monkeypatch, loop=loop)
 
     assert services is not None
     assert len(services) == 2
@@ -59,7 +59,7 @@ def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any, loop: Any)
 
 
 def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/http_service.py", monkeypatch)
+    services, future = start_service("tests/services/http_service.py", monkeypatch, loop=loop)
     instance = services.get("test_http")
     port = instance.context.get("_http_port")
 
@@ -336,7 +336,7 @@ def test_access_log(monkeypatch: Any, loop: Any) -> None:
     logging.basicConfig(format="%(asctime)s (%(name)s): %(message)s", level=logging.INFO)
     logging.Formatter(fmt="%(asctime)s.%(msecs).03d", datefmt="%Y-%m-%d %H:%M:%S")
 
-    services, future = start_service("tests/services/http_access_log_service.py", monkeypatch)
+    services, future = start_service("tests/services/http_access_log_service.py", monkeypatch, loop=loop)
     instance = services.get("test_http")
     port = instance.context.get("_http_port")
 

@@ -31,7 +31,7 @@ class AWSSNSSQSService(tomodachi.Service):
         },
     }
     uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID") or ""
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     test_topic_data_received = False
     test_topic_specified_queue_name_data_received = False
     test_topic_metadata_topic = None
@@ -120,6 +120,9 @@ class AWSSNSSQSService(tomodachi.Service):
 
             self.check_closer()
 
+    async def _start_service(self) -> None:
+        self.closer = asyncio.Future()
+
     async def _started_service(self) -> None:
         async def publish(data: Any, topic: str, **kwargs: Any) -> None:
             await aws_sns_sqs_publish(self, data, topic=topic, wait=False, **kwargs)
@@ -134,7 +137,7 @@ class AWSSNSSQSService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 

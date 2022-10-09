@@ -5,7 +5,7 @@ from run_test_service_helper import start_service
 
 
 def test_start_process_schedule(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/start_process_service_schedule.py", monkeypatch)
+    services, future = start_service("tests/services/start_process_service_schedule.py", monkeypatch, loop=loop)
 
     assert services is not None
     assert len(services) == 1

@@ -10,7 +10,7 @@ from tomodachi.transport.schedule import schedule
 class SchedulerService(tomodachi.Service):
     name = "test_schedule"
     uuid = None
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     function_order = []
 
     @schedule(interval="5 seconds", immediately=True)
@@ -18,6 +18,7 @@ class SchedulerService(tomodachi.Service):
         self.function_order.append("every_fifth_second")
 
     async def _start_service(self) -> None:
+        self.closer = asyncio.Future()
         await asyncio.sleep(2)
         self.function_order.append("_start_service")
 
@@ -34,7 +35,7 @@ class SchedulerService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 
