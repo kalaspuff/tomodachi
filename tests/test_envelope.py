@@ -14,7 +14,7 @@ from tomodachi.validation.validation import RegexMissmatchException, validate_fi
 
 
 def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy")
 
@@ -43,7 +43,7 @@ def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
 
 
 def test_json_base_large_message(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy")
 
@@ -73,7 +73,7 @@ def test_json_base_large_message(monkeypatch: Any, capsys: Any, loop: Any) -> No
 
 
 def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -108,7 +108,7 @@ def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
 
 
 def test_protobuf_base_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -133,7 +133,7 @@ def test_protobuf_base_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) 
 
 
 def test_protobuf_base_bad_proto_class(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -155,7 +155,7 @@ def test_protobuf_base_bad_proto_class(monkeypatch: Any, capsys: Any, loop: Any)
 
 
 def test_protobuf_validation_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -173,7 +173,7 @@ def test_protobuf_validation_no_proto_class(monkeypatch: Any, capsys: Any, loop:
 
 
 def test_protobuf_validation_bad_proto_class(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -191,7 +191,7 @@ def test_protobuf_validation_bad_proto_class(monkeypatch: Any, capsys: Any, loop
 
 
 def test_protobuf_object_validation_function(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -215,7 +215,7 @@ def test_protobuf_object_validation_function(monkeypatch: Any, capsys: Any, loop
 
 
 def test_protobuf_object_static_validation_function(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -240,7 +240,7 @@ def test_protobuf_object_static_validation_function(monkeypatch: Any, capsys: An
 
 
 def test_protobuf_object_validation_function_fail(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -265,7 +265,7 @@ def test_protobuf_object_validation_function_fail(monkeypatch: Any, capsys: Any,
 
 
 def test_protobuf_object_static_validation_function_fail(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 

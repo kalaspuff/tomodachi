@@ -126,7 +126,7 @@ class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
 
 class AWSSNSSQSTransport(Invoker):
     topics: Dict[str, str] = {}
-    close_waiter = None
+    close_waiter: Optional[asyncio.Future] = None
 
     @classmethod
     async def publish(
@@ -377,7 +377,7 @@ class AWSSNSSQSTransport(Invoker):
                 get_contextvar("aws_sns_sqs.queue_url").set(queue_url)
                 get_contextvar("aws_sns_sqs.approximate_receive_count").set(approximate_receive_count)
 
-            message = payload
+            message: Optional[Union[bool, str, Dict]] = payload
             message_attributes_values: Dict[
                 str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
             ] = (cls.transform_message_attributes_from_response(message_attributes) if message_attributes else {})
@@ -1118,8 +1118,8 @@ class AWSSNSSQSTransport(Invoker):
         )
         compiled_pattern = re.compile(pattern)
 
-        next_token = False
-        topic_arn_list = None
+        next_token: Any = False
+        topic_arn_list: Optional[List[str]] = None
         while next_token is not None:
             try:
                 async with connector("tomodachi.sns", service_name="sns") as client:
@@ -1324,11 +1324,11 @@ class AWSSNSSQSTransport(Invoker):
             queue_attributes["RedrivePolicy"] = json.dumps(redrive_policy)
 
         if (
-            message_retention_period
+            message_retention_period  # type: ignore
             and current_message_retention_period
             and message_retention_period != current_message_retention_period
         ):
-            queue_attributes["MessageRetentionPeriod"] = str(
+            queue_attributes["MessageRetentionPeriod"] = str(  # type: ignore
                 message_retention_period
             )  # SQS.SetQueueAttributes "Attributes" are mapped string -> string
 
@@ -1543,7 +1543,8 @@ class AWSSNSSQSTransport(Invoker):
                                     context["_aws_sns_sqs_subscribed"] = False
                                     cls.topics = {}
                                     func = await cls.subscribe(obj, context)
-                                    await func()
+                                    if func:
+                                        await func()
                                 except Exception:
                                     pass
                                 await asyncio.sleep(20)
@@ -1630,7 +1631,7 @@ class AWSSNSSQSTransport(Invoker):
                 if not stop_waiter.done():
                     stop_waiter.set_result(None)
 
-            task = None
+            task: Optional[asyncio.Future] = None
             while True:
                 if task and cls.close_waiter and not cls.close_waiter.done():
                     logging.getLogger("transport.aws_sns_sqs").warning(

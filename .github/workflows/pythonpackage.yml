@@ -28,10 +28,8 @@ jobs:
           restore-keys: ${{ runner.os }}-poetry-
       - name: Install Poetry
         run: |
-          curl -fsS -o install-poetry.py https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py
-          python install-poetry.py --yes
+          curl -sSL https://install.python-poetry.org | POETRY_HOME="$HOME/.poetry" python - --yes
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
-          rm -f get-poetry.py
       - name: Install dependencies
         run: |
           poetry install --no-interaction -E uvloop -E protobuf -E aiodns
@@ -50,16 +48,16 @@ jobs:
           TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID: ${{ secrets.TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID }}
           TOMODACHI_TEST_SQS_KMS_MASTER_KEY_ID: ${{ secrets.TOMODACHI_TEST_SQS_KMS_MASTER_KEY_ID }}
       - name: Lint with flake8
-        run: flake8 tomodachi/ tests/
+        run: flake8
       - name: Run dummy service
         run: tomodachi run tests/run_example_service.py
       - name: Run dummy service (with uvloop)
         run: tomodachi run --loop uvloop tests/run_example_service.py
       - name: Output version
-        run: python tomodachi.py -v
-      - name: python tomodachi.py --dependency-versions
-        run: python tomodachi.py --dependency-versions
+        run: tomodachi -v
+      - name: tomodachi --dependency-versions
+        run: tomodachi --dependency-versions
       - name: Type check with mypy
-        run: mypy tomodachi/ tests/type_hinting_validation.py
+        run: mypy
       - name: Codecov
         run: codecov --token=${{ secrets.CODECOV_TOKEN }}

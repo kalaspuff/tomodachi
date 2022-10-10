@@ -7,7 +7,7 @@ import platform
 import signal
 import sys
 import time
-from typing import Any, Dict, List, Optional, Set, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
 
 import tomodachi
 import tomodachi.__version__
@@ -31,6 +31,8 @@ except (Exception, ModuleNotFoundError, ImportError):
 class ServiceLauncher(object):
     _close_waiter: Optional[asyncio.Future] = None
     _stopped_waiter: Optional[asyncio.Future] = None
+    stop_services_pre_hook: Optional[Callable] = None
+    stop_services_post_hook: Optional[Callable] = None
     restart_services = False
     services: Set = set()
 
@@ -40,6 +42,8 @@ class ServiceLauncher(object):
 
     @classmethod
     async def _stop_services(cls) -> None:
+        if cls.stop_services_pre_hook:
+            await cls.stop_services_pre_hook()
         if cls._close_waiter and not cls._close_waiter.done():
             cls._close_waiter.set_result(None)
             for service in cls.services:
@@ -51,6 +55,8 @@ class ServiceLauncher(object):
                 cls._stopped_waiter.set_result(None)
         if cls._stopped_waiter:
             await cls._stopped_waiter
+        if cls.stop_services_post_hook:
+            await cls.stop_services_post_hook()
 
     @classmethod
     def run_until_complete(
@@ -71,7 +77,16 @@ class ServiceLauncher(object):
 
         logging.basicConfig(level=logging.DEBUG)
 
-        loop = asyncio.get_event_loop()
+        loop: asyncio.AbstractEventLoop
+        if sys.version_info.major == 3 and sys.version_info.minor < 10:
+            loop = asyncio.get_event_loop()
+        else:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
         if loop and loop.is_closed():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -137,7 +152,7 @@ class ServiceLauncher(object):
                     event_loop_alias = "uvloop"
                     import uvloop  # noqa  # isort:skip
 
-                    event_loop_version = str(uvloop.__version__)
+                    event_loop_version = str(uvloop.__version__)  # type: ignore
                 elif "asyncio." in str(loop.__class__):
                     event_loop_alias = "asyncio"
                 else:
@@ -215,8 +230,11 @@ class ServiceLauncher(object):
 
             tomodachi.SERVICE_EXIT_CODE = tomodachi.DEFAULT_SERVICE_EXIT_CODE
 
-            cls._close_waiter = asyncio.Future()
-            cls._stopped_waiter = asyncio.Future()
+            async def _set_waiters() -> None:
+                cls._close_waiter = asyncio.Future()
+                cls._stopped_waiter = asyncio.Future()
+
+            loop.run_until_complete(_set_waiters())
             cls.restart_services = False
 
             try:
@@ -226,9 +244,13 @@ class ServiceLauncher(object):
                         for file in service_files
                     ]
                 )
-                result = loop.run_until_complete(
-                    asyncio.wait([asyncio.ensure_future(service.run_until_complete()) for service in cls.services])
-                )
+
+                async def _run_until_complete() -> Any:
+                    return await asyncio.wait(
+                        [asyncio.ensure_future(service.run_until_complete()) for service in cls.services]
+                    )
+
+                result = loop.run_until_complete(_run_until_complete())
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
                     raise cast(Exception, exception[0])

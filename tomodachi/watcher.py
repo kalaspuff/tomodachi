@@ -119,7 +119,9 @@ class Watcher(object):
 
         return {}
 
-    async def watch(self, loop: asyncio.AbstractEventLoop = None, callback_func: Optional[Callable] = None) -> Any:
+    async def watch(
+        self, loop: Optional[asyncio.AbstractEventLoop] = None, callback_func: Optional[Callable] = None
+    ) -> Any:
         _loop: Any = asyncio.get_event_loop() if not loop else loop
 
         async def _watch_loop() -> None:

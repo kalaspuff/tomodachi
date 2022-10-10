@@ -1,6 +1,4 @@
 import asyncio
-import os
-import signal
 
 from aiohttp import web
 
@@ -13,7 +11,7 @@ class HttpService(tomodachi.Service):
     name = "test_http"
     options = {"http": {"port": 53251, "access_log": True, "real_ip_from": "127.0.0.1"}}
     uuid = None
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     function_order = []
 
     @http("GET", r"/?")
@@ -23,6 +21,7 @@ class HttpService(tomodachi.Service):
 
     async def _start_service(self) -> None:
         self.function_order.append("_start_service")
+        self.closer = asyncio.Future()
         await asyncio.sleep(4)
 
     async def _started_service(self) -> None:
@@ -38,7 +37,7 @@ class HttpService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 

@@ -7,4 +7,4 @@ echo "> Starting container"
 echo "> Forwarding local port $LOCAL_PORT to service".
 echo ""
 
-docker run -ti -p $LOCAL_PORT:80 $IMAGENAME
+docker run -ti -p $LOCAL_PORT:31337 $IMAGENAME

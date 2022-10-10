@@ -6,7 +6,7 @@ from run_test_service_helper import start_service
 
 
 def test_exception_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/exception_service.py", monkeypatch)
+    services, future = start_service("tests/services/exception_service.py", monkeypatch, loop=loop)
 
     loop.run_until_complete(future)
 
@@ -15,7 +15,7 @@ def test_exception_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
 
 
 def test_exception_service_in_init(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/exception_service_init.py", monkeypatch)
+    services, future = start_service("tests/services/exception_service_init.py", monkeypatch, loop=loop)
 
     with pytest.raises(Exception):
         loop.run_until_complete(future)

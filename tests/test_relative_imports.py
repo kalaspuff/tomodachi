@@ -6,7 +6,7 @@ from run_test_service_helper import start_service
 
 
 def test_relative_import_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/relative_service.py", monkeypatch)
+    services, future = start_service("tests/services/relative_service.py", monkeypatch, loop=loop)
 
     assert services is not None
     assert len(services) == 1
@@ -26,7 +26,7 @@ def test_relative_import_service(monkeypatch: Any, capsys: Any, loop: Any) -> No
 
 
 def test_relative_import_service_without_py_ending(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/relative_service", monkeypatch)
+    services, future = start_service("tests/services/relative_service", monkeypatch, loop=loop)
 
     instance = services.get("test_relative")
     assert instance is not None

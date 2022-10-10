@@ -13,7 +13,7 @@ from run_test_service_helper import start_service
     reason="RabbitMQ needs to be enabled and environment TOMODACHI_TEST_RABBITMQ_ENABLED needs to be set",
 )
 def test_start_amqp_service_with_credentials(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/amqp_service_with_credentials.py", monkeypatch)
+    services, future = start_service("tests/services/amqp_service_with_credentials.py", monkeypatch, loop=loop)
 
     assert services is not None
     assert len(services) == 1
@@ -51,7 +51,9 @@ def test_start_amqp_service_with_credentials(monkeypatch: Any, capsys: Any, loop
     reason="RabbitMQ needs to be enabled and environment TOMODACHI_TEST_RABBITMQ_ENABLED needs to be set",
 )
 def test_start_amqp_service_with_credentials_without_envelope(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/amqp_service_with_credentials_without_envelope.py", monkeypatch)
+    services, future = start_service(
+        "tests/services/amqp_service_with_credentials_without_envelope.py", monkeypatch, loop=loop
+    )
 
     assert services is not None
     assert len(services) == 1
@@ -81,7 +83,7 @@ def test_start_amqp_service_with_credentials_without_envelope(monkeypatch: Any, 
 )
 def test_start_amqp_service_with_credentials_with_custom_envelope(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service(
-        "tests/services/amqp_service_with_credentials_with_custom_envelope.py", monkeypatch
+        "tests/services/amqp_service_with_credentials_with_custom_envelope.py", monkeypatch, loop=loop
     )
 
     assert services is not None

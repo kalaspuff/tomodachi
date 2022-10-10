@@ -94,3 +94,10 @@ class ProtobufBase(object):
             message_uuid,
             timestamp,
         )
+
+
+__all__ = [
+    "PROTOCOL_VERSION",
+    "ProtobufBase",
+    "SNSSQSMessage",
+]

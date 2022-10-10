@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional, Set, Type, cast
 
 import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
-from tomodachi.config import merge_dicts
+from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import set_service, unset_service
 from tomodachi.invoker import FUNCTION_ATTRIBUTE, INVOKER_TASK_START_KEYWORD, START_ATTRIBUTE
 
@@ -27,8 +27,8 @@ class ServiceContainer(object):
         self.configuration = configuration
         self.logger = logging.getLogger("services.{}".format(self.module_name))
 
-        self._close_waiter: asyncio.Future = asyncio.Future()
-        self.started_waiter: asyncio.Future = asyncio.Future()
+        self._close_waiter: Optional[asyncio.Future] = None
+        self.started_waiter: Optional[asyncio.Future] = None
 
         def catch_uncaught_exceptions(
             type_: Type[BaseException], value: BaseException, traceback: Optional[TracebackType]
@@ -38,6 +38,9 @@ class ServiceContainer(object):
         sys.excepthook = catch_uncaught_exceptions
 
     def stop_service(self) -> None:
+        if not self._close_waiter:
+            self._close_waiter = asyncio.Future()
+
         if not self._close_waiter.done():
             self._close_waiter.set_result(None)
 
@@ -57,6 +60,9 @@ class ServiceContainer(object):
                 setattr(instance, k, v)
 
     async def wait_stopped(self) -> None:
+        if not self._close_waiter:
+            self._close_waiter = asyncio.Future()
+
         await self._close_waiter
 
     async def run_until_complete(self) -> None:
@@ -66,6 +72,10 @@ class ServiceContainer(object):
         stop_futures: Set = set()
         started_futures: Set = set()
         registered_services: Set = set()
+
+        if not self.started_waiter:
+            self.started_waiter = asyncio.Future()
+
         for _, cls in inspect.getmembers(self.module_import):
             if inspect.isclass(cls):
                 if not getattr(cls, CLASS_ATTRIBUTE, False):
@@ -216,7 +226,7 @@ class ServiceContainer(object):
             self.stop_service()
 
         self.services_started = services_started
-        if not self.started_waiter.done():
+        if self.started_waiter and not self.started_waiter.done():
             self.started_waiter.set_result(services_started)
 
         await self.wait_stopped()

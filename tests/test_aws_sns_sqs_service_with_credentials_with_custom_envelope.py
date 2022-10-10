@@ -16,7 +16,7 @@ def test_start_aws_sns_sqs_service_with_credentials_with_custom_envelope(
     monkeypatch: Any, capsys: Any, loop: Any
 ) -> None:
     services, future = start_service(
-        "tests/services/aws_sns_sqs_service_with_credentials_with_custom_envelope.py", monkeypatch
+        "tests/services/aws_sns_sqs_service_with_credentials_with_custom_envelope.py", monkeypatch, loop=loop
     )
 
     assert services is not None

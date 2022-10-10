@@ -1,6 +1,4 @@
 import asyncio
-import os
-import signal
 import uuid
 from typing import Any
 
@@ -15,7 +13,7 @@ class AMQPService(tomodachi.Service):
     log_level = "INFO"
     message_envelope = JsonBase
     options = {"amqp": {"login": "guest", "password": "guest"}}
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     test_topic_data_received = False
     test_topic_specified_queue_name_data_received = False
     test_topic_metadata_topic = None
@@ -66,6 +64,9 @@ class AMQPService(tomodachi.Service):
 
             self.check_closer()
 
+    async def _start_service(self) -> None:
+        self.closer = asyncio.Future()
+
     async def _started_service(self) -> None:
         async def publish(data: Any, routing_key: str) -> None:
             await amqp_publish(self, data, routing_key=routing_key, wait=True)
@@ -80,7 +81,7 @@ class AMQPService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 

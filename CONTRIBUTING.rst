@@ -33,10 +33,6 @@ Clone the repo and install the required dependencies
     local ~/code/tomodachi$ tomodachi --version
     local ~/code/tomodachi$ python -m tomodachi --version
 
-    # If you prefer to not use the CLI entrypoint there's a script available
-    # as tomodachi.py
-    local ~/code/tomodachi$ python tomodachi.py --version
-
     # Finally to start services
     local ~/code/tomodachi$ tomodachi run examples/basic_examples/http_simple_service.py
 
@@ -48,7 +44,7 @@ Automated linting, unit tests and integration tests
 ---------------------------------------------------
 
 There are GitHub actions enabled on "push" to automate test cases for
-the most common use-cases, as well as performing lint tests, type 
+the most common use-cases, as well as performing lint tests, type
 hint checking, etc. You can also run them on your own, see ``Makefile``
 for a helping hand.
 
@@ -61,7 +57,7 @@ Use the following ``make`` commands to run these tasks on demand:
 .. code:: bash
 
     local ~/code/tomodachi$ make black
-    # Runs: black setup.py tomodachi.py tomodachi/ examples/ tests/
+    # Runs: black tomodachi/ examples/ tests/
 
     local ~/code/tomodachi$ make isort
-    # Runs: isort setup.py tomodachi.py tomodachi/ examples/ tests/
+    # Runs: isort tomodachi/ examples/ tests/

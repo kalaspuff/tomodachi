@@ -1,6 +1,4 @@
 import asyncio
-import os
-import signal
 import uuid
 from typing import Any
 
@@ -15,7 +13,7 @@ class AWSSNSSQSService(tomodachi.Service):
     name = "test_amqp"
     log_level = "INFO"
     options = {"amqp": {"login": "guest", "password": "guest"}}
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     test_topic_data_received = False
     test_topic_data = None
     data_uuid = data_uuid
@@ -33,6 +31,9 @@ class AWSSNSSQSService(tomodachi.Service):
 
             self.check_closer()
 
+    async def _start_service(self) -> None:
+        self.closer = asyncio.Future()
+
     async def _started_service(self) -> None:
         async def publish(data: Any, routing_key: str) -> None:
             await amqp_publish(self, data, routing_key=routing_key, wait=False)
@@ -47,7 +48,7 @@ class AWSSNSSQSService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 

@@ -6,7 +6,7 @@ from run_test_service_helper import start_service
 
 
 def test_decorated_functions_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/decorated_functions_service.py", monkeypatch)
+    services, future = start_service("tests/services/decorated_functions_service.py", monkeypatch, loop=loop)
     instance = services.get("test_http")
     port = instance.context.get("_http_port")
 

@@ -1,6 +1,4 @@
 import asyncio
-import os
-import signal
 
 import tomodachi
 from tomodachi.transport.schedule import heartbeat, schedule
@@ -10,7 +8,7 @@ from tomodachi.transport.schedule import heartbeat, schedule
 class SchedulerService(tomodachi.Service):
     name = "test_schedule"
     uuid = None
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
     seconds_triggered = 0
     third_seconds_triggered = 0
 
@@ -46,6 +44,9 @@ class SchedulerService(tomodachi.Service):
     async def work_hours_in_gmt_1(self) -> None:
         pass
 
+    async def _start_service(self) -> None:
+        self.closer = asyncio.Future()
+
     async def _started_service(self) -> None:
         async def _async() -> None:
             async def sleep_and_kill() -> None:
@@ -57,7 +58,7 @@ class SchedulerService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 

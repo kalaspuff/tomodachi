@@ -316,8 +316,8 @@ Run the service 😎
     # cli alias is set up automatically on installation
     local ~/code/service$ tomodachi run service.py
 
-    # shortcut to cli endpoint could be used if cloned from repo and not yet installed
-    local ~/code/tomodachi$ python tomodachi.py run example/http_simple_service.py
+    # alternatively using the tomodachi.run module
+    local ~/code/tomodachi$ python -m tomodachi.run service.py
 
 
 *Defaults to output information on stdout.*
@@ -464,7 +464,7 @@ quite this small, but as a template to get started.
 
 .. code:: dockerfile
 
-    FROM python:3.8-slim
+    FROM python:3.10-bullseye
     RUN pip install tomodachi
     RUN mkdir /app
     WORKDIR /app

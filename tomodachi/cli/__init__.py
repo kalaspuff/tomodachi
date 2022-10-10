@@ -142,8 +142,8 @@ class CLI:
             import google.protobuf  # noqa  # isort:skip
 
             protobuf_version_ = google.protobuf.__version__
-            if isinstance(protobuf_version_, bytes):
-                protobuf_version = cast(bytes, protobuf_version_).decode()
+            if isinstance(protobuf_version_, bytes):  # type: ignore
+                protobuf_version = cast(bytes, protobuf_version_).decode()  # type: ignore
             else:
                 protobuf_version = str(protobuf_version_)
             if output_versions:
@@ -157,7 +157,7 @@ class CLI:
             # Optional
             import uvloop  # noqa  # isort:skip
 
-            uvloop_version = uvloop.__version__
+            uvloop_version = uvloop.__version__  # type: ignore
             if output_versions:
                 print("uvloop/{}".format(uvloop_version))
         except ModuleNotFoundError:  # pragma: no cover

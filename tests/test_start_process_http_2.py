@@ -7,7 +7,7 @@ from run_test_service_helper import start_service
 
 
 def test_start_process_http_later_request(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    func, future = start_service("tests/services/start_process_service_http_2.py", monkeypatch, wait=False)
+    func, future = start_service("tests/services/start_process_service_http_2.py", monkeypatch, wait=False, loop=loop)
     port = 53252
 
     async def _async(loop: Any) -> None:
@@ -23,7 +23,7 @@ def test_start_process_http_later_request(monkeypatch: Any, capsys: Any, loop: A
     loop.run_until_complete(_async(loop))
     loop.run_until_complete(future)
 
-    services = func()
+    services = loop.run_until_complete(func())
     assert services is not None
     assert len(services) == 1
     instance = services.get("test_http")

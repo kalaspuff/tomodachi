@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional, cast
 
-_services = {}
-_current_service = {}
+_services: Dict[str, Any] = {}
+_current_service: Dict[int, Any] = {}
 _context: Dict[str, Any] = {}
 
 

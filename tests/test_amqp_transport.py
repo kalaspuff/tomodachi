@@ -58,7 +58,7 @@ def test_queue_name(monkeypatch: Any) -> None:
 
 
 def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_service.py", monkeypatch)
+    services, future = start_service("tests/services/dummy_service.py", monkeypatch, loop=loop)
 
     instance = services.get("test_dummy")
 

@@ -1,6 +1,4 @@
 import asyncio
-import os
-import signal
 from typing import Any
 
 import tomodachi
@@ -22,7 +20,7 @@ class AWSSNSSQSService(tomodachi.Service):
             "aws_secret_access_key": "XXXXXXXXX",
         }
     }
-    closer: asyncio.Future = asyncio.Future()
+    closer: asyncio.Future
 
     @aws_sns_sqs("test-topic", ("data",))
     async def test(self, data: Any) -> None:
@@ -31,6 +29,9 @@ class AWSSNSSQSService(tomodachi.Service):
     @aws_sns_sqs("test-topic#", ("metadata", "data"))
     async def faked_wildcard_topic(self, metadata: Any, data: Any) -> None:
         pass
+
+    async def _start_service(self) -> None:
+        self.closer = asyncio.Future()
 
     async def _started_service(self) -> None:
         async def _async() -> None:
@@ -43,7 +44,7 @@ class AWSSNSSQSService(tomodachi.Service):
             await self.closer
             if not task.done():
                 task.cancel()
-            os.kill(os.getpid(), signal.SIGINT)
+            tomodachi.exit()
 
         asyncio.ensure_future(_async())
 
