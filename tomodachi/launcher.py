@@ -152,7 +152,7 @@ class ServiceLauncher(object):
                     event_loop_alias = "uvloop"
                     import uvloop  # noqa  # isort:skip
 
-                    event_loop_version = str(uvloop.__version__)
+                    event_loop_version = str(uvloop.__version__)  # type: ignore
                 elif "asyncio." in str(loop.__class__):
                     event_loop_alias = "asyncio"
                 else:

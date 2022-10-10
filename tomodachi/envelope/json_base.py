@@ -61,3 +61,9 @@ class JsonBase(object):
             message_uuid,
             timestamp,
         )
+
+
+__all__ = [
+    "PROTOCOL_VERSION",
+    "JsonBase",
+]

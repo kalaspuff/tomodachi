@@ -114,13 +114,13 @@ exclude = '\.eggs/|tomodachi\.egg-info/|\.git/|\.mypy_cache/|\.venv/|\.pytest_ca
 profile = "black"
 line_length = 120
 src_paths = ["tomodachi", "tests", "examples"]
-known_first_party = "tomodachi,run_test_service_helper,proto_build"
+known_first_party = ["tomodachi", "run_test_service_helper", "proto_build"]
 skip = [".mypy_cache", ".pytest_cache", "__pycache__", "tomodachi.egg-info", ".eggs", "syntax_error_service.py", ".git", ".venv", ".vscode", "build", "dist", "tmp"]
 
 [tool.mypy]
 pretty = true
-files = ["$MYPY_CONFIG_FILE_DIR/tomodachi", "$MYPY_CONFIG_FILE_DIR/tests", "$MYPY_CONFIG_FILE_DIR/examples"]
-ignore_missing_imports = false
+files = ["$MYPY_CONFIG_FILE_DIR/tomodachi", "$MYPY_CONFIG_FILE_DIR/tests/type_hinting_validation.py"]
+ignore_missing_imports = true
 show_error_codes = true
 no_implicit_reexport = true
 no_implicit_optional = true
@@ -136,12 +136,9 @@ warn_unused_ignores = true
 warn_return_any = true
 warn_unreachable = true
 
-# [tool.pytest.ini_options]
-# filterwarnings = ["ignore:There is no current event loop:DeprecationWarning"]
-
 [tool.flake8]
 ignore = ["E203", "E501", "W503"]
 exclude = ["tomodachi.egg-info", ".git", ".mypy_cache", ".pytest_cache", ".venv", ".vscode", "__pycache__", "build", "dist", "proto_build", "tmp"]
 
 [tool.coverage.run]
-omit = "setup.py,tomodachi.py,tests/*,tomodachi/__main__.py,tomodachi/__version__.py"
+omit = ["examples/*", "tests/*", "tomodachi/__main__.py", "tomodachi/__version__.py"]

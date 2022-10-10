@@ -1,10 +1,10 @@
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from tomodachi.helpers.dict import merge_dicts
 
 
-def parse_config_files(config_files: List[str]) -> Optional[Dict]:
+def parse_config_files(config_files: Union[str, List[str]]) -> Optional[Dict]:
     if not config_files:
         return None
     if isinstance(config_files, str):

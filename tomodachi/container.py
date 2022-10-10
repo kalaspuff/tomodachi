@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional, Set, Type, cast
 
 import tomodachi
 from tomodachi import CLASS_ATTRIBUTE
-from tomodachi.config import merge_dicts
+from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import set_service, unset_service
 from tomodachi.invoker import FUNCTION_ATTRIBUTE, INVOKER_TASK_START_KEYWORD, START_ATTRIBUTE
 

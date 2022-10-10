@@ -1287,7 +1287,7 @@ class HttpTransport(Invoker):
 async def resolve_response(
     value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response],
     request: Optional[web.Request] = None,
-    context: Dict = None,
+    context: Optional[Dict] = None,
     status_code: Optional[Union[str, int]] = None,
     default_content_type: Optional[str] = None,
     default_charset: Optional[str] = None,
@@ -1305,7 +1305,7 @@ async def resolve_response(
 def resolve_response_sync(
     value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response],
     request: Optional[web.Request] = None,
-    context: Dict = None,
+    context: Optional[Dict] = None,
     status_code: Optional[Union[str, int]] = None,
     default_content_type: Optional[str] = None,
     default_charset: Optional[str] = None,
@@ -1346,7 +1346,7 @@ def resolve_response_sync(
         return value
     else:
         if value is None:
-            value = ""
+            value = ""  # type: ignore
         body = value
 
     return Response(

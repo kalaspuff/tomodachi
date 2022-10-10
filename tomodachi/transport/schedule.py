@@ -19,7 +19,7 @@ from tomodachi.invoker import Invoker
 
 
 class Scheduler(Invoker):
-    close_waiter = None
+    close_waiter: Optional[asyncio.Future] = None
 
     @classmethod
     async def schedule_handler(
@@ -388,8 +388,8 @@ class Scheduler(Invoker):
                         )
                     )
 
-            next_call_at = None
-            prev_call_at = None
+            next_call_at: Optional[int] = None
+            prev_call_at: Optional[int] = None
             tasks: List = []
             too_many_tasks = False
             threshold = 20

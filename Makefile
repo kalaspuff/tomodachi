@@ -34,11 +34,11 @@ clean:
 
 .PHONY: black
 black:
-	poetry run black tomodachi.py tomodachi/ examples/ tests/
+	poetry run black tomodachi/ examples/ tests/
 
 .PHONY: isort
 isort:
-	poetry run isort tomodachi.py tomodachi/ examples/ tests/
+	poetry run isort tomodachi/ examples/ tests/
 
 .PHONY: flake8
 flake8:
@@ -53,8 +53,8 @@ lint: flake8 mypy
 .PHONY: tests
 tests:
 	poetry run pytest tests -v
-	poetry run python tomodachi.py run tests/run_example_service.py
-	poetry run python tomodachi.py run --loop uvloop tests/run_example_service.py
+	poetry run python -m tomodachi.run tests/run_example_service.py
+	poetry run tomodachi run --loop uvloop tests/run_example_service.py
 
 .PHONY: pytest
 pytest:
