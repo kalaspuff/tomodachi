@@ -5,4 +5,4 @@ services:
     image: tomodachi-example
     build: .
     ports:
-      - 31337:80
+      - 31337:31337

@@ -464,7 +464,7 @@ quite this small, but as a template to get started.
 
 .. code:: dockerfile
 
-    FROM python:3.8-slim
+    FROM python:3.10-bullseye
     RUN pip install tomodachi
     RUN mkdir /app
     WORKDIR /app
