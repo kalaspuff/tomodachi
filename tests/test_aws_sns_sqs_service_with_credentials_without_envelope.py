@@ -14,7 +14,7 @@ from run_test_service_helper import start_service
 )
 def test_start_aws_sns_sqs_service_with_credentials_without_envelope(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     services, future = start_service(
-        "tests/services/aws_sns_sqs_service_with_credentials_without_envelope.py", monkeypatch
+        "tests/services/aws_sns_sqs_service_with_credentials_without_envelope.py", monkeypatch, loop=loop
     )
 
     assert services is not None
