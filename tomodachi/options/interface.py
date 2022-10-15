@@ -34,9 +34,10 @@ class OptionsInterface:
     def __setattr__(self, item: str, value: Any) -> None:
         if not hasattr(self, item) and item not in self.keys():
             exc = AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
-            if hasattr(exc, "name") and hasattr(exc, "obj"):
-                exc.name = item
-                exc.obj = self
+            if hasattr(exc, "name"):
+                setattr(exc, "name", item)
+            if hasattr(exc, "obj"):
+                setattr(exc, "obj", self)
             raise exc
 
         super().__setattr__(item, value)
@@ -49,9 +50,10 @@ class OptionsInterface:
 
         if not hasattr(self, item):
             exc = AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
-            if hasattr(exc, "name") and hasattr(exc, "obj"):
-                exc.name = item
-                exc.obj = self
+            if hasattr(exc, "name"):
+                setattr(exc, "name", item)
+            if hasattr(exc, "obj"):
+                setattr(exc, "obj", self)
             raise exc
 
         setattr(self, item, value)
