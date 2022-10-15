@@ -1,9 +1,8 @@
 import uuid
 
 import tomodachi
-from tomodachi import aws_sns_sqs_publish, schedule
+from tomodachi import Options, aws_sns_sqs_publish, schedule
 from tomodachi.envelope import JsonBase
-from tomodachi.options import Options
 
 
 class ServiceSendMessage(tomodachi.Service):

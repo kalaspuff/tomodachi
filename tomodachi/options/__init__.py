@@ -1,4 +1,4 @@
-from .defaults import DEFAULT, Options
+from .definitions import DEFAULT, Options
 from .interface import OptionsInterface
 
 __all__ = [

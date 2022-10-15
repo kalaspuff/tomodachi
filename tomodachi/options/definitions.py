@@ -259,7 +259,8 @@ class Options(OptionsInterface):
         pass
 
     class AMQP(_AMQP):
-        pass
+        class QOS(_AMQP_QOS):
+            pass
 
     class Watcher(_Watcher):
         pass

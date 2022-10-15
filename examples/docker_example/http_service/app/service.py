@@ -9,7 +9,7 @@ class Service(tomodachi.Service):
         http=tomodachi.Options.HTTP(
             port=31337,
             content_type="application/json; charset=utf-8",
-        )
+        ),
     )
     _healthy = True
 

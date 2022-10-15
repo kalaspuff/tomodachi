@@ -2,9 +2,8 @@ import os
 from typing import Dict
 
 import tomodachi
-from tomodachi import aws_sns_sqs
+from tomodachi import Options, aws_sns_sqs
 from tomodachi.envelope import JsonBase
-from tomodachi.options import Options
 
 
 class AWSSNSRegistrationService(tomodachi.Service):

@@ -487,7 +487,7 @@ quite this small, but as a template to get started.
             http=tomodachi.Options.HTTP(
                 port=80,
                 content_type="application/json; charset=utf-8",
-            )
+            ),
         )
         _healthy = True
 

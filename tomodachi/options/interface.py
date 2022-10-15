@@ -81,7 +81,7 @@ class OptionsInterface:
         indent: int = 2
         prefix: str = ".".join(self._hierarchy)
         if prefix:
-            cls_name = str(type(self)).split("'")[-2].split("tomodachi.options.", 1)[-1]
+            cls_name = str(type(self)).split("'")[-2].split("tomodachi.options.definitions.", 1)[-1]
             result = f'∴ {self._hierarchy[-1]} <class "{cls_name}" -- prefix: "{prefix}">:'
             prefix += "."
         prev: Tuple[str, ...] = self._hierarchy
@@ -97,7 +97,7 @@ class OptionsInterface:
                         cls_name = (
                             str(type(self.get(".".join(curr[len(self._hierarchy) : i + 1]))))
                             .split("'")[-2]
-                            .split("tomodachi.options.", 1)[-1]
+                            .split("tomodachi.options.definitions.", 1)[-1]
                         )
                         lead_char = "·" if i != 0 else "∴"
                         result += f"\n{' ' * (indent - 2)}{lead_char} {subkey} <class: \"{cls_name}\" -- prefix: \"{'.'.join(curr)}\">:"

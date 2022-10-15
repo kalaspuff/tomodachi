@@ -2,10 +2,9 @@ import os
 from typing import Any
 
 import tomodachi
-from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
+from tomodachi import Options, aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.discovery import AWSSNSRegistration
 from tomodachi.envelope import JsonBase
-from tomodachi.options import Options
 from tomodachi.transport.aws_sns_sqs import AWSSNSSQSInternalServiceError
 
 

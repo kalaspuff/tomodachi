@@ -1,9 +1,8 @@
 from typing import Any
 
 import tomodachi
-from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
+from tomodachi import Options, aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.envelope import JsonBase
-from tomodachi.options import Options
 
 
 class ServiceA(tomodachi.Service):

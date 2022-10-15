@@ -5,9 +5,8 @@ from typing import Callable, Tuple, Union
 from aiohttp import web
 
 import tomodachi
-from tomodachi import HttpResponse, http, http_error, http_static, websocket
+from tomodachi import HttpResponse, Options, http, http_error, http_static, websocket
 from tomodachi.discovery import DummyRegistry
-from tomodachi.options import Options
 
 
 class ExampleHttpService(tomodachi.Service):

@@ -2,10 +2,9 @@ import os
 from typing import Any, Dict
 
 import tomodachi
-from tomodachi import amqp, amqp_publish
+from tomodachi import Options, amqp, amqp_publish
 from tomodachi.discovery import DummyRegistry
 from tomodachi.envelope import JsonBase
-from tomodachi.options import Options
 
 
 class ExampleAmqpService(tomodachi.Service):
