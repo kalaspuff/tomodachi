@@ -16,7 +16,7 @@ class ServiceB(tomodachi.Service):
             aws_access_key_id=None,  # Specify AWS access key (example: "AKIA****************"")
             aws_secret_access_key=None,  # Specify AWS secret key (example: "****************************************")
         ),
-        aws_endpoint_urls=Options.AWSEndpointUrls(
+        aws_endpoint_urls=Options.AWSEndpointURLs(
             sns=None,  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
             sqs=None,  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
         ),

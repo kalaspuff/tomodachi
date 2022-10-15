@@ -20,7 +20,7 @@ def test_init_options_class() -> None:
             sqs_kms_master_key_id="arn:aws:kms:eu-west-1:123456789012:key/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
             sns_kms_master_key_id="arn:aws:kms:eu-west-1:000000004711:key/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
         ),
-        aws_endpoint_urls=Options.AWSEndpointUrls(
+        aws_endpoint_urls=Options.AWSEndpointURLs(
             sns="http://localhost:4566",
             sqs=None,
         ),

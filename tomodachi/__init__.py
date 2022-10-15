@@ -6,7 +6,7 @@ import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
 from tomodachi.__version__ import __version__, __version_info__
-from tomodachi.options import Options, OptionsMapping
+from tomodachi.options import Options, OptionsInterface
 
 try:
     from tomodachi.helpers.execution_context import clear_execution_context as _clear_execution_context
@@ -233,7 +233,7 @@ __all__ = [
     "AiobotocoreClientConnector",
     "aiobotocore_client_connector",
     "Options",
-    "OptionsMapping",
+    "OptionsInterface",
     "amqp",
     "amqp_publish",
     "aws_sns_sqs",
