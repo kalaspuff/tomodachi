@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Match, Optional, Set, Tuple, Union
 
 import aioamqp
 
-from tomodachi.helpers.dict import get_item_by_path, merge_dicts
+from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,

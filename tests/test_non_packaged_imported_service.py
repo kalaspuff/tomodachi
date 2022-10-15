@@ -73,30 +73,6 @@ def test_non_named_same_named_sub_service_without_py_ending(monkeypatch: Any, ca
     loop.run_until_complete(future)
 
 
-@pytest.mark.skipif(sys.version_info >= (3, 7, 0), reason="Test skipped on Python 3.7+")
-def test_sub_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    with pytest.raises(tomodachi.importer.ServicePackageError):
-        services, future = start_service("tests/services/test/service.py", monkeypatch, loop=loop)
-
-
-@pytest.mark.skipif(sys.version_info >= (3, 7, 0), reason="Test skipped on Python 3.7+")
-def test_sub_service_without_py_ending(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    with pytest.raises(tomodachi.importer.ServicePackageError):
-        services, future = start_service("tests/services/test/service", monkeypatch, loop=loop)
-
-
-@pytest.mark.skipif(sys.version_info >= (3, 7, 0), reason="Test skipped on Python 3.7+")
-def test_same_named_sub_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    with pytest.raises(tomodachi.importer.ServicePackageError):
-        services, future = start_service("tests/services/test/test.py", monkeypatch, loop=loop)
-
-
-@pytest.mark.skipif(sys.version_info >= (3, 7, 0), reason="Test skipped on Python 3.7+")
-def test_same_named_sub_service_without_py_ending(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    with pytest.raises(tomodachi.importer.ServicePackageError):
-        services, future = start_service("tests/services/test/test", monkeypatch, loop=loop)
-
-
 def test_sub_service_with_reserved_name(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     with pytest.raises(tomodachi.importer.ServicePackageError):
         services, future = start_service("tests/services/os/os.py", monkeypatch, loop=loop)

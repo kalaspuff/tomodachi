@@ -22,20 +22,3 @@ def merge_dicts(dict1: Dict, dict2: Dict) -> Dict:
             context[k] = v2
 
     return context
-
-
-def get_item_by_path(dict: Dict, path: str, default: Any = None) -> Any:
-    if "." not in path:
-        raise KeyError("Key path must contain '.' ")
-    doted_paths = path.split(".")
-    item = dict.get(doted_paths[0], {})
-    for i in range(1, len(doted_paths)):
-        if i == len(doted_paths) - 1:
-            default_value = default
-        else:
-            default_value = {}
-        if isinstance(item, Dict):
-            item = item.get(doted_paths[i], default_value)
-        else:
-            raise ValueError("Item at key path {} is not a Dict".format(".".join(doted_paths[:i])))
-    return item
