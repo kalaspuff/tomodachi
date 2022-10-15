@@ -34,10 +34,7 @@ from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 from tomodachi.options import Options
 
-if sys.version_info >= (3, 8):
-    from typing import TypedDict, Literal  # isort:skip
-else:
-    from typing_extensions import TypedDict, Literal  # isort:skip
+from typing import TypedDict, Literal
 
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"

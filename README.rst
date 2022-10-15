@@ -528,8 +528,8 @@ Building and running the container, forwarding host's port 31337 to port 80.
 
     local ~/code/service$ docker build . -t tomodachi-microservice
     > Sending build context to Docker daemon  9.216kB
-    > Step 1/7 : FROM python:3.10-slim
-    > 3.8-slim: Pulling from library/python
+    > Step 1/7 : FROM python:3.10-bullseye
+    > 3.10-bullseye: Pulling from library/python
     > ...
     >  ---> 3f7f3ab065d4
     > Step 7/7 : CMD ["tomodachi", "run", "service.py", "--production"]
@@ -896,14 +896,14 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
 
 Requirements 👍
 ===============
-* Python_ (``3.7+``, ``3.8+``, ``3.9+``)
+* Python_ (``3.8+``, ``3.9+``, ``3.10+``)
 * aiohttp_ (``aiohttp`` is the currently supported HTTP server implementation for ``tomodachi``)
 * aiobotocore_ and botocore_ (used for AWS SNS+SQS pub/sub messaging)
 * aioamqp_ (used for RabbitMQ / AMQP pub/sub messaging)
 * uvloop_ (optional: alternative event loop implementation)
 
 .. _Python: https://www.python.org
-.. _asyncio: http://docs.python.org/3.9/library/asyncio.html
+.. _asyncio: http://docs.python.org/3.10/library/asyncio.html
 .. _aiohttp: https://github.com/aio-libs/aiohttp
 .. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _botocore: https://github.com/boto/botocore
