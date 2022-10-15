@@ -5,6 +5,7 @@ import tomodachi
 from tomodachi import aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.discovery import AWSSNSRegistration
 from tomodachi.envelope import JsonBase
+from tomodachi.options import Options
 
 
 class ExampleAWSSNSSQSService(tomodachi.Service):
@@ -21,13 +22,13 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
     message_envelope = JsonBase
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
-    options = {
-        "aws_sns_sqs.region_name": "eu-west-1",  # specify AWS region (example: 'eu-west-1')
-        "aws_sns_sqs.aws_access_key_id": "",  # specify AWS access key (example: 'AKIAXNTIENCJIY2STOCI') - this is not real credentials
-        "aws_sns_sqs.aws_secret_access_key": "",  # specify AWS secret key (example: 'f7sha92hNotarealsecretkeyn29ShnSYQi3nzgA') - this is not real credentials
-        "aws_endpoint_urls.sns": "",  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
-        "aws_endpoint_urls.sqs": "",  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
-    }
+    options = Options(
+        aws_sns_sqs=Options.AWSSNSSQS(
+            region_name=None,  # Specify AWS region (example: "eu-west-1")
+            aws_access_key_id=None,  # Specify AWS access key (example: "AKIA****************"")
+            aws_secret_access_key=None,  # Specify AWS secret key (example: "****************************************")
+        ),
+    )
 
     @aws_sns_sqs("example-route1", queue_name="queue-1")
     async def route1a(self, data: Any) -> None:

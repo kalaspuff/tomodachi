@@ -6,7 +6,7 @@ from aiohttp import web
 from aiohttp.web_fileresponse import FileResponse
 
 import tomodachi
-from tomodachi import http, http_error, http_static, websocket
+from tomodachi import http, http_error, http_static, websocket, Options
 
 
 class ExampleWebsocketService(tomodachi.Service):
@@ -14,8 +14,13 @@ class ExampleWebsocketService(tomodachi.Service):
     log_level = "DEBUG"
     uuid = str(os.environ.get("SERVICE_UUID") or "")
 
-    # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
-    options = {"http.port": 4711, "http.content_type": "text/plain; charset=utf-8", "http.access_log": True}
+    options = Options(
+        http=Options.HTTP(
+            port=4711,
+            content_type="text/plain; charset=utf-8",
+            access_log=True,
+        ),
+    )
 
     @http("GET", r"/(?:|index.html)")
     async def index(self, request: web.Request) -> web.Response:
