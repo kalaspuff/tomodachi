@@ -216,6 +216,11 @@ class Options(OptionsMapping):
 
             self._load_keyword_options(**kwargs)
 
+        _legacy_fallback: Dict[str, Union[str, Tuple[str, ...]]] = {
+            "max_buffer_size": "client_max_size",
+            "max_upload_size": "client_max_size",
+        }
+
     class AWSSNSSQS(OptionsMapping):
         region_name: Optional[str]
         aws_access_key_id: Optional[str]
@@ -224,7 +229,7 @@ class Options(OptionsMapping):
         queue_name_prefix: str
         sns_kms_master_key_id: Optional[str]
         sqs_kms_master_key_id: Optional[str]
-        sqs_kms_data_key_reuse_period: Optional[str]
+        sqs_kms_data_key_reuse_period: Optional[int]
         queue_policy: Optional[str]
         wildcard_queue_policy: Optional[str]
 
@@ -302,7 +307,26 @@ class Options(OptionsMapping):
             self._load_keyword_options(**kwargs)
 
     class AMQP(OptionsMapping):
-        host: Optional[str]
+        class QOS(OptionsMapping):
+            queue_prefetch_count: int
+            global_prefetch_count: int
+
+            _hierarchy: Tuple[str, ...] = ("amqp", "qos")
+            __slots__: Tuple[str, ...] = ("queue_prefetch_count", "global_prefetch_count")
+
+            def __init__(
+                self,
+                *,
+                queue_prefetch_count: int = 100,
+                global_prefetch_count: int = 400,
+                **kwargs: Any,
+            ):
+                self.queue_prefetch_count = queue_prefetch_count
+                self.global_prefetch_count = global_prefetch_count
+
+                self._load_keyword_options(**kwargs)
+
+        host: str
         port: int
         login: str
         password: str
@@ -313,9 +337,12 @@ class Options(OptionsMapping):
         ssl: bool
         heartbeat: int
         queue_ttl: int
+        qos: QOS
+
+        _QOS_DEFAULT: QOS = QOS()
 
         _hierarchy: Tuple[str, ...] = ("amqp",)
-        __slots__: Tuple[str, ...] = ("host", "port", "login", "password", "exchange_name", "routing_key_prefix", "queue_name_prefix", "virtualhost", "ssl", "heartbeat", "queue_ttl")
+        __slots__: Tuple[str, ...] = ("host", "port", "login", "password", "exchange_name", "routing_key_prefix", "queue_name_prefix", "virtualhost", "ssl", "heartbeat", "queue_ttl", "qos")
 
         def __init__(
             self,
@@ -324,13 +351,14 @@ class Options(OptionsMapping):
             port: int = 5672,
             login: str = "guest",
             password: str = "guest",
-            exchange_name: str = "amq_topic",
+            exchange_name: str = "amq.topic",
             routing_key_prefix: str = "",
             queue_name_prefix: str = "",
             virtualhost: str = "/",
             ssl: bool = False,
             heartbeat: int = 60,
             queue_ttl: int = 86400,
+            qos: Union[Mapping[str, Any], QOS] = _QOS_DEFAULT,
             **kwargs: Any,
         ):
             self.host = host
@@ -345,7 +373,20 @@ class Options(OptionsMapping):
             self.heartbeat = heartbeat
             self.queue_ttl = queue_ttl
 
+            if isinstance(qos, self.QOS) and qos is not self._QOS_DEFAULT:
+                self.qos = qos
+                self.qos._parent = self
+            else:
+                self.qos = self.QOS(_parent=self)
+
+            if not isinstance(qos, self.QOS):
+                self.qos._load_keyword_options(**qos)
+
             self._load_keyword_options(**kwargs)
+
+        Qos = QOS
+        AMQPQOS = QOS
+        AmqpQos = QOS
 
     class Watcher(OptionsMapping):
         ignored_dirs: List[str]
@@ -499,6 +540,9 @@ class Options(OptionsMapping):
 
         "aws.queue_policy": "aws_sns_sqs.queue_policy",
         "aws.wildcard_queue_policy": "aws_sns_sqs.wildcard_queue_policy",
+
+        "http.max_buffer_size": "http.client_max_size",
+        "http.max_upload_size": "http.client_max_size",
     }
 
 HTTP = Options.HTTP
