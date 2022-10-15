@@ -77,9 +77,11 @@ class Invoker(object):
 
     @staticmethod
     def options(context: Dict) -> Options:
-        options: Options = (
-            context.get("options")
-            if isinstance(context.get("options"), Options)
-            else Options(**context.get("options", {}))
+        return cast(
+            Options,
+            (
+                context.get("options")
+                if isinstance(context.get("options"), Options)
+                else Options(**context.get("options", {}))
+            ),
         )
-        return options

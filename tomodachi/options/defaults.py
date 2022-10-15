@@ -12,7 +12,7 @@ def DEFAULT(cls: Type[T]) -> T:
     return cast(T, type("DEFAULT", (type(cls),), {"_default": True}))
 
 
-class HTTP(OptionsInterface):
+class _HTTP(OptionsInterface):
     port: int
     host: Optional[str]
     reuse_port: bool
@@ -74,7 +74,7 @@ class HTTP(OptionsInterface):
         self._load_keyword_options(**kwargs)
 
 
-class AWSSNSSQS(OptionsInterface):
+class _AWSSNSSQS(OptionsInterface):
     region_name: Optional[str]
     aws_access_key_id: Optional[str]
     aws_secret_access_key: Optional[str]
@@ -118,7 +118,7 @@ class AWSSNSSQS(OptionsInterface):
         queue_name_prefix: str = "",
         sns_kms_master_key_id: Optional[str] = None,
         sqs_kms_master_key_id: Optional[str] = None,
-        sqs_kms_data_key_reuse_period: Optional[str] = None,
+        sqs_kms_data_key_reuse_period: Optional[int] = None,
         queue_policy: Optional[str] = None,
         wildcard_queue_policy: Optional[str] = None,
         **kwargs: Any,
@@ -137,7 +137,7 @@ class AWSSNSSQS(OptionsInterface):
         self._load_keyword_options(**kwargs)
 
 
-class AWSEndpointURLs(OptionsInterface):
+class _AWSEndpointURLs(OptionsInterface):
     sns: Optional[str]
     sqs: Optional[str]
 
@@ -156,25 +156,28 @@ class AWSEndpointURLs(OptionsInterface):
         self._load_keyword_options(**kwargs)
 
 
-class AMQP(OptionsInterface):
-    class QOS(OptionsInterface):
-        queue_prefetch_count: int
-        global_prefetch_count: int
+class _AMQP_QOS(OptionsInterface):
+    queue_prefetch_count: int
+    global_prefetch_count: int
 
-        _hierarchy: Tuple[str, ...] = ("amqp", "qos")
-        __slots__: Tuple[str, ...] = ("queue_prefetch_count", "global_prefetch_count")
+    _hierarchy: Tuple[str, ...] = ("amqp", "qos")
 
-        def __init__(
-            self,
-            *,
-            queue_prefetch_count: int = 100,
-            global_prefetch_count: int = 400,
-            **kwargs: Any,
-        ):
-            self.queue_prefetch_count = queue_prefetch_count
-            self.global_prefetch_count = global_prefetch_count
+    def __init__(
+        self,
+        *,
+        queue_prefetch_count: int = 100,
+        global_prefetch_count: int = 400,
+        **kwargs: Any,
+    ):
+        self.queue_prefetch_count = queue_prefetch_count
+        self.global_prefetch_count = global_prefetch_count
 
-            self._load_keyword_options(**kwargs)
+        self._load_keyword_options(**kwargs)
+
+
+class _AMQP(OptionsInterface):
+    class QOS(_AMQP_QOS):
+        pass
 
     host: str
     port: int
@@ -221,12 +224,11 @@ class AMQP(OptionsInterface):
         self.queue_ttl = queue_ttl
 
         input_: Tuple[Tuple[str, Union[Mapping[str, Any], OptionsInterface], type], ...] = (("qos", qos, self.QOS),)
-
         self._load_initial_input(input_)
         self._load_keyword_options(**kwargs)
 
 
-class Watcher(OptionsInterface):
+class _Watcher(OptionsInterface):
     ignored_dirs: List[str]
     watched_file_endings: List[str]
 
@@ -247,6 +249,21 @@ class Watcher(OptionsInterface):
 
 
 class Options(OptionsInterface):
+    class HTTP(_HTTP):
+        pass
+
+    class AWSSNSSQS(_AWSSNSSQS):
+        pass
+
+    class AWSEndpointURLs(_AWSEndpointURLs):
+        pass
+
+    class AMQP(_AMQP):
+        pass
+
+    class Watcher(_Watcher):
+        pass
+
     http: HTTP
     aws_sns_sqs: AWSSNSSQS
     aws_endpoint_urls: AWSEndpointURLs
@@ -295,18 +312,12 @@ class Options(OptionsInterface):
         **kwargs: Any,
     ):
         input_: Tuple[Tuple[str, Union[Mapping[str, Any], OptionsInterface], type], ...] = (
-            ("http", http, HTTP),
-            ("aws_sns_sqs", aws_sns_sqs, AWSSNSSQS),
-            ("aws_endpoint_urls", aws_endpoint_urls, AWSEndpointURLs),
-            ("amqp", amqp, AMQP),
-            ("watcher", watcher, Watcher),
+            ("http", http, self.HTTP),
+            ("aws_sns_sqs", aws_sns_sqs, self.AWSSNSSQS),
+            ("aws_endpoint_urls", aws_endpoint_urls, self.AWSEndpointURLs),
+            ("amqp", amqp, self.AMQP),
+            ("watcher", watcher, self.Watcher),
         )
 
         self._load_initial_input(input_)
         self._load_keyword_options(**kwargs)
-
-    HTTP = HTTP
-    AWSSNSSQS = AWSSNSSQS
-    AWSEndpointURLs = AWSEndpointURLs
-    AMQP = AMQP
-    Watcher = Watcher
