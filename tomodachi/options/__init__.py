@@ -1,5 +1,5 @@
 from .interface import OptionsInterface
-from .structure import Options, HTTP, AWSSNSSQS, AWSEndpointURLs, AMQP, Watcher
+from .structure import AMQP, AWSSNSSQS, HTTP, AWSEndpointURLs, Options, Watcher
 
 __all__ = [
     "OptionsInterface",

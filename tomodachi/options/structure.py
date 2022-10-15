@@ -34,22 +34,6 @@ class HTTP(OptionsInterface):
         "max_buffer_size": "client_max_size",
         "max_upload_size": "client_max_size",
     }
-    __slots__: Tuple[str, ...] = (
-        "port",
-        "host",
-        "reuse_port",
-        "content_type",
-        "client_max_size",
-        "termination_grace_period_seconds",
-        "access_log",
-        "real_ip_from",
-        "real_ip_header",
-        "keepalive_timeout",
-        "keepalive_expiry",
-        "max_keepalive_time",
-        "max_keepalive_requests",
-        "server_header",
-    )
 
     def __init__(
         self,
@@ -123,18 +107,6 @@ class AWSSNSSQS(OptionsInterface):
         "aws_kms_data_key_reuse_period": "sqs_kms_data_key_reuse_period",
         "kms_data_key_reuse_period": "sqs_kms_data_key_reuse_period",
     }
-    __slots__: Tuple[str, ...] = (
-        "region_name",
-        "aws_access_key_id",
-        "aws_secret_access_key",
-        "topic_prefix",
-        "queue_name_prefix",
-        "sns_kms_master_key_id",
-        "sqs_kms_master_key_id",
-        "sqs_kms_data_key_reuse_period",
-        "queue_policy",
-        "wildcard_queue_policy",
-    )
 
     def __init__(
         self,
@@ -170,7 +142,6 @@ class AWSEndpointURLs(OptionsInterface):
     sqs: Optional[str]
 
     _hierarchy: Tuple[str, ...] = ("aws_endpoint_urls",)
-    __slots__: Tuple[str, ...] = ("sns", "sqs")
 
     def __init__(
         self,
@@ -219,20 +190,6 @@ class AMQP(OptionsInterface):
     qos: QOS
 
     _hierarchy: Tuple[str, ...] = ("amqp",)
-    __slots__: Tuple[str, ...] = (
-        "host",
-        "port",
-        "login",
-        "password",
-        "exchange_name",
-        "routing_key_prefix",
-        "queue_name_prefix",
-        "virtualhost",
-        "ssl",
-        "heartbeat",
-        "queue_ttl",
-        "qos",
-    )
 
     def __init__(
         self,
@@ -300,53 +257,32 @@ class Options(OptionsInterface):
     _legacy_fallback: Dict[str, Union[str, Tuple[str, ...]]] = {
         "aws.region_name": "aws_sns_sqs.region_name",
         "aws.aws_region_name": "aws_sns_sqs.region_name",
-        "aws_sns_sqs.aws_region_name": "aws_sns_sqs.region_name",
         "aws.secret_access_key": "aws_sns_sqs.aws_secret_access_key",
         "aws.aws_secret_access_key": "aws_sns_sqs.aws_secret_access_key",
-        "aws_sns_sqs.secret_access_key": "aws_sns_sqs.aws_secret_access_key",
         "aws.access_key_id": "aws_sns_sqs.aws_access_key_id",
         "aws.aws_access_key_id": "aws_sns_sqs.aws_access_key_id",
-        "aws_sns_sqs.access_key_id": "aws_sns_sqs.aws_access_key_id",
         "aws.endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
-        "aws_sns_sqs.endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
         "aws.aws_endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
-        "aws_sns_sqs.aws_endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
         "aws.endpoint_urls.sns": "aws_endpoint_urls.sns",
         "aws.endpoint_urls.sqs": "aws_endpoint_urls.sqs",
-        "aws_sns_sqs.endpoint_urls.sns": "aws_endpoint_urls.sns",
-        "aws_sns_sqs.endpoint_urls.sqs": "aws_endpoint_urls.sqs",
         "aws.aws_sns_endpoint_url": "aws_endpoint_urls.sns",
         "aws.aws_sqs_endpoint_url": "aws_endpoint_urls.sqs",
-        "aws_sns_sqs.aws_sns_endpoint_url": "aws_endpoint_urls.sns",
-        "aws_sns_sqs.aws_sqs_endpoint_url": "aws_endpoint_urls.sqs",
         "aws.sns_endpoint_url": "aws_endpoint_urls.sns",
         "aws.sqs_endpoint_url": "aws_endpoint_urls.sqs",
-        "aws_sns_sqs.sns_endpoint_url": "aws_endpoint_urls.sns",
-        "aws_sns_sqs.sqs_endpoint_url": "aws_endpoint_urls.sqs",
         "aws.topic_prefix": "aws_sns_sqs.topic_prefix",
         "aws.queue_name_prefix": "aws_sns_sqs.queue_name_prefix",
-        "aws_sns_sqs.aws_kms_master_key_id": ("aws_sns_sqs.sns_kms_master_key_id", "aws_sns_sqs.sqs_kms_master_key_id"),
-        "aws_sns_sqs.kms_master_key_id": ("aws_sns_sqs.sns_kms_master_key_id", "aws_sns_sqs.sqs_kms_master_key_id"),
         "aws.aws_kms_master_key_id": ("aws_sns_sqs.sns_kms_master_key_id", "aws_sns_sqs.sqs_kms_master_key_id"),
         "aws.kms_master_key_id": ("aws_sns_sqs.sns_kms_master_key_id", "aws_sns_sqs.sqs_kms_master_key_id"),
-        "aws_sns_sqs.aws_sns_kms_master_key_id": "aws_sns_sqs.sns_kms_master_key_id",
-        "aws_sns_sqs.aws_sqs_kms_master_key_id": "aws_sns_sqs.sqs_kms_master_key_id",
         "aws.aws_sns_kms_master_key_id": "aws_sns_sqs.sns_kms_master_key_id",
         "aws.aws_sqs_kms_master_key_id": "aws_sns_sqs.sqs_kms_master_key_id",
         "aws.sns_kms_master_key_id": "aws_sns_sqs.sns_kms_master_key_id",
         "aws.sqs_kms_master_key_id": "aws_sns_sqs.sqs_kms_master_key_id",
-        "aws_sns_sqs.aws_sqs_kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
-        "aws_sns_sqs.aws_kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
-        "aws_sns_sqs.kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
         "aws.aws_sqs_kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
         "aws.aws_kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
         "aws.kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
         "aws.queue_policy": "aws_sns_sqs.queue_policy",
         "aws.wildcard_queue_policy": "aws_sns_sqs.wildcard_queue_policy",
-        "http.max_buffer_size": "http.client_max_size",
-        "http.max_upload_size": "http.client_max_size",
     }
-    __slots__: Tuple[str, ...] = ("http", "aws_sns_sqs", "aws_endpoint_urls", "amqp", "watcher")
 
     def __init__(
         self,
@@ -358,7 +294,13 @@ class Options(OptionsInterface):
         watcher: Union[Mapping[str, Any], Watcher] = DEFAULT(Watcher),
         **kwargs: Any,
     ):
-        input_: Tuple[Tuple[str, Union[Mapping[str, Any], OptionsInterface], type], ...] = (("http", http, HTTP), ("aws_sns_sqs", aws_sns_sqs, AWSSNSSQS), ("aws_endpoint_urls", aws_endpoint_urls, AWSEndpointURLs), ("amqp", amqp, AMQP), ("watcher", watcher, Watcher))
+        input_: Tuple[Tuple[str, Union[Mapping[str, Any], OptionsInterface], type], ...] = (
+            ("http", http, HTTP),
+            ("aws_sns_sqs", aws_sns_sqs, AWSSNSSQS),
+            ("aws_endpoint_urls", aws_endpoint_urls, AWSEndpointURLs),
+            ("amqp", amqp, AMQP),
+            ("watcher", watcher, Watcher),
+        )
 
         self._load_initial_input(input_)
         self._load_keyword_options(**kwargs)

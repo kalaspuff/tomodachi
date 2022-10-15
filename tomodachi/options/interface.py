@@ -109,7 +109,9 @@ class OptionsInterface:
             result += f"\n{' ' * indent}| {key} = {value}"
         return result.lstrip("\n") + "\n"
 
-    def _load_initial_input(self, input_: Tuple[Tuple[str, Union[Mapping[str, Any], OptionsInterface], type], ...]) -> None:
+    def _load_initial_input(
+        self, input_: Tuple[Tuple[str, Union[Mapping[str, Any], OptionsInterface], type], ...]
+    ) -> None:
         for key, value, cls in input_:
             if not hasattr(value, "_default") and isinstance(value, cls):
                 setattr(value, "_parent", self)
