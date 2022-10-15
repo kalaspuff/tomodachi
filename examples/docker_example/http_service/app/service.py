@@ -5,8 +5,12 @@ import tomodachi
 
 class Service(tomodachi.Service):
     name = "example"
-    options = {"http.port": 31337, "http.content_type": "application/json; charset=utf-8"}
-
+    options = tomodachi.Options(
+        http=tomodachi.Options.HTTP(
+            port=31337,
+            content_type="application/json; charset=utf-8",
+        )
+    )
     _healthy = True
 
     @tomodachi.http("GET", r"/")
@@ -16,12 +20,10 @@ class Service(tomodachi.Service):
         # in logs or alerts.
         execution_context = tomodachi.get_execution_context()
 
-        return json.dumps(
-            {
-                "data": "hello world!",
-                "execution_context": execution_context,
-            }
-        )
+        return json.dumps({
+            "data": "hello world!",
+            "execution_context": execution_context,
+        })
 
     @tomodachi.http("GET", r"/health/?", ignore_logging=True)
     async def health_check(self, request):
