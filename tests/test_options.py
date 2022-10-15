@@ -108,7 +108,7 @@ def test_default_values() -> None:
     assert Options.HTTP().asdict() == {
         "port": 9700,
         "host": "0.0.0.0",
-        "reuse_port": False,
+        "reuse_port": (True if platform.system() == "Linux" else False),
         "content_type": "text/plain; charset=utf-8",
         "charset": "utf-8",
         "client_max_size": 104857600,
