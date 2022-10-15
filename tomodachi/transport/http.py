@@ -70,9 +70,9 @@ class RequestHandler(web_protocol.RequestHandler):
         if request.transport:
             if not context:
                 context = {}
-            options: Options = HttpTransport.options(context)
-            real_ip_header = options.http.real_ip_header
-            real_ip_from = options.http.real_ip_from
+            http_options: Options.HTTP = HttpTransport.options(context).http
+            real_ip_header = http_options.real_ip_header
+            real_ip_from = http_options.real_ip_from
             if isinstance(real_ip_from, str):
                 real_ip_from = [real_ip_from]
 
@@ -326,8 +326,9 @@ class HttpTransport(Invoker):
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
         compiled_pattern = re.compile(pattern)
 
-        default_content_type = cls.options(context).http.content_type
-        default_charset = "utf-8"
+        http_options: Options.HTTP = cls.options(context).http
+        default_content_type = http_options.content_type
+        default_charset = http_options.charset
         if default_content_type is not None and ";" in default_content_type:
             # for backwards compability
             try:
@@ -475,8 +476,9 @@ class HttpTransport(Invoker):
 
     @classmethod
     async def error_handler(cls, obj: Any, context: Dict, func: Any, status_code: int) -> Any:
-        default_content_type = cls.options(context).http.content_type
-        default_charset = "utf-8"
+        http_options: Options.HTTP = cls.options(context).http
+        default_content_type = http_options.content_type
+        default_charset = http_options.charset
         if default_content_type is not None and ";" in default_content_type:
             # for backwards compability
             try:

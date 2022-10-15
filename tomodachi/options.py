@@ -166,6 +166,7 @@ class Options(OptionsMapping):
         host: Optional[str]
         reuse_port: bool
         content_type: str
+        charset: str
         client_max_size: Union[str, int]
         termination_grace_period_seconds: int
         access_log: Union[bool, str]
@@ -187,6 +188,7 @@ class Options(OptionsMapping):
             host: Optional[str] = "0.0.0.0",
             reuse_port: bool = (True if platform.system() == "Linux" else False),
             content_type: str = "text/plain; charset=utf-8",
+            charset: str = "utf-8",
             client_max_size: Union[str, int] = (1024**2) * 100,
             termination_grace_period_seconds: int = 30,
             access_log: Union[bool, str] = True,
@@ -203,6 +205,7 @@ class Options(OptionsMapping):
             self.host = host
             self.reuse_port = reuse_port
             self.content_type = content_type
+            self.charset = charset
             self.client_max_size = client_max_size
             self.termination_grace_period_seconds = termination_grace_period_seconds
             self.access_log = access_log

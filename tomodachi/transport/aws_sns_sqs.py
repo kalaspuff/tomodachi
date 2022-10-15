@@ -598,7 +598,7 @@ class AWSSNSSQSTransport(Invoker):
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
 
-        sns_kms_master_key_id: Optional[str] = cls.options(context).aws_sns_sqs.sns_kms_master_key_id
+        sns_kms_master_key_id: Any = cls.options(context).aws_sns_sqs.sns_kms_master_key_id
         if sns_kms_master_key_id is not None:
             if isinstance(sns_kms_master_key_id, str) and sns_kms_master_key_id == "":
                 sns_kms_master_key_id = ""
@@ -1018,10 +1018,10 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     def generate_queue_policy(cls, queue_arn: str, topic_arn_list: Union[List, Tuple], context: Dict) -> Dict:
-        options: Options = cls.options(context)
+        aws_sns_sqs_options: Options.AWSSNSSQS = cls.options(context).aws_sns_sqs
         if len(topic_arn_list) == 1:
-            if options.aws_sns_sqs.queue_policy:
-                source_arn = options.aws_sns_sqs.queue_policy
+            if aws_sns_sqs_options.queue_policy:
+                source_arn = aws_sns_sqs_options.queue_policy
             else:
                 source_arn = topic_arn_list[0]
         else:
@@ -1037,10 +1037,10 @@ class AWSSNSSQSTransport(Invoker):
                 wildcard_topic_arn.append("*")
 
             source_arn = "".join(wildcard_topic_arn)
-            if options.aws_sns_sqs.queue_policy:
-                source_arn = options.aws_sns_sqs.queue_policy
-            if options.aws_sns_sqs.wildcard_queue_policy:
-                source_arn = options.aws_sns_sqs.wildcard_queue_policy
+            if aws_sns_sqs_options.queue_policy:
+                source_arn = aws_sns_sqs_options.queue_policy
+            if aws_sns_sqs_options.wildcard_queue_policy:
+                source_arn = aws_sns_sqs_options.wildcard_queue_policy
 
         queue_policy = {
             "Version": "2012-10-17",
@@ -1157,9 +1157,9 @@ class AWSSNSSQSTransport(Invoker):
         ):
             raise Exception("SQS visibility_timeout is invalid")
 
-        options: Options = cls.options(context)
+        aws_sns_sqs_options: Options.AWSSNSSQS = cls.options(context).aws_sns_sqs
 
-        sqs_kms_master_key_id: Optional[str] = options.aws_sns_sqs.sqs_kms_master_key_id
+        sqs_kms_master_key_id: Optional[Union[str, bool]] = aws_sns_sqs_options.sqs_kms_master_key_id
         if sqs_kms_master_key_id is not None:
             if isinstance(sqs_kms_master_key_id, str) and sqs_kms_master_key_id == "":
                 sqs_kms_master_key_id = ""
@@ -1172,7 +1172,7 @@ class AWSSNSSQSTransport(Invoker):
                     "Bad value for aws_sns_sqs option sqs_kms_master_key_id: {}".format(str(sqs_kms_master_key_id))
                 )
 
-        sqs_kms_data_key_reuse_period_option: Optional[int] = options.aws_sns_sqs.sqs_kms_data_key_reuse_period
+        sqs_kms_data_key_reuse_period_option: Optional[int] = aws_sns_sqs_options.sqs_kms_data_key_reuse_period
         sqs_kms_data_key_reuse_period: Optional[int] = None
         if sqs_kms_data_key_reuse_period_option is None or sqs_kms_data_key_reuse_period_option is False:
             sqs_kms_data_key_reuse_period = None
