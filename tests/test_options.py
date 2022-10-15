@@ -1,3 +1,5 @@
+import platform
+
 from tomodachi.options import Options
 
 
@@ -60,7 +62,7 @@ def test_default_values() -> None:
     assert options.asdict() == {
         "http.port": 9700,
         "http.host": "0.0.0.0",
-        "http.reuse_port": False,
+        "http.reuse_port": (True if platform.system() == "Linux" else False),
         "http.content_type": "text/plain; charset=utf-8",
         "http.charset": "utf-8",
         "http.client_max_size": 104857600,
