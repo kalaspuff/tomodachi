@@ -332,15 +332,15 @@ Run the service 😎
     >
     > Current version: tomodachi x.x.xx on Python 3.x.x
     > Event loop implementation: asyncio
-    > Local time: October 04, 2020 - 13:38:01,201509 UTC
-    > Timestamp in UTC: 2020-10-04T13:38:01.201509Z
+    > Local time: October 16, 2022 - 13:38:01,201509 UTC
+    > Timestamp in UTC: 2022-10-16T13:38:01.201509Z
     >
     > File watcher is active - code changes will automatically restart services
     > Quit running services with <ctrl+c>
     >
-    > 2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    > 2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
-    > 2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+    > 2022-10-16 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    > 2022-10-16 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
+    > 2022-10-16 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
 
 *HTTP service acts like a normal web server.*
@@ -352,7 +352,7 @@ Run the service 😎
     > Content-Type: text/plain; charset=utf-8
     > Server: tomodachi
     > Content-Length: 9
-    > Date: Mon, 02 Oct 2017 13:38:02 GMT
+    > Date: Sun, 16 Oct 2022 13:38:02 GMT
     >
     > id = 1234
 
@@ -543,9 +543,9 @@ Building and running the container, forwarding host's port 31337 to port 80.
 .. code:: bash
 
     local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
-    > 2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    > 2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
-    > 2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+    > 2022-10-16 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    > 2022-10-16 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
+    > 2022-10-16 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
 Making requests to the running container.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -560,7 +560,7 @@ Making requests to the running container.
     >     "python_version": "3.x.x",
     >     "system_platform": "Linux",
     >     "process_id": 1,
-    >     "init_timestamp": "2020-10-04T13:38:01.201509Z",
+    >     "init_timestamp": "2022-10-16T13:38:01.201509Z",
     >     "event_loop": "asyncio",
     >     "http_enabled": true,
     >     "http_current_tasks": 1,
@@ -574,7 +574,7 @@ Making requests to the running container.
     > Content-Type: application/json; charset=utf-8
     > Server: tomodachi
     > Content-Length: 21
-    > Date: Sun, 04 Oct 2020 13:40:44 GMT
+    > Date: Sun, 16 Oct 2022 13:40:44 GMT
     >
     > {"status": "healthy"}
 
@@ -583,7 +583,7 @@ Making requests to the running container.
     > Content-Type: application/json; charset=utf-8
     > Server: tomodachi
     > Content-Length: 22
-    > Date: Sun, 04 Oct 2020 13:41:18 GMT
+    > Date: Sun, 16 Oct 2022 13:41:18 GMT
     >
     > {"error": "not-found"}
 
