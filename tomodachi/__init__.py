@@ -6,6 +6,7 @@ import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
 from tomodachi.__version__ import __version__, __version_info__
+from tomodachi.options import Options, OptionsMapping
 
 try:
     from tomodachi.helpers.execution_context import clear_execution_context as _clear_execution_context
@@ -231,6 +232,8 @@ __all__ = [
     "context",
     "AiobotocoreClientConnector",
     "aiobotocore_client_connector",
+    "Options",
+    "OptionsMapping",
     "amqp",
     "amqp_publish",
     "aws_sns_sqs",
@@ -268,6 +271,13 @@ class TomodachiServiceMeta(type):
         if bases and not result.name:
             result.name = "service"
 
+        if bases and (not hasattr(result, "options") or not result.options):
+            result.options = Options()
+        elif bases and result.options and not isinstance(result.options, Options):
+            if not isinstance(result.options, dict):  # type: ignore
+                raise ValueError("Invalid value for 'options' attribute")
+            result.options = Options(**result.options)
+
         # Removing the CLASS_ATTRIBUTE for classes that were used as bases for inheritance to other classes
         for base in bases:
             if hasattr(base, CLASS_ATTRIBUTE):
@@ -280,6 +290,7 @@ class Service(metaclass=TomodachiServiceMeta):
     _tomodachi_class_is_service_class: bool = False
     name: str = ""
     uuid: str = ""
+    options: Options
 
     def log(self, *args: Any, **kwargs: Any) -> None:
         __getattr__("_log")(self, *args, **kwargs)
@@ -293,6 +304,12 @@ class Service(metaclass=TomodachiServiceMeta):
     ) -> Any:
         return __getattr__("_log_setup")(self, name=name, level=level, formatter=formatter, filename=filename)
 
+    def __setattr__(self, item: str, value: Any) -> None:
+        if item == "options" and not isinstance(value, Options):
+            if not isinstance(value, dict):
+                raise ValueError("Invalid value for 'options' attribute")
+            value = Options(**value)
+        super().__setattr__(item, value)
 
 def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
     if isinstance(cls, TomodachiServiceMeta):
