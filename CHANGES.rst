@@ -11,6 +11,16 @@ Changes
   408 responses without any body, which trips up ``botocore.parser.QueryParser``.
   (github: **technomunk**)
 
+- Refactored options used for AWS SNS+SQS, HTTP, AMQP and the Watcher
+  functionality. Options set on the service class should now be defined as a
+  ``tomodachi.Options`` object, which provides type hints and much nicer path
+  traversal of the class.
+
+  The previous ``dict`` based approach is still supported, but will be removed
+  in a future version.
+
+- Dropped support for Python 3.7.
+
 
 0.22.3 (2022-08-09)
 -------------------
