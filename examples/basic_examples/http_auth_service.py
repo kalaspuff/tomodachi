@@ -5,7 +5,7 @@ from typing import Any
 from aiohttp import web
 
 import tomodachi
-from tomodachi import HttpResponse, http, Options
+from tomodachi import HttpResponse, Options, http
 
 
 @tomodachi.decorator

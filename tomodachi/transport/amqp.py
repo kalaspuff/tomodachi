@@ -428,8 +428,12 @@ class AmqpTransport(Invoker):
         cls.channel = None
         channel = await cls.connect(obj, context)
         options: Options = cls.options(context)
-        await channel.basic_qos(prefetch_count=options.amqp.qos.queue_prefetch_count, prefetch_size=0, connection_global=False)
-        await channel.basic_qos(prefetch_count=options.amqp.qos.global_prefetch_count, prefetch_size=0, connection_global=True)
+        await channel.basic_qos(
+            prefetch_count=options.amqp.qos.queue_prefetch_count, prefetch_size=0, connection_global=False
+        )
+        await channel.basic_qos(
+            prefetch_count=options.amqp.qos.global_prefetch_count, prefetch_size=0, connection_global=True
+        )
 
         async def _subscribe() -> None:
             async def declare_queue(

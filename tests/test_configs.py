@@ -1,7 +1,5 @@
 from decimal import Decimal
 
-import pytest
-
 from tomodachi.config import merge_dicts, parse_config_files
 
 

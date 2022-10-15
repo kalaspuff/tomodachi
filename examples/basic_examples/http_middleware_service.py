@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict
 from aiohttp import web
 
 import tomodachi
-from tomodachi import http, http_error, Options
+from tomodachi import Options, http, http_error
 
 
 async def middleware_function(

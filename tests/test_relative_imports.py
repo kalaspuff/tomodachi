@@ -1,7 +1,6 @@
 from typing import Any
 
 import tomodachi
-
 from run_test_service_helper import start_service
 
 

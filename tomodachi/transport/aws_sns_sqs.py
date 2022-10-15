@@ -10,10 +10,24 @@ import json
 import logging
 import re
 import string
-import sys
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Mapping, Match, Optional, Sequence, Set, Tuple, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Match,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypedDict,
+    Union,
+    cast,
+)
 
 import aiobotocore
 import aiohttp
@@ -33,8 +47,6 @@ from tomodachi.helpers.execution_context import (
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 from tomodachi.options import Options
-
-from typing import TypedDict, Literal
 
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
@@ -262,9 +274,7 @@ class AWSSNSSQSTransport(Invoker):
 
         queue_name_prefix: Optional[str] = cls.options(context).aws_sns_sqs.queue_name_prefix
         if queue_name_prefix:
-            queue_name = "{}{}".format(
-                queue_name_prefix, queue_name
-            )
+            queue_name = "{}{}".format(queue_name_prefix, queue_name)
 
         if fifo and not queue_name.endswith(".fifo"):
             queue_name += ".fifo"

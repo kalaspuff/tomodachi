@@ -2,11 +2,10 @@ import json
 import time
 from typing import Any
 
-import tomodachi
-
 import pytest
 from google.protobuf.json_format import MessageToJson
 
+import tomodachi
 from proto_build.message_pb2 import Person
 from run_test_service_helper import start_service
 from tomodachi.envelope.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage  # noqa

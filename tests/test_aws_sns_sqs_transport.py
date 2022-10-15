@@ -1,9 +1,8 @@
 from typing import Any
 
-import tomodachi
-
 import pytest
 
+import tomodachi
 from run_test_service_helper import start_service
 from tomodachi.transport.aws_sns_sqs import AWSSNSSQSException, AWSSNSSQSTransport
 

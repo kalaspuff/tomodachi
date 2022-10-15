@@ -6,7 +6,7 @@ from aiohttp import web
 from aiohttp.web_fileresponse import FileResponse
 
 import tomodachi
-from tomodachi import http, http_error, http_static, websocket, Options
+from tomodachi import Options, http, http_error, http_static, websocket
 
 
 class ExampleWebsocketService(tomodachi.Service):

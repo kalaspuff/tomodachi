@@ -311,6 +311,7 @@ class Service(metaclass=TomodachiServiceMeta):
             value = Options(**value)
         super().__setattr__(item, value)
 
+
 def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
     if isinstance(cls, TomodachiServiceMeta):
         return cls

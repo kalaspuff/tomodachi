@@ -83,7 +83,7 @@ class OptionsMapping:
         prefix: str = ".".join(self._hierarchy)
         if prefix:
             cls_name = str(type(self)).split("'")[-2].split("tomodachi.options.", 1)[-1]
-            result = f"∴ {self._hierarchy[-1]} <class \"{cls_name}\" -- prefix: \"{prefix}\">:"
+            result = f'∴ {self._hierarchy[-1]} <class "{cls_name}" -- prefix: "{prefix}">:'
             prefix += "."
         prev: Tuple[str, ...] = self._hierarchy
         for full_key, value in self.asdict(prefix=prefix).items():
@@ -93,16 +93,20 @@ class OptionsMapping:
                 for i, subkey in enumerate(curr):
                     if i >= len(prev) or subkey != prev[i]:
                         indent = base_indent + ((i - len(self._hierarchy) + 1) * 2)
-                        if result:
-                            result += f"" if i else "\n"
-                        cls_name = str(type(self.get('.'.join(curr[len(self._hierarchy):i + 1])))).split("'")[-2].split("tomodachi.options.", 1)[-1]
+                        if result and not i:
+                            result += "\n"
+                        cls_name = (
+                            str(type(self.get(".".join(curr[len(self._hierarchy) : i + 1]))))
+                            .split("'")[-2]
+                            .split("tomodachi.options.", 1)[-1]
+                        )
                         lead_char = "·" if i != 0 else "∴"
                         result += f"\n{' ' * (indent - 2)}{lead_char} {subkey} <class: \"{cls_name}\" -- prefix: \"{'.'.join(curr)}\">:"
                         if i >= len(prev):
                             break
                 prev = curr
             if type(value) is str:
-                value=f"\"{value}\""
+                value = f'"{value}"'
             result += f"\n{' ' * indent}| {key} = {value}"
         return result.lstrip("\n") + "\n"
 
@@ -117,11 +121,13 @@ class OptionsMapping:
                 error_attributes = []
                 for subkey, subvalue in value.items():
                     key_str_tuple = self._legacy_fallback.get(f"{key}.{subkey}", f"{key}.{subkey}")
-                    key_tuple = tuple((key_str_tuple, )) if not isinstance(key_str_tuple, tuple) else key_str_tuple
+                    key_tuple = tuple((key_str_tuple,)) if not isinstance(key_str_tuple, tuple) else key_str_tuple
                     for full_key in key_tuple:
                         if full_key.startswith("."):
                             if not self._parent:
-                                raise AttributeError(f"Cannot set attribute '{full_key}' on '{type(self).__name__}' object – deprecated attribute has moved and OptionsMapping has no parent")
+                                raise AttributeError(
+                                    f"Cannot set attribute '{full_key}' on '{type(self).__name__}' object – deprecated attribute has moved and OptionsMapping has no parent"
+                                )
                             self._parent[full_key[1:]] = subvalue
                             continue
                         try:
@@ -137,21 +143,25 @@ class OptionsMapping:
                     raise AttributeError(f"Invalid attribute(s) in dict: {', '.join(error_attributes)}")
                 elif error_attributes and not added_attributes:
                     key_str_tuple = self._legacy_fallback.get(key, key)
-                    key_tuple = tuple((key_str_tuple, )) if not isinstance(key_str_tuple, tuple) else key_str_tuple
+                    key_tuple = tuple((key_str_tuple,)) if not isinstance(key_str_tuple, tuple) else key_str_tuple
                     for full_key in key_tuple:
                         if full_key.startswith("."):
                             if not self._parent:
-                                raise AttributeError(f"Cannot set attribute '{full_key}' on '{type(self).__name__}' object – deprecated attribute has moved and OptionsMapping has no parent")
+                                raise AttributeError(
+                                    f"Cannot set attribute '{full_key}' on '{type(self).__name__}' object – deprecated attribute has moved and OptionsMapping has no parent"
+                                )
                             self._parent[full_key[1:]] = value
                             continue
                         flattened_kwargs[full_key] = value
             else:
                 key_str_tuple = self._legacy_fallback.get(key, key)
-                key_tuple = tuple((key_str_tuple, )) if not isinstance(key_str_tuple, tuple) else key_str_tuple
+                key_tuple = tuple((key_str_tuple,)) if not isinstance(key_str_tuple, tuple) else key_str_tuple
                 for full_key in key_tuple:
                     if full_key.startswith("."):
                         if not self._parent:
-                            raise AttributeError(f"Cannot set attribute '{full_key}' on '{type(self).__name__}' object – deprecated attribute has moved and OptionsMapping has no parent")
+                            raise AttributeError(
+                                f"Cannot set attribute '{full_key}' on '{type(self).__name__}' object – deprecated attribute has moved and OptionsMapping has no parent"
+                            )
                         self._parent[full_key[1:]] = value
                         continue
                     flattened_kwargs[full_key] = value
@@ -179,7 +189,22 @@ class Options(OptionsMapping):
         server_header: str
 
         _hierarchy: Tuple[str, ...] = ("http",)
-        __slots__: Tuple[str, ...] = ("port", "host", "reuse_port", "content_type", "client_max_size", "termination_grace_period_seconds", "access_log", "real_ip_from", "real_ip_header", "keepalive_timeout", "keepalive_expiry", "max_keepalive_time", "max_keepalive_requests", "server_header")
+        __slots__: Tuple[str, ...] = (
+            "port",
+            "host",
+            "reuse_port",
+            "content_type",
+            "client_max_size",
+            "termination_grace_period_seconds",
+            "access_log",
+            "real_ip_from",
+            "real_ip_header",
+            "keepalive_timeout",
+            "keepalive_expiry",
+            "max_keepalive_time",
+            "max_keepalive_requests",
+            "server_header",
+        )
 
         def __init__(
             self,
@@ -237,7 +262,18 @@ class Options(OptionsMapping):
         wildcard_queue_policy: Optional[str]
 
         _hierarchy: Tuple[str, ...] = ("aws_sns_sqs",)
-        __slots__: Tuple[str, ...] = ("region_name", "aws_access_key_id", "aws_secret_access_key", "topic_prefix", "queue_name_prefix", "sns_kms_master_key_id", "sqs_kms_master_key_id", "sqs_kms_data_key_reuse_period", "queue_policy", "wildcard_queue_policy")
+        __slots__: Tuple[str, ...] = (
+            "region_name",
+            "aws_access_key_id",
+            "aws_secret_access_key",
+            "topic_prefix",
+            "queue_name_prefix",
+            "sns_kms_master_key_id",
+            "sqs_kms_master_key_id",
+            "sqs_kms_data_key_reuse_period",
+            "queue_policy",
+            "wildcard_queue_policy",
+        )
 
         def __init__(
             self,
@@ -271,7 +307,6 @@ class Options(OptionsMapping):
             "aws_region_name": "region_name",
             "secret_access_key": "aws_secret_access_key",
             "access_key_id": "aws_access_key_id",
-
             "endpoint_url": (".aws_endpoint_urls.sns", ".aws_endpoint_urls.sqs"),
             "aws_endpoint_url": (".aws_endpoint_urls.sns", ".aws_endpoint_urls.sqs"),
             "endpoint_urls.sns": ".aws_endpoint_urls.sns",
@@ -280,7 +315,6 @@ class Options(OptionsMapping):
             "aws_sqs_endpoint_url": ".aws_endpoint_urls.sqs",
             "sns_endpoint_url": ".aws_endpoint_urls.sns",
             "sqs_endpoint_url": ".aws_endpoint_urls.sqs",
-
             "aws_kms_master_key_id": ("sns_kms_master_key_id", "sqs_kms_master_key_id"),
             "kms_master_key_id": ("sns_kms_master_key_id", "sqs_kms_master_key_id"),
             "aws_sns_kms_master_key_id": "sns_kms_master_key_id",
@@ -345,7 +379,20 @@ class Options(OptionsMapping):
         _QOS_DEFAULT: QOS = QOS()
 
         _hierarchy: Tuple[str, ...] = ("amqp",)
-        __slots__: Tuple[str, ...] = ("host", "port", "login", "password", "exchange_name", "routing_key_prefix", "queue_name_prefix", "virtualhost", "ssl", "heartbeat", "queue_ttl", "qos")
+        __slots__: Tuple[str, ...] = (
+            "host",
+            "port",
+            "login",
+            "password",
+            "exchange_name",
+            "routing_key_prefix",
+            "queue_name_prefix",
+            "virtualhost",
+            "ssl",
+            "heartbeat",
+            "queue_ttl",
+            "qos",
+        )
 
         def __init__(
             self,
@@ -440,7 +487,10 @@ class Options(OptionsMapping):
         else:
             self.http = self.HTTP(_parent=self)
 
-        if isinstance(aws_endpoint_urls, self.AWSEndpointURLs) and aws_endpoint_urls is not self._AWSEndpointURLs_DEFAULT:
+        if (
+            isinstance(aws_endpoint_urls, self.AWSEndpointURLs)
+            and aws_endpoint_urls is not self._AWSEndpointURLs_DEFAULT
+        ):
             self.aws_endpoint_urls = aws_endpoint_urls
             self.aws_endpoint_urls._parent = self
         else:
@@ -492,20 +542,16 @@ class Options(OptionsMapping):
         "aws.region_name": "aws_sns_sqs.region_name",
         "aws.aws_region_name": "aws_sns_sqs.region_name",
         "aws_sns_sqs.aws_region_name": "aws_sns_sqs.region_name",
-
         "aws.secret_access_key": "aws_sns_sqs.aws_secret_access_key",
         "aws.aws_secret_access_key": "aws_sns_sqs.aws_secret_access_key",
         "aws_sns_sqs.secret_access_key": "aws_sns_sqs.aws_secret_access_key",
-
         "aws.access_key_id": "aws_sns_sqs.aws_access_key_id",
         "aws.aws_access_key_id": "aws_sns_sqs.aws_access_key_id",
         "aws_sns_sqs.access_key_id": "aws_sns_sqs.aws_access_key_id",
-
         "aws.endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
         "aws_sns_sqs.endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
         "aws.aws_endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
         "aws_sns_sqs.aws_endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
-
         "aws.endpoint_urls.sns": "aws_endpoint_urls.sns",
         "aws.endpoint_urls.sqs": "aws_endpoint_urls.sqs",
         "aws_sns_sqs.endpoint_urls.sns": "aws_endpoint_urls.sns",
@@ -518,35 +564,30 @@ class Options(OptionsMapping):
         "aws.sqs_endpoint_url": "aws_endpoint_urls.sqs",
         "aws_sns_sqs.sns_endpoint_url": "aws_endpoint_urls.sns",
         "aws_sns_sqs.sqs_endpoint_url": "aws_endpoint_urls.sqs",
-
         "aws.topic_prefix": "aws_sns_sqs.topic_prefix",
         "aws.queue_name_prefix": "aws_sns_sqs.queue_name_prefix",
-
         "aws_sns_sqs.aws_kms_master_key_id": ("aws_sns_sqs.sns_kms_master_key_id", "aws_sns_sqs.sqs_kms_master_key_id"),
         "aws_sns_sqs.kms_master_key_id": ("aws_sns_sqs.sns_kms_master_key_id", "aws_sns_sqs.sqs_kms_master_key_id"),
         "aws.aws_kms_master_key_id": ("aws_sns_sqs.sns_kms_master_key_id", "aws_sns_sqs.sqs_kms_master_key_id"),
         "aws.kms_master_key_id": ("aws_sns_sqs.sns_kms_master_key_id", "aws_sns_sqs.sqs_kms_master_key_id"),
-
         "aws_sns_sqs.aws_sns_kms_master_key_id": "aws_sns_sqs.sns_kms_master_key_id",
         "aws_sns_sqs.aws_sqs_kms_master_key_id": "aws_sns_sqs.sqs_kms_master_key_id",
         "aws.aws_sns_kms_master_key_id": "aws_sns_sqs.sns_kms_master_key_id",
         "aws.aws_sqs_kms_master_key_id": "aws_sns_sqs.sqs_kms_master_key_id",
         "aws.sns_kms_master_key_id": "aws_sns_sqs.sns_kms_master_key_id",
         "aws.sqs_kms_master_key_id": "aws_sns_sqs.sqs_kms_master_key_id",
-
         "aws_sns_sqs.aws_sqs_kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
         "aws_sns_sqs.aws_kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
         "aws_sns_sqs.kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
         "aws.aws_sqs_kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
         "aws.aws_kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
         "aws.kms_data_key_reuse_period": "aws_sns_sqs.sqs_kms_data_key_reuse_period",
-
         "aws.queue_policy": "aws_sns_sqs.queue_policy",
         "aws.wildcard_queue_policy": "aws_sns_sqs.wildcard_queue_policy",
-
         "http.max_buffer_size": "http.client_max_size",
         "http.max_upload_size": "http.client_max_size",
     }
+
 
 HTTP = Options.HTTP
 AWSSNSSQS = Options.AWSSNSSQS

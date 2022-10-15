@@ -20,10 +20,12 @@ class Service(tomodachi.Service):
         # in logs or alerts.
         execution_context = tomodachi.get_execution_context()
 
-        return json.dumps({
-            "data": "hello world!",
-            "execution_context": execution_context,
-        })
+        return json.dumps(
+            {
+                "data": "hello world!",
+                "execution_context": execution_context,
+            }
+        )
 
     @tomodachi.http("GET", r"/health/?", ignore_logging=True)
     async def health_check(self, request):

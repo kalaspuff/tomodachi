@@ -29,7 +29,7 @@ def test_init_options_class() -> None:
     assert options.http.port == 8080
     assert "127.0.0.1/32" in options.http.real_ip_from
     assert "127.0.0.1" not in options.http.real_ip_from
-    assert options.aws_endpoint_urls.sns is "http://localhost:4566"
+    assert options.aws_endpoint_urls.sns == "http://localhost:4566"
     assert options.aws_endpoint_urls.sqs is None
     assert options.aws_sns_sqs.queue_name_prefix == "queue-prefix-"
     assert options.aws_sns_sqs.topic_prefix == "topic-prefix-"
