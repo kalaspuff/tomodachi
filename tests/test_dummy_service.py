@@ -1,5 +1,3 @@
-import os
-import signal
 from typing import Any
 
 import tomodachi
@@ -23,7 +21,7 @@ def test_dummy_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     assert tomodachi.get_service("test_dummy_nonexistant") is None
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -38,7 +36,7 @@ def test_dummy_service_without_py_ending(monkeypatch: Any, capsys: Any, loop: An
     assert instance is not None
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)

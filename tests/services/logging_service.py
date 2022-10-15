@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import signal
 
 import tomodachi
 
@@ -24,7 +23,7 @@ class LoggingService(tomodachi.Service):
     async def _started_service(self) -> None:
         self.log("_started_service", level=logging.INFO)
         await asyncio.sleep(0.1)
-        os.kill(os.getpid(), signal.SIGTERM)
+        tomodachi.exit()
 
     async def _stop_service(self) -> None:
         self.log("_stop_service", level=logging.INFO)

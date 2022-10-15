@@ -1,6 +1,6 @@
-import os
-import signal
 from typing import Any
+
+import tomodachi
 
 import pytest
 
@@ -66,7 +66,7 @@ def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -
         loop.run_until_complete(AmqpTransport.publish(instance, "data", "test.topic", wait=True))
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
