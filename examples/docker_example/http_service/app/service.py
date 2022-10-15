@@ -5,8 +5,12 @@ import tomodachi
 
 class Service(tomodachi.Service):
     name = "example"
-    options = {"http.port": 31337, "http.content_type": "application/json; charset=utf-8"}
-
+    options = tomodachi.Options(
+        http=tomodachi.Options.HTTP(
+            port=31337,
+            content_type="application/json; charset=utf-8",
+        ),
+    )
     _healthy = True
 
     @tomodachi.http("GET", r"/")

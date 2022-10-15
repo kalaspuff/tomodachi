@@ -32,11 +32,11 @@ class SchedulerService(tomodachi.Service):
     async def soon_two_am(self) -> None:
         pass
 
-    @schedule(timestamp="2017-08-01 00:00:00", timezone="Europe/Stockholm")
+    @schedule(timestamp="2022-08-01 00:00:00", timezone="Europe/Stockholm")
     async def birthday_boy(self) -> None:
         pass
 
-    @schedule(timestamp="2017-08-01 08:00", timezone="Europe/Stockholm")
+    @schedule(timestamp="2022-08-01 08:00", timezone="Europe/Stockholm")
     async def birthday_boy_wakeup(self) -> None:
         pass
 

@@ -1,7 +1,6 @@
-import os
-import signal
 from typing import Any
 
+import tomodachi
 from run_test_service_helper import start_service
 
 
@@ -17,7 +16,7 @@ def test_relative_import_service(monkeypatch: Any, capsys: Any, loop: Any) -> No
     assert instance.stop is False
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -32,7 +31,7 @@ def test_relative_import_service_without_py_ending(monkeypatch: Any, capsys: Any
     assert instance is not None
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)

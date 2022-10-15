@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Match, Optional, Set, Tuple, Union
 
 import aioamqp
 
-from tomodachi.helpers.dict import get_item_by_path, merge_dicts
+from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -18,6 +18,7 @@ from tomodachi.helpers.execution_context import (
 )
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
+from tomodachi.options import Options
 
 MESSAGE_ENVELOPE_DEFAULT = "2594418c-5771-454a-a7f9-8f83ae82812a"
 MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
@@ -121,7 +122,7 @@ class AmqpTransport(Invoker):
         cls, routing_key: str, context: Dict, routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX
     ) -> str:
         routing_key_prefix = (
-            context.get("options", {}).get("amqp", {}).get("routing_key_prefix", "")
+            cls.options(context).amqp.routing_key_prefix
             if routing_key_prefix == MESSAGE_ROUTING_KEY_PREFIX
             else (routing_key_prefix or "")
         )
@@ -134,7 +135,7 @@ class AmqpTransport(Invoker):
         cls, routing_key: str, context: Dict, routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX
     ) -> str:
         routing_key_prefix = (
-            context.get("options", {}).get("amqp", {}).get("routing_key_prefix", "")
+            cls.options(context).amqp.routing_key_prefix
             if routing_key_prefix == MESSAGE_ROUTING_KEY_PREFIX
             else (routing_key_prefix or "")
         )
@@ -167,14 +168,16 @@ class AmqpTransport(Invoker):
         else:
             queue_name = hashlib.sha256(routing_key.encode("utf-8")).hexdigest()
 
-        if context.get("options", {}).get("amqp", {}).get("queue_name_prefix"):
-            return "{}{}".format(context.get("options", {}).get("amqp", {}).get("queue_name_prefix"), queue_name)
+        queue_name_prefix: Optional[str] = cls.options(context).amqp.queue_name_prefix
+        if queue_name_prefix:
+            return "{}{}".format(queue_name_prefix, queue_name)
         return queue_name
 
     @classmethod
     def prefix_queue_name(cls, queue_name: str, context: Dict) -> str:
-        if context.get("options", {}).get("amqp", {}).get("queue_name_prefix"):
-            return "{}{}".format(context.get("options", {}).get("amqp", {}).get("queue_name_prefix"), queue_name)
+        queue_name_prefix: Optional[str] = cls.options(context).amqp.queue_name_prefix
+        if queue_name_prefix:
+            return "{}{}".format(queue_name_prefix, queue_name)
         return queue_name
 
     @classmethod
@@ -332,8 +335,7 @@ class AmqpTransport(Invoker):
 
             return return_value
 
-        exchange_name = exchange_name or context.get("options", {}).get("amqp", {}).get("exchange_name", "amq.topic")
-
+        exchange_name = exchange_name or cls.options(context).amqp.exchange_name
         context["_amqp_subscribers"] = context.get("_amqp_subscribers", [])
         context["_amqp_subscribers"].append((routing_key, exchange_name, competing, queue_name, func, handler))
 
@@ -345,13 +347,15 @@ class AmqpTransport(Invoker):
         logging.getLogger("aioamqp.protocol").setLevel(logging.WARNING)
         logging.getLogger("aioamqp.channel").setLevel(logging.WARNING)
 
-        host = context.get("options", {}).get("amqp", {}).get("host", "127.0.0.1")
-        port = context.get("options", {}).get("amqp", {}).get("port", 5672)
-        login = context.get("options", {}).get("amqp", {}).get("login", "guest")
-        password = context.get("options", {}).get("amqp", {}).get("password", "guest")
-        virtualhost = context.get("options", {}).get("amqp", {}).get("virtualhost", "/")
-        ssl = context.get("options", {}).get("amqp", {}).get("ssl", False)
-        heartbeat = context.get("options", {}).get("amqp", {}).get("heartbeat", 60)
+        amqp_options: Options.AMQP = cls.options(context).amqp
+
+        host = amqp_options.host
+        port = amqp_options.port
+        login = amqp_options.login
+        password = amqp_options.password
+        virtualhost = amqp_options.virtualhost
+        ssl = amqp_options.ssl
+        heartbeat = amqp_options.heartbeat
 
         try:
             protocol: Any
@@ -402,7 +406,7 @@ class AmqpTransport(Invoker):
             setattr(obj, "_stop_service", stop_service)
 
         cls.channel = channel
-        cls.exchange_name = context.get("options", {}).get("amqp", {}).get("exchange_name", "amq.topic")
+        cls.exchange_name = cls.options(context).amqp.exchange_name
 
         return channel
 
@@ -423,10 +427,13 @@ class AmqpTransport(Invoker):
 
         cls.channel = None
         channel = await cls.connect(obj, context)
-        queue_prefetch_count = get_item_by_path(context, "options.amqp.qos.queue_prefetch_count", 100)
-        global_prefetch_count = get_item_by_path(context, "options.amqp.qos.global_prefetch_count", 400)
-        await channel.basic_qos(prefetch_count=queue_prefetch_count, prefetch_size=0, connection_global=False)
-        await channel.basic_qos(prefetch_count=global_prefetch_count, prefetch_size=0, connection_global=True)
+        options: Options = cls.options(context)
+        await channel.basic_qos(
+            prefetch_count=options.amqp.qos.queue_prefetch_count, prefetch_size=0, connection_global=False
+        )
+        await channel.basic_qos(
+            prefetch_count=options.amqp.qos.global_prefetch_count, prefetch_size=0, connection_global=True
+        )
 
         async def _subscribe() -> None:
             async def declare_queue(
@@ -486,7 +493,7 @@ class AmqpTransport(Invoker):
                     queue_name = cls.prefix_queue_name(queue_name, context)
 
                 amqp_arguments = {}
-                ttl = context.get("options", {}).get("amqp", {}).get("queue_ttl", 86400)
+                ttl = options.amqp.queue_ttl
                 if ttl:
                     amqp_arguments["x-expires"] = int(ttl * 1000)
 

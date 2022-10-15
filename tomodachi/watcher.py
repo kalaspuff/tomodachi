@@ -5,6 +5,8 @@ import sys
 import zlib
 from typing import Any, Callable, Dict, List, Optional
 
+from tomodachi.options import Options
+
 
 def crc(file_path: str) -> str:
     prev = 0
@@ -39,13 +41,12 @@ class Watcher(object):
             self.root = root
 
         if configuration is not None:
-            ignored_dirs_list = configuration.get("options", {}).get("watcher", {}).get("ignored_dirs", [])
+            watcher_options: Options.Watcher = Options.Watcher(**configuration.get("options", {}).get("watcher", {}))
+            ignored_dirs_list = watcher_options.ignored_dirs
             if ignored_dirs_list:
                 self.ignored_dirs.extend(ignored_dirs_list)
 
-            watched_file_endings_list = (
-                configuration.get("options", {}).get("watcher", {}).get("watched_file_endings", [])
-            )
+            watched_file_endings_list = watcher_options.watched_file_endings
             if watched_file_endings_list:
                 self.watched_file_endings.extend(watched_file_endings_list)
 

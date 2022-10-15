@@ -16,6 +16,8 @@ from tomodachi.helpers.execution_context import set_execution_context as set_exe
 from tomodachi.helpers.execution_context import set_service as _set_service
 from tomodachi.helpers.execution_context import unset_service as _unset_service
 from tomodachi.invoker import decorator as decorator
+from tomodachi.options import Options as Options
+from tomodachi.options import OptionsInterface as OptionsInterface
 from tomodachi.transport.amqp import amqp as amqp
 from tomodachi.transport.amqp import amqp_publish as amqp_publish
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs as aws_sns_sqs
@@ -59,6 +61,7 @@ class Service(metaclass=TomodachiServiceMeta):
     _tomodachi_class_is_service_class: bool = ...
     name: str = ...
     uuid: str = ...
+    options: Options
     log: Callable = ...
     log_setup: Callable = ...
 

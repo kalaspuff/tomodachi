@@ -1,6 +1,6 @@
 import asyncio
-import os
-import signal
+
+import tomodachi
 
 
 class NonDecoratedService(object):
@@ -8,4 +8,4 @@ class NonDecoratedService(object):
 
     async def _started_service(self) -> None:
         await asyncio.sleep(0.1)
-        os.kill(os.getpid(), signal.SIGTERM)
+        tomodachi.exit()

@@ -5,7 +5,7 @@ from typing import Any
 from aiohttp import web
 
 import tomodachi
-from tomodachi import HttpResponse, http
+from tomodachi import HttpResponse, Options, http
 
 
 @tomodachi.decorator
@@ -22,7 +22,14 @@ class ExampleHttpAuthService(tomodachi.Service):
 
     allowed_token = str(uuid_.uuid4())
 
-    options = {"http.port": 4711, "http.content_type": "text/plain; charset=utf-8", "http.access_log": True}
+    # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
+    options = Options(
+        http=Options.HTTP(
+            port=4711,
+            content_type="text/plain; charset=utf-8",
+            access_log=True,
+        ),
+    )
 
     @http("GET", r"/get-token/?")
     async def get_token(self, request: web.Request) -> str:

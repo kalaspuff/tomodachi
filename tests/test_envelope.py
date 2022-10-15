@@ -1,12 +1,11 @@
 import json
-import os
-import signal
 import time
 from typing import Any
 
 import pytest
 from google.protobuf.json_format import MessageToJson
 
+import tomodachi
 from proto_build.message_pb2 import Person
 from run_test_service_helper import start_service
 from tomodachi.envelope.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage  # noqa
@@ -36,7 +35,7 @@ def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -66,7 +65,7 @@ def test_json_base_large_message(monkeypatch: Any, capsys: Any, loop: Any) -> No
     loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -101,7 +100,7 @@ def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -126,7 +125,7 @@ def test_protobuf_base_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) 
     loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -148,7 +147,7 @@ def test_protobuf_base_bad_proto_class(monkeypatch: Any, capsys: Any, loop: Any)
         loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -166,7 +165,7 @@ def test_protobuf_validation_no_proto_class(monkeypatch: Any, capsys: Any, loop:
         loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -184,7 +183,7 @@ def test_protobuf_validation_bad_proto_class(monkeypatch: Any, capsys: Any, loop
         loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -208,7 +207,7 @@ def test_protobuf_object_validation_function(monkeypatch: Any, capsys: Any, loop
     loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -233,7 +232,7 @@ def test_protobuf_object_static_validation_function(monkeypatch: Any, capsys: An
     loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -258,7 +257,7 @@ def test_protobuf_object_validation_function_fail(monkeypatch: Any, capsys: Any,
         loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)
@@ -284,7 +283,7 @@ def test_protobuf_object_static_validation_function_fail(monkeypatch: Any, capsy
         loop.run_until_complete(_async())
 
     async def _async_kill():
-        os.kill(os.getpid(), signal.SIGINT)
+        tomodachi.exit()
 
     loop.create_task(_async_kill())
     loop.run_until_complete(future)

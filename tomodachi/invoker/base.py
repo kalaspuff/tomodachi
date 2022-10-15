@@ -2,6 +2,8 @@ import functools
 import types
 from typing import Any, Callable, Dict, Tuple, cast
 
+from tomodachi.options import Options
+
 FUNCTION_ATTRIBUTE = "_tomodachi_function_is_invoker_function"
 START_ATTRIBUTE = "_tomodachi_deprecated_invoker_function_start_marker"
 INVOKER_TASK_START_KEYWORD = "_tomodachi_invoker_task_start_keyword"
@@ -72,3 +74,14 @@ class Invoker(object):
                 return wrapper
 
         return _wrapper
+
+    @staticmethod
+    def options(context: Dict) -> Options:
+        return cast(
+            Options,
+            (
+                context.get("options")
+                if isinstance(context.get("options"), Options)
+                else Options(**context.get("options", {}))
+            ),
+        )

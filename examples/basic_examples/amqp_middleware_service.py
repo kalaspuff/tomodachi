@@ -2,7 +2,7 @@ import os
 from typing import Any, Callable, Dict
 
 import tomodachi
-from tomodachi import amqp, amqp_publish
+from tomodachi import Options, amqp, amqp_publish
 from tomodachi.discovery import DummyRegistry
 from tomodachi.envelope import JsonBase
 
@@ -42,7 +42,7 @@ class ExampleAmqpService(tomodachi.Service):
     message_middleware = [middleware_function]
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
-    options = {"amqp.queue_ttl": 60}
+    options = Options(amqp=Options.AMQP(queue_ttl=60))
 
     @amqp("example.route1")
     async def route1a(self, data: Any) -> None:

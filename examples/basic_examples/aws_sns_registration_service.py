@@ -2,7 +2,7 @@ import os
 from typing import Dict
 
 import tomodachi
-from tomodachi import aws_sns_sqs
+from tomodachi import Options, aws_sns_sqs
 from tomodachi.envelope import JsonBase
 
 
@@ -16,13 +16,13 @@ class AWSSNSRegistrationService(tomodachi.Service):
     message_envelope = JsonBase
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
-    options = {
-        "aws_sns_sqs.region_name": None,  # specify AWS region (example: 'eu-west-1')
-        "aws_sns_sqs.aws_access_key_id": None,  # specify AWS access key (example: 'AKIAXNTIENCJIY2STOCI')
-        "aws_sns_sqs.aws_secret_access_key": None,  # specify AWS secret key (example: 'f7sha92hNotarealsecretkeyn29ShnSYQi3nzgA')
-        "aws_endpoint_urls.sns": None,  # For example 'http://localhost:4575' if localstack is used for testing
-        "aws_endpoint_urls.sqs": None,  # For example 'http://localhost:4576' if localstack is used for testing
-    }
+    options = Options(
+        aws_sns_sqs=Options.AWSSNSSQS(
+            region_name=None,  # Specify AWS region (example: "eu-west-1")
+            aws_access_key_id=None,  # Specify AWS access key (example: "AKIA****************"")
+            aws_secret_access_key=None,  # Specify AWS secret key (example: "****************************************")
+        ),
+    )
 
     @aws_sns_sqs("services-registration-register", queue_name="registration-service--register")
     async def register(self, data: Dict) -> None:

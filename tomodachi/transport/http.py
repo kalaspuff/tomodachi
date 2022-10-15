@@ -29,6 +29,7 @@ from tomodachi.helpers.execution_context import (
 )
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
+from tomodachi.options import Options
 
 http_logger = logging.getLogger("transport.http")
 
@@ -69,8 +70,9 @@ class RequestHandler(web_protocol.RequestHandler):
         if request.transport:
             if not context:
                 context = {}
-            real_ip_header = context.get("options", {}).get("http", {}).get("real_ip_header", "X-Forwarded-For")
-            real_ip_from = context.get("options", {}).get("http", {}).get("real_ip_from", [])
+            http_options: Options.HTTP = HttpTransport.options(context).http
+            real_ip_header = http_options.real_ip_header
+            real_ip_from = http_options.real_ip_from
             if isinstance(real_ip_from, str):
                 real_ip_from = [real_ip_from]
 
@@ -324,9 +326,9 @@ class HttpTransport(Invoker):
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
         compiled_pattern = re.compile(pattern)
 
-        default_content_type = context.get("options", {}).get("http", {}).get("content_type", "text/plain")
-        default_charset = context.get("options", {}).get("http", {}).get("charset", "utf-8")
-
+        http_options: Options.HTTP = cls.options(context).http
+        default_content_type = http_options.content_type
+        default_charset = http_options.charset
         if default_content_type is not None and ";" in default_content_type:
             # for backwards compability
             try:
@@ -474,9 +476,9 @@ class HttpTransport(Invoker):
 
     @classmethod
     async def error_handler(cls, obj: Any, context: Dict, func: Any, status_code: int) -> Any:
-        default_content_type = context.get("options", {}).get("http", {}).get("content_type", "text/plain")
-        default_charset = context.get("options", {}).get("http", {}).get("charset", "utf-8")
-
+        http_options: Options.HTTP = cls.options(context).http
+        default_content_type = http_options.content_type
+        default_charset = http_options.charset
         if default_content_type is not None and ";" in default_content_type:
             # for backwards compability
             try:
@@ -539,7 +541,7 @@ class HttpTransport(Invoker):
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
         compiled_pattern = re.compile(pattern)
 
-        access_log = context.get("options", {}).get("http", {}).get("access_log", True)
+        access_log = cls.options(context).http.access_log
 
         async def _pre_handler_func(_: Any, request: web.Request) -> None:
             request._cache["is_websocket"] = True
@@ -711,10 +713,10 @@ class HttpTransport(Invoker):
             return None
         context["_http_server_started"] = True
 
-        http_options = context.get("options", {}).get("http", {})
+        http_options: Options.HTTP = HttpTransport.options(context).http
 
-        server_header = http_options.get("server_header", "tomodachi")
-        access_log = http_options.get("access_log", True)
+        server_header = http_options.server_header
+        access_log = http_options.access_log
 
         logger_handler = None
         if isinstance(access_log, str):
@@ -938,12 +940,7 @@ class HttpTransport(Invoker):
 
                 return task.result()
 
-            client_max_size_option = (
-                http_options.get("client_max_size")
-                or http_options.get("max_buffer_size")
-                or http_options.get("max_upload_size")
-                or "100M"
-            )
+            client_max_size_option = http_options.client_max_size
             client_max_size_option_str = str(client_max_size_option).upper()
             client_max_size = (1024**2) * 100
             try:
@@ -1009,16 +1006,14 @@ class HttpTransport(Invoker):
 
             context["_http_accept_new_requests"] = True
 
-            port = http_options.get("port", 9700)
-            host = http_options.get("host", "0.0.0.0")
+            port = http_options.port
+            host = http_options.host
             if port is True:
                 raise ValueError("Bad value for http option port: {}".format(str(port)))
 
             # Configuration settings for keep-alive could use some refactoring
 
-            keepalive_timeout_option = http_options.get("keepalive_timeout", 0) or http_options.get(
-                "keepalive_expiry", 0
-            )
+            keepalive_timeout_option = http_options.keepalive_timeout or http_options.keepalive_expiry
             keepalive_timeout = 0
             if keepalive_timeout_option is None or keepalive_timeout_option is False:
                 keepalive_timeout_option = 0
@@ -1040,7 +1035,7 @@ class HttpTransport(Invoker):
                 tcp_keepalive = False
                 keepalive_timeout = 0
 
-            max_keepalive_requests_option = http_options.get("max_keepalive_requests", None)
+            max_keepalive_requests_option = http_options.max_keepalive_requests
             max_keepalive_requests = None
             if max_keepalive_requests_option is None or max_keepalive_requests_option is False:
                 max_keepalive_requests_option = None
@@ -1062,7 +1057,7 @@ class HttpTransport(Invoker):
                     "HTTP keep-alive must be enabled to use http option max_keepalive_requests - a http.keepalive_timeout option value is required"
                 ) from None
 
-            max_keepalive_time_option = http_options.get("max_keepalive_time", None)
+            max_keepalive_time_option = http_options.max_keepalive_time
             max_keepalive_time = None
             if max_keepalive_time_option is None or max_keepalive_time_option is False:
                 max_keepalive_time_option = None
@@ -1084,8 +1079,7 @@ class HttpTransport(Invoker):
                     "HTTP keep-alive must be enabled to use http option max_keepalive_time - a http.keepalive_timeout option value is required"
                 ) from None
 
-            reuse_port_default = True if platform.system() == "Linux" else False
-            reuse_port = True if http_options.get("reuse_port", reuse_port_default) else False
+            reuse_port = True if http_options.reuse_port else False
             if reuse_port and platform.system() != "Linux":
                 http_logger.warning(
                     "The http option reuse_port (socket.SO_REUSEPORT) can only enabled on Linux platforms - current "
@@ -1188,7 +1182,7 @@ class HttpTransport(Invoker):
                 termination_grace_period_seconds = 30
                 try:
                     termination_grace_period_seconds = int(
-                        http_options.get("termination_grace_period_seconds") or termination_grace_period_seconds
+                        http_options.termination_grace_period_seconds or termination_grace_period_seconds
                     )
                 except Exception:
                     pass

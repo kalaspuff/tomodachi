@@ -332,15 +332,15 @@ Run the service 😎
     >
     > Current version: tomodachi x.x.xx on Python 3.x.x
     > Event loop implementation: asyncio
-    > Local time: October 04, 2020 - 13:38:01,201509 UTC
-    > Timestamp in UTC: 2020-10-04T13:38:01.201509Z
+    > Local time: October 16, 2022 - 13:38:01,201509 UTC
+    > Timestamp in UTC: 2022-10-16T13:38:01.201509Z
     >
     > File watcher is active - code changes will automatically restart services
     > Quit running services with <ctrl+c>
     >
-    > 2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    > 2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
-    > 2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+    > 2022-10-16 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    > 2022-10-16 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
+    > 2022-10-16 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
 
 *HTTP service acts like a normal web server.*
@@ -352,7 +352,7 @@ Run the service 😎
     > Content-Type: text/plain; charset=utf-8
     > Server: tomodachi
     > Content-Length: 9
-    > Date: Mon, 02 Oct 2017 13:38:02 GMT
+    > Date: Sun, 16 Oct 2022 13:38:02 GMT
     >
     > id = 1234
 
@@ -483,11 +483,12 @@ quite this small, but as a template to get started.
 
     class Service(tomodachi.Service):
         name = "example"
-        options = {
-            "http.port": 80,
-            "http.content_type": "application/json; charset=utf-8",
-        }
-
+        options = tomodachi.Options(
+            http=tomodachi.Options.HTTP(
+                port=80,
+                content_type="application/json; charset=utf-8",
+            ),
+        )
         _healthy = True
 
         @tomodachi.http("GET", r"/")
@@ -528,8 +529,8 @@ Building and running the container, forwarding host's port 31337 to port 80.
 
     local ~/code/service$ docker build . -t tomodachi-microservice
     > Sending build context to Docker daemon  9.216kB
-    > Step 1/7 : FROM python:3.10-slim
-    > 3.8-slim: Pulling from library/python
+    > Step 1/7 : FROM python:3.10-bullseye
+    > 3.10-bullseye: Pulling from library/python
     > ...
     >  ---> 3f7f3ab065d4
     > Step 7/7 : CMD ["tomodachi", "run", "service.py", "--production"]
@@ -542,9 +543,9 @@ Building and running the container, forwarding host's port 31337 to port 80.
 .. code:: bash
 
     local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
-    > 2020-10-04 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    > 2020-10-04 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
-    > 2020-10-04 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+    > 2022-10-16 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
+    > 2022-10-16 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
+    > 2022-10-16 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
 
 Making requests to the running container.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -559,7 +560,7 @@ Making requests to the running container.
     >     "python_version": "3.x.x",
     >     "system_platform": "Linux",
     >     "process_id": 1,
-    >     "init_timestamp": "2020-10-04T13:38:01.201509Z",
+    >     "init_timestamp": "2022-10-16T13:38:01.201509Z",
     >     "event_loop": "asyncio",
     >     "http_enabled": true,
     >     "http_current_tasks": 1,
@@ -573,7 +574,7 @@ Making requests to the running container.
     > Content-Type: application/json; charset=utf-8
     > Server: tomodachi
     > Content-Length: 21
-    > Date: Sun, 04 Oct 2020 13:40:44 GMT
+    > Date: Sun, 16 Oct 2022 13:40:44 GMT
     >
     > {"status": "healthy"}
 
@@ -582,7 +583,7 @@ Making requests to the running container.
     > Content-Type: application/json; charset=utf-8
     > Server: tomodachi
     > Content-Length: 22
-    > Date: Sun, 04 Oct 2020 13:41:18 GMT
+    > Date: Sun, 16 Oct 2022 13:41:18 GMT
     >
     > {"error": "not-found"}
 
@@ -759,7 +760,7 @@ Implementing proper consensus mechanisms and in turn leader election can be comp
 
 Additional configuration options 🤩
 ===================================
-A ``tomodachi.Service`` extended service class may specify a class attribute named ``options`` (as a ``dict``) for additional configuration.
+A ``tomodachi.Service`` extended service class may specify a class attribute named ``options`` (as a ``tomodachi.Options`` object) for additional configuration.
 
 .. code:: python
 
@@ -770,19 +771,23 @@ A ``tomodachi.Service`` extended service class may specify a class attribute nam
 
     class Service(tomodachi.Service):
         name = "http-example"
-        options = {
-            "http.port": 80,
-            "http.content_type": "application/json; charset=utf-8",
-            "http.real_ip_from": [
-                "127.0.0.1/32",
-                "10.0.0.0/8",
-                "172.16.0.0/12",
-                "192.168.0.0/16",
-            ],
-            "http.keepalive_timeout": 5,
-            "http.max_keepalive_requests": 20,
-            "watcher.ignored_dirs": ["node_modules"],
-        }
+        options = tomodachi.Options(
+            http=tomodachi.Options.HTTP(
+                port=80,
+                content_type="application/json; charset=utf-8",
+                real_ip_from=[
+                    "127.0.0.1/32",
+                    "10.0.0.0/8",
+                    "172.16.0.0/12",
+                    "192.168.0.0/16",
+                ],
+                keepalive_timeout=5,
+                max_keepalive_requests=20,
+            ),
+            watcher=tomodachi.Options.Watcher(
+                ignored_dirs=["node_modules"],
+            ),
+        )
 
         @tomodachi.http("GET", r"/health")
         async def health_check(self, request):
@@ -896,14 +901,14 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
 
 Requirements 👍
 ===============
-* Python_ (``3.7+``, ``3.8+``, ``3.9+``)
+* Python_ (``3.8+``, ``3.9+``, ``3.10+``)
 * aiohttp_ (``aiohttp`` is the currently supported HTTP server implementation for ``tomodachi``)
 * aiobotocore_ and botocore_ (used for AWS SNS+SQS pub/sub messaging)
 * aioamqp_ (used for RabbitMQ / AMQP pub/sub messaging)
 * uvloop_ (optional: alternative event loop implementation)
 
 .. _Python: https://www.python.org
-.. _asyncio: http://docs.python.org/3.9/library/asyncio.html
+.. _asyncio: http://docs.python.org/3.10/library/asyncio.html
 .. _aiohttp: https://github.com/aio-libs/aiohttp
 .. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _botocore: https://github.com/boto/botocore

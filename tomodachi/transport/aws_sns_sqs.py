@@ -10,10 +10,24 @@ import json
 import logging
 import re
 import string
-import sys
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Mapping, Match, Optional, Sequence, Set, Tuple, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Match,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypedDict,
+    Union,
+    cast,
+)
 
 import aiobotocore
 import aiohttp
@@ -32,11 +46,7 @@ from tomodachi.helpers.execution_context import (
 )
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
-
-if sys.version_info >= (3, 8):
-    from typing import TypedDict, Literal  # isort:skip
-else:
-    from typing_extensions import TypedDict, Literal  # isort:skip
+from tomodachi.options import Options
 
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
@@ -203,7 +213,7 @@ class AWSSNSSQSTransport(Invoker):
         topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
     ) -> str:
         topic_prefix = (
-            context.get("options", {}).get("aws_sns_sqs", {}).get("topic_prefix", "")
+            cls.options(context).aws_sns_sqs.topic_prefix
             if topic_prefix == MESSAGE_TOPIC_PREFIX
             else (topic_prefix or "")
         )
@@ -218,7 +228,7 @@ class AWSSNSSQSTransport(Invoker):
         cls, topic: str, context: Dict, topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX
     ) -> str:
         topic_prefix = (
-            context.get("options", {}).get("aws_sns_sqs", {}).get("topic_prefix", "")
+            cls.options(context).aws_sns_sqs.topic_prefix
             if topic_prefix == MESSAGE_TOPIC_PREFIX
             else (topic_prefix or "")
         )
@@ -262,10 +272,9 @@ class AWSSNSSQSTransport(Invoker):
         else:
             queue_name = hashlib.sha256(topic.encode("utf-8")).hexdigest()
 
-        if context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"):
-            queue_name = "{}{}".format(
-                context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"), queue_name
-            )
+        queue_name_prefix: Optional[str] = cls.options(context).aws_sns_sqs.queue_name_prefix
+        if queue_name_prefix:
+            queue_name = "{}{}".format(queue_name_prefix, queue_name)
 
         if fifo and not queue_name.endswith(".fifo"):
             queue_name += ".fifo"
@@ -273,8 +282,9 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     def prefix_queue_name(cls, queue_name: str, context: Dict) -> str:
-        if context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"):
-            return "{}{}".format(context.get("options", {}).get("aws_sns_sqs", {}).get("queue_name_prefix"), queue_name)
+        queue_name_prefix: Optional[str] = cls.options(context).aws_sns_sqs.queue_name_prefix
+        if queue_name_prefix:
+            return "{}{}".format(queue_name_prefix, queue_name)
         return queue_name
 
     @classmethod
@@ -550,39 +560,13 @@ class AWSSNSSQSTransport(Invoker):
         if connector.get_client(alias):
             return
 
-        config_base = context.get("options", {}).get("aws_sns_sqs", context.get("options", {}).get("aws", {}))
-        aws_config_base = context.get("options", {}).get("aws", {})
-
-        region_name = (
-            config_base.get("aws_region_name", config_base.get("region_name"))
-            or aws_config_base.get("aws_region_name", aws_config_base.get("region_name"))
-            or None
-        )
-        aws_secret_access_key = (
-            config_base.get("aws_secret_access_key", config_base.get("secret_access_key"))
-            or aws_config_base.get("aws_secret_access_key", aws_config_base.get("secret_access_key"))
-            or None
-        )
-        aws_access_key_id = (
-            config_base.get("aws_access_key_id", config_base.get("access_key_id"))
-            or aws_config_base.get("aws_access_key_id", aws_config_base.get("access_key_id"))
-            or None
-        )
-        endpoint_url = (
-            config_base.get("aws_endpoint_urls", config_base.get("endpoint_urls", {})).get(name)
-            or config_base.get("aws_{}_endpoint_url".format(name), config_base.get("{}_endpoint_url".format(name)))
-            or aws_config_base.get("aws_endpoint_urls", aws_config_base.get("endpoint_urls", {})).get(name)
-            or config_base.get("aws_endpoint_url", config_base.get("endpoint_url"))
-            or aws_config_base.get("aws_endpoint_url", aws_config_base.get("endpoint_url"))
-            or context.get("options", {}).get("aws_endpoint_urls", {}).get(name)
-            or None
-        )
+        options: Options = AWSSNSSQSTransport.options(context)
 
         credentials = {
-            "region_name": region_name,
-            "aws_secret_access_key": aws_secret_access_key,
-            "aws_access_key_id": aws_access_key_id,
-            "endpoint_url": endpoint_url,
+            "region_name": options.aws_sns_sqs.region_name,
+            "aws_secret_access_key": options.aws_sns_sqs.aws_secret_access_key,
+            "aws_access_key_id": options.aws_sns_sqs.aws_access_key_id,
+            "endpoint_url": options.aws_endpoint_urls.get(name, None),
         }
 
         connector.setup_credentials(alias, credentials)
@@ -621,34 +605,18 @@ class AWSSNSSQSTransport(Invoker):
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
 
-        config_base = context.get("options", {}).get("aws_sns_sqs", context.get("options", {}).get("aws", {}))
-        aws_config_base = context.get("options", {}).get("aws", {})
-
-        sns_kms_master_key_id: Optional[str] = None
-        for config_value in (
-            config_base.get("aws_sns_kms_master_key_id"),
-            config_base.get("sns_kms_master_key_id"),
-            aws_config_base.get("aws_sns_kms_master_key_id"),
-            aws_config_base.get("sns_kms_master_key_id"),
-            aws_config_base.get("aws_kms_master_key_id"),
-            aws_config_base.get("kms_master_key_id"),
-            config_base.get("aws_kms_master_key_id"),
-            config_base.get("kms_master_key_id"),
-        ):
-            if config_value is not None:
-                if isinstance(config_value, str) and config_value == "":
-                    sns_kms_master_key_id = ""
-                    break
-                elif isinstance(config_value, bool) and config_value is False:
-                    sns_kms_master_key_id = ""
-                    break
-                elif isinstance(config_value, str) and config_value:
-                    sns_kms_master_key_id = config_value
-                    break
-                else:
-                    raise ValueError(
-                        "Bad value for aws_sns_sqs option sns_kms_master_key_id: {}".format(str(config_value))
-                    )
+        sns_kms_master_key_id: Any = cls.options(context).aws_sns_sqs.sns_kms_master_key_id
+        if sns_kms_master_key_id is not None:
+            if isinstance(sns_kms_master_key_id, str) and sns_kms_master_key_id == "":
+                sns_kms_master_key_id = ""
+            elif isinstance(sns_kms_master_key_id, bool) and sns_kms_master_key_id is False:
+                sns_kms_master_key_id = ""
+            elif isinstance(sns_kms_master_key_id, str) and sns_kms_master_key_id:
+                pass
+            else:
+                raise ValueError(
+                    "Bad value for aws_sns_sqs option sns_kms_master_key_id: {}".format(str(sns_kms_master_key_id))
+                )
 
         topic_attributes: Dict
 
@@ -1057,9 +1025,10 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     def generate_queue_policy(cls, queue_arn: str, topic_arn_list: Union[List, Tuple], context: Dict) -> Dict:
+        aws_sns_sqs_options: Options.AWSSNSSQS = cls.options(context).aws_sns_sqs
         if len(topic_arn_list) == 1:
-            if context.get("options", {}).get("aws_sns_sqs", {}).get("queue_policy"):
-                source_arn = context.get("options", {}).get("aws_sns_sqs", {}).get("queue_policy")
+            if aws_sns_sqs_options.queue_policy:
+                source_arn = aws_sns_sqs_options.queue_policy
             else:
                 source_arn = topic_arn_list[0]
         else:
@@ -1075,10 +1044,10 @@ class AWSSNSSQSTransport(Invoker):
                 wildcard_topic_arn.append("*")
 
             source_arn = "".join(wildcard_topic_arn)
-            if context.get("options", {}).get("aws_sns_sqs", {}).get("queue_policy"):
-                source_arn = context.get("options", {}).get("aws_sns_sqs", {}).get("queue_policy")
-            if context.get("options", {}).get("aws_sns_sqs", {}).get("wildcard_queue_policy"):
-                source_arn = context.get("options", {}).get("aws_sns_sqs", {}).get("wildcard_queue_policy")
+            if aws_sns_sqs_options.queue_policy:
+                source_arn = aws_sns_sqs_options.queue_policy
+            if aws_sns_sqs_options.wildcard_queue_policy:
+                source_arn = aws_sns_sqs_options.wildcard_queue_policy
 
         queue_policy = {
             "Version": "2012-10-17",
@@ -1195,54 +1164,22 @@ class AWSSNSSQSTransport(Invoker):
         ):
             raise Exception("SQS visibility_timeout is invalid")
 
-        config_base = context.get("options", {}).get("aws_sns_sqs", context.get("options", {}).get("aws", {}))
-        aws_config_base = context.get("options", {}).get("aws", {})
+        aws_sns_sqs_options: Options.AWSSNSSQS = cls.options(context).aws_sns_sqs
 
-        sqs_kms_master_key_id: Optional[str] = None
-        for config_value in (
-            config_base.get("aws_sqs_kms_master_key_id"),
-            config_base.get("sqs_kms_master_key_id"),
-            aws_config_base.get("aws_sqs_kms_master_key_id"),
-            aws_config_base.get("sqs_kms_master_key_id"),
-            aws_config_base.get("aws_kms_master_key_id"),
-            aws_config_base.get("kms_master_key_id"),
-            config_base.get("aws_kms_master_key_id"),
-            config_base.get("kms_master_key_id"),
-        ):
-            if config_value is not None:
-                if isinstance(config_value, str) and config_value == "":
-                    sqs_kms_master_key_id = ""
-                    break
-                elif isinstance(config_value, bool) and config_value is False:
-                    sqs_kms_master_key_id = ""
-                    break
-                elif isinstance(config_value, str) and config_value:
-                    sqs_kms_master_key_id = config_value
-                    break
-                else:
-                    raise ValueError(
-                        "Bad value for aws_sns_sqs option sqs_kms_master_key_id: {}".format(str(config_value))
-                    )
+        sqs_kms_master_key_id: Optional[Union[str, bool]] = aws_sns_sqs_options.sqs_kms_master_key_id
+        if sqs_kms_master_key_id is not None:
+            if isinstance(sqs_kms_master_key_id, str) and sqs_kms_master_key_id == "":
+                sqs_kms_master_key_id = ""
+            elif isinstance(sqs_kms_master_key_id, bool) and sqs_kms_master_key_id is False:
+                sqs_kms_master_key_id = ""
+            elif isinstance(sqs_kms_master_key_id, str) and sqs_kms_master_key_id:
+                pass
+            else:
+                raise ValueError(
+                    "Bad value for aws_sns_sqs option sqs_kms_master_key_id: {}".format(str(sqs_kms_master_key_id))
+                )
 
-        sqs_kms_data_key_reuse_period_option = (
-            config_base.get(
-                "aws_sqs_kms_data_key_reuse_period",
-                config_base.get(
-                    "sqs_kms_data_key_reuse_period",
-                    config_base.get("aws_kms_data_key_reuse_period", config_base.get("kms_data_key_reuse_period")),
-                ),
-            )
-            or aws_config_base.get(
-                "aws_sqs_kms_data_key_reuse_period",
-                aws_config_base.get(
-                    "sqs_kms_data_key_reuse_period",
-                    aws_config_base.get(
-                        "aws_kms_data_key_reuse_period", aws_config_base.get("kms_data_key_reuse_period")
-                    ),
-                ),
-            )
-            or None
-        )
+        sqs_kms_data_key_reuse_period_option: Optional[int] = aws_sns_sqs_options.sqs_kms_data_key_reuse_period
         sqs_kms_data_key_reuse_period: Optional[int] = None
         if sqs_kms_data_key_reuse_period_option is None or sqs_kms_data_key_reuse_period_option is False:
             sqs_kms_data_key_reuse_period = None

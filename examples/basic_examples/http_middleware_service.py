@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict
 from aiohttp import web
 
 import tomodachi
-from tomodachi import http, http_error
+from tomodachi import Options, http, http_error
 
 
 async def middleware_function(
@@ -35,7 +35,13 @@ class ExampleHttpMiddlewareService(tomodachi.Service):
     http_middleware = [middleware_function]
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
-    options = {"http.port": 4711, "http.content_type": "text/plain; charset=utf-8", "http.access_log": True}
+    options = Options(
+        http=Options.HTTP(
+            port=4711,
+            content_type="text/plain; charset=utf-8",
+            access_log=True,
+        ),
+    )
 
     @http("GET", r"/example/?")
     async def example(self, request: web.Request, **kwargs: Any) -> str:
