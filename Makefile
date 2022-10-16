@@ -8,7 +8,13 @@ RELEASED := $(shell git tag | grep ^${VERSION}$$)
 
 default:
 	@echo "Current version info collected: ${VERSION}."
-	if [[ "${RELEASED}" ]]; then echo "Version is already released."; else echo "Version can be released."; fi
+	if [[ "${VERSION}" == *"dev"* ]]; then \
+		echo "Development version (${VERSION}) can not be released."; \
+	elif [[ "${RELEASED}" ]]; then \
+		echo "Version ${VERSION} has been released."; \
+	else \
+		echo "No tag found for ${VERSION}. Version can be released."; \
+	fi
 	@echo ""
 	@echo "Usage:"
 	@echo "  make install        | install package"
@@ -62,21 +68,26 @@ pytest:
 
 .PHONY: _check_release
 _check_release:
-	if [[ "${RELEASED}" ]]; then echo "Version ${VERSION} is already released"; exit 1; fi
+	if [[ "${VERSION}" == *"dev"* ]]; then \
+		echo "Development version (${VERSION}) can not be released."; exit 1; \
+	fi
+	if [[ "${RELEASED}" ]]; then \
+		echo "Version ${VERSION} is already released"; exit 1; \
+	fi
 
 .PHONY: version
 version:
 	poetry version `python tomodachi/__version__.py`
 
 .PHONY: _git_release
-_git_release:
+_git_release: _check_release
 	git commit -m "`python tomodachi/__version__.py`" --allow-empty pyproject.toml poetry.lock tomodachi/__version__.py CHANGES.rst
 	git tag -a `python tomodachi/__version__.py` -m `python tomodachi/__version__.py`
 	git push
 	git push --tags
 
 .PHONY: _pypi_release
-_pypi_release:
+_pypi_release: _check_release
 	twine upload dist/tomodachi-`python tomodachi/__version__.py`*
 
 test: tests
