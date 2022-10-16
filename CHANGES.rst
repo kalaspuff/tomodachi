@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.23.0 (2022-10-XX)
+0.23.0 (2022-10-16)
 -------------------
 - Properly handles ``aiobotocore`` client using an async contextmanager.
   Drops support for ``aiobotocore`` versions prior 1.3.0, but will now supporting
@@ -15,6 +15,10 @@ Changes
   functionality. Options set on the service class should now be defined as a
   ``tomodachi.Options`` object, which provides type hints and much nicer path
   traversal of the class.
+
+  Only the specified typed values for ``options`` will now be allowed to be set.
+  Setting a non-defined option will raise an ``AttributeError`` exception on
+  service start.
 
   The previous ``dict`` based approach is still supported, but will be removed
   in a future version.
