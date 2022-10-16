@@ -15,8 +15,11 @@ class ProtobufBase(object):
     def validate(cls, **kwargs: Any) -> None:
         if "proto_class" not in kwargs:
             raise Exception("No proto_class defined")
-        if kwargs.get("proto_class", None).__class__.__name__ != "GeneratedProtocolMessageType":
-            raise Exception("proto_class is not a GeneratedProtocolMessageType")
+        if kwargs.get("proto_class", None).__class__.__name__ not in ("GeneratedProtocolMessageType", "MessageMeta"):
+            from google.protobuf.message import Message  # isort: skip
+
+            if not issubclass(kwargs.get("proto_class", None), Message):
+                raise Exception("keyword argument 'proto_class' is not a protobuf message class")
 
     @classmethod
     async def build_message(cls, service: Any, topic: str, data: Any, **kwargs: Any) -> str:

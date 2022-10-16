@@ -1,6 +1,15 @@
 Changes
 =======
 
+0.23.1 (2022-XX-XX)
+-------------------
+- Updates to the internal ``tomodachi.envelope.ProtobufBase`` envelope to now also
+  support protobuf Python bindings versioned >=4.0.0, when running with the
+  (new default) ``PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb`` as ``upb`` slightly
+  differs in representation of a Message type in relation to ``cpp`` and ``python``
+  implementations.
+
+
 0.23.0 (2022-10-16)
 -------------------
 - Properly handles ``aiobotocore`` client using an async contextmanager.
