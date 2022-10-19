@@ -276,20 +276,20 @@ def test_legacy_fallback_init() -> None:
 
 def test_service_new_class() -> None:
     class Service(tomodachi.Service):
-        options = {
+        options = {  # type: ignore
             "http.port": 31337,
         }
 
     service = Service()
-    assert service.options.http.port == 31337
-    assert service.options["http"]["port"] == 31337
-    assert service.options.get("http").get("port") == 31337
+    assert service.options.http.port == 31337  # type: ignore
+    assert service.options["http"]["port"] == 31337  # type: ignore
+    assert service.options.get("http").get("port") == 31337  # type: ignore
 
 
 def test_service_init_object() -> None:
     class Service(tomodachi.Service):
-        def __init__(self):
-            self.options = {
+        def __init__(self) -> None:
+            self.options = {  # type: ignore
                 "http.port": 31337,
             }
 
@@ -312,7 +312,7 @@ def test_service_init_suboption_assignment() -> None:
 
 def test_service_dict_option_init_suboption_assignment() -> None:
     class Service(tomodachi.Service):
-        options = {
+        options = {  # type: ignore
             "http": {
                 "server_header": "example",
             },
@@ -320,11 +320,11 @@ def test_service_dict_option_init_suboption_assignment() -> None:
         }
 
         def __init__(self) -> None:
-            self.options.http.port = 31337
+            self.options.http.port = 31337  # type: ignore
 
     service = Service()
-    assert service.options.http.port == 31337
-    assert service.options["http"]["port"] == 31337
-    assert service.options.get("http").get("port") == 31337
-    assert service.options.http.keepalive_timeout == 100
-    assert service.options.http.server_header == "example"
+    assert service.options.http.port == 31337  # type: ignore
+    assert service.options["http"]["port"] == 31337  # type: ignore
+    assert service.options.get("http").get("port") == 31337  # type: ignore
+    assert service.options.http.keepalive_timeout == 100  # type: ignore
+    assert service.options.http.server_header == "example"  # type: ignore
