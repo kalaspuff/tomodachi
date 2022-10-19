@@ -86,7 +86,7 @@ class OptionsInterface:
         prefix: str = ".".join(self._hierarchy)
         if prefix:
             cls_name = str(type(self)).split("'")[-2].split("tomodachi.options.definitions.", 1)[-1]
-            result = f'∴ {self._hierarchy[-1]} <class "{cls_name}" -- prefix: "{prefix}">:'
+            result = f'∴ {self._hierarchy[-1]} <class: "{cls_name}" -- prefix: "{prefix}">:'
             prefix += "."
         prev: Tuple[str, ...] = self._hierarchy
         for full_key, value in self.asdict(prefix=prefix).items():
