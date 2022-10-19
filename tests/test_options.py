@@ -1,5 +1,6 @@
 import platform
 
+import tomodachi
 from tomodachi.options import Options
 
 
@@ -271,3 +272,59 @@ def test_legacy_fallback_init() -> None:
             },
         }
     ).aws_endpoint_urls.asdict() == {"sns": None, "sqs": "http://localhost:4566"}
+
+
+def test_service_new_class() -> None:
+    class Service(tomodachi.Service):
+        options = {
+            "http.port": 31337,
+        }
+
+    service = Service()
+    assert service.options.http.port == 31337
+    assert service.options["http"]["port"] == 31337
+    assert service.options.get("http").get("port") == 31337
+
+
+def test_service_init_object() -> None:
+    class Service(tomodachi.Service):
+        def __init__(self):
+            self.options = {
+                "http.port": 31337,
+            }
+
+    service = Service()
+    assert service.options.http.port == 31337
+    assert service.options["http"]["port"] == 31337
+    assert service.options.get("http").get("port") == 31337
+
+
+def test_service_init_suboption_assignment() -> None:
+    class Service(tomodachi.Service):
+        def __init__(self) -> None:
+            self.options.http.port = 31337
+
+    service = Service()
+    assert service.options.http.port == 31337
+    assert service.options["http"]["port"] == 31337
+    assert service.options.get("http").get("port") == 31337
+
+
+def test_service_dict_option_init_suboption_assignment() -> None:
+    class Service(tomodachi.Service):
+        options = {
+            "http": {
+                "server_header": "example",
+            },
+            "http.keepalive_timeout": 100,
+        }
+
+        def __init__(self) -> None:
+            self.options.http.port = 31337
+
+    service = Service()
+    assert service.options.http.port == 31337
+    assert service.options["http"]["port"] == 31337
+    assert service.options.get("http").get("port") == 31337
+    assert service.options.http.keepalive_timeout == 100
+    assert service.options.http.server_header == "example"
