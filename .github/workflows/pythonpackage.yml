@@ -18,7 +18,7 @@ jobs:
         image: rabbitmq
         ports:
           - 5672:5672
-    localstack_main:
+      localstack_main:
         image: localstack/localstack:latest
         env:
           DEFAULT_REGION: eu-west-1
