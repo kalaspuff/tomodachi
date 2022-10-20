@@ -58,13 +58,13 @@ lint: flake8 mypy
 
 .PHONY: tests
 tests:
-	poetry run pytest tests -v
+	poetry run pytest -n auto tests -v
 	poetry run python -m tomodachi.run tests/run_example_service.py
 	poetry run tomodachi run --loop uvloop tests/run_example_service.py
 
 .PHONY: pytest
 pytest:
-	poetry run pytest tests -v
+	poetry run pytest -n auto tests -v
 
 .PHONY: _check_release
 _check_release:

@@ -2,10 +2,12 @@ import asyncio
 from typing import Any
 
 import aiohttp
+import pytest
 
 from run_test_service_helper import start_service
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_start_process_http_later_request(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     func, future = start_service("tests/services/start_process_service_http_2.py", monkeypatch, wait=False, loop=loop)
     port = 53252

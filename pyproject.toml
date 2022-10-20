@@ -85,6 +85,8 @@ flake8-pyproject = { version = ">=1.1.0", markers = "sys_platform != \"win32\"" 
 isort = { version = ">=5.6.0", markers = "sys_platform != \"win32\"" }
 pytest = { version = ">=6.1.0", markers = "sys_platform != \"win32\"" }
 pytest-cov = { version = ">=2.10.0", markers = "sys_platform != \"win32\"" }
+pytest-rerunfailures = { version = ">=10.2", markers = "sys_platform != \"win32\"" }
+pytest-xdist = { version = ">=2.5.0", markers = "sys_platform != \"win32\"" }
 black = { version = "*", markers = "sys_platform != \"win32\"", allow-prereleases = true }
 mypy = { version = ">=0.800", markers = "sys_platform != \"win32\"" }
 codecov = { version = ">=2.1.10", markers = "sys_platform != \"win32\"" }

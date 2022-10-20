@@ -62,7 +62,7 @@ jobs:
           TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID: arn:aws:kms:eu-west-1:000000000000:key/2af37855-cd62-4e38-bca5-7b907d948131
           TOMODACHI_TEST_SQS_KMS_MASTER_KEY_ID: arn:aws:kms:eu-west-1:000000000000:key/63710c9b-75e6-4398-94c7-f67cf3f53802
           TOMODACHI_TEST_RABBITMQ_ENABLED: true
-        run: pytest --cov=./ tests -v
+        run: pytest --cov=./ -n auto tests -v
       - name: Lint with flake8
         run: flake8
       - name: Run dummy service
