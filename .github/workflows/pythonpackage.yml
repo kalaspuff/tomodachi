@@ -13,6 +13,19 @@ jobs:
       matrix:
         python-version: ['3.8', '3.9', '3.10']
 
+    services:
+      rabbitmq:
+        image: rabbitmq
+        ports:
+          - 5672:5672
+      localstack_main:
+        image: localstack/localstack:latest
+        env:
+          DEFAULT_REGION: eu-west-1
+          PERSISTENCE: 0
+        ports:
+          - 4566:4566
+
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -37,16 +50,19 @@ jobs:
       - name: Test poetry build step
         run: poetry build
       - name: Run unit tests
-        run: pytest --cov=./ tests -v
         env:
-          TOMODACHI_TEST_AWS_ACCESS_KEY_ID: ${{ secrets.TOMODACHI_TEST_AWS_ACCESS_KEY_ID }}
-          TOMODACHI_TEST_AWS_ACCESS_SECRET: ${{ secrets.TOMODACHI_TEST_AWS_ACCESS_SECRET }}
-          TOMODACHI_TEST_AWS_REGION: ${{ secrets.TOMODACHI_TEST_AWS_REGION }}
-          TOMODACHI_TEST_SERVICE_UUID: ${{ secrets.TOMODACHI_TEST_SERVICE_UUID }}
-          TOMODACHI_TEST_SNS_TOPIC_PREFIX: ${{ secrets.TOMODACHI_TEST_SNS_TOPIC_PREFIX }}
-          TOMODACHI_TEST_SQS_QUEUE_PREFIX: ${{ secrets.TOMODACHI_TEST_SQS_QUEUE_PREFIX }}
-          TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID: ${{ secrets.TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID }}
-          TOMODACHI_TEST_SQS_KMS_MASTER_KEY_ID: ${{ secrets.TOMODACHI_TEST_SQS_KMS_MASTER_KEY_ID }}
+          TOMODACHI_TEST_AWS_REGION: eu-west-1
+          TOMODACHI_TEST_AWS_ACCESS_KEY_ID: 000000000000
+          TOMODACHI_TEST_AWS_ACCESS_SECRET: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+          TOMODACHI_TEST_SQS_QUEUE_PREFIX: pytest-
+          TOMODACHI_TEST_SNS_TOPIC_PREFIX: pytest-
+          TOMODACHI_TEST_AWS_SNS_ENDPOINT_URL: http://localhost:4566
+          TOMODACHI_TEST_AWS_SQS_ENDPOINT_URL: http://localhost:4566
+          TOMODACHI_TEST_SERVICE_UUID: 5ecd36d4-99a7-46bb-b620-06bb0575edbd
+          TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID: arn:aws:kms:eu-west-1:000000000000:key/2af37855-cd62-4e38-bca5-7b907d948131
+          TOMODACHI_TEST_SQS_KMS_MASTER_KEY_ID: arn:aws:kms:eu-west-1:000000000000:key/63710c9b-75e6-4398-94c7-f67cf3f53802
+          TOMODACHI_TEST_RABBITMQ_ENABLED: true
+        run: pytest --cov=./ tests -v
       - name: Lint with flake8
         run: flake8
       - name: Run dummy service

@@ -23,11 +23,15 @@ class AWSSNSSQSService(tomodachi.Service):
             "aws_secret_access_key": os.environ.get("TOMODACHI_TEST_AWS_ACCESS_SECRET"),
         },
         "aws_sns_sqs": {
-            "queue_name_prefix": os.environ.get("TOMODACHI_TEST_SQS_QUEUE_PREFIX"),
-            "topic_prefix": os.environ.get("TOMODACHI_TEST_SNS_TOPIC_PREFIX"),
+            "queue_name_prefix": os.environ.get("TOMODACHI_TEST_SQS_QUEUE_PREFIX") or "",
+            "topic_prefix": os.environ.get("TOMODACHI_TEST_SNS_TOPIC_PREFIX") or "",
             "sns_kms_master_key_id": os.environ.get("TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID") or "invalid",
             "sqs_kms_master_key_id": os.environ.get("TOMODACHI_TEST_SQS_KMS_MASTER_KEY_ID") or "invalid",
             "sqs_kms_data_key_reuse_period": 300,
+        },
+        "aws_endpoint_urls": {
+            "sns": os.environ.get("TOMODACHI_TEST_AWS_SNS_ENDPOINT_URL") or None,
+            "sqs": os.environ.get("TOMODACHI_TEST_AWS_SQS_ENDPOINT_URL") or None,
         },
     }
     uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID") or ""
@@ -81,6 +85,14 @@ class AWSSNSSQSService(tomodachi.Service):
         self, data: Any, queue_url: str, receipt_handle: str, message_attributes: Dict
     ) -> None:
         if data == self.data_uuid and queue_url and receipt_handle:
+            if message_attributes == {"currency": "SEK", "amount": "9001.00"} and (
+                self.options.aws_endpoint_urls.sns.startswith("http://localhost:")
+                or self.options.aws_endpoint_urls.sns.startswith("http://localstack:")
+            ):
+                # localstack does not corrrectly support numeric filter policy on message attributes
+                self.check_closer()
+                return
+
             self.test_message_attribute_amounts.add(json.dumps(message_attributes, sort_keys=True))
 
             self.check_closer()

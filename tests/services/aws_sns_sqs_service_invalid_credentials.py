@@ -18,7 +18,7 @@ class AWSSNSSQSService(tomodachi.Service):
             "region_name": "eu-west-1",
             "aws_access_key_id": "XXXXXXXXX",
             "aws_secret_access_key": "XXXXXXXXX",
-        }
+        },
     }
     closer: asyncio.Future
 

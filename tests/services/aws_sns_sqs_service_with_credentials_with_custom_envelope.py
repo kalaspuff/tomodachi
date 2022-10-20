@@ -33,8 +33,12 @@ class AWSSNSSQSService(tomodachi.Service):
             "aws_secret_access_key": os.environ.get("TOMODACHI_TEST_AWS_ACCESS_SECRET"),
         },
         "aws_sns_sqs": {
-            "queue_name_prefix": os.environ.get("TOMODACHI_TEST_SQS_QUEUE_PREFIX"),
-            "topic_prefix": os.environ.get("TOMODACHI_TEST_SNS_TOPIC_PREFIX"),
+            "queue_name_prefix": os.environ.get("TOMODACHI_TEST_SQS_QUEUE_PREFIX") or "",
+            "topic_prefix": os.environ.get("TOMODACHI_TEST_SNS_TOPIC_PREFIX") or "",
+        },
+        "aws_endpoint_urls": {
+            "sns": os.environ.get("TOMODACHI_TEST_AWS_SNS_ENDPOINT_URL") or None,
+            "sqs": os.environ.get("TOMODACHI_TEST_AWS_SQS_ENDPOINT_URL") or None,
         },
     }
     uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID")
