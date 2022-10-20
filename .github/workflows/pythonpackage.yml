@@ -34,12 +34,9 @@ jobs:
         run: |
           poetry install --no-interaction -E uvloop -E protobuf -E aiodns
           poetry show --tree
+      - name: Test poetry build step
+        run: poetry build
       - name: Start LocalStack
-        env:
-          SERVICES: cloudformation,iam,sts,ssm,s3,cloudwatch,cloudwatch-logs,lambda,dynamodb,apigateway
-          DEFAULT_REGION: eu-west-1
-          AWS_ACCESS_KEY_ID: localkey
-          AWS_SECRET_ACCESS_KEY: localsecret
         ports:
           - 4566:4566
         env:
@@ -52,10 +49,13 @@ jobs:
           echo "Waiting for LocalStack startup..."
           localstack wait -t 30
           echo "Startup complete"
-      - name: Test poetry build step
-        run: poetry build
-      - name: Run unit tests
-        run: pytest --cov=./ tests -v
+      - name: Start RabbitMQ
+        ports:
+          - 5672:5627
+        run: |
+          docker pull rabbitmq:latest
+          docker run -d -p 5672:5672 rabbitmq:latest
+        - name: Run unit tests
         env:
           TOMODACHI_TEST_AWS_REGION: eu-west-1
           TOMODACHI_TEST_AWS_ACCESS_KEY_ID: 000000000000
@@ -67,6 +67,8 @@ jobs:
           TOMODACHI_TEST_SERVICE_UUID: 5ecd36d4-99a7-46bb-b620-06bb0575edbd
           TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID: arn:aws:kms:eu-west-1:000000000000:key/2af37855-cd62-4e38-bca5-7b907d948131
           TOMODACHI_TEST_SQS_KMS_MASTER_KEY_ID: arn:aws:kms:eu-west-1:000000000000:key/63710c9b-75e6-4398-94c7-f67cf3f53802
+          TOMODACHI_TEST_RABBITMQ_ENABLED: true
+        run: pytest --cov=./ tests -v
       - name: Lint with flake8
         run: flake8
       - name: Run dummy service
