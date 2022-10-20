@@ -13,6 +13,19 @@ jobs:
       matrix:
         python-version: ['3.8', '3.9', '3.10']
 
+    services:
+      rabbitmq:
+        image: rabbitmq
+        ports:
+          - 5672:5672
+    localstack_main:
+        image: localstack/localstack:latest
+        env:
+          DEFAULT_REGION: eu-west-1
+          PERSISTENCE: 0
+        ports:
+          - 4566:4566
+
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -36,25 +49,11 @@ jobs:
           poetry show --tree
       - name: Test poetry build step
         run: poetry build
-      - name: Start LocalStack
-        ports:
-          - 4566:4566
-        env:
-          DEFAULT_REGION: eu-west-1
-          PERSISTENCE: 0
+      - name: Waiting for localstack
         run: |
-          pip install localstack awscli-local[ver1]
-          docker pull localstack/localstack
-          localstack start -d
-          echo "Waiting for LocalStack startup..."
+          pip install localstack
           localstack wait -t 30
           echo "Startup complete"
-      - name: Start RabbitMQ
-        ports:
-          - 5672:5627
-        run: |
-          docker pull rabbitmq:latest
-          docker run -d -p 5672:5672 rabbitmq:latest
       - name: Run unit tests
         env:
           TOMODACHI_TEST_AWS_REGION: eu-west-1
