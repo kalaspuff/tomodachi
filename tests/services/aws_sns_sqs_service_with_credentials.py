@@ -25,8 +25,12 @@ class AWSSNSSQSService(tomodachi.Service):
             "aws_secret_access_key": os.environ.get("TOMODACHI_TEST_AWS_ACCESS_SECRET"),
         },
         "aws_sns_sqs": {
-            "queue_name_prefix": os.environ.get("TOMODACHI_TEST_SQS_QUEUE_PREFIX"),
-            "topic_prefix": os.environ.get("TOMODACHI_TEST_SNS_TOPIC_PREFIX"),
+            "queue_name_prefix": os.environ.get("TOMODACHI_TEST_SQS_QUEUE_PREFIX") or "",
+            "topic_prefix": os.environ.get("TOMODACHI_TEST_SNS_TOPIC_PREFIX") or "",
+        },
+        "aws_endpoint_urls": {
+            "sns": os.environ.get("TOMODACHI_TEST_AWS_SNS_ENDPOINT_URL") or None,
+            "sqs": os.environ.get("TOMODACHI_TEST_AWS_SQS_ENDPOINT_URL") or None,
         },
     }
     uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID") or ""
@@ -70,8 +74,10 @@ class AWSSNSSQSService(tomodachi.Service):
             # successfully.
             if data_val == "2" and not self.test_fifo_failed:
                 self.test_fifo_failed = True
+                await asyncio.sleep(10)
                 raise AWSSNSSQSInternalServiceError("boom")
 
+            await asyncio.sleep(5)
             self.test_fifo_messages.append(data_val)
             self.check_closer()
 
@@ -97,6 +103,11 @@ class AWSSNSSQSService(tomodachi.Service):
         self, data: Any, queue_url: str, receipt_handle: str, message_attributes: Dict
     ) -> None:
         if data == self.data_uuid and queue_url and receipt_handle:
+            if message_attributes == {"currency": "SEK", "amount": "9001.00"} and (self.options.aws_endpoint_urls.sns.startswith("http://localhost:") or self.options.aws_endpoint_urls.sns.startswith("http://localstack:")):
+                # localstack does not corrrectly support numeric filter policy on message attributes
+                self.check_closer()
+                return
+
             self.test_message_attribute_amounts.add(json.dumps(message_attributes, sort_keys=True))
 
             self.check_closer()
@@ -168,6 +179,42 @@ class AWSSNSSQSService(tomodachi.Service):
             ):
                 await publish(self.data_uuid, "test-topic-filtered", message_attributes=ma)
 
+            # Send three consecutive messages on a FIFO topic. These messages belong to
+            # the same group and should be thus handled sequentially.
+
+            await asyncio.sleep(5)
+            await aws_sns_sqs_publish(
+                self,
+                "1.{}".format(self.data_uuid),
+                topic="test-fifo-topic",
+                group_id="group-1.{}".format(self.data_uuid),
+                deduplication_id="1.{}".format(self.data_uuid),
+            )
+            await asyncio.sleep(3)
+            await aws_sns_sqs_publish(
+                self,
+                "1.{}".format(self.data_uuid),
+                topic="test-fifo-topic",
+                group_id="group-1.{}".format(self.data_uuid),
+                deduplication_id="1.{}".format(self.data_uuid),
+            )
+            await asyncio.sleep(3)
+            await aws_sns_sqs_publish(
+                self,
+                "2.{}".format(self.data_uuid),
+                topic="test-fifo-topic",
+                group_id="group-1.{}".format(self.data_uuid),
+                deduplication_id="2.{}".format(self.data_uuid),
+            )
+            await asyncio.sleep(3)
+            await aws_sns_sqs_publish(
+                self,
+                "3.{}".format(self.data_uuid),
+                topic="test-fifo-topic",
+                group_id="group-1.{}".format(self.data_uuid),
+                deduplication_id="3.{}".format(self.data_uuid),
+            )
+
             for _ in range(10):
                 if self.test_topic_data_received:
                     break
@@ -175,37 +222,6 @@ class AWSSNSSQSService(tomodachi.Service):
                 await asyncio.sleep(0.5)
 
         asyncio.ensure_future(_async_publisher())
-
-        # Send three consecutive messages on a FIFO topic. These messages belong to
-        # the same group and should be thus handled sequentially.
-        await aws_sns_sqs_publish(
-            self,
-            "1.{}".format(data_uuid),
-            topic="test-fifo-topic",
-            group_id="group-1.{}".format(data_uuid),
-            deduplication_id="1.{}".format(data_uuid),
-        )
-        await aws_sns_sqs_publish(
-            self,
-            "1.{}".format(data_uuid),
-            topic="test-fifo-topic",
-            group_id="group-1.{}".format(data_uuid),
-            deduplication_id="1.{}".format(data_uuid),
-        )
-        await aws_sns_sqs_publish(
-            self,
-            "2.{}".format(data_uuid),
-            topic="test-fifo-topic",
-            group_id="group-1.{}".format(data_uuid),
-            deduplication_id="2.{}".format(data_uuid),
-        )
-        await aws_sns_sqs_publish(
-            self,
-            "3.{}".format(data_uuid),
-            topic="test-fifo-topic",
-            group_id="group-1.{}".format(data_uuid),
-            deduplication_id="3.{}".format(data_uuid),
-        )
 
     def stop_service(self) -> None:
         if not self.closer.done():

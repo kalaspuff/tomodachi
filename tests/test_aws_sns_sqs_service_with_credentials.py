@@ -58,7 +58,12 @@ def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: An
             json.dumps({"currency": ["SEK"], "amount": 1338, "value": "1338.00 SEK"}, sort_keys=True),
         }
         assert instance.test_fifo_failed
-        assert instance.test_fifo_messages == ["1", "2", "3"]
+
+        if len(instance.test_fifo_messages) == 3 and (instance.options.aws_endpoint_urls.sns.startswith("http://localhost:") or instance.options.aws_endpoint_urls.sns.startswith("http://localstack:")):
+            # localstack does not correctly order FIFO messages, but works with deduplication
+            assert set(instance.test_fifo_messages) == {"1", "2", "3"}
+        else:
+            assert instance.test_fifo_messages == ["1", "2", "3"]
 
     loop.run_until_complete(_async(loop))
     instance.stop_service()
