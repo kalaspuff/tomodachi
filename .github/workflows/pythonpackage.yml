@@ -49,11 +49,6 @@ jobs:
           poetry show --tree
       - name: Test poetry build step
         run: poetry build
-      - name: Waiting for localstack
-        run: |
-          pip install localstack
-          localstack wait -t 30
-          echo "Startup complete"
       - name: Run unit tests
         env:
           TOMODACHI_TEST_AWS_REGION: eu-west-1
