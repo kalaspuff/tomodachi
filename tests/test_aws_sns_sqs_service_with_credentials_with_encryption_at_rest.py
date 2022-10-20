@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from run_test_service_helper import start_service
-from tomodachi.transport.aws_sns_sqs import connector, AWSSNSSQSTransport
+from tomodachi.transport.aws_sns_sqs import AWSSNSSQSTransport, connector
 
 
 @pytest.mark.skipif(
@@ -63,7 +63,9 @@ def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: An
         async with connector("tomodachi.sns", service_name="sqs") as client:
             topic_arn = AWSSNSSQSTransport.topics.get("encrypted-test-topic")
             topic_attributes_response = await client.get_topic_attributes(TopicArn=topic_arn)
-            assert topic_attributes_response.get("Attributes", {}).get("KmsMasterKeyId") == os.environ.get("TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID")
+            assert topic_attributes_response.get("Attributes", {}).get("KmsMasterKeyId") == os.environ.get(
+                "TOMODACHI_TEST_SNS_KMS_MASTER_KEY_ID"
+            )
             assert topic_attributes_response.get("Attributes", {}).get("KmsMasterKeyId").startswith("arn:aws:kms:")
 
     loop.run_until_complete(_async(loop))

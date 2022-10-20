@@ -59,7 +59,10 @@ def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: An
         }
         assert instance.test_fifo_failed
 
-        if len(instance.test_fifo_messages) == 3 and (instance.options.aws_endpoint_urls.sns.startswith("http://localhost:") or instance.options.aws_endpoint_urls.sns.startswith("http://localstack:")):
+        if len(instance.test_fifo_messages) == 3 and (
+            instance.options.aws_endpoint_urls.sns.startswith("http://localhost:")
+            or instance.options.aws_endpoint_urls.sns.startswith("http://localstack:")
+        ):
             # localstack does not correctly order FIFO messages, but works with deduplication
             assert set(instance.test_fifo_messages) == {"1", "2", "3"}
         else:

@@ -277,7 +277,11 @@ class TomodachiServiceMeta(type):
             if not isinstance(result.options, dict):  # type: ignore
                 raise ValueError("Invalid value for 'options' attribute")
             import warnings  # isort:skip
-            warnings.warn("Assigning a dict or dict-like mapping to 'service.options' is deprecated. Use the 'tomodachi.Options' class instead.", DeprecationWarning)
+
+            warnings.warn(
+                "Assigning a dict or dict-like mapping to 'service.options' is deprecated. Use the 'tomodachi.Options' class instead.",
+                DeprecationWarning,
+            )
             result.options = Options(**result.options)
 
         # Removing the CLASS_ATTRIBUTE for classes that were used as bases for inheritance to other classes
@@ -311,7 +315,11 @@ class Service(metaclass=TomodachiServiceMeta):
             if not isinstance(value, dict):
                 raise ValueError("Invalid value for 'options' attribute")
             import warnings  # isort:skip
-            warnings.warn("Assigning a dict or dict-like mapping to 'service.options' is deprecated. Use the 'tomodachi.Options' class instead.", DeprecationWarning)
+
+            warnings.warn(
+                "Assigning a dict or dict-like mapping to 'service.options' is deprecated. Use the 'tomodachi.Options' class instead.",
+                DeprecationWarning,
+            )
             value = Options(**value)
         super().__setattr__(item, value)
 
