@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextvars
 import importlib
 import uuid as uuid_
+import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
 from tomodachi.__version__ import __version__, __version_info__
@@ -60,6 +61,10 @@ DEFAULT_SERVICE_EXIT_CODE: int = 0
 SERVICE_EXIT_CODE: int = 0
 
 __context: Dict[str, contextvars.ContextVar] = {}
+
+__doc__ = """
+A Python library for quickly building microservices using asyncio. Built-in support for HTTP, websockets, internal task scheduling, RabbitMQ / AMQP and AWS SNS+SQS. It is lightweight and builds on top of libraries such as aiohttp, aiobotocore, aioamqp, etc. - extendable to be used with different options of infrastructure choices.
+"""
 
 
 def get_contextvar(key: str) -> contextvars.ContextVar:
@@ -214,6 +219,7 @@ __all__ = [
     "__version_info__",
     "__author__",
     "__email__",
+    "__doc__",
     "decorator",
     "cli",
     "run",
@@ -276,8 +282,6 @@ class TomodachiServiceMeta(type):
         elif bases and result.options and not isinstance(result.options, Options):
             if not isinstance(result.options, dict):  # type: ignore
                 raise ValueError("Invalid value for 'options' attribute")
-            import warnings  # isort:skip
-
             warnings.warn(
                 "Assigning a dict or dict-like mapping to 'service.options' is deprecated. Use the 'tomodachi.Options' class instead.",
                 DeprecationWarning,
@@ -293,38 +297,76 @@ class TomodachiServiceMeta(type):
 
 
 class Service(metaclass=TomodachiServiceMeta):
-    _tomodachi_class_is_service_class: bool = False
+    """
+    Base class for all tomodachi services.
+
+    Attributes:
+        name: Service name used to distinguish between different services.
+        uuid: An identifier set for the current thread of the service. If not set, a random UUID will be generated on start.
+        options: Options for the service. See the `tomodachi.Options` class for more information.
+    """
+
     name: str = ""
     uuid: str = ""
     options: Options
 
-    def log(self, *args: Any, **kwargs: Any) -> None:
-        __getattr__("_log")(self, *args, **kwargs)
+    _tomodachi_class_is_service_class: bool = False
 
-    def log_setup(
-        self,
-        name: Optional[str] = None,
-        level: Optional[Union[str, int]] = None,
-        formatter: Any = True,
-        filename: Optional[str] = None,
-    ) -> Any:
-        return __getattr__("_log_setup")(self, name=name, level=level, formatter=formatter, filename=filename)
+    def __getattr__(self, item: str) -> Any:
+        """
+        Get an attribute from the service instance.
+
+        Args:
+            item: Attribute name to look up.
+        """
+
+        if item == "log":
+            warnings.warn(
+                "Calling the 'service.log' function is deprecated. A structured logger should preferably be used for logging.",
+                DeprecationWarning,
+            )
+            fallback_func = __getattr__("_log").__get__(self)
+            super().__setattr__(item, fallback_func)
+            return fallback_func
+
+        if item == "log_setup":
+            warnings.warn(
+                "Calling the 'service.log_setup' function is deprecated. A structured logger should preferably be used for logging.",
+                DeprecationWarning,
+            )
+            fallback_func = __getattr__("_log_setup").__get__(self)
+            super().__setattr__(item, fallback_func)
+            return fallback_func
+
+        return object.__getattribute__(self, item)
 
     def __setattr__(self, item: str, value: Any) -> None:
+        """
+        Assigns a value to a service attribute.
+
+        Args:
+            item: Attribute name to use for assignment.
+            value: Value to assign to the attribute.
+        """
+
         if item == "options" and not isinstance(value, Options):
             if not isinstance(value, dict):
                 raise ValueError("Invalid value for 'options' attribute")
-            import warnings  # isort:skip
-
             warnings.warn(
                 "Assigning a dict or dict-like mapping to 'service.options' is deprecated. Use the 'tomodachi.Options' class instead.",
                 DeprecationWarning,
             )
             value = Options(**value)
+
         super().__setattr__(item, value)
 
 
 def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
+    warnings.warn(
+        "The service class decorator '@tomodachi.service' is deprecated. Instead inherit the 'tomodachi.Service' class.",
+        DeprecationWarning,
+    )
+
     if isinstance(cls, TomodachiServiceMeta):
         return cls
 
@@ -333,6 +375,12 @@ def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
 
 
 def exit(exit_code: Optional[int] = None) -> None:
+    """
+    Initiate graceful termination of the currently running service.
+
+    Args:
+        exit_code: Exit code to use when exiting the service. If not set, the default exit code will be used.
+    """
     import logging  # noqa # isort:skip
     import sys  # noqa # isort:skip
     from tomodachi.launcher import ServiceLauncher  # noqa  # isort:skip

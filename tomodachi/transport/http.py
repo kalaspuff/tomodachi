@@ -9,7 +9,7 @@ import platform
 import re
 import time
 import uuid
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
 import yarl
 from aiohttp import WSMsgType
@@ -1402,30 +1402,62 @@ __http_static = HttpTransport.decorator(HttpTransport.static_request_handler)
 __websocket = HttpTransport.decorator(HttpTransport.websocket_handler)
 __ws = HttpTransport.decorator(HttpTransport.websocket_handler)
 
+HTTP_METHODS = Literal["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "*"]
+
 
 def http(
-    method: Union[str, List[str], Tuple[str, ...]],
+    method: Union[HTTP_METHODS, List[HTTP_METHODS], Tuple[HTTP_METHODS, ...]],
     url: str,
     *,
     ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False,
     pre_handler_func: Optional[Callable] = None,
 ) -> Callable:
+    """Decorator to define a service' HTTP handler.
+
+    Args:
+        method: HTTP methods to handle. (e.g. "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
+        url: URL route as a regex. (e.g. r"/health/?", r"/users/(?P<user_id>[^/]+?)/items/(?P<item_id>[^/]+?)/?")
+        ignore_logging: Setting to optionally disable access log output on specific response codes.
+        pre_handler_func: Internal function to be called before the handler function. Used on websocket connections.
+    """
     return cast(Callable, __http(method, url, ignore_logging=ignore_logging, pre_handler_func=pre_handler_func))
 
 
 def http_error(status_code: int) -> Callable:
+    """Decorator to define handlers used for internal HTTP error codes.
+
+    Args:
+        status_code: HTTP status code to handle. (e.g. 403, 404, 405, etc.)
+    """
     return cast(Callable, __http_error(status_code))
 
 
 def http_static(
     path: str, base_url: str, *, ignore_logging: Union[bool, List[int], Tuple[int, ...]] = False
 ) -> Callable:
+    """Decorator to define access to static assets and folders on the filesystem. (e.g. CSS, JS, images, etc.)
+
+    Args:
+        path: Path to the static assets on the filesystem. (e.g. "/var/www/static")
+        base_url: URL route as a regex. (e.g. r"/static/?")
+        ignore_logging: Setting to optionally disable access log output on specific response codes.
+    """
     return cast(Callable, __http_static(path, base_url, ignore_logging=ignore_logging))
 
 
 def websocket(url: str) -> Callable:
+    """Decorator to define a service' websocket handler.
+
+    Args:
+        url: URL route as a regex. (e.g. r"/ws/?", r"/ws/(?P<user_id>[^/]+?)/?")
+    """
     return cast(Callable, __websocket(url))
 
 
 def ws(url: str) -> Callable:
+    """Decorator to define a service' websocket handler.
+
+    Args:
+        url: URL route as a regex. (e.g. r"/ws/?", r"/ws/(?P<user_id>[^/]+?)/?")
+    """
     return cast(Callable, __ws(url))
