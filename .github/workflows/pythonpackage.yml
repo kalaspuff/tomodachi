@@ -55,7 +55,7 @@ jobs:
         run: |
           docker pull rabbitmq:latest
           docker run -d -p 5672:5672 rabbitmq:latest
-        - name: Run unit tests
+      - name: Run unit tests
         env:
           TOMODACHI_TEST_AWS_REGION: eu-west-1
           TOMODACHI_TEST_AWS_ACCESS_KEY_ID: 000000000000
