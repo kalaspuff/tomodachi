@@ -1,10 +1,14 @@
 Changes
 =======
 
+0.24.1 (2022-XX-XX)
+-------------------
+
+
 0.24.0 (2022-10-25)
 -------------------
 - ``cchardet`` is no longer a direct dependency to ``tomodachi`` on Python 3.10 and
-  Python3.11. If you want to use it, you must install it separately, which may
+  Python 3.11. If you want to use it, you must install it separately, which may
   require additional build tools when installing on Python 3.10+.
 
 - Updates to the internal ``tomodachi.envelope.ProtobufBase`` envelope to now also
@@ -13,7 +17,7 @@ Changes
   differs in representation of a Message type in relation to ``cpp`` and ``python``
   implementations.
 
-* Python 3.11 added to test matrix and trove classifiers to officially claim support.
+- Python 3.11 added to test matrix and trove classifiers to officially claim support.
 
 
 0.23.0 (2022-10-16)
