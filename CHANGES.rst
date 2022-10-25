@@ -9,6 +9,8 @@ Changes
   differs in representation of a Message type in relation to ``cpp`` and ``python``
   implementations.
 
+* Python 3.11 added to test matrix and trove classifiers to officially claim support.
+
 
 0.23.0 (2022-10-16)
 -------------------
