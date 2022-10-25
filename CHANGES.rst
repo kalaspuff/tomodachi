@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.24.0 (2022-XX-XX)
+0.24.0 (2022-10-25)
 -------------------
 - ``cchardet`` is no longer a direct dependency to ``tomodachi`` on Python 3.10 and
   Python3.11. If you want to use it, you must install it separately, which may
