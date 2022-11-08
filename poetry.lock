@@ -706,7 +706,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "types-protobuf"
-version = "3.20.4.1"
+version = "3.20.4.3"
 description = "Typing stubs for protobuf"
 category = "dev"
 optional = false
@@ -1172,7 +1172,6 @@ click = [
 ]
 codecov = [
     {file = "codecov-2.1.12-py2.py3-none-any.whl", hash = "sha256:585dc217dc3d8185198ceb402f85d5cb5dbfa0c5f350a5abcdf9e347776a5b47"},
-    {file = "codecov-2.1.12-py3.8.egg", hash = "sha256:782a8e5352f22593cbc5427a35320b99490eb24d9dcfa2155fd99d2b75cfb635"},
     {file = "codecov-2.1.12.tar.gz", hash = "sha256:a0da46bb5025426da895af90938def8ee12d37fcbcbbbc15b6dc64cf7ebc51c1"},
 ]
 colorama = [
@@ -1582,8 +1581,8 @@ tomli = [
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
 ]
 types-protobuf = [
-    {file = "types-protobuf-3.20.4.1.tar.gz", hash = "sha256:67df7cc7ec85d114db2664a8ae8905543e75fb5edbed437dabc9e9fb8f8fcf9e"},
-    {file = "types_protobuf-3.20.4.1-py3-none-any.whl", hash = "sha256:c227975ffd0f6a1eb1754e9a3aa9ca3b12265e63b462e9761e824c41fd25331c"},
+    {file = "types-protobuf-3.20.4.3.tar.gz", hash = "sha256:6213176ddae149bbfa3982c56f2fe68e95460066c360b47ae35eb375a3694cd7"},
+    {file = "types_protobuf-3.20.4.3-py3-none-any.whl", hash = "sha256:0ec26b5d351c2ccaa0d824cdc393ab1db09889e20f626b5eeff1069a5164f536"},
 ]
 types-pytz = [
     {file = "types-pytz-2022.5.0.0.tar.gz", hash = "sha256:0c163b15d3e598e6cc7074a99ca9ec72b25dc1b446acc133b827667af0b7b09a"},
