@@ -79,12 +79,17 @@ container images.
 ==========
 
 *This documentation README includes a guide of how to get started with services,
-what built-in  functionality exists in this library, lists of available configuration
+what built-in functionality exists in this library, lists of available configuration
 parameters and a few examples of service code.*
 
 **Use https://tomodachi.dev/docs for extensive project documentation.**
 
 ----
+
+Please follow some of the amazing contributors to ``tomodachi`` and add features that you deem are missing and/or fix
+bugs you encounter in the repo. Read more in the `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
+
+[![](https://contrib.rocks/image?repo=kalaspuff/tomodachi)](https://github.com/kalaspuff/tomodachi/graphs/contributors)
 
 | **Please note: this library is a work in progress.**
 
@@ -970,14 +975,3 @@ Who built this and why?
 
 * https://github.com/kalaspuff
 * https://www.linkedin.com/in/carloscaraaro/
-
-
-Contributions
-=============
-Please help out to add features that you deem are missing and/or fix
-bugs in the repo.
-
-To add a PR, for the repository, commit your changes to your own clone
-and make a PR on GitHub for your clone against master branch.
-
-Read more in the `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
