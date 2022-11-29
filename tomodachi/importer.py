@@ -11,15 +11,6 @@ class ServicePackageError(ImportError):
     pass
 
 
-try:
-    if ModuleNotFoundError:
-        pass
-except Exception:
-
-    class ModuleNotFoundError(ImportError):
-        pass
-
-
 class ServiceImporter(object):
     @classmethod
     def import_service_file(cls, file_name: str) -> ModuleType:
