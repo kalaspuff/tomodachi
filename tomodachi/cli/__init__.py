@@ -10,14 +10,6 @@ import tomodachi
 from tomodachi.config import parse_config_files
 from tomodachi.launcher import ServiceLauncher
 
-try:
-    if ModuleNotFoundError:
-        pass
-except Exception:
-
-    class ModuleNotFoundError(ImportError):
-        pass
-
 
 class CLI:
     def help_command_usage(self) -> str:

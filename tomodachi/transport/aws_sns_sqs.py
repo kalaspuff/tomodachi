@@ -15,6 +15,7 @@ import uuid
 from typing import (
     Any,
     Callable,
+    Coroutine,
     Dict,
     List,
     Literal,
@@ -1403,7 +1404,7 @@ class AWSSNSSQSTransport(Invoker):
                     message_topic: str,
                     message_attributes: Dict,
                     approximate_receive_count: Optional[int],
-                ) -> Callable:
+                ) -> Callable[..., Coroutine]:
                     async def _callback() -> None:
                         await handler(
                             payload,
@@ -1419,7 +1420,7 @@ class AWSSNSSQSTransport(Invoker):
                 is_disconnected = False
 
                 while cls.close_waiter and not cls.close_waiter.done():
-                    futures = []
+                    futures: List[Callable[..., Coroutine]] = []
 
                     # In case of FIFO queues, we have to cannot receive more
                     # than one message at a time, because otherwise we will not
@@ -1556,7 +1557,7 @@ class AWSSNSSQSTransport(Invoker):
                     except BaseException:
                         continue
 
-                    tasks = [asyncio.ensure_future(func()) for func in futures if func]
+                    tasks = [asyncio.ensure_future(func()) for func in futures]
                     if not tasks:
                         continue
                     try:
