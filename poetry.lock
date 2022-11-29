@@ -709,7 +709,7 @@ python-versions = "*"
 
 [[package]]
 name = "types-tzlocal"
-version = "4.2.2.1"
+version = "4.2.2.2"
 description = "Typing stubs for tzlocal"
 category = "dev"
 optional = false
@@ -1592,8 +1592,8 @@ types-pytz = [
     {file = "types_pytz-2022.5.0.0-py3-none-any.whl", hash = "sha256:a8e1fe6a1b270fbfaf2553b20ad0f1316707cc320e596da903bb17d7373fed2d"},
 ]
 types-tzlocal = [
-    {file = "types-tzlocal-4.2.2.1.tar.gz", hash = "sha256:85fcbc84b233398be489c931a568affe471fa3983f0d7d723a9d9335f2e6bc2a"},
-    {file = "types_tzlocal-4.2.2.1-py3-none-any.whl", hash = "sha256:80760a140c80175122f802d72bbd0e92383e59558b86e3454652f218a6a66a82"},
+    {file = "types-tzlocal-4.2.2.2.tar.gz", hash = "sha256:803b8329e20d7b3ecea713f91505f84ea5e3310825252d93e8217d85708fe93c"},
+    {file = "types_tzlocal-4.2.2.2-py3-none-any.whl", hash = "sha256:bf942f9d63d219d05ac6d59803c737d39ce9203a54357a196d386e0c4149ee49"},
 ]
 typing-extensions = [
     {file = "typing_extensions-4.4.0-py3-none-any.whl", hash = "sha256:16fa4864408f655d35ec496218b85f79b3437c829e93320c7c9215ccfd92489e"},
