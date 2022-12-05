@@ -332,14 +332,14 @@ test = ["pytest"]
 
 [[package]]
 name = "flake8-pyproject"
-version = "1.2.1"
+version = "1.2.2"
 description = "Flake8 plug-in loading the configuration from pyproject.toml"
 category = "dev"
 optional = false
 python-versions = ">= 3.6"
 
 [package.dependencies]
-Flake8 = ">=5,<7"
+Flake8 = ">=5"
 TOMLi = {version = "*", markers = "python_version < \"3.11\""}
 
 [package.extras]
@@ -1241,7 +1241,7 @@ flake8-isort = [
     {file = "flake8_isort-5.0.3-py3-none-any.whl", hash = "sha256:8c4ab431d87780d0c8336e9614e50ef11201bc848ef64ca017532dec39d4bf49"},
 ]
 flake8-pyproject = [
-    {file = "flake8_pyproject-1.2.1-py3-none-any.whl", hash = "sha256:d2470803b38883881c250c27f361ca4c49e7b8f9e3a17f7d44aa43b6965b2363"},
+    {file = "flake8_pyproject-1.2.2-py3-none-any.whl", hash = "sha256:52d412219e7db6227faa654675b1435947b11d49b453f3eced760f19bdd6f06a"},
 ]
 frozenlist = [
     {file = "frozenlist-1.3.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:ff8bf625fe85e119553b5383ba0fb6aa3d0ec2ae980295aaefa552374926b3f4"},
