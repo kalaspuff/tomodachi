@@ -676,7 +676,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "types-protobuf"
-version = "4.21.0.1"
+version = "4.21.0.2"
 description = "Typing stubs for protobuf"
 category = "dev"
 optional = false
@@ -1580,8 +1580,8 @@ tomli = [
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
 ]
 types-protobuf = [
-    {file = "types-protobuf-4.21.0.1.tar.gz", hash = "sha256:d8ce2e1dc54e9b5830e553d31308e87732c916a0b0e288d280bddaa00fa98113"},
-    {file = "types_protobuf-4.21.0.1-py3-none-any.whl", hash = "sha256:80aa071fcbcf1372222aed7deb97a49757095b71a05edcf14ff89cc8caa4a165"},
+    {file = "types-protobuf-4.21.0.2.tar.gz", hash = "sha256:7df483d34ad3fcb1fa7fff1073560d596c9ac1f419cfa851b220c9a93386c998"},
+    {file = "types_protobuf-4.21.0.2-py3-none-any.whl", hash = "sha256:aeefcf39d637016998b3c7b699750847071b555f7c2e0c9873d42ab6103d1a39"},
 ]
 types-pytz = [
     {file = "types-pytz-2022.6.0.1.tar.gz", hash = "sha256:d078196374d1277e9f9984d49373ea043cf2c64d5d5c491fbc86c258557bd46f"},
