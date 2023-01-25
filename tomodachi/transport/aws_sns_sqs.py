@@ -155,6 +155,7 @@ class AWSSNSSQSTransport(Invoker):
         overwrite_topic_attributes: bool = False,
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
+        delay_seconds: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
         if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
@@ -197,6 +198,7 @@ class AWSSNSSQSTransport(Invoker):
                 service.context,
                 group_id=group_id,
                 deduplication_id=deduplication_id,
+                delay_seconds=delay_seconds,
             )
 
         if wait:
@@ -804,6 +806,7 @@ class AWSSNSSQSTransport(Invoker):
         context: Dict,
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
+        delay_seconds: Optional[int] = None,
     ) -> str:
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
@@ -826,6 +829,7 @@ class AWSSNSSQSTransport(Invoker):
                             TopicArn=topic_arn,
                             Message=message,
                             MessageAttributes=message_attribute_values,
+                            DelaySeconds=delay_seconds,
                             **fifo_attrs,
                         ),
                         timeout=40,
