@@ -593,7 +593,6 @@ class AWSSNSSQSTransport(Invoker):
         overwrite_attributes: bool = True,
         fifo: bool = False,
     ) -> str:
-
         cls.validate_topic_name(topic)
 
         if not cls.topics:
