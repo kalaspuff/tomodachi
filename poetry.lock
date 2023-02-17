@@ -1317,14 +1317,14 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "six", "virtuale
 
 [[package]]
 name = "pytest-rerunfailures"
-version = "11.0"
+version = "11.1.1"
 description = "pytest plugin to re-run tests to eliminate flaky failures"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pytest-rerunfailures-11.0.tar.gz", hash = "sha256:cee59e4e6f0d73ae63fba099865314ba9b915b719349541110fa012ffb6efb13"},
-    {file = "pytest_rerunfailures-11.0-py3-none-any.whl", hash = "sha256:b8c535b6c353de8c4b39258216512c64f288e4d349e86877583a08b2f5ea5441"},
+    {file = "pytest-rerunfailures-11.1.1.tar.gz", hash = "sha256:acab447edff7c29a76b8410207c48da01406a161653c99a325cf5703d44eb162"},
+    {file = "pytest_rerunfailures-11.1.1-py3-none-any.whl", hash = "sha256:4333983de0914f79d942a6ec29332f2c9cfe2d2d47ba2b634f3617b7f9d94f86"},
 ]
 
 [package.dependencies]
