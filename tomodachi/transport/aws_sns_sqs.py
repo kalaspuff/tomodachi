@@ -934,7 +934,11 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     async def create_queue(
-        cls, queue_name: str, context: Dict, fifo: bool, message_retention_period=MESSAGE_RETENTION_PERIOD_DEFAULT
+        cls,
+        queue_name: str,
+        context: Dict,
+        fifo: bool,
+        message_retention_period: int = MESSAGE_RETENTION_PERIOD_DEFAULT,
     ) -> Tuple[str, str]:
         cls.validate_queue_name(queue_name)
         if not connector.get_client("tomodachi.sqs"):
