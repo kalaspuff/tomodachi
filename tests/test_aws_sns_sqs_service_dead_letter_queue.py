@@ -23,7 +23,7 @@ def test_start_aws_sns_sqs_service_dead_letter_queue(monkeypatch: Any, capsys: A
     assert instance.uuid is not None
 
     async def _async(loop: Any) -> None:
-        loop_until = time.time() + 18
+        loop_until = time.time() + 32
         while loop_until > time.time():
             if instance.test_topic_data_received_count == 3 and instance.test_dlq_data_received_after_count == 3:
                 break

@@ -56,6 +56,9 @@ MESSAGE_TOPIC_PREFIX = "09698c75-832b-470f-8e05-96d2dd8c4853"
 MESSAGE_TOPIC_ATTRIBUTES = "dc6c667f-4c22-4a63-85f6-3ea0c7e2db49"
 FILTER_POLICY_DEFAULT = "7e68632f-3b39-4293-b5a9-16644cf857a5"
 DEAD_LETTER_QUEUE_DEFAULT = "22ebae61-1aab-4b2e-840f-008da1f45472"
+DLQ_MESSAGE_RETENTION_PERIOD_DEFAULT = 1209600  # 14 days
+MESSAGE_RETENTION_PERIOD_DEFAULT = "b3eb5107-ca13-2cfb-ca1e-1a14b5313e91"
+MESSAGE_RETENTION_PERIOD_DEFAULT_TYPE = Literal[MESSAGE_RETENTION_PERIOD_DEFAULT]
 VISIBILITY_TIMEOUT_DEFAULT = -1
 MAX_RECEIVE_COUNT_DEFAULT = -1
 
@@ -931,7 +934,13 @@ class AWSSNSSQSTransport(Invoker):
         return queue_url
 
     @classmethod
-    async def create_queue(cls, queue_name: str, context: Dict, fifo: bool) -> Tuple[str, str]:
+    async def create_queue(
+        cls,
+        queue_name: str,
+        context: Dict,
+        fifo: bool,
+        message_retention_period: int | MESSAGE_RETENTION_PERIOD_DEFAULT_TYPE = MESSAGE_RETENTION_PERIOD_DEFAULT,
+    ) -> Tuple[str, str]:
         cls.validate_queue_name(queue_name)
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
@@ -961,10 +970,13 @@ class AWSSNSSQSTransport(Invoker):
                     "ContentBasedDeduplication": "false",
                     "DeduplicationScope": "messageGroup",
                     "FifoThroughputLimit": "perMessageGroupId",
+                    "MessageRetentionPeriod": str(message_retention_period),
                 }
                 if fifo
                 else {}
             )
+            if message_retention_period is not MESSAGE_RETENTION_PERIOD_DEFAULT:
+                queue_attrs["MessageRetentionPeriod"] = str(message_retention_period)
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
                     response = await client.create_queue(QueueName=queue_name, Attributes=queue_attrs)
@@ -1731,7 +1743,10 @@ class AWSSNSSQSTransport(Invoker):
                             )
                     else:
                         dlq_url, dlq_arn = await cls.create_queue(
-                            cls.prefix_queue_name(dead_letter_queue_name, context), context, fifo
+                            cls.prefix_queue_name(dead_letter_queue_name, context),
+                            context,
+                            fifo,
+                            DLQ_MESSAGE_RETENTION_PERIOD_DEFAULT,
                         )
                     redrive_policy = {"deadLetterTargetArn": dlq_arn, "maxReceiveCount": max_receive_count}
 
