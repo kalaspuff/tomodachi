@@ -58,7 +58,6 @@ FILTER_POLICY_DEFAULT = "7e68632f-3b39-4293-b5a9-16644cf857a5"
 DEAD_LETTER_QUEUE_DEFAULT = "22ebae61-1aab-4b2e-840f-008da1f45472"
 DLQ_MESSAGE_RETENTION_PERIOD_DEFAULT = 1209600  # 14 days
 MESSAGE_RETENTION_PERIOD_DEFAULT = "b3eb5107-ca13-2cfb-ca1e-1a14b5313e91"
-MESSAGE_RETENTION_PERIOD_DEFAULT_TYPE = Literal[MESSAGE_RETENTION_PERIOD_DEFAULT]
 VISIBILITY_TIMEOUT_DEFAULT = -1
 MAX_RECEIVE_COUNT_DEFAULT = -1
 MAX_NUMBER_OF_CONSUMED_MESSAGES = 10
@@ -942,7 +941,7 @@ class AWSSNSSQSTransport(Invoker):
         queue_name: str,
         context: Dict,
         fifo: bool,
-        message_retention_period: int | MESSAGE_RETENTION_PERIOD_DEFAULT_TYPE = MESSAGE_RETENTION_PERIOD_DEFAULT,
+        message_retention_period: int | str = MESSAGE_RETENTION_PERIOD_DEFAULT,
     ) -> Tuple[str, str]:
         cls.validate_queue_name(queue_name)
         if not connector.get_client("tomodachi.sqs"):
@@ -978,7 +977,9 @@ class AWSSNSSQSTransport(Invoker):
                 if fifo
                 else {}
             )
-            if message_retention_period is not MESSAGE_RETENTION_PERIOD_DEFAULT:
+            if isinstance(message_retention_period, int) and str(message_retention_period) != str(
+                MESSAGE_RETENTION_PERIOD_DEFAULT
+            ):
                 queue_attrs["MessageRetentionPeriod"] = str(message_retention_period)
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
