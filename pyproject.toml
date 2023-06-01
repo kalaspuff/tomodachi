@@ -90,7 +90,7 @@ pytest-rerunfailures = { version = ">=10.2", markers = "sys_platform != \"win32\
 pytest-xdist = { version = ">=2.5.0", markers = "sys_platform != \"win32\"" }
 black = { version = "*", markers = "sys_platform != \"win32\"", allow-prereleases = true }
 mypy = { version = ">=0.800", markers = "sys_platform != \"win32\"" }
-codecov = { version = ">=2.1.10", markers = "sys_platform != \"win32\"" }
+codecov = { version = ">=2.1.13", markers = "sys_platform != \"win32\"" }
 
 types-protobuf = { version = ">=0.1.13", markers = "sys_platform != \"win32\"" }
 types-pytz = { version = ">=2021.1.0", markers = "sys_platform != \"win32\"" }

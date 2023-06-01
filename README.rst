@@ -659,6 +659,7 @@ AWS SNS+SQS messaging:
         dead_letter_queue_name=DEAD_LETTER_QUEUE_DEFAULT,
         max_receive_count=MAX_RECEIVE_COUNT_DEFAULT,
         fifo=False,
+        max_number_of_consumed_messages=MAX_NUMBER_OF_CONSUMED_MESSAGES
         **kwargs,
     )
 
@@ -671,6 +672,8 @@ Usage:
 
   AWS supports two types of queues and topics, namely ``standard`` and ``FIFO``. The major difference between these is that the latter guarantees correct ordering and at-most-once delivery. By default, tomodachi creates ``standard`` queues and topics. To create them as ``FIFO`` instead, set ``fifo`` to ``True``.
 
+  The `max_number_of_consumed_messages` indicates how many messages should be pulled from the queue at once. This is useful if you have a resouce-intensive task that you don't want other messages to compete for. The default value is 10 for `standard` queue and 1 for `FIFO` queue. Minimum value is 1 and maximum value is 10. 
+  
   The ``filter_policy`` value of specified as a keyword argument will be applied on the SNS subscription (for the specified topic and queue) as the ``"FilterPolicy`` attribute. This will apply a filter on SNS messages using the chosen "message attributes" and/or their values specified in the filter. Make note that the filter policy dict structure differs somewhat from the actual message attributes, as values to the keys in the filter policy must be a dict (object) or list (array). Example: A filter policy value of ``{"event": ["order_paid"], "currency": ["EUR", "USD"]}`` would set up the SNS subscription to receive messages on the topic only where the message attribute ``"event"`` is ``"order_paid"`` and the ``"currency"`` value is either ``"EUR"`` or ``"USD"``.
 
   If ``filter_policy`` is not specified as an argument (default), the queue will receive messages on the topic as per already specified if using an existing subscription, or receive all messages on the topic if a new subscription is set up (default). Changing the ``filter_policy`` on an existing subscription may take several minutes to propagate. Read more about the filter policy format on AWS. https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html
