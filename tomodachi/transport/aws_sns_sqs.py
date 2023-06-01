@@ -1397,6 +1397,9 @@ class AWSSNSSQSTransport(Invoker):
     async def consume_queue(
         cls, obj: Any, context: Dict, handler: Callable, queue_url: str, max_number_of_consumed_messages: int
     ) -> None:
+        if not (1 <= max_number_of_consumed_messages <= 10):
+            max_number_of_consumed_messages = MAX_NUMBER_OF_CONSUMED_MESSAGES
+
         wait_time_seconds = 20
 
         if not connector.get_client("tomodachi.sqs"):
