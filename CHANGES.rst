@@ -1,8 +1,13 @@
 Changes
 =======
 
-0.24.1 (2022-XX-XX)
+0.24.1 (2022-06-01)
 -------------------
+- Adds max number of messages that the service will consume when using AWS SNS+SQS
+  handlers configurable. (github: **navid-agz**)
+
+- Changed default retention period of dead-letter-queues on AWS SNS+SQS.
+  (github: **PabloAJomer**)
 
 
 0.24.0 (2022-10-25)
