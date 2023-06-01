@@ -61,6 +61,7 @@ MESSAGE_RETENTION_PERIOD_DEFAULT = "b3eb5107-ca13-2cfb-ca1e-1a14b5313e91"
 MESSAGE_RETENTION_PERIOD_DEFAULT_TYPE = Literal[MESSAGE_RETENTION_PERIOD_DEFAULT]
 VISIBILITY_TIMEOUT_DEFAULT = -1
 MAX_RECEIVE_COUNT_DEFAULT = -1
+MAX_NUMBER_OF_CONSUMED_MESSAGES = 10
 
 SET_CONTEXTVAR_VALUES = False
 
@@ -331,6 +332,7 @@ class AWSSNSSQSTransport(Invoker):
         dead_letter_queue_name: Optional[str] = DEAD_LETTER_QUEUE_DEFAULT,
         max_receive_count: Optional[int] = MAX_RECEIVE_COUNT_DEFAULT,
         fifo: bool = False,
+        max_number_of_consumed_messages: Optional[int] = MAX_NUMBER_OF_CONSUMED_MESSAGES,
         **kwargs: Any,
     ) -> Any:
         parser_kwargs = kwargs
@@ -552,6 +554,7 @@ class AWSSNSSQSTransport(Invoker):
                 dead_letter_queue_name,
                 max_receive_count,
                 fifo,
+                max_number_of_consumed_messages,
             )
         )
 
@@ -1391,8 +1394,9 @@ class AWSSNSSQSTransport(Invoker):
         return subscription_arn_list
 
     @classmethod
-    async def consume_queue(cls, obj: Any, context: Dict, handler: Callable, queue_url: str) -> None:
-        max_number_of_messages = 10
+    async def consume_queue(
+        cls, obj: Any, context: Dict, handler: Callable, queue_url: str, max_number_of_consumed_messages: int
+    ) -> None:
         wait_time_seconds = 20
 
         if not connector.get_client("tomodachi.sqs"):
@@ -1436,7 +1440,7 @@ class AWSSNSSQSTransport(Invoker):
                     # In case of FIFO queues, we have to cannot receive more
                     # than one message at a time, because otherwise we will not
                     # be able to ensure their execution order.
-                    message_limit = 1 if queue_url.endswith(".fifo") else max_number_of_messages
+                    message_limit = 1 if queue_url.endswith(".fifo") else max_number_of_consumed_messages
 
                     try:
                         try:
@@ -1788,6 +1792,7 @@ class AWSSNSSQSTransport(Invoker):
                     dead_letter_queue_name,
                     max_receive_count,
                     fifo,
+                    max_number_of_consumed_messages,
                 ) in context.get("_aws_sns_sqs_subscribers", []):
                     queue_url = await setup_queue(
                         func,
@@ -1800,7 +1805,13 @@ class AWSSNSSQSTransport(Invoker):
                         max_receive_count=max_receive_count,
                         fifo=fifo,
                     )
-                    await cls.consume_queue(obj, context, handler, queue_url=queue_url)
+                    await cls.consume_queue(
+                        obj,
+                        context,
+                        handler,
+                        queue_url=queue_url,
+                        max_number_of_consumed_messages=max_number_of_consumed_messages,
+                    )
             except Exception:
                 await connector.close(fast=True)
                 await asyncio.sleep(0.5)
