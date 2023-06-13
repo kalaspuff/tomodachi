@@ -972,7 +972,6 @@ class AWSSNSSQSTransport(Invoker):
                     "ContentBasedDeduplication": "false",
                     "DeduplicationScope": "messageGroup",
                     "FifoThroughputLimit": "perMessageGroupId",
-                    "MessageRetentionPeriod": str(message_retention_period),
                 }
                 if fifo
                 else {}
@@ -1249,7 +1248,10 @@ class AWSSNSSQSTransport(Invoker):
                     current_visibility_timeout = int(current_visibility_timeout)
                 current_message_retention_period = current_queue_attributes.get("MessageRetentionPeriod")
                 if current_message_retention_period:
-                    current_message_retention_period = int(current_message_retention_period)
+                    try:
+                        current_message_retention_period = int(current_message_retention_period)
+                    except ValueError:
+                        current_message_retention_period = None
                 current_kms_master_key_id = current_queue_attributes.get("KmsMasterKeyId")
                 current_kms_data_key_reuse_period_seconds = current_queue_attributes.get("KmsDataKeyReusePeriodSeconds")
                 if current_kms_data_key_reuse_period_seconds:

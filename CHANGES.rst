@@ -6,6 +6,9 @@ Changes
 - Fixes typing syntax for compatibility with Python 3.8 and Python 3.9 to solve the
   incompatibility for Python 3.8 and Python 3.9 introduced in the the 0.24.1 release.
 
+- Fixes an issue with an AWS SQS queue's message retention period attribute using an
+  incompatible default value for FIFO queues.
+
 - README.rst fixes to conform with RST format. (github: **navid-agz**)
 
 
