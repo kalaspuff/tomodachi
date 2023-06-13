@@ -941,7 +941,7 @@ class AWSSNSSQSTransport(Invoker):
         queue_name: str,
         context: Dict,
         fifo: bool,
-        message_retention_period: int | str = MESSAGE_RETENTION_PERIOD_DEFAULT,
+        message_retention_period: Union[int, str] = MESSAGE_RETENTION_PERIOD_DEFAULT,
     ) -> Tuple[str, str]:
         cls.validate_queue_name(queue_name)
         if not connector.get_client("tomodachi.sqs"):
@@ -1225,7 +1225,7 @@ class AWSSNSSQSTransport(Invoker):
         current_kms_master_key_id = None
         current_kms_data_key_reuse_period_seconds = None
 
-        message_retention_period = None  # not implemented yet
+        message_retention_period = None
 
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
