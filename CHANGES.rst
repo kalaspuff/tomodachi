@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.24.2 (2022-06-13)
+-------------------
+- Fixes typing syntax for compatibility with Python 3.8 and Python 3.9 to solve the
+  incompatibility for Python 3.8 and Python 3.9 introduced in the the 0.24.1 release.
+
+- README.rst fixes to conform with RST format. (github: **navid-agz**)
+
+
 0.24.1 (2022-06-01)
 -------------------
 - Adds max number of messages that the service will consume when using AWS SNS+SQS
