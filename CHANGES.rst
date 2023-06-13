@@ -9,6 +9,8 @@ Changes
 - Fixes an issue with an AWS SQS queue's message retention period attribute using an
   incompatible default value for FIFO queues.
 
+- Support for ``aiobotocore`` 2.5.x releases.
+
 - README.rst fixes to conform with RST format. (github: **navid-agz**)
 
 
