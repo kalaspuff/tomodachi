@@ -1846,6 +1846,11 @@ def aws_sns_sqs(
     message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
     message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
     filter_policy: Optional[Union[str, FilterPolicyDictType]] = FILTER_POLICY_DEFAULT,
+    visibility_timeout: Optional[int] = VISIBILITY_TIMEOUT_DEFAULT,
+    dead_letter_queue_name: Optional[str] = DEAD_LETTER_QUEUE_DEFAULT,
+    max_receive_count: Optional[int] = MAX_RECEIVE_COUNT_DEFAULT,
+    fifo: bool = False,
+    max_number_of_consumed_messages: Optional[int] = MAX_NUMBER_OF_CONSUMED_MESSAGES,
     **kwargs: Any,
 ) -> Callable:
     return cast(
@@ -1858,6 +1863,11 @@ def aws_sns_sqs(
             message_envelope=message_envelope,
             message_protocol=message_protocol,
             filter_policy=filter_policy,
+            visibility_timeout=visibility_timeout,
+            dead_letter_queue_name=dead_letter_queue_name,
+            max_receive_count=max_receive_count,
+            fifo=fifo,
+            max_number_of_consumed_messages=max_number_of_consumed_messages,
             **kwargs,
         ),
     )
