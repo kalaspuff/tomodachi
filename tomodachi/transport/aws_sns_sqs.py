@@ -904,6 +904,11 @@ class AWSSNSSQSTransport(Invoker):
                         )
                         raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
                     continue
+                # AWS API can respond with empty body as 408 error - botocore adds "Further retries may succeed"
+                except ResponseParserError as e:
+                    if retry >= 4 or "Further retries may succeed" not in str(e):
+                        raise e
+                    continue
                 break
 
         await _delete_message()
