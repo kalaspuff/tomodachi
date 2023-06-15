@@ -1,13 +1,17 @@
 Changes
 =======
 
-0.24.3 (2023-xx-xx)
+0.24.3 (2023-06-15)
 -------------------
 - Fixes an issue in the internal retry logic when using ``aws_sns_sqs_publish``
   if calls to the AWS API ``SNS.Publish`` would intermittently respond with 408
   response without any body, which previously would've resulted in a
   ``AWSSNSSQSException("Missing MessageId in response")`` immediately without
   retries.
+
+  This was previously attempted to be fixed in the 0.23.0 release, but instead
+  fell through to become an exception with the
+  ``"Missing MessageId in response"`` message instead.
 
   The publish function will now catch exceptions from ``botocore`` of type
   ``ResponseParserError`` to which ``botocore`` has added that
