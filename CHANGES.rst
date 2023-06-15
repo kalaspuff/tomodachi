@@ -1,6 +1,28 @@
 Changes
 =======
 
+0.24.3 (2023-xx-xx)
+-------------------
+- Fixes an issue in the internal retry logic when using ``aws_sns_sqs_publish``
+  if calls to the AWS API ``SNS.Publish`` would intermittently respond with 408
+  response without any body, which previously would've resulted in a
+  ``AWSSNSSQSException("Missing MessageId in response")`` immediately without
+  retries.
+
+  The publish function will now catch exceptions from ``botocore`` of type
+  ``ResponseParserError`` to which ``botocore`` has added that
+  ``"Further retries may succeed"``. ``tomodachi`` will retry such
+  ``SNS.Publish`` calls up to 3 times and if after all retries the library will
+  reraise the exception from ``botocore``.
+
+  It seems that ``botocore`` does not automatically retry such errors itself.
+
+- Similar to the above, the same kind of retries will now also be done during
+  AWS API calls for ``SQS.DeleteMessage``, where the
+  ``botocore.parser.QueryParser`` would raise an ``ResponseParserError`` exception
+  on 408 responses without body.
+
+
 0.24.2 (2023-06-13)
 -------------------
 - Fixes typing syntax for compatibility with Python 3.8 and Python 3.9 to solve the
