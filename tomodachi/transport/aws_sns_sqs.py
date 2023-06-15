@@ -850,10 +850,11 @@ class AWSSNSSQSTransport(Invoker):
                     )
                     raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
                 continue
-            # SNS sometimes sends empty response with 408 errors
+            # AWS API can respond with empty body as 408 error - botocore adds "Further retries may succeed"
             except ResponseParserError as e:
                 if retry >= 3 or "Further retries may succeed" not in str(e):
                     raise e
+                continue
             break
 
         message_id = response.get("MessageId")
