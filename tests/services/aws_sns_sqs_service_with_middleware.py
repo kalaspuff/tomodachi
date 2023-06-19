@@ -124,9 +124,9 @@ class AWSSNSSQSService(tomodachi.Service):
     test_topic_data_received = False
     test_queue_url: str = ""
     test_receipt_handle: str = ""
-    test_message_attributes: Dict | None = None
+    test_message_attributes: Optional[Dict] = None
     test_approximate_receive_count: int = 0
-    test_middleware_values: Dict | None = None
+    test_middleware_values: Optional[Dict] = None
 
     data_uuid = data_uuid
 
