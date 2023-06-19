@@ -507,7 +507,14 @@ class AWSSNSSQSTransport(Invoker):
             keep_message_in_queue = False
             try:
                 return_value = await execute_middlewares(
-                    func, routine_func, context.get("message_middleware", []), *(obj, message, topic)
+                    func,
+                    routine_func,
+                    context.get("message_middleware", []),
+                    *(obj, message, topic),
+                    receipt_handle=receipt_handle,
+                    queue_url=queue_url,
+                    message_attributes=message_attributes_values,
+                    approximate_receive_count=approximate_receive_count,
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
                 # todo: don't log exception in case the error is of a AWSSNSSQSInternalServiceError (et. al) type

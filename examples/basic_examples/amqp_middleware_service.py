@@ -18,7 +18,7 @@ async def middleware_function(
     # There's also the possibility to pass in extra arguments or keywords arguments, for example:
     # return_value = await func(*args, id='overridden', **kwargs)
 
-    # Functinoality after function is called
+    # Functionality after function is called
     service.log("middleware after")
 
     return return_value
