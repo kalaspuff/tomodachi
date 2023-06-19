@@ -301,7 +301,7 @@ class AmqpTransport(Invoker):
                     kw_values = merge_dicts(kwargs, kw)
                     args_values = (
                         kw_values.pop(key) if key in kw_values else a[i]
-                        for i, key in enumerate(values.args[2 : len(a) + 1])
+                        for i, key in enumerate(values.args[2 : len(a) + 2])
                     )
                     routine = func(*(obj, message, *args_values), **kw_values)
                 elif len(merge_dicts(kwargs, kw)):
