@@ -108,8 +108,6 @@ def middleware_func_xyz(
 
 class ExampleAWSSNSSQSService(tomodachi.Service):
     name = "example-aws-sns-sqs-service"
-    log_level = "INFO"
-    uuid = str(os.environ.get("SERVICE_UUID") or "")
 
     # The message envelope class defines how a message should be processed when sent and received
     # See tomodachi/envelope/json_base.py for a basic example using JSON and transferring some metadata
