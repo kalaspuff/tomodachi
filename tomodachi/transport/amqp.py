@@ -298,9 +298,19 @@ class AmqpTransport(Invoker):
                 if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
                     routine = func(*(obj, message, *a))
                 elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
-                    routine = func(*(obj, message, *a), **merge_dicts(kwargs, kw))
+                    kw_values = merge_dicts(kwargs, kw)
+                    args_values = (
+                        kw_values.pop(key) if key in kw_values else a[i]
+                        for i, key in enumerate(values.args[2 : len(a) + 1])
+                    )
+                    routine = func(*(obj, message, *args_values), **kw_values)
                 elif len(merge_dicts(kwargs, kw)):
-                    routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
+                    kw_values = merge_dicts(kwargs, kw)
+                    args_values = (
+                        kw_values.pop(key) if key in kw_values else a[i]
+                        for i, key in enumerate(values.args[1 : len(a) + 1])
+                    )
+                    routine = func(*(obj, *args_values), **kw_values)
                 elif len(values.args[1:]):
                     routine = func(*(obj, message, *a), **kw)
                 else:

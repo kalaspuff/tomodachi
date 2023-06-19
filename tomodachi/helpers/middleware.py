@@ -39,6 +39,7 @@ async def execute_middlewares(
             middleware: Callable = middlewares[idx]
             arg_len: int
             middleware_kwargs: Set[str]
+            has_varargs: bool
             has_varkw: bool
 
             if getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, None) is None:
@@ -46,15 +47,22 @@ async def execute_middlewares(
                 defaults = values.defaults or ()
                 arg_len = len(values.args) - len(defaults)
                 middleware_kwargs = set(values.args + values.kwonlyargs)
+                has_varargs = True if values.varargs else False
                 has_varkw = True if values.varkw else False
 
-                setattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, (arg_len, middleware_kwargs, has_varkw))
+                setattr(
+                    middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, (arg_len, middleware_kwargs, has_varargs, has_varkw)
+                )
             else:
-                arg_len, middleware_kwargs, has_varkw = cast(
-                    Tuple[int, Set[str], bool], getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE)
+                arg_len, middleware_kwargs, has_varargs, has_varkw = cast(
+                    Tuple[int, Set[str], bool, bool], getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE)
                 )
 
+            if has_varargs:
+                arg_len = 2 + len(args)
+                ma = ()
             middleware_arguments = [_func, *args, middleware_context][0:arg_len]
+
             if middlewares and len(middlewares) <= idx + 1:
 
                 @functools.wraps(func)

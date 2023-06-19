@@ -362,7 +362,12 @@ class HttpTransport(Invoker):
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
-                routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
+                kw_values = merge_dicts(kwargs, kw)
+                args_values = (
+                    kw_values.pop(key) if key in kw_values else a[i]
+                    for i, key in enumerate(values.args[2 : len(a) + 1])
+                )
+                routine = func(*(obj, request, *args_values), **kw_values)
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
@@ -507,7 +512,12 @@ class HttpTransport(Invoker):
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
-                routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
+                kw_values = merge_dicts(kwargs, kw)
+                args_values = (
+                    kw_values.pop(key) if key in kw_values else a[i]
+                    for i, key in enumerate(values.args[2 : len(a) + 1])
+                )
+                routine = func(*(obj, request, *args_values), **kw_values)
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, Response] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )

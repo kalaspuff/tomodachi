@@ -1,8 +1,8 @@
 import contextvars
 import functools
 import os
-from contextlib import asynccontextmanager, contextmanager
-from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, Generator, List, Optional
+from contextlib import contextmanager
+from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional
 
 import tomodachi
 from tomodachi import Options, aws_sns_sqs, aws_sns_sqs_publish
@@ -15,33 +15,22 @@ CALL_DEPTH_CONTEXTVAR = contextvars.ContextVar("service.middleware.depth", defau
 def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, None, None]]) -> Callable[..., Awaitable]:
     _middleware_func = contextmanager(middleware_func)
 
-    @contextmanager
-    def middleware_context(outer: bool = False) -> Generator[None, None, None]:
-        if outer and CALL_DEPTH_CONTEXTVAR.get():
-            yield
-        else:
-            token = CALL_DEPTH_CONTEXTVAR.set(CALL_DEPTH_CONTEXTVAR.get() + 1)
-            try:
-                yield
-            finally:
-                CALL_DEPTH_CONTEXTVAR.reset(token)
-
     @functools.wraps(middleware_func)
-    async def wrapped_middleware_func(func: Callable, service: Any, **kwargs: Any) -> Any:
-        if service and not CALL_DEPTH_CONTEXTVAR.get():
+    async def wrapped_middleware_func(func: Callable, service: Any, *args: Any, **kwargs: Any) -> Any:
+        if not CALL_DEPTH_CONTEXTVAR.get():
             service.log("---")
-        with middleware_context(outer=True):
-            # Functionality before function (or next middleware in chain) is called.
-            service.log("middleware -- {} -- begin".format(middleware_func.__name__))
+            CALL_DEPTH_CONTEXTVAR.set(CALL_DEPTH_CONTEXTVAR.get() + 1)
 
-            with _middleware_func(func, service, **kwargs) as task:
-                with middleware_context():
-                    return_value = await task
+        # Functionality before function (or next middleware in chain) is called.
+        service.log("middleware -- {} -- begin".format(middleware_func.__name__))
 
-            # Functionality after function and potential following middlewares has been called.
-            service.log("middleware -- {} -- end".format(middleware_func.__name__))
+        with _middleware_func(func, service, *args, **kwargs) as task:
+            token = CALL_DEPTH_CONTEXTVAR.set(CALL_DEPTH_CONTEXTVAR.get() + 1)
+            await task
+            CALL_DEPTH_CONTEXTVAR.reset(token)
 
-            return return_value
+        # Functionality after function and potential following middlewares has been called.
+        service.log("middleware -- {} -- end".format(middleware_func.__name__))
 
     return wrapped_middleware_func
 
@@ -49,10 +38,9 @@ def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, Non
 @middleware_decorator
 def middleware_init_000(
     func: Callable,
-    service: Any,
     *args: Any,
     message_attributes: Dict,
-) -> Any:
+) -> Generator[Awaitable, None, None]:
     # Message attribute "initial_a_value" set to both "initial_a_value" and "a_value" kwargs. Default to 1 if missing.
     initial_a_value = int(message_attributes.get("initial_a_value", 1))
 
@@ -60,24 +48,21 @@ def middleware_init_000(
     middlewares_called = ["middleware_init_000"]
 
     # Calls the function (or next middleware in chain) with the above defined keyword arguments.
-    return_value = yield func(
+    yield func(
         *args,
         initial_a_value=initial_a_value,
         a_value=initial_a_value,
         middlewares_called=middlewares_called,
     )
 
-    return return_value
-
 
 @middleware_decorator
 def middleware_func_abc(
     func: Callable,
-    service: Any,
     *args: Any,
     a_value: int = 0,
     middlewares_called: Optional[List] = None,
-) -> Any:
+) -> Generator[Awaitable, None, None]:
     # Adds another kwarg, "kwarg_abc" with static value 4711.
     kwarg_abc = 4711
 
@@ -88,24 +73,21 @@ def middleware_func_abc(
     middlewares_called = (middlewares_called or []) + ["middleware_func_abc"]
 
     # Calls the function (or next middleware in chain) with the above defined keyword arguments.
-    return_value = yield func(
+    yield func(
         *args,
         kwarg_abc=kwarg_abc,
         a_value=a_value,
         middlewares_called=middlewares_called,
     )
 
-    return return_value
-
 
 @middleware_decorator
 def middleware_func_xyz(
     func: Callable,
-    service: Any,
     *args: Any,
     a_value: int = 0,
     **kwargs: Any,
-) -> Any:
+) -> Generator[Awaitable, None, None]:
     # Adds another kwarg, "kwarg_xyz", adding 1 to the value of "kwarg_abc" if present.
     kwarg_xyz = int(kwargs.get("kwarg_abc", 0)) + 1
 
@@ -116,14 +98,12 @@ def middleware_func_xyz(
     middlewares_called = kwargs.get("middlewares_called", []) + ["middleware_func_xyz"]
 
     # Calls the function (or next middleware in chain) with the above defined keyword arguments.
-    return_value = yield func(
+    yield func(
         *args,
         kwarg_xyz=kwarg_xyz,
         a_value=a_value,
         middlewares_called=middlewares_called,
     )
-
-    return return_value
 
 
 class ExampleAWSSNSSQSService(tomodachi.Service):
@@ -135,7 +115,7 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
     # See tomodachi/envelope/json_base.py for a basic example using JSON and transferring some metadata
     message_envelope = JsonBase
 
-    # Adds above defined middlewares as function that is run on every incoming message. Middlewares are chained so that
+    # Adds the three example middlewares to run on every incoming message. Middlewares are chained so that
     # the first defined middleware will be called first.
     message_middleware: List[Callable[..., Awaitable[Any]]] = [
         middleware_init_000,
@@ -192,6 +172,7 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
             middlewares_called (list[str]): Appended to by all three middlewares in this example.
         """
         self.log("handler -- route(data='{}', ...)".format(data))
+
         self.log("value: kwarg_abc (expect 4711) = {}".format(kwarg_abc))
         self.log("value: kwarg_xyz (expect 4712) = {}".format(kwarg_xyz))
         self.log("value: initial_a_value (message attribute) = {}".format(message_attributes.get("initial_a_value")))
