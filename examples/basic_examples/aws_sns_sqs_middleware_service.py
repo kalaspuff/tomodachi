@@ -1,6 +1,5 @@
 import contextvars
 import functools
-import os
 from contextlib import contextmanager
 from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional
 
