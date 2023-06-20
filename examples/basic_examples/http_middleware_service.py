@@ -30,8 +30,7 @@ class ExampleHttpMiddlewareService(tomodachi.Service):
     log_level = "DEBUG"
     uuid = str(os.environ.get("SERVICE_UUID") or "")
 
-    # Adds a middleware function that is run on every HTTP call.
-    # Several middlewares can be chained.
+    # Adds a middleware function that is run on every HTTP call. Several middlewares can be chained.
     http_middleware = [middleware_function]
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
@@ -49,7 +48,7 @@ class ExampleHttpMiddlewareService(tomodachi.Service):
         return "友達"  # tomodachi
 
     @http("GET", r"/example/(?P<id>[^/]+?)/?")
-    async def example_with_id(self, request: web.Request, id: str, **kwargs: Any) -> str:
+    async def example_with_id(self, request: web.Request, id: str) -> str:
         return "友達 (id: {})".format(id)
 
     @http_error(status_code=404)

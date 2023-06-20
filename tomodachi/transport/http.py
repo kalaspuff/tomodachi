@@ -21,7 +21,6 @@ from aiohttp.streams import EofStream
 from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
 
-from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -374,7 +373,7 @@ class HttpTransport(Invoker):
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
-                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if k in args_set or values.varkw}
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
                     for i, key in enumerate(values.args[1 : len(a) + 1])
@@ -383,15 +382,6 @@ class HttpTransport(Invoker):
                     args_values += a[len(args_values) + 1 :]
 
                 routine = func(*(obj, *args_values), **kw_values)
-
-                #                kw_values = merge_dicts(kwargs, kw)
-                #                args_values = [
-                #                    kw_values.pop(key) if key in kw_values else a[i + 1]
-                #                    for i, key in enumerate(values.args[1 : len(a) + 1])
-                #                ]
-                #                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
-                #                    args_values += a[len(args_values) + 1 :]
-                #                routine = func(*(obj, *args_values), **kw_values)
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
@@ -559,7 +549,7 @@ class HttpTransport(Invoker):
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
-                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if k in args_set or values.varkw}
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
                     for i, key in enumerate(values.args[1 : len(a) + 1])
@@ -568,15 +558,6 @@ class HttpTransport(Invoker):
                     args_values += a[len(args_values) + 1 :]
 
                 routine = func(*(obj, *args_values), **kw_values)
-
-                #               kw_values = merge_dicts(kwargs, kw)
-                #               args_values = [
-                #                   kw_values.pop(key) if key in kw_values else a[i + 1]
-                #                   for i, key in enumerate(values.args[1 : len(a) + 1])
-                #               ]
-                #               if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
-                #                   args_values += a[len(args_values) + 1 :]
-                #               routine = func(*(obj, *args_values), **kw_values)
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, Response] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
@@ -705,16 +686,8 @@ class HttpTransport(Invoker):
                 if "websocket" in values.args:
                     arg_matches["websocket"] = websocket
 
-            #            if len(values.args) - (len(values.defaults) if values.defaults else 0) >= 3:
-            #                # If the function takes a third required argument the value will be filled with the request object
-            #                a = a + (request,)
-            #            if "request" in values.args and (
-            #                len(values.args) - (len(values.defaults) if values.defaults else 0) < 3 or values.args[2] != "request"
-            #            ):
-            #                kwargs["request"] = request
-
             try:
-                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if k in args_set or values.varkw}
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 a = [arg_matches[k] if k in arg_matches else (websocket, request)[i] for i, k in enumerate(args_list)]
                 args_values = [kw_values.pop(key) if key in kw_values else a[i] for i, key in enumerate(args_list)]
 

@@ -490,7 +490,7 @@ class AWSSNSSQSTransport(Invoker):
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
-                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if k in args_set or values.varkw}
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
                     for i, key in enumerate(values.args[1 : len(a) + 1])
@@ -499,27 +499,6 @@ class AWSSNSSQSTransport(Invoker):
                     args_values += a[len(args_values) + 1 :]
 
                 routine = func(*(obj, *args_values), **kw_values)
-
-                #                if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
-                #                    routine = func(*(obj, message, *a))
-                #                elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
-                #                    kw_values = merge_dicts(kwargs, kw)
-                #                    args_values = [
-                #                        kw_values.pop(key) if key in kw_values else a[i + 1]
-                #                        for i, key in enumerate(values.args[1 : len(a) + 1])
-                #                    ]
-                #                    if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
-                #                        args_values += a[len(args_values) + 1 :]
-                #
-                #                    routine = func(*(obj, *args_values), **kw_values)
-                #                elif len(merge_dicts(kwargs, kw)):
-
-                # if True:
-                # elif len(values.args[1:]):
-                #     routine = func(*(obj, message, *a), **kw)
-                # else:
-                #     routine = func(*(obj, *a), **kw)
-
                 if inspect.isawaitable(routine):
                     return_value = await routine
                 else:
