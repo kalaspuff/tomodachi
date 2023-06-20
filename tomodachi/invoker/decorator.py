@@ -1,7 +1,6 @@
 import inspect
 import types
-from functools import wraps
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 
 class DecorationClass(object):
@@ -51,9 +50,11 @@ def decorator(include_function: Any = False) -> Callable:
         include_function = False
 
     def _decorator(decorator_func: Callable) -> Callable:
-        def _wrapper(func: Callable) -> Callable:
+        def _wrapper(func: Optional[Callable] = None) -> Callable:
+            if not func:
+                return _wrapper
+
             class_func = DecorationClass(func, decorator_func, include_function)
-            wraps(func)(class_func)
             return class_func
 
         return _wrapper
