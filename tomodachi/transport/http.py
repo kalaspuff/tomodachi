@@ -348,6 +348,7 @@ class HttpTransport(Invoker):
             else {}
         )
         args_list = values.args[1 : len(values.args) - len(values.defaults or ())]
+        args_set = (set(values.args[1:]) | set(values.kwonlyargs)) - set(["self"])
 
         middlewares = context.get("http_middleware", [])
 
@@ -359,27 +360,38 @@ class HttpTransport(Invoker):
                 result = compiled_pattern.match(request.path)
                 if result:
                     for k, v in result.groupdict().items():
-                        kwargs[k] = v
-                        arg_matches[k] = v
+                        if k in args_set:
+                            kwargs[k] = v
+                            if k in values.args:
+                                arg_matches[k] = v
 
-            if "request" in kwargs or "request" in values.kwonlyargs:
+            if "request" in args_set:
                 kwargs["request"] = request
-
-            if "request" in values.args[1:]:
-                arg_matches["request"] = request
+                if "request" in values.args:
+                    arg_matches["request"] = request
 
             @functools.wraps(func)
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
-                kw_values = merge_dicts(kwargs, kw)
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if k in args_set or values.varkw}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
                     for i, key in enumerate(values.args[1 : len(a) + 1])
                 ]
                 if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
                     args_values += a[len(args_values) + 1 :]
+
                 routine = func(*(obj, *args_values), **kw_values)
+
+                #                kw_values = merge_dicts(kwargs, kw)
+                #                args_values = [
+                #                    kw_values.pop(key) if key in kw_values else a[i + 1]
+                #                    for i, key in enumerate(values.args[1 : len(a) + 1])
+                #                ]
+                #                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                #                    args_values += a[len(args_values) + 1 :]
+                #                routine = func(*(obj, *args_values), **kw_values)
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
@@ -399,6 +411,9 @@ class HttpTransport(Invoker):
             else:
                 a = [arg_matches[k] if k in arg_matches else (request,)[i] for i, k in enumerate(args_list)]
                 args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
+
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
 
                 routine = func(obj, *args_values, **kwargs)
                 return_value = (await routine) if inspect.isawaitable(routine) else routine
@@ -520,6 +535,7 @@ class HttpTransport(Invoker):
             else {}
         )
         args_list = values.args[1 : len(values.args) - len(values.defaults or ())]
+        args_set = (set(values.args[1:]) | set(values.kwonlyargs)) - set(["self"])
 
         middlewares = context.get("http_middleware", [])
 
@@ -527,17 +543,15 @@ class HttpTransport(Invoker):
             kwargs = dict(original_kwargs)
             arg_matches: Dict[str, Any] = {}
 
-            if "request" in kwargs or "request" in values.kwonlyargs:
+            if "request" in args_set:
                 kwargs["request"] = request
+                if "request" in values.args:
+                    arg_matches["request"] = request
 
-            if "request" in values.args[1:]:
-                arg_matches["request"] = request
-
-            if "status_code" in kwargs or "status_code" in values.kwonlyargs:
+            if "status_code" in args_set:
                 kwargs["status_code"] = status_code
-
-            if "status_code" in values.args[1:]:
-                arg_matches["status_code"] = status_code
+                if "status_code" in values.args:
+                    arg_matches["status_code"] = status_code
 
             request._cache["error_status_code"] = status_code
 
@@ -545,14 +559,24 @@ class HttpTransport(Invoker):
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
-                kw_values = merge_dicts(kwargs, kw)
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if k in args_set or values.varkw}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
                     for i, key in enumerate(values.args[1 : len(a) + 1])
                 ]
                 if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
                     args_values += a[len(args_values) + 1 :]
+
                 routine = func(*(obj, *args_values), **kw_values)
+
+                #               kw_values = merge_dicts(kwargs, kw)
+                #               args_values = [
+                #                   kw_values.pop(key) if key in kw_values else a[i + 1]
+                #                   for i, key in enumerate(values.args[1 : len(a) + 1])
+                #               ]
+                #               if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                #                   args_values += a[len(args_values) + 1 :]
+                #               routine = func(*(obj, *args_values), **kw_values)
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, Response] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
@@ -566,6 +590,9 @@ class HttpTransport(Invoker):
             else:
                 a = [arg_matches[k] if k in arg_matches else (request,)[i] for i, k in enumerate(args_list)]
                 args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
+
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
 
                 routine = func(obj, *args_values, **kwargs)
                 return_value = (await routine) if inspect.isawaitable(routine) else routine
@@ -604,6 +631,7 @@ class HttpTransport(Invoker):
             else {}
         )
         args_list = values.args[1 : len(values.args) - len(values.defaults or ())]
+        args_set = (set(values.args[1:]) | set(values.kwonlyargs)) - set(["self"])
 
         @functools.wraps(func)
         async def _func(obj: Any, request: web.Request, *_a: Any, **kw: Any) -> None:
@@ -662,20 +690,20 @@ class HttpTransport(Invoker):
                 result = compiled_pattern.match(request.path)
                 if result:
                     for k, v in result.groupdict().items():
-                        kwargs[k] = v
-                        arg_matches[k] = v
+                        if k in args_set:
+                            kwargs[k] = v
+                            if k in values.args:
+                                arg_matches[k] = v
 
-            if "request" in kwargs or "request" in values.kwonlyargs:
+            if "request" in args_set:
                 kwargs["request"] = request
+                if "request" in values.args:
+                    arg_matches["request"] = request
 
-            if "request" in values.args[1:]:
-                arg_matches["request"] = request
-
-            if "websocket" in kwargs or "websocket" in values.kwonlyargs:
+            if "websocket" in args_set:
                 kwargs["websocket"] = websocket
-
-            if "websocket" in values.args[1:]:
-                arg_matches["websocket"] = websocket
+                if "websocket" in values.args:
+                    arg_matches["websocket"] = websocket
 
             #            if len(values.args) - (len(values.defaults) if values.defaults else 0) >= 3:
             #                # If the function takes a third required argument the value will be filled with the request object
@@ -686,12 +714,14 @@ class HttpTransport(Invoker):
             #                kwargs["request"] = request
 
             try:
-                kwargs = merge_dicts(kwargs, kw)
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if k in args_set or values.varkw}
                 a = [arg_matches[k] if k in arg_matches else (websocket, request)[i] for i, k in enumerate(args_list)]
-                args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
+                args_values = [kw_values.pop(key) if key in kw_values else a[i] for i, key in enumerate(args_list)]
 
-                routine = func(obj, *args_values, **kwargs)
-                # routine = func(*(obj, websocket, *a), **kwargs)
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
+
+                routine = func(obj, *args_values, **kw_values)
                 callback_functions: Optional[Union[Tuple[Callable, Callable], Tuple[Callable], Callable]] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )

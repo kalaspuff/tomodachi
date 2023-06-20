@@ -121,8 +121,8 @@ def middleware_func_xyz(
 async def a_simple_middleware(
     func: Callable,
     *,
-    message_uuid: str,
     message: Dict,
+    message_uuid: str,
     topic: str,
     middlewares_called: List[str],
 ) -> None:

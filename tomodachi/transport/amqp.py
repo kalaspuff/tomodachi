@@ -230,6 +230,7 @@ class AmqpTransport(Invoker):
         else:
             _callback_kwargs = {k: None for k in _callback_kwargs if k != "self"}
         original_kwargs: Dict[str, Any] = {k: v for k, v in _callback_kwargs.items()}
+        args_set = (set(values.args[1:]) | set(values.kwonlyargs) | set(callback_kwargs or [])) - set(["self"])
 
         async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
             kwargs = dict(original_kwargs)
@@ -262,19 +263,17 @@ class AmqpTransport(Invoker):
                                 k: v for k, v in context["_amqp_received_messages"].items() if v > time.time() - 60
                             }
 
-                    if _callback_kwargs:
+                    if args_set:
                         for k, v in message.items():
-                            if k in _callback_kwargs:
+                            if k in args_set:
                                 kwargs[k] = v
-                        if "message" in _callback_kwargs and (
-                            not isinstance(message, dict) or "message" not in message
-                        ):
+                        if "message" in args_set and (not isinstance(message, dict) or "message" not in message):
                             kwargs["message"] = message
-                        if "routing_key" in _callback_kwargs and (
+                        if "routing_key" in args_set and (
                             not isinstance(message, dict) or "routing_key" not in message
                         ):
                             kwargs["routing_key"] = routing_key
-                        if "message_uuid" in _callback_kwargs and (
+                        if "message_uuid" in args_set and (
                             not isinstance(message, dict) or "message_uuid" not in message
                         ):
                             kwargs["message_uuid"] = message_uuid
@@ -288,12 +287,12 @@ class AmqpTransport(Invoker):
                         await cls.channel.basic_client_ack(delivery_tag)
                     return
             else:
-                if _callback_kwargs:
-                    if "message" in _callback_kwargs:
+                if args_set:
+                    if "message" in args_set:
                         kwargs["message"] = message
-                    if "routing_key" in _callback_kwargs:
+                    if "routing_key" in args_set:
                         kwargs["routing_key"] = routing_key
-                    if "message_uuid" in _callback_kwargs:
+                    if "message_uuid" in args_set:
                         kwargs["message_uuid"] = message_uuid
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
@@ -301,30 +300,40 @@ class AmqpTransport(Invoker):
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
-                if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
-                    routine = func(*(obj, message, *a))
-                elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
-                    kw_values = merge_dicts(kwargs, kw)
-                    args_values = [
-                        kw_values.pop(key) if key in kw_values else a[i + 1]
-                        for i, key in enumerate(values.args[1 : len(a) + 1])
-                    ]
-                    if values.varargs and not values.defaults and len(a) > len(args_values) + 2:
-                        args_values += a[len(args_values) + 1 :]
-                    routine = func(*(obj, *args_values), **kw_values)
-                elif len(merge_dicts(kwargs, kw)):
-                    kw_values = merge_dicts(kwargs, kw)
-                    args_values = [
-                        kw_values.pop(key) if key in kw_values else a[i + 1]
-                        for i, key in enumerate(values.args[1 : len(a) + 1])
-                    ]
-                    if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
-                        args_values += a[len(args_values) + 1 :]
-                    routine = func(*(obj, *args_values), **kw_values)
-                elif len(values.args[1:]):
-                    routine = func(*(obj, message, *a), **kw)
-                else:
-                    routine = func(*(obj, *a), **kw)
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if k in args_set or values.varkw}
+                args_values = [
+                    kw_values.pop(key) if key in kw_values else a[i + 1]
+                    for i, key in enumerate(values.args[1 : len(a) + 1])
+                ]
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
+
+                routine = func(*(obj, *args_values), **kw_values)
+                #
+                #                if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
+                #                    routine = func(*(obj, message, *a))
+                #                elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
+                #                    kw_values = merge_dicts(kwargs, kw)
+                #                    args_values = [
+                #                        kw_values.pop(key) if key in kw_values else a[i + 1]
+                #                        for i, key in enumerate(values.args[1 : len(a) + 1])
+                #                    ]
+                #                    if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                #                        args_values += a[len(args_values) + 1 :]
+                #                    routine = func(*(obj, *args_values), **kw_values)
+                #                elif len(merge_dicts(kwargs, kw)):
+                #                    kw_values = merge_dicts(kwargs, kw)
+                #                    args_values = [
+                #                        kw_values.pop(key) if key in kw_values else a[i + 1]
+                #                        for i, key in enumerate(values.args[1 : len(a) + 1])
+                #                    ]
+                #                    if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                #                        args_values += a[len(args_values) + 1 :]
+                #                    routine = func(*(obj, *args_values), **kw_values)
+                #                elif len(values.args[1:]):
+                #                    routine = func(*(obj, message, *a), **kw)
+                #                else:
+                #                    routine = func(*(obj, *a), **kw)
 
                 if inspect.isawaitable(routine):
                     return_value = await routine
