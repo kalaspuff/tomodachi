@@ -274,6 +274,10 @@ class AmqpTransport(Invoker):
                             not isinstance(message, dict) or "routing_key" not in message
                         ):
                             kwargs["routing_key"] = routing_key
+                        if "message_uuid" in _callback_kwargs and (
+                            not isinstance(message, dict) or "message_uuid" not in message
+                        ):
+                            kwargs["message_uuid"] = message_uuid
                 except (Exception, asyncio.CancelledError, BaseException) as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
@@ -289,6 +293,8 @@ class AmqpTransport(Invoker):
                         kwargs["message"] = message
                     if "routing_key" in _callback_kwargs:
                         kwargs["routing_key"] = routing_key
+                    if "message_uuid" in _callback_kwargs:
+                        kwargs["message_uuid"] = message_uuid
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
                     del kwargs[values.args[1]]
@@ -300,16 +306,16 @@ class AmqpTransport(Invoker):
                 elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
                     kw_values = merge_dicts(kwargs, kw)
                     args_values = [
-                        kw_values.pop(key) if key in kw_values else a[i]
-                        for i, key in enumerate(values.args[2 : len(a) + 2])
+                        kw_values.pop(key) if key in kw_values else a[i + 1]
+                        for i, key in enumerate(values.args[1 : len(a) + 1])
                     ]
                     if values.varargs and not values.defaults and len(a) > len(args_values) + 2:
-                        args_values += a[len(args_values) + 2 :]
-                    routine = func(*(obj, message, *args_values), **kw_values)
+                        args_values += a[len(args_values) + 1 :]
+                    routine = func(*(obj, *args_values), **kw_values)
                 elif len(merge_dicts(kwargs, kw)):
                     kw_values = merge_dicts(kwargs, kw)
                     args_values = [
-                        kw_values.pop(key) if key in kw_values else a[i]
+                        kw_values.pop(key) if key in kw_values else a[i + 1]
                         for i, key in enumerate(values.args[1 : len(a) + 1])
                     ]
                     if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
@@ -332,10 +338,17 @@ class AmqpTransport(Invoker):
             increase_execution_context_value("amqp_total_tasks")
             try:
                 return_value = await execute_middlewares(
-                    func, routine_func, context.get("message_middleware", []), *(obj, message, routing_key)
+                    func,
+                    routine_func,
+                    context.get("message_middleware", []),
+                    *(obj, message, routing_key),
+                    message=message,
+                    message_uuid=message_uuid,
+                    routing_key=routing_key,
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                return_value = None
                 if issubclass(
                     e.__class__,
                     (AmqpInternalServiceError, AmqpInternalServiceErrorException, AmqpInternalServiceException),
