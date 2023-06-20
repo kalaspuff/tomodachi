@@ -363,10 +363,12 @@ class HttpTransport(Invoker):
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
                 kw_values = merge_dicts(kwargs, kw)
-                args_values = (
+                args_values = [
                     kw_values.pop(key) if key in kw_values else a[i]
                     for i, key in enumerate(values.args[2 : len(a) + 2])
-                )
+                ]
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 2:
+                    args_values += a[len(args_values) + 2 :]
                 routine = func(*(obj, request, *args_values), **kw_values)
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response] = (
                     (await routine) if inspect.isawaitable(routine) else routine

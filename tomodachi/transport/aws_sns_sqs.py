@@ -114,6 +114,10 @@ FilterPolicyDictValueType = Sequence[
 
 FilterPolicyDictType = Mapping[str, FilterPolicyDictValueType]
 
+MessageAttributesType = Dict[
+    str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
+]
+
 connector = ClientConnector()
 
 
@@ -393,9 +397,9 @@ class AWSSNSSQSTransport(Invoker):
                 get_contextvar("aws_sns_sqs.approximate_receive_count").set(approximate_receive_count)
 
             message: Optional[Union[bool, str, Dict]] = payload
-            message_attributes_values: Dict[
-                str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
-            ] = (cls.transform_message_attributes_from_response(message_attributes) if message_attributes else {})
+            message_attributes_values: MessageAttributesType = (
+                cls.transform_message_attributes_from_response(message_attributes) if message_attributes else {}
+            )
             message_uuid = None
             message_key = None
 
@@ -439,6 +443,10 @@ class AWSSNSSQSTransport(Invoker):
                             kwargs["message"] = message
                         if "topic" in _callback_kwargs and (not isinstance(message, dict) or "topic" not in message):
                             kwargs["topic"] = topic
+                        if "message_uuid" in _callback_kwargs and (
+                            not isinstance(message, dict) or "message_uuid" not in message
+                        ):
+                            kwargs["message_uuid"] = message_uuid
                         if "receipt_handle" in _callback_kwargs and (
                             not isinstance(message, dict) or "receipt_handle" not in message
                         ):
@@ -470,6 +478,8 @@ class AWSSNSSQSTransport(Invoker):
                         kwargs["message"] = message
                     if "topic" in _callback_kwargs:
                         kwargs["topic"] = topic
+                    if "message_uuid" in _callback_kwargs:
+                        kwargs["message_uuid"] = message_uuid
                     if "receipt_handle" in _callback_kwargs:
                         kwargs["receipt_handle"] = receipt_handle
                     if "queue_url" in _callback_kwargs:
@@ -488,17 +498,21 @@ class AWSSNSSQSTransport(Invoker):
                     routine = func(*(obj, message, *a))
                 elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
                     kw_values = merge_dicts(kwargs, kw)
-                    args_values = (
+                    args_values = [
                         kw_values.pop(key) if key in kw_values else a[i]
                         for i, key in enumerate(values.args[2 : len(a) + 2])
-                    )
+                    ]
+                    if values.varargs and not values.defaults and len(a) > len(args_values) + 2:
+                        args_values += a[len(args_values) + 2 :]
                     routine = func(*(obj, message, *args_values), **kw_values)
                 elif len(merge_dicts(kwargs, kw)):
                     kw_values = merge_dicts(kwargs, kw)
-                    args_values = (
+                    args_values = [
                         kw_values.pop(key) if key in kw_values else a[i]
                         for i, key in enumerate(values.args[1 : len(a) + 1])
-                    )
+                    ]
+                    if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                        args_values += a[len(args_values) + 1 :]
                     routine = func(*(obj, *args_values), **kw_values)
                 elif len(values.args[1:]):
                     routine = func(*(obj, message, *a), **kw)
@@ -521,6 +535,9 @@ class AWSSNSSQSTransport(Invoker):
                     routine_func,
                     context.get("message_middleware", []),
                     *(obj, message, topic),
+                    message=message,
+                    message_uuid=message_uuid,
+                    topic=topic,
                     receipt_handle=receipt_handle,
                     queue_url=queue_url,
                     message_attributes=message_attributes_values,
@@ -776,10 +793,8 @@ class AWSSNSSQSTransport(Invoker):
     @staticmethod
     def transform_message_attributes_from_response(
         message_attributes: Dict,
-    ) -> Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]]:
-        result: Dict[
-            str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
-        ] = {}
+    ) -> MessageAttributesType:
+        result: MessageAttributesType = {}
 
         for name, values in message_attributes.items():
             value = values["Value"]

@@ -30,6 +30,7 @@ def test_start_aws_sns_sqs_service_with_middleware(monkeypatch: Any, capsys: Any
             await asyncio.sleep(0.5)
 
         assert instance.test_topic_data_received
+        assert instance.test_topic_name == "test-middleware-topic"
         assert len(instance.test_queue_url) > 1
         assert len(instance.test_receipt_handle) > 1
         assert instance.test_approximate_receive_count >= 1
@@ -40,7 +41,12 @@ def test_start_aws_sns_sqs_service_with_middleware(monkeypatch: Any, capsys: Any
             "initial_a_value": 5,
             "a_value": 30,
             "another_value": 42,
-            "middlewares_called": ["middleware_init_000", "middleware_func_abc", "middleware_func_xyz"],
+            "middlewares_called": [
+                "middleware_init_000",
+                "middleware_func_abc",
+                "middleware_func_xyz",
+                "middleware_last_in_chain",
+            ],
         }
 
     loop.run_until_complete(_async(loop))

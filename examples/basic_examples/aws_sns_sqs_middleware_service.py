@@ -1,11 +1,13 @@
 import contextvars
 import functools
+import time
 from contextlib import contextmanager
-from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional
+from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional, SupportsInt
 
 import tomodachi
 from tomodachi import Options, aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.envelope import JsonBase
+from tomodachi.transport.aws_sns_sqs import MessageAttributesType
 
 # Call depth for chained middlewares are tracked for demonstration purposes and used in the service' log function.
 CALL_DEPTH_CONTEXTVAR = contextvars.ContextVar("service.middleware.depth", default=0)
@@ -16,20 +18,29 @@ def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, Non
 
     @functools.wraps(middleware_func)
     async def wrapped_middleware_func(func: Callable, service: Any, *args: Any, **kwargs: Any) -> Any:
-        if not CALL_DEPTH_CONTEXTVAR.get():
+        original_call_depth = CALL_DEPTH_CONTEXTVAR.get()
+        if not original_call_depth:
+            start_time = time.perf_counter_ns()
             service.log("---")
             CALL_DEPTH_CONTEXTVAR.set(CALL_DEPTH_CONTEXTVAR.get() + 1)
 
-        # Functionality before function (or next middleware in chain) is called.
+        # Before function (or next middleware in chain) is called.
         service.log("middleware -- {} -- begin".format(middleware_func.__name__))
 
+        # Calls the function (or next middleware in chain).
         with _middleware_func(func, service, *args, **kwargs) as task:
             token = CALL_DEPTH_CONTEXTVAR.set(CALL_DEPTH_CONTEXTVAR.get() + 1)
             await task
             CALL_DEPTH_CONTEXTVAR.reset(token)
 
-        # Functionality after function and potential following middlewares has been called.
-        service.log("middleware -- {} -- end".format(middleware_func.__name__))
+        # Calculates total execution time for middlewares and handler.
+        elapsed_time_str = ""
+        if not original_call_depth:
+            elapsed_time_ms = (time.perf_counter_ns() - start_time) / 1000000.0
+            elapsed_time_str = " (total elapsed time: {} ms)".format(elapsed_time_ms)
+
+        # After function (or next middleware in chain) is called.
+        service.log("middleware -- {} -- end{}".format(middleware_func.__name__, elapsed_time_str))
 
     return wrapped_middleware_func
 
@@ -37,18 +48,22 @@ def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, Non
 @middleware_decorator
 def middleware_init_000(
     func: Callable,
-    *args: Any,
-    message_attributes: Dict,
+    _: Any,
+    *,
+    message_attributes: MessageAttributesType,
 ) -> Generator[Awaitable, None, None]:
     # Message attribute "initial_a_value" set to both "initial_a_value" and "a_value" kwargs. Default to 1 if missing.
-    initial_a_value = int(message_attributes.get("initial_a_value", 1))
+    initial_a_value = 1
+    if "initial_a_value" in message_attributes:
+        if not isinstance(message_attributes["initial_a_value"], SupportsInt):
+            raise ValueError("Invalid value type for message attribute 'initial_a_value'")
+        initial_a_value = int(message_attributes["initial_a_value"])
 
     # Adds a keyword argument "middlewares_called" which following middlewares will append data to.
     middlewares_called = ["middleware_init_000"]
 
     # Calls the function (or next middleware in chain) with the above defined keyword arguments.
     yield func(
-        *args,
         initial_a_value=initial_a_value,
         a_value=initial_a_value,
         middlewares_called=middlewares_called,
@@ -58,7 +73,7 @@ def middleware_init_000(
 @middleware_decorator
 def middleware_func_abc(
     func: Callable,
-    *args: Any,
+    _: Any,
     a_value: int = 0,
     middlewares_called: Optional[List] = None,
 ) -> Generator[Awaitable, None, None]:
@@ -73,7 +88,6 @@ def middleware_func_abc(
 
     # Calls the function (or next middleware in chain) with the above defined keyword arguments.
     yield func(
-        *args,
         kwarg_abc=kwarg_abc,
         a_value=a_value,
         middlewares_called=middlewares_called,
@@ -83,7 +97,7 @@ def middleware_func_abc(
 @middleware_decorator
 def middleware_func_xyz(
     func: Callable,
-    *args: Any,
+    _: Any,
     a_value: int = 0,
     **kwargs: Any,
 ) -> Generator[Awaitable, None, None]:
@@ -98,11 +112,27 @@ def middleware_func_xyz(
 
     # Calls the function (or next middleware in chain) with the above defined keyword arguments.
     yield func(
-        *args,
         kwarg_xyz=kwarg_xyz,
         a_value=a_value,
         middlewares_called=middlewares_called,
     )
+
+
+async def a_simple_middleware(
+    func: Callable,
+    *,
+    message_uuid: str,
+    message: Dict,
+    topic: str,
+    middlewares_called: List[str],
+) -> None:
+    if not message_uuid or not topic or message["metadata"].get("message_uuid") != message_uuid:
+        raise ValueError("Invalid message_uuid, topic or message metadata")
+
+    # Mutable values such as lists, dicts and objects could cause unwanted effects if modified in place.
+    # It's instead recommended to create a new object and pass it on as the new value for the keyword argument.
+    middlewares_called = middlewares_called + ["a_simple_middleware"]
+    await func(middlewares_called=middlewares_called)
 
 
 class ExampleAWSSNSSQSService(tomodachi.Service):
@@ -112,12 +142,13 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
     # See tomodachi/envelope/json_base.py for a basic example using JSON and transferring some metadata
     message_envelope = JsonBase
 
-    # Adds the three example middlewares to run on every incoming message. Middlewares are chained so that
-    # the first defined middleware will be called first.
+    # Adds the four example middlewares to run on every incoming message. Middlewares are chained so that
+    # the first defined middleware will be called first (and exit last as in a stack).
     message_middleware: List[Callable[..., Awaitable[Any]]] = [
         middleware_init_000,
         middleware_func_abc,
         middleware_func_xyz,
+        a_simple_middleware,
     ]
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.

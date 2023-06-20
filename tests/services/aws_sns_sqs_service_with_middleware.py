@@ -25,7 +25,8 @@ def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, Non
 @middleware_decorator
 def middleware_init_000(
     func: Callable,
-    *args: Any,
+    _: Any,
+    *,
     message_attributes: Dict,
 ) -> Generator[Awaitable, None, None]:
     # Message attribute "initial_a_value" set to both "initial_a_value" and "a_value" kwargs. Default to 1 if missing.
@@ -36,7 +37,6 @@ def middleware_init_000(
 
     # Calls the function (or next middleware in chain) with the above defined keyword arguments.
     yield func(
-        *args,
         initial_a_value=initial_a_value,
         a_value=initial_a_value,
         middlewares_called=middlewares_called,
@@ -46,7 +46,8 @@ def middleware_init_000(
 @middleware_decorator
 def middleware_func_abc(
     func: Callable,
-    *args: Any,
+    _: Any,
+    *,
     a_value: int = 0,
     middlewares_called: Optional[List] = None,
 ) -> Generator[Awaitable, None, None]:
@@ -61,7 +62,6 @@ def middleware_func_abc(
 
     # Calls the function (or next middleware in chain) with the above defined keyword arguments.
     yield func(
-        *args,
         kwarg_abc=kwarg_abc,
         a_value=a_value,
         middlewares_called=middlewares_called,
@@ -71,7 +71,7 @@ def middleware_func_abc(
 @middleware_decorator
 def middleware_func_xyz(
     func: Callable,
-    *args: Any,
+    _: Any,
     a_value: int = 0,
     **kwargs: Any,
 ) -> Generator[Awaitable, None, None]:
@@ -86,11 +86,43 @@ def middleware_func_xyz(
 
     # Calls the function (or next middleware in chain) with the above defined keyword arguments.
     yield func(
-        *args,
         kwarg_xyz=kwarg_xyz,
         a_value=a_value,
         middlewares_called=middlewares_called,
     )
+
+
+async def middleware_last_in_chain(
+    func: Callable,
+    *,
+    message_uuid: str,
+    message: dict,
+    topic: str,
+    message_attributes: dict,
+    middlewares_called: list[str],
+) -> None:
+    if not message_uuid or message["metadata"].get("message_uuid") != message_uuid:
+        raise ValueError(
+            f"Message UUID mismatch (kwarg: '{message_uuid}', metadata: '{message['metadata'].get('message_uuid')}'"
+        )
+
+    # Mutable values such as lists, dicts and objects could cause unwanted effects if modified in place.
+    # This is not a recommended pattern, but for these test cases we're changing the mutable object.
+    middlewares_called.append("middleware_last_in_chain")
+    await func()
+
+    """
+    A better way instead of modifying the mutable object, would be to do something like this:
+    1. First create a new list that holds both the old and the new values.
+    2. Then pass the new list to the function or next middleware in chain by specifying it as a kwarg.
+    """
+    # middlewares_called = middlewares_called + ["middleware_last_in_chain"]
+    # await func(middlewares_called=middlewares_called)
+
+    """
+    The same but done as on one line:
+    """
+    # await func(middlewares_called=middlewares_called + ["middleware_last_in_chain"])
 
 
 data_uuid = str(uuid_.uuid4())
@@ -117,11 +149,13 @@ class AWSSNSSQSService(tomodachi.Service):
         middleware_init_000,
         middleware_func_abc,
         middleware_func_xyz,
+        middleware_last_in_chain,
     ]
 
     uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID") or ""
     closer: asyncio.Future
     test_topic_data_received = False
+    test_topic_name: str = ""
     test_queue_url: str = ""
     test_receipt_handle: str = ""
     test_message_attributes: Optional[Dict] = None
@@ -143,6 +177,7 @@ class AWSSNSSQSService(tomodachi.Service):
         kwarg_xyz: int,
         message_attributes: Dict,
         initial_a_value: int,
+        topic: str,
         a_value: int = 0,
         another_value: int = 42,
         queue_url: str = "",
@@ -151,8 +186,9 @@ class AWSSNSSQSService(tomodachi.Service):
         *,
         middlewares_called: List[str],
     ) -> None:
-        if data == self.data_uuid:
+        if not self.test_topic_data_received and data == self.data_uuid:
             self.test_topic_data_received = True
+            self.test_topic_name = topic
             self.test_queue_url = queue_url
             self.test_receipt_handle = receipt_handle
             self.test_message_attributes = message_attributes
@@ -190,11 +226,16 @@ class AWSSNSSQSService(tomodachi.Service):
         asyncio.ensure_future(_async())
 
         async def _async_publisher() -> None:
-            await publish(
-                self.data_uuid,
-                "test-middleware-topic",
-                message_attributes={"attr_1": "value_1", "attr_2": "value_2", "initial_a_value": 5},
-            )
+            for _ in range(10):
+                if self.test_topic_data_received:
+                    break
+
+                await publish(
+                    self.data_uuid,
+                    "test-middleware-topic",
+                    message_attributes={"attr_1": "value_1", "attr_2": "value_2", "initial_a_value": 5},
+                )
+                await asyncio.sleep(0.5)
 
         asyncio.ensure_future(_async_publisher())
 
