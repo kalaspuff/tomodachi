@@ -8,7 +8,7 @@ from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional
 import tomodachi
 from tomodachi import Options
 from tomodachi.envelope import JsonBase
-from tomodachi.transport.aws_sns_sqs import aws_sns_sqs, aws_sns_sqs_publish
+from tomodachi.transport.aws_sns_sqs import MessageAttributesType, aws_sns_sqs, aws_sns_sqs_publish
 
 
 def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, None, None]]) -> Callable[..., Awaitable]:
@@ -98,8 +98,8 @@ async def middleware_last_in_chain(
     message_uuid: str,
     message: dict,
     topic: str,
-    message_attributes: dict,
-    middlewares_called: list[str],
+    message_attributes: MessageAttributesType,
+    middlewares_called: List[str],
 ) -> None:
     if not message_uuid or message["metadata"].get("message_uuid") != message_uuid:
         raise ValueError(
