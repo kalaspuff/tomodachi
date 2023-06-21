@@ -1,4 +1,5 @@
 import functools
+import inspect
 import types
 from typing import Any, Callable, Dict, Tuple, cast
 
@@ -16,10 +17,12 @@ class Invoker(object):
     def decorator(cls, cls_func: Callable) -> Callable:
         def _wrapper(*args: Any, **kwargs: Any) -> Callable:
             def wrapper(func: Callable) -> Callable:
-                @functools.wraps(func)
+                unwrapped_func = inspect.unwrap(func)
+
+                @functools.wraps(unwrapped_func)
                 async def _decorator(obj: Any, *a: Any, **kw: Any) -> Any:
                     if not kw or not kw.get(INVOKER_TASK_START_KEYWORD):
-                        return await func(obj, *a, **kw)
+                        return await unwrapped_func(obj, *a, **kw)
 
                     setattr(_decorator, START_ATTRIBUTE, False)  # deprecated
                     if not cls.context.get(obj, None):
@@ -39,7 +42,7 @@ class Invoker(object):
                     context = cls.context[obj]
                     obj.context = context
                     bound_cls_func = getattr(cls_func, "__get__")(cls)
-                    start_func = await bound_cls_func(obj, context, func, *args, **kwargs)
+                    start_func = await bound_cls_func(obj, context, unwrapped_func, *args, **kwargs)
 
                     # Work-around if the decorators are stacked with multiple decorators for the same method
                     if getattr(func, FUNCTION_ATTRIBUTE, None):
@@ -58,12 +61,14 @@ class Invoker(object):
                     return start_func
 
                 # Work-around if the decorators are stacked with multiple decorators for the same method
-                setattr(_decorator, "func", func)
-                setattr(_decorator, "cls_func", cls_func)
-                setattr(_decorator, "args", args)
-                setattr(_decorator, "kwargs", kwargs)
+                if not getattr(_decorator, FUNCTION_ATTRIBUTE, None):
+                    setattr(_decorator, "func", func)
+                    setattr(_decorator, "cls_func", cls_func)
+                    setattr(_decorator, "args", args)
+                    setattr(_decorator, "kwargs", kwargs)
 
-                setattr(_decorator, FUNCTION_ATTRIBUTE, True)
+                    setattr(_decorator, FUNCTION_ATTRIBUTE, True)
+
                 return _decorator
 
             if not kwargs and len(args) == 1 and callable(args[0]):

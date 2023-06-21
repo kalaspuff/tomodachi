@@ -21,7 +21,6 @@ from aiohttp.streams import EofStream
 from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
 
-from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -347,22 +346,42 @@ class HttpTransport(Invoker):
             if values.defaults
             else {}
         )
+        args_list = values.args[1 : len(values.args) - len(values.defaults or ())]
+        args_set = (set(values.args[1:]) | set(values.kwonlyargs)) - set(["self"])
 
         middlewares = context.get("http_middleware", [])
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             kwargs = dict(original_kwargs)
+            arg_matches: Dict[str, Any] = {}
+
             if "(" in pattern:
                 result = compiled_pattern.match(request.path)
                 if result:
                     for k, v in result.groupdict().items():
-                        kwargs[k] = v
+                        if k in args_set:
+                            kwargs[k] = v
+                            if k in values.args:
+                                arg_matches[k] = v
+
+            if "request" in args_set:
+                kwargs["request"] = request
+                if "request" in values.args:
+                    arg_matches["request"] = request
 
             @functools.wraps(func)
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
-                routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
+                args_values = [
+                    kw_values.pop(key) if key in kw_values else a[i + 1]
+                    for i, key in enumerate(values.args[1 : len(a) + 1])
+                ]
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
+
+                routine = func(*(obj, *args_values), **kw_values)
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
@@ -376,9 +395,17 @@ class HttpTransport(Invoker):
 
             return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
             if middlewares:
-                return_value = await execute_middlewares(func, routine_func, middlewares, *(obj, request))
+                return_value = await execute_middlewares(
+                    func, routine_func, middlewares, *(obj, request), request=request
+                )
             else:
-                routine = func(obj, request, **kwargs)
+                a = [arg_matches[k] if k in arg_matches else (request,)[i] for i, k in enumerate(args_list)]
+                args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
+
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
+
+                routine = func(obj, *args_values, **kwargs)
                 return_value = (await routine) if inspect.isawaitable(routine) else routine
 
             response = resolve_response_sync(
@@ -492,22 +519,45 @@ class HttpTransport(Invoker):
                 pass
 
         values = inspect.getfullargspec(func)
-        kwargs = (
+        original_kwargs = (
             {k: values.defaults[i] for i, k in enumerate(values.args[len(values.args) - len(values.defaults) :])}
             if values.defaults
             else {}
         )
+        args_list = values.args[1 : len(values.args) - len(values.defaults or ())]
+        args_set = (set(values.args[1:]) | set(values.kwonlyargs)) - set(["self"])
 
         middlewares = context.get("http_middleware", [])
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
+            kwargs = dict(original_kwargs)
+            arg_matches: Dict[str, Any] = {}
+
+            if "request" in args_set:
+                kwargs["request"] = request
+                if "request" in values.args:
+                    arg_matches["request"] = request
+
+            if "status_code" in args_set:
+                kwargs["status_code"] = status_code
+                if "status_code" in values.args:
+                    arg_matches["status_code"] = status_code
+
             request._cache["error_status_code"] = status_code
 
             @functools.wraps(func)
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
-                routine = func(*(obj, request, *a), **merge_dicts(kwargs, kw))
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
+                args_values = [
+                    kw_values.pop(key) if key in kw_values else a[i + 1]
+                    for i, key in enumerate(values.args[1 : len(a) + 1])
+                ]
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
+
+                routine = func(*(obj, *args_values), **kw_values)
                 return_value: Union[str, bytes, Dict, List, Tuple, web.Response, Response] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
@@ -515,9 +565,17 @@ class HttpTransport(Invoker):
 
             return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
             if middlewares:
-                return_value = await execute_middlewares(func, routine_func, middlewares, *(obj, request))
+                return_value = await execute_middlewares(
+                    func, routine_func, middlewares, *(obj, request), request=request, status_code=status_code
+                )
             else:
-                routine = func(obj, request, **kwargs)
+                a = [arg_matches[k] if k in arg_matches else (request,)[i] for i, k in enumerate(args_list)]
+                args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
+
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
+
+                routine = func(obj, *args_values, **kwargs)
                 return_value = (await routine) if inspect.isawaitable(routine) else routine
 
             response = resolve_response_sync(
@@ -553,9 +611,11 @@ class HttpTransport(Invoker):
             if values.defaults
             else {}
         )
+        args_list = values.args[1 : len(values.args) - len(values.defaults or ())]
+        args_set = (set(values.args[1:]) | set(values.kwonlyargs)) - set(["self"])
 
         @functools.wraps(func)
-        async def _func(obj: Any, request: web.Request, *a: Any, **kw: Any) -> None:
+        async def _func(obj: Any, request: web.Request, *_a: Any, **kw: Any) -> None:
             websocket = web.WebSocketResponse()
 
             request_ip = RequestHandler.get_request_ip(request, context)
@@ -605,22 +665,36 @@ class HttpTransport(Invoker):
                 )
 
             kwargs = dict(original_kwargs)
+            arg_matches: Dict[str, Any] = {}
+
             if "(" in pattern:
                 result = compiled_pattern.match(request.path)
                 if result:
                     for k, v in result.groupdict().items():
-                        kwargs[k] = v
+                        if k in args_set:
+                            kwargs[k] = v
+                            if k in values.args:
+                                arg_matches[k] = v
 
-            if len(values.args) - (len(values.defaults) if values.defaults else 0) >= 3:
-                # If the function takes a third required argument the value will be filled with the request object
-                a = a + (request,)
-            if "request" in values.args and (
-                len(values.args) - (len(values.defaults) if values.defaults else 0) < 3 or values.args[2] != "request"
-            ):
+            if "request" in args_set:
                 kwargs["request"] = request
+                if "request" in values.args:
+                    arg_matches["request"] = request
+
+            if "websocket" in args_set:
+                kwargs["websocket"] = websocket
+                if "websocket" in values.args:
+                    arg_matches["websocket"] = websocket
 
             try:
-                routine = func(*(obj, websocket, *a), **merge_dicts(kwargs, kw))
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
+                a = [arg_matches[k] if k in arg_matches else (websocket, request)[i] for i, k in enumerate(args_list)]
+                args_values = [kw_values.pop(key) if key in kw_values else a[i] for i, key in enumerate(args_list)]
+
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
+
+                routine = func(obj, *args_values, **kw_values)
                 callback_functions: Optional[Union[Tuple[Callable, Callable], Tuple[Callable], Callable]] = (
                     (await routine) if inspect.isawaitable(routine) else routine
                 )

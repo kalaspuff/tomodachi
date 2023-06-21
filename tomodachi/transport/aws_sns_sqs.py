@@ -39,7 +39,6 @@ from botocore.parsers import ResponseParserError
 
 from tomodachi import get_contextvar
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
-from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -113,6 +112,10 @@ FilterPolicyDictValueType = Sequence[
 ]
 
 FilterPolicyDictType = Mapping[str, FilterPolicyDictValueType]
+
+MessageAttributesType = Dict[
+    str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
+]
 
 connector = ClientConnector()
 
@@ -368,6 +371,7 @@ class AWSSNSSQSTransport(Invoker):
         else:
             _callback_kwargs = {k: None for k in _callback_kwargs if k != "self"}
         original_kwargs = {k: v for k, v in _callback_kwargs.items()}
+        args_set = (set(values.args[1:]) | set(values.kwonlyargs) | set(callback_kwargs or [])) - set(["self"])
 
         async def handler(
             payload: Optional[str],
@@ -393,9 +397,9 @@ class AWSSNSSQSTransport(Invoker):
                 get_contextvar("aws_sns_sqs.approximate_receive_count").set(approximate_receive_count)
 
             message: Optional[Union[bool, str, Dict]] = payload
-            message_attributes_values: Dict[
-                str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
-            ] = (cls.transform_message_attributes_from_response(message_attributes) if message_attributes else {})
+            message_attributes_values: MessageAttributesType = (
+                cls.transform_message_attributes_from_response(message_attributes) if message_attributes else {}
+            )
             message_uuid = None
             message_key = None
 
@@ -428,30 +432,30 @@ class AWSSNSSQSTransport(Invoker):
                                 if v > time.time() - 60
                             }
 
-                    if _callback_kwargs:
+                    if args_set:
                         if isinstance(message, dict):
                             for k, v in message.items():
-                                if k in _callback_kwargs:
+                                if k in args_set:
                                     kwargs[k] = v
-                        if "message" in _callback_kwargs and (
-                            not isinstance(message, dict) or "message" not in message
-                        ):
+                        if "message" in args_set and (not isinstance(message, dict) or "message" not in message):
                             kwargs["message"] = message
-                        if "topic" in _callback_kwargs and (not isinstance(message, dict) or "topic" not in message):
+                        if "topic" in args_set and (not isinstance(message, dict) or "topic" not in message):
                             kwargs["topic"] = topic
-                        if "receipt_handle" in _callback_kwargs and (
+                        if "message_uuid" in args_set and (
+                            not isinstance(message, dict) or "message_uuid" not in message
+                        ):
+                            kwargs["message_uuid"] = message_uuid
+                        if "receipt_handle" in args_set and (
                             not isinstance(message, dict) or "receipt_handle" not in message
                         ):
                             kwargs["receipt_handle"] = receipt_handle
-                        if "queue_url" in _callback_kwargs and (
-                            not isinstance(message, dict) or "queue_url" not in message
-                        ):
+                        if "queue_url" in args_set and (not isinstance(message, dict) or "queue_url" not in message):
                             kwargs["queue_url"] = queue_url
-                        if "message_attributes" in _callback_kwargs and (
+                        if "message_attributes" in args_set and (
                             not isinstance(message, dict) or "message_attributes" not in message
                         ):
                             kwargs["message_attributes"] = message_attributes_values
-                        if "approximate_receive_count" in _callback_kwargs and (
+                        if "approximate_receive_count" in args_set and (
                             not isinstance(message, dict) or "approximate_receive_count" not in message
                         ):
                             kwargs["approximate_receive_count"] = approximate_receive_count
@@ -465,18 +469,20 @@ class AWSSNSSQSTransport(Invoker):
                         await cls.delete_message(receipt_handle, queue_url, context)
                     return
             else:
-                if _callback_kwargs:
-                    if "message" in _callback_kwargs:
+                if args_set:
+                    if "message" in args_set:
                         kwargs["message"] = message
-                    if "topic" in _callback_kwargs:
+                    if "topic" in args_set:
                         kwargs["topic"] = topic
-                    if "receipt_handle" in _callback_kwargs:
+                    if "message_uuid" in args_set:
+                        kwargs["message_uuid"] = message_uuid
+                    if "receipt_handle" in args_set:
                         kwargs["receipt_handle"] = receipt_handle
-                    if "queue_url" in _callback_kwargs:
+                    if "queue_url" in args_set:
                         kwargs["queue_url"] = queue_url
-                    if "message_attributes" in _callback_kwargs:
+                    if "message_attributes" in args_set:
                         kwargs["message_attributes"] = message_attributes_values
-                    if "approximate_receive_count" in _callback_kwargs:
+                    if "approximate_receive_count" in args_set:
                         kwargs["approximate_receive_count"] = approximate_receive_count
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
@@ -484,17 +490,15 @@ class AWSSNSSQSTransport(Invoker):
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
-                if not message_envelope and len(values.args[1:]) and len(values.args[2:]) == len(a):
-                    routine = func(*(obj, message, *a))
-                elif not message_envelope and len(values.args[1:]) and len(merge_dicts(kwargs, kw)):
-                    routine = func(*(obj, message, *a), **merge_dicts(kwargs, kw))
-                elif len(merge_dicts(kwargs, kw)):
-                    routine = func(*(obj, *a), **merge_dicts(kwargs, kw))
-                elif len(values.args[1:]):
-                    routine = func(*(obj, message, *a), **kw)
-                else:
-                    routine = func(*(obj, *a), **kw)
+                kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
+                args_values = [
+                    kw_values.pop(key) if key in kw_values else a[i + 1]
+                    for i, key in enumerate(values.args[1 : len(a) + 1])
+                ]
+                if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                    args_values += a[len(args_values) + 1 :]
 
+                routine = func(*(obj, *args_values), **kw_values)
                 if inspect.isawaitable(routine):
                     return_value = await routine
                 else:
@@ -507,7 +511,17 @@ class AWSSNSSQSTransport(Invoker):
             keep_message_in_queue = False
             try:
                 return_value = await execute_middlewares(
-                    func, routine_func, context.get("message_middleware", []), *(obj, message, topic)
+                    func,
+                    routine_func,
+                    context.get("message_middleware", []),
+                    *(obj, message, topic),
+                    message=message,
+                    message_uuid=message_uuid,
+                    topic=topic,
+                    receipt_handle=receipt_handle,
+                    queue_url=queue_url,
+                    message_attributes=message_attributes_values,
+                    approximate_receive_count=approximate_receive_count,
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
                 # todo: don't log exception in case the error is of a AWSSNSSQSInternalServiceError (et. al) type
@@ -759,10 +773,8 @@ class AWSSNSSQSTransport(Invoker):
     @staticmethod
     def transform_message_attributes_from_response(
         message_attributes: Dict,
-    ) -> Dict[str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]]:
-        result: Dict[
-            str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
-        ] = {}
+    ) -> MessageAttributesType:
+        result: MessageAttributesType = {}
 
         for name, values in message_attributes.items():
             value = values["Value"]
