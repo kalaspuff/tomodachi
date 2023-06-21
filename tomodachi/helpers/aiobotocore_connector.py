@@ -27,6 +27,7 @@ class ClientConnector(object):
         "client_creation_lock_time",
         "aliases",
         "locks",
+        "conditions",
         "close_waiter",
     )
 
@@ -36,6 +37,7 @@ class ClientConnector(object):
     client_creation_lock_time: Dict[str, float]
     aliases: Dict[str, str]
     locks: Dict[str, asyncio.Lock]
+    conditions: Dict[str, asyncio.Condition]
     close_waiter: Optional[asyncio.Future]
 
     def __init__(self) -> None:
@@ -45,6 +47,7 @@ class ClientConnector(object):
         self.aliases = {}
         self.client_creation_lock_time = {}
         self.locks = {}
+        self.conditions = {}
         self.close_waiter = None
 
     def setup_credentials(self, alias_name: str, credentials: Dict) -> None:
@@ -57,6 +60,11 @@ class ClientConnector(object):
         if alias_name not in self.locks:
             self.locks[alias_name] = asyncio.Lock()
         return self.locks[alias_name]
+
+    async def get_condition(self, alias_name: str) -> asyncio.Condition:
+        if alias_name not in self.conditions:
+            self.conditions[alias_name] = asyncio.Condition()
+        return self.conditions[alias_name]
 
     async def create_client(
         self, alias_name: Optional[str] = None, credentials: Optional[Dict] = None, service_name: Optional[str] = None
