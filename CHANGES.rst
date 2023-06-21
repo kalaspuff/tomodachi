@@ -1,6 +1,96 @@
 Changes
 =======
 
+0.25.0 (2023-06-23)
+-------------------
+- The middleware execution logic has been improved to handle different argument
+  types and edge cases more smoothly. Enhanced the way arguments are passed to
+  middlewares and handlers, allowing better flexibility.
+
+- Resolved an edge case where a service could end up calling ``SNS.CreateTopic``
+  numerous times due to thousands of messages simultanously being published to
+  a topic that were previously unknown to the service.
+
+- Function handlers, middlewares and envelopes can all now specify additional
+  keyword arguments in their signatures and receive transport centric values.
+
+  Previously a few of these values could be used for function handlers or
+  envelopes, but not to middlewares. Now all of these values can be used
+  in any of the places, to allow for more flexibility in how to structure
+  systems, apps and libaries.
+
+  |
+
+  | **AWS SNS SQS related handlers / middlewares / envelopes:**
+
+  * ``queue_url`` and ``receipt_handle``
+
+    Can be used to modify visibility of messages, provide exponential
+    backoffs, move to DLQs, etc.
+
+  * ``message_attributes``
+
+    Values specified as message attributes that accompanies the message
+    body and that are among other things used for SNS queue subscription
+    filter policies and for distributed tracing.
+
+  * ``approximate_receive_count``
+
+    A value that specifies approximately how many times this message has
+    been received from consumers on ``SQS.ReceiveMessage`` calls. Handlers
+    that received a message, but that doesn't delete it from the queue
+    (for example in order to make it visible for other consumers or in
+    case of errors), will add to this count for each time they received it.
+
+  * ``topic``
+
+    Simply the name of the SNS topic.
+
+  * ``sns_message_id``
+
+    The message identifier for the SNS message (which is usually embedded
+    in the body of a SQS message). Ths SNS message identifier is the same
+    that is returned in the response when publishing a message with
+    ``SNS.Publish``.
+
+    The ``sns_message_id`` is read from within the ``"Body"`` of SQS
+    messages, more exactly ``"Body" -> "MessageId"`` from the SQS message.
+
+  * ``sqs_message_id``
+
+    The SQS message identifier, which naturally will differ from the SNS
+    message identifier as one SNS message can be propagated to several
+    SQS queues.
+
+    The ``sns_message_id`` is read from the ``"MessageId"`` value in the
+    top of the SQS message.
+
+  * ``message_timestamp``
+
+    A timestamp of when the original SNS message was published.
+
+  |
+
+  | **HTTP related handlers / middlewares / envelopes:**
+
+  * ``request``
+
+    The ``aiohttp`` request object which holds functionality for all
+    things HTTP requests.
+
+  * ``status_code``
+
+    Specified when predefined error handlers are run. Using the
+    keyword in handlers and middlewares for requests not invoking
+    error handlers should preferably be specified with a default
+    value to ensure it will work on both error handlers and request
+    router handlers.
+
+  * ``websocket``
+
+    Will be added to websocket requests if used.
+
+
 0.24.3 (2023-06-15)
 -------------------
 - Fixes an issue in the internal retry logic when using ``aws_sns_sqs_publish``
