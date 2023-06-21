@@ -1133,6 +1133,9 @@ class AWSSNSSQSTransport(Invoker):
         visibility_timeout: Optional[int] = None,
         redrive_policy: Optional[Dict[str, Union[str, int]]] = None,
     ) -> Optional[List]:
+        if cls.topics is None:
+            cls.topics = {}
+
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
 
