@@ -21,75 +21,70 @@ Changes
   flexibility in how to structure apps, logging, tracing, authentication, etc.
 
   |
+  .. code:: python
 
-    .. code:: python
+    Category: "AWS SNS+SQS related values"
 
-      Category: "AWS SNS+SQS related values"
+  :sup:`Use the following keywords arguments in function signatures (for handlers, middlewares and envelopes used for AWS SNS+SQS messages).`
 
-    :sup:`Use the following keywords for the arguments in the function
-    signatures to have them automatically populated with data.`
-
-  ``queue_url`` and ``receipt_handle``
-    Can be used to modify visibility of messages, provide exponential
-    backoffs, move to DLQs, etc.
-
-  ``message_attributes``
-    Values specified as message attributes that accompanies the message
-    body and that are among other things used for SNS queue subscription
-    filter policies and for distributed tracing.
-
-  ``approximate_receive_count``
-    A value that specifies approximately how many times this message has
-    been received from consumers on ``SQS.ReceiveMessage`` calls. Handlers
-    that received a message, but that doesn't delete it from the queue
-    (for example in order to make it visible for other consumers or in
-    case of errors), will add to this count for each time they received it.
-
-  ``topic``
-    Simply the name of the SNS topic.
-
-  ``sns_message_id``
-    The message identifier for the SNS message (which is usually embedded
-    in the body of a SQS message). Ths SNS message identifier is the same
-    that is returned in the response when publishing a message with
-    ``SNS.Publish``.
-
-    The ``sns_message_id`` is read from within the ``"Body"`` of SQS
-    messages, more exactly ``"Body" -> "MessageId"`` from the SQS message.
-
-  ``sqs_message_id``
-    The SQS message identifier, which naturally will differ from the SNS
-    message identifier as one SNS message can be propagated to several
-    SQS queues.
-
-    The ``sns_message_id`` is read from the ``"MessageId"`` value in the
-    top of the SQS message.
-
-  ``message_timestamp``
-    A timestamp of when the original SNS message was published.
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``message_attributes``        | Values specified as message attributes that accompanies the message                            |
+  |                               | body and that are among other things used for SNS queue subscription                           |
+  |                               | filter policies and for distributed tracing.                                                   |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``queue_url``                 | Can be used to modify visibility of messages, provide exponential backoffs, move to DLQs, etc. |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``receipt_handle``            | Can be used to modify visibility of messages, provide exponential backoffs, move to DLQs, etc. |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``approximate_receive_count`` | A value that specifies approximately how many times this message has                           |
+  |                               | been received from consumers on ``SQS.ReceiveMessage`` calls. Handlers                         |
+  |                               | that received a message, but that doesn't delete it from the queue                             |
+  |                               | (for example in order to make it visible for other consumers or in                             |
+  |                               | case of errors), will add to this count for each time they received it.                        |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``topic``                     | Simply the name of the SNS topic.                                                              |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``sns_message_id``            | The message identifier for the SNS message (which is usually embedded                          |
+  |                               | in the body of a SQS message). Ths SNS message identifier is the same                          |
+  |                               | that is returned in the response when publishing a message with                                |
+  |                               | ``SNS.Publish``.                                                                               |
+  |                               |                                                                                                |
+  |                               | The ``sns_message_id`` is read from within the ``"Body"`` of SQS                               |
+  |                               | messages.                                                                                      |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``sqs_message_id``            | The SQS message identifier, which naturally will differ from the SNS                           |
+  |                               | message identifier as one SNS message can be propagated to several                             |
+  |                               | SQS queues.                                                                                    |
+  |                               |                                                                                                |
+  |                               | The ``sns_message_id`` is read from the ``"MessageId"`` value in the                           |
+  |                               | top of the SQS message.                                                                        |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``message_timestamp``         | A timestamp of when the original SNS message was published.                                    |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``_________________________`` | ``_________________________``                                                                  |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
 
   |
+  .. code:: python
 
-    .. code:: python
+    Category: "HTTP related values"
 
-      Category: "HTTP related values"
+  :sup:`Use the following keywords arguments in function signatures (for handlers and middlewares used for HTTP requests).`
 
-    :sup:`Use the following keywords for the arguments in the function
-    signatures to have them automatically populated with data.`
-
-  ``request``
-    The ``aiohttp`` request object which holds functionality for all
-    things HTTP requests.
-
-  ``status_code``
-    Specified when predefined error handlers are run. Using the
-    keyword in handlers and middlewares for requests not invoking
-    error handlers should preferably be specified with a default
-    value to ensure it will work on both error handlers and request
-    router handlers.
-
-  ``websocket``
-    Will be added to websocket requests if used.
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``request``                   | The ``aiohttp`` request object which holds functionality for all                               |
+  |                               | things HTTP requests.                                                                          |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``status_code``               | Specified when predefined error handlers are run. Using the                                    |
+  |                               | keyword in handlers and middlewares for requests not invoking                                  |
+  |                               | error handlers should preferably be specified with a default                                   |
+  |                               | value to ensure it will work on both error handlers and request                                |
+  |                               | router handlers.                                                                               |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``websocket``                 | Will be added to websocket requests if used.                                                   |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
+  | ``_________________________`` | ``_________________________``                                                                  |
+  +-------------------------------+------------------------------------------------------------------------------------------------+
 
 
 0.24.3 (2023-06-15)
