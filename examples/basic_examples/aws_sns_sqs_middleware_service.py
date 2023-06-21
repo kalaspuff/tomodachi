@@ -179,6 +179,8 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
         approximate_receive_count: int = 0,
         *,
         middlewares_called: List[str],
+        sns_message_id: str,
+        sqs_message_id: str,
     ) -> None:
         """
         Message handler for the topic "example-route" that demonstrated how middlewares can be used to modify the
@@ -214,11 +216,13 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
         # If the handler doesn't have a catch-all **kwargs value and does not specify these keywords, the values
         # will not be passed to the handler.
 
-        # * AWS SNS+SQS handler kwargs: queue_url, receipt_handle, message_attributes, approximate_receive_count
+        # AWS SNS+SQS handler kwargs:
         self.log("value: queue_url (str) = '{}'".format(queue_url))
         self.log("value: receipt_handle (str) = '{}'".format(receipt_handle))
         self.log("value: message_attributes (dict) = {}".format(message_attributes))
         self.log("value: approximate_receive_count (int) = {}".format(approximate_receive_count))
+        self.log("value: sns_message_id (str) = {}".format(str(sns_message_id)))
+        self.log("value: sqs_message_id (str) = {}".format(str(sqs_message_id)))
 
     async def _started_service(self) -> None:
         async def publish(data: Any, topic: str, message_attributes: Optional[Dict] = None) -> None:

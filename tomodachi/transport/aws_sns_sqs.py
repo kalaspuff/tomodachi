@@ -380,6 +380,9 @@ class AWSSNSSQSTransport(Invoker):
             message_topic: str = "",
             message_attributes: Optional[Dict] = None,
             approximate_receive_count: Optional[int] = None,
+            sns_message_id: Optional[str] = None,
+            sqs_message_id: Optional[str] = None,
+            message_timestamp: Optional[str] = None,
         ) -> Any:
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 try:
@@ -459,6 +462,19 @@ class AWSSNSSQSTransport(Invoker):
                             not isinstance(message, dict) or "approximate_receive_count" not in message
                         ):
                             kwargs["approximate_receive_count"] = approximate_receive_count
+                        if "sns_message_id" in args_set and (
+                            not isinstance(message, dict) or "sns_message_id" not in message
+                        ):
+                            kwargs["sns_message_id"] = sns_message_id
+                        if "sqs_message_id" in args_set and (
+                            not isinstance(message, dict) or "sqs_message_id" not in message
+                        ):
+                            kwargs["sqs_message_id"] = sqs_message_id
+                        if "message_timestamp" in args_set and (
+                            not isinstance(message, dict) or "message_timestamp" not in message
+                        ):
+                            kwargs["message_timestamp"] = message_timestamp
+
                 except (Exception, asyncio.CancelledError, BaseException) as e:
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
@@ -484,6 +500,12 @@ class AWSSNSSQSTransport(Invoker):
                         kwargs["message_attributes"] = message_attributes_values
                     if "approximate_receive_count" in args_set:
                         kwargs["approximate_receive_count"] = approximate_receive_count
+                    if "sns_message_id" in args_set:
+                        kwargs["sns_message_id"] = sns_message_id
+                    if "sqs_message_id" in args_set:
+                        kwargs["sqs_message_id"] = sqs_message_id
+                    if "message_timestamp" in args_set:
+                        kwargs["message_timestamp"] = message_timestamp
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
                     del kwargs[values.args[1]]
@@ -522,6 +544,9 @@ class AWSSNSSQSTransport(Invoker):
                     queue_url=queue_url,
                     message_attributes=message_attributes_values,
                     approximate_receive_count=approximate_receive_count,
+                    sns_message_id=sns_message_id,
+                    sqs_message_id=sqs_message_id,
+                    message_timestamp=message_timestamp,
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
                 # todo: don't log exception in case the error is of a AWSSNSSQSInternalServiceError (et. al) type
@@ -1469,6 +1494,9 @@ class AWSSNSSQSTransport(Invoker):
                     message_topic: str,
                     message_attributes: Dict,
                     approximate_receive_count: Optional[int],
+                    sns_message_id: Optional[str],
+                    sqs_message_id: Optional[str],
+                    message_timestamp: Optional[str],
                 ) -> Callable[..., Coroutine]:
                     async def _callback() -> None:
                         await handler(
@@ -1478,6 +1506,9 @@ class AWSSNSSQSTransport(Invoker):
                             message_topic,
                             message_attributes,
                             approximate_receive_count,
+                            sns_message_id,
+                            sqs_message_id,
+                            message_timestamp,
                         )
 
                     return _callback
@@ -1607,6 +1638,10 @@ class AWSSNSSQSTransport(Invoker):
                                 int(message.get("Attributes", {}).get("ApproximateReceiveCount", 0)) or None
                             )
 
+                            sns_message_id = message_body.get("MessageId") or ""
+                            sqs_message_id = message.get("MessageId") or ""
+                            message_timestamp = message_body.get("Timestamp") or ""
+
                             futures.append(
                                 callback(
                                     payload,
@@ -1615,11 +1650,17 @@ class AWSSNSSQSTransport(Invoker):
                                     message_topic,
                                     message_attributes,
                                     approximate_receive_count,
+                                    sns_message_id,
+                                    sqs_message_id,
+                                    message_timestamp,
                                 )
                             )
                     except asyncio.CancelledError:
                         continue
-                    except BaseException:
+                    except BaseException as e:
+                        logging.getLogger("exception").exception(
+                            "Uncaught exception while receiving messages: {}".format(str(e))
+                        )
                         continue
 
                     tasks = [asyncio.ensure_future(func()) for func in futures]
