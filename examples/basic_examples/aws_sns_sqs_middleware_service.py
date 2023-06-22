@@ -229,7 +229,13 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
             if not message_attributes:
                 message_attributes = {}
             self.log("publish -- sns.publish(data='{}', message_attributes={})".format(data, message_attributes))
-            await aws_sns_sqs_publish(self, data, topic=topic, message_attributes=message_attributes, wait=False)
+            await aws_sns_sqs_publish(
+                self,
+                data,
+                topic=topic,
+                message_attributes=message_attributes,
+                wait=False,
+            )
 
         await publish("a simple message", "example-route")
         await publish("a message with additional attribute", "example-route", message_attributes={"initial_a_value": 5})

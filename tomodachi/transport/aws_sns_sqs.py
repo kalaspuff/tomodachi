@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import base64
 import binascii
@@ -28,6 +30,7 @@ from typing import (
     TypedDict,
     Union,
     cast,
+    overload,
 )
 
 import aiobotocore
@@ -145,6 +148,48 @@ class AWSSNSSQSTransport(Invoker):
     topics: Optional[Dict[str, str]] = None
     close_waiter: Optional[asyncio.Future] = None
 
+    @overload
+    @classmethod
+    async def publish(
+        cls,
+        service: Any,
+        data: Any,
+        topic: str,
+        wait: Literal[True] = True,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
+        message_attributes: Optional[Dict[str, Any]] = None,
+        topic_attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES,
+        overwrite_topic_attributes: bool = False,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> str:
+        ...
+
+    @overload
+    @classmethod
+    async def publish(
+        cls,
+        service: Any,
+        data: Any,
+        topic: str,
+        wait: Literal[False],
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
+        message_attributes: Optional[Dict[str, Any]] = None,
+        topic_attributes: Optional[Union[str, Dict[str, Union[bool, str]]]] = MESSAGE_TOPIC_ATTRIBUTES,
+        overwrite_topic_attributes: bool = False,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> asyncio.Task[str]:
+        ...
+
     @classmethod
     async def publish(
         cls,
@@ -162,7 +207,7 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> None:
+    ) -> Union[str, asyncio.Task[str]]:
         if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
             # Fallback if deprecated message_protocol keyword is used
             message_envelope = message_protocol
@@ -195,8 +240,8 @@ class AWSSNSSQSTransport(Invoker):
             overwrite_attributes=overwrite_topic_attributes,
         )
 
-        async def _publish_message() -> None:
-            await cls.publish_message(
+        async def _publish_message() -> str:
+            return await cls.publish_message(
                 topic_arn,
                 payload,
                 cast(Dict, message_attributes),
@@ -206,10 +251,9 @@ class AWSSNSSQSTransport(Invoker):
             )
 
         if wait:
-            await _publish_message()
+            return await _publish_message()
         else:
-            loop: Any = asyncio.get_event_loop()
-            loop.create_task(_publish_message())
+            return asyncio.create_task(_publish_message())
 
     @classmethod
     def get_topic_name(
@@ -1702,8 +1746,6 @@ class AWSSNSSQSTransport(Invoker):
                 task.cancel()
                 await task
 
-        loop: Any = asyncio.get_event_loop()
-
         stop_method = getattr(obj, "_stop_service", None)
 
         async def stop_service(*args: Any, **kwargs: Any) -> None:
@@ -1734,7 +1776,7 @@ class AWSSNSSQSTransport(Invoker):
 
         setattr(obj, "_started_service", started_service)
 
-        loop.create_task(receive_messages())
+        asyncio.create_task(receive_messages())
 
     @classmethod
     async def subscribe(cls, obj: Any, context: Dict) -> Optional[Callable]:
