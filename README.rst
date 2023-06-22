@@ -841,6 +841,7 @@ HTTP related values - function signature keyword arguments
 
 Middlewares for HTTP and messaging (AWS SNS+SQS, AMQP, etc.) 🧱
 =================================================================
+
 Middlewares can be used to add functionality to the service, for example to add logging, authentication, tracing, build more advanced logic for messaging, unpack request queries, modify HTTP responses, handle uncaught errors, add additional context to handlers, etc.
 
 Custom middleware functions or objects that can be called are added to the service by specifying them as a list in the ``http_middleware`` and ``message_middleware`` attribute of the service class.
