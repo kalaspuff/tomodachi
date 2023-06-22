@@ -12,6 +12,10 @@ Changes
   numerous times due to thousands of messages simultanously being published to
   a topic that were previously unknown to the service.
 
+- The ``aws_sns_sqs_publish`` function will now return the SNS message identifier
+  as a ``str`` value if it is called with ``wait=True`` (default), or instead
+  return an ``asyncio.Task`` object if called with ``wait=False``.
+
 - Function handlers, middlewares and envelopes can all now specify additional
   keyword arguments in their signatures and receive transport centric values.
 
