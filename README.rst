@@ -89,8 +89,10 @@ parameters and a few examples of service code.*
 Please follow some of the amazing contributors to ``tomodachi`` and add features that you deem are missing and/or fix
 bugs you encounter in the repo. Read more in the `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
 
-[![](https://contrib.rocks/image?repo=kalaspuff/tomodachi)](https://github.com/kalaspuff/tomodachi/graphs/contributors)
+.. image:: https://contrib.rocks/image?repo=kalaspuff/tomodachi
+   :target: https://github.com/kalaspuff/tomodachi/graphs/contributors
 
+|
 | **Please note: this library is a work in progress.**
 
 Consider `tomodachi` as beta software. `tomodachi` is still an experimental
@@ -673,7 +675,7 @@ Usage:
   AWS supports two types of queues and topics, namely ``standard`` and ``FIFO``. The major difference between these is that the latter guarantees correct ordering and at-most-once delivery. By default, tomodachi creates ``standard`` queues and topics. To create them as ``FIFO`` instead, set ``fifo`` to ``True``.
 
   The ``max_number_of_consumed_messages`` setting determines how many messages should be pulled from the queue at once. This is useful if you have a resource-intensive task that you don't want other messages to compete for. The default value is 10 for ``standard`` queues and 1 for ``FIFO`` queues. The minimum value is 1, and the maximum value is 10.
-  
+
   The ``filter_policy`` value of specified as a keyword argument will be applied on the SNS subscription (for the specified topic and queue) as the ``"FilterPolicy`` attribute. This will apply a filter on SNS messages using the chosen "message attributes" and/or their values specified in the filter. Make note that the filter policy dict structure differs somewhat from the actual message attributes, as values to the keys in the filter policy must be a dict (object) or list (array). Example: A filter policy value of ``{"event": ["order_paid"], "currency": ["EUR", "USD"]}`` would set up the SNS subscription to receive messages on the topic only where the message attribute ``"event"`` is ``"order_paid"`` and the ``"currency"`` value is either ``"EUR"`` or ``"USD"``.
 
   If ``filter_policy`` is not specified as an argument (default), the queue will receive messages on the topic as per already specified if using an existing subscription, or receive all messages on the topic if a new subscription is set up (default). Changing the ``filter_policy`` on an existing subscription may take several minutes to propagate. Read more about the filter policy format on AWS. https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html
@@ -763,6 +765,191 @@ Implementing proper consensus mechanisms and in turn leader election can be comp
 ----
 
 *To extend the functionality by building your own trigger decorators for your endpoints, studying the built-in invoker classes should the first step of action. All invoker classes should extend the class for a common developer experience:* ``tomodachi.invoker.Invoker``.
+
+----
+
+Function signatures - keywords with transport centric values 🪄
+=================================================================
+
+Function handlers, middlewares and envelopes can specify additional keyword arguments in their signatures and receive transport centric values.
+
+The following keywords can be used across all kind of handler functions, envelopes and envelopes parsing messages. These can be used to structure apps, logging, tracing, authentication, building more advanced messaging logic, etc.
+
+AWS SNS+SQS related values - function signature keyword arguments
+-----------------------------------------------------------------
+
+:sup:`Use the following keywords arguments in function signatures (for handlers, middlewares and envelopes used for AWS SNS+SQS messages).`
+
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``message_attributes``        | Values specified as message attributes that accompanies the message                            |
+|                               | body and that are among other things used for SNS queue subscription                           |
+|                               | filter policies and for distributed tracing.                                                   |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``queue_url``                 | Can be used to modify visibility of messages, provide exponential backoffs, move to DLQs, etc. |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``receipt_handle``            | Can be used to modify visibility of messages, provide exponential backoffs, move to DLQs, etc. |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``approximate_receive_count`` | A value that specifies approximately how many times this message has                           |
+|                               | been received from consumers on ``SQS.ReceiveMessage`` calls. Handlers                         |
+|                               | that received a message, but that doesn't delete it from the queue                             |
+|                               | (for example in order to make it visible for other consumers or in                             |
+|                               | case of errors), will add to this count for each time they received it.                        |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``topic``                     | Simply the name of the SNS topic.                                                              |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``sns_message_id``            | The message identifier for the SNS message (which is usually embedded                          |
+|                               | in the body of a SQS message). Ths SNS message identifier is the same                          |
+|                               | that is returned in the response when publishing a message with                                |
+|                               | ``SNS.Publish``.                                                                               |
+|                               |                                                                                                |
+|                               | The ``sns_message_id`` is read from within the ``"Body"`` of SQS                               |
+|                               | messages.                                                                                      |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``sqs_message_id``            | The SQS message identifier, which naturally will differ from the SNS                           |
+|                               | message identifier as one SNS message can be propagated to several                             |
+|                               | SQS queues.                                                                                    |
+|                               |                                                                                                |
+|                               | The ``sns_message_id`` is read from the ``"MessageId"`` value in the                           |
+|                               | top of the SQS message.                                                                        |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``message_timestamp``         | A timestamp of when the original SNS message was published.                                    |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``_________________________`` | ``_________________________``                                                                  |
++-------------------------------+------------------------------------------------------------------------------------------------+
+
+HTTP related values - function signature keyword arguments
+----------------------------------------------------------
+
+:sup:`Use the following keywords arguments in function signatures (for handlers and middlewares used for HTTP requests).`
+
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``request``                   | The ``aiohttp`` request object which holds functionality for all                               |
+|                               | things HTTP requests.                                                                          |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``status_code``               | Specified when predefined error handlers are run. Using the                                    |
+|                               | keyword in handlers and middlewares for requests not invoking                                  |
+|                               | error handlers should preferably be specified with a default                                   |
+|                               | value to ensure it will work on both error handlers and request                                |
+|                               | router handlers.                                                                               |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``websocket``                 | Will be added to websocket requests if used.                                                   |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``_________________________`` | ``_________________________``                                                                  |
++-------------------------------+------------------------------------------------------------------------------------------------+
+
+----
+
+Middlewares for HTTP and messaging (AWS SNS+SQS, AMQP, etc.) 🧱
+=================================================================
+Middlewares can be used to add functionality to the service, for example to add logging, authentication, tracing, build more advanced logic for messaging, unpack request queries, modify HTTP responses, handle uncaught errors, add additional context to handlers, etc.
+
+Custom middleware functions or objects that can be called are added to the service by specifying them as a list in the ``http_middleware`` and ``message_middleware`` attribute of the service class.
+
+.. code:: python
+
+    from .middleware import logger_middleware
+
+    class Service(tomodachi.Service):
+        name = "middleware-example"
+        http_middleware = [logger_middleware]
+
+        ...
+
+Middlewares are invoked as a stack in the order they are specified in ``http_middleware`` or ``message_middleware`` with the first callable in the list to be called first (and then also return last).
+
+1. The first unbound argument of a middleware function will receive the coroutine function to call next (which would be either the handlers function or a function for the next middleware in the chain).
+2. (optional) The second unbound argument of a middleware function will receive the service class object.
+3. (optional) The third unbound argument of a middleware function will receive the ``request`` object for HTTP middlewares, or the ``message`` (as parsed by the envelope) for message middlewares.
+
+When calling the next function in the chain, the middleware function should be called as an awaitable function (``await func()``) and for HTTP middlewares the result should most commonly be returned.
+
+The function can be called with any number of custom keyword arguments, which will then be passed to each following middleware and the handler itself. A middleware can only add new keywords or modify the values or existing keyword arguments (by passing it through again with the new value). The exception to this is that passed keywords for transport centric values (defined above) will be ignored - their value cannot be modified - they will retain their original value. While a middleware can modify the values of custom keyword arguments, there is no way for a middleware to completely remove any keyword that has been added by previous middlewares.
+
+**Example of a middleware specified as a function that adds tracing to AWS SQS handlers:**
+
+.. code:: python
+
+    async def trace_middleware(
+        func: Callable[... Awaitable],
+        *,
+        topic: str,
+        message_attributes: dict,
+        sns_message_id: str
+    ) -> None:
+        ctx: Context | None = None
+
+        if carrier_traceparent := message_attributes.get("telemetry.carrier.traceparent"):
+            carrier: dict[str, list[str] | str] = {"traceparent": carrier_traceparent}
+            ctx = TraceContextTextMapPropagator().extract(carrier=carrier)
+
+        with tracer.start_as_current_span(f"SNSSQS handler '{func.__name__}'", context=ctx) as span:
+            span.set_attribute("messaging.system", "AmazonSQS")
+            span.set_attribute("messaging.operation", "process")
+            span.set_attribute("messaging.source.name", topic)
+            span.set_attribute("messaging.message.id", sns_message_id)
+
+            try:
+                # Calls the handler function (or next middleware in the chain)
+                await func()
+            except BaseException as exc:
+                logging.getLogger("exception").exception(exc)
+                span.record_exception(exc, escaped=True)
+                span.set_status(StatusCode.ERROR, f"{exc.__class__.__name__}: {exc}")
+                raise exc
+
+.. code:: python
+
+    from .middleware import http_trace_middleware
+
+    class Service(tomodachi.Service):
+        name = "middleware-example"
+        message_middleware = [trace_middleware]
+
+        ...
+
+**Example of a middleware specified as a class:**
+
+A middleware can also be specified as the object of a class, in which case the ``__call__`` method will be invoked.
+
+.. code:: python
+
+    class BasicAuthMiddleware:
+        def __init__(self, username: str, password: str) -> None:
+            self.valid_credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
+
+        async def __call__(
+            self,
+            func: Callable[..., Awaitable[web.Response]],
+            *,
+            request: web.Request,
+        ) -> web.Response:
+            try:
+                auth = request.headers.get("Authorization", "")
+                encoded_credentials = auth.split()[-1] if auth.startswith("Basic ") else ""
+
+                if encoded_credentials == self.valid_credentials:
+                    username = base64.b64decode(encoded_credentials).decode().split(":")[0]
+                    # Calls the handler function (or next middleware in the chain).
+                    # The handler (and following middlewares) can use username in their signature.
+                    return await func(username=username)
+                elif auth:
+                    return web.json_response({"status": "bad credentials"}, status=401)
+
+                return web.json_response({"status": "auth required"}, status=401)
+            except BaseException as exc:
+                try:
+                    logging.getLogger("exception").exception(exc)
+                    raise exc
+                finally:
+                    return web.json_response({"status": "internal server error"}, status=500)
+
+.. code:: python
+
+    class Service(tomodachi.Service):
+        name = "middleware-example"
+        http_middleware = [BasicAuthMiddleware(username="example", password="example")]
+
+        ...
 
 ----
 
