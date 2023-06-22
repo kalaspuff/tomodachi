@@ -857,20 +857,46 @@ Custom middleware functions or objects that can be called are added to the servi
     class Service(tomodachi.Service):
         name = "middleware-example"
         http_middleware = [logger_middleware]
-
         ...
 
 Middlewares are invoked as a stack in the order they are specified in ``http_middleware`` or ``message_middleware`` with the first callable in the list to be called first (and then also return last).
 
-1. The first unbound argument of a middleware function will receive the coroutine function to call next (which would be either the handlers function or a function for the next middleware in the chain).
-2. (optional) The second unbound argument of a middleware function will receive the service class object.
-3. (optional) The third unbound argument of a middleware function will receive the ``request`` object for HTTP middlewares, or the ``message`` (as parsed by the envelope) for message middlewares.
+Provided arguments to middleware functions
+------------------------------------------
+
+1. The first unbound argument of a middleware function will receive the coroutine function to call next (which would be either the handlers function or a function for the next middleware in the chain). (recommended name: ``func``)
+2. (optional) The second unbound argument of a middleware function will receive the service class object. (recommended name: ``service``)
+3. (optional) The third unbound argument of a middleware function will receive the ``request`` object for HTTP middlewares, or the ``message`` (as parsed by the envelope) for message middlewares. (recommended name: ``request`` or ``message``)
+
+Use the recommended names to prevent collisions with passed keywords for transport centric values that are also sent to the middleware if the keyword arguments are defined in the function signature.
+
+Calling the handler or the next middleware in the chain
+-------------------------------------------------------
 
 When calling the next function in the chain, the middleware function should be called as an awaitable function (``await func()``) and for HTTP middlewares the result should most commonly be returned.
 
-The function can be called with any number of custom keyword arguments, which will then be passed to each following middleware and the handler itself. A middleware can only add new keywords or modify the values or existing keyword arguments (by passing it through again with the new value). The exception to this is that passed keywords for transport centric values (defined above) will be ignored - their value cannot be modified - they will retain their original value. While a middleware can modify the values of custom keyword arguments, there is no way for a middleware to completely remove any keyword that has been added by previous middlewares.
+Adding custom arguments passed on to the handler
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The function can be called with any number of custom keyword arguments, which will then be passed to each following middleware and the handler itself. This pattern works a bit how contextvars can be set up, but could be useful for passing values and objects instead of keeping them in a global context.
+
+.. code:: python
+
+    async def logger_middleware(func: Callable[..., Awaitable], *, traceid: str = "") -> Any:
+        if not traceid:
+            traceid = uuid.uuid4().hex
+        logger = Logger(traceid=traceid)
+
+        # Passes the logger and traceid to following middlewares and to the handler
+        return await func(logger=logger, traceid=traceid)
+
+A middleware can only add new keywords or modify the values or existing keyword arguments (by passing it through again with the new value). The exception to this is that passed keywords for transport centric values will be ignored - their value cannot be modified - they will retain their original value.
+
+_While a middleware can modify the values of custom keyword arguments, there is no way for a middleware to completely remove any keyword that has been added by previous middlewares._
 
 **Example of a middleware specified as a function that adds tracing to AWS SQS handlers:**
+
+This example portrays a middleware function which adds trace spans around the function, with the trace context populated from a "traceparent header" value collected from a SNS message' message attribute. The topic name and SNS message identifier is also added as attributes to the trace span.
 
 .. code:: python
 
@@ -905,16 +931,22 @@ The function can be called with any number of custom keyword arguments, which wi
 .. code:: python
 
     from .middleware import trace_middleware
+    from .envelope import Event, MessageEnvelope
 
     class Service(tomodachi.Service):
         name = "middleware-example"
+        message_envelope: MessageEnvelope(key="event")
         message_middleware = [trace_middleware]
 
-        ...
+        @tomodachi.aws_sns_sqs("example-topic", queue_name="example-queue")
+        async def handler(self, event: Event) -> None:
+            ...
 
 **Example of a middleware specified as a class:**
 
-A middleware can also be specified as the object of a class, in which case the ``__call__`` method will be invoked.
+A middleware can also be specified as the object of a class, in which case the `__call__`` method of the object will be invoked as the middleware function. Note that bound functions such as self has to be included in the signature as it's called as a normal class function.
+
+This class provides a simplistic basic auth implementation validating credentials in the HTTP Authorization header for HTTP requests to the service.
 
 .. code:: python
 
@@ -950,13 +982,15 @@ A middleware can also be specified as the object of a class, in which case the `
 
 .. code:: python
 
-    from .middleware import BasicAuthMiddleware
+    from .middleware import trace_middleware
 
     class Service(tomodachi.Service):
         name = "middleware-example"
         http_middleware = [BasicAuthMiddleware(username="example", password="example")]
 
-        ...
+        @tomodachi.http("GET", r"/")
+        async def handler(self, request: web.Request, username: str) -> web.Response:
+            ...
 
 ----
 
