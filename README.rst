@@ -41,6 +41,10 @@ Project documentation
 
 - Options and configuration parameters: https://tomodachi.dev/docs/options
 
+- Middleware functionality: https://tomodachi.dev/docs/middlewares
+
+- Function signature keywords: https://tomodachi.dev/docs/function-keywords
+
 - FAQ: https://tomodachi.dev/docs/faq
 
 .. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
@@ -809,7 +813,7 @@ AWS SNS+SQS related values - function signature keyword arguments
 |                               | message identifier as one SNS message can be propagated to several                             |
 |                               | SQS queues.                                                                                    |
 |                               |                                                                                                |
-|                               | The ``sns_message_id`` is read from the ``"MessageId"`` value in the                           |
+|                               | The ``sqs_message_id`` is read from the ``"MessageId"`` value in the                           |
 |                               | top of the SQS message.                                                                        |
 +-------------------------------+------------------------------------------------------------------------------------------------+
 | ``message_timestamp``         | A timestamp of when the original SNS message was published.                                    |
@@ -900,7 +904,7 @@ The function can be called with any number of custom keyword arguments, which wi
 
 .. code:: python
 
-    from .middleware import http_trace_middleware
+    from .middleware import trace_middleware
 
     class Service(tomodachi.Service):
         name = "middleware-example"
@@ -945,6 +949,8 @@ A middleware can also be specified as the object of a class, in which case the `
                     return web.json_response({"status": "internal server error"}, status=500)
 
 .. code:: python
+
+    from .middleware import BasicAuthMiddleware
 
     class Service(tomodachi.Service):
         name = "middleware-example"
