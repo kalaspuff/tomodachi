@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from run_test_service_helper import start_service
+from tomodachi.transport.aws_sns_sqs import connector
 
 
 @pytest.mark.skipif(
@@ -31,6 +32,24 @@ def test_start_aws_sns_sqs_service_dead_letter_queue(monkeypatch: Any, capsys: A
 
         assert instance.test_topic_data_received_count == 3
         assert instance.test_dlq_data_received_after_count == 3
+
+        async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
+            dlq_name = "test-queue-dlq-{}".format(instance.data_uuid)
+            response = await sqs_client.get_queue_url(QueueName=dlq_name)
+            dlq_url = response.get("QueueUrl")
+            response = await sqs_client.get_queue_attributes(
+                QueueUrl=dlq_url,
+                AttributeNames=[
+                    "VisibilityTimeout",
+                    "MessageRetentionPeriod",
+                ],
+            )
+            dlq_attributes = response.get("Attributes", {})
+
+        assert dlq_attributes == {
+            "VisibilityTimeout": "30",
+            "MessageRetentionPeriod": "1209600",  # 14 days
+        }
 
     loop.run_until_complete(_async(loop))
     instance.stop_service()
