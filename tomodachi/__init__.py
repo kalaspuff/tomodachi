@@ -16,6 +16,7 @@ try:
         get_execution_context,
         get_instance,
         get_service,
+        get_services,
         increase_execution_context_value,
         set_execution_context,
     )
@@ -227,6 +228,7 @@ __all__ = [
     "decrease_execution_context_value",
     "increase_execution_context_value",
     "get_service",
+    "get_services",
     "get_instance",
     "exit",
     "context",

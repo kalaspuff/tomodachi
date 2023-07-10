@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import sys
 from contextvars import ContextVar
-from typing import Any, Dict, KeysView, Literal, Optional, Sequence, Tuple, Union, cast
+from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
+from typing import Any, Dict, Iterable, KeysView, Literal, Optional, Sequence, TextIO, Tuple, Union, cast
 
 import structlog
 
@@ -191,6 +193,12 @@ def add_exception_info(
     return event_dict
 
 
+def remove_ellipsis_values(
+    logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
+) -> structlog.typing.EventDict:
+    return {k: v for k, v in event_dict.items() if v is not Ellipsis}
+
+
 class LoggerContext(dict):
     def __init__(self, *a: Any, **kw: Any) -> None:
         if a:
@@ -279,12 +287,161 @@ class LoggerContext(dict):
         return self.__data
 
 
-_context.set(LoggerContext(logger="default", **{LOGGER_DISABLED_KEY: False}))
+class Logger(structlog.stdlib.BoundLogger):
+    # def __init__(
+    #    self,
+    #    logger: structlog.typing.WrappedLogger,
+    #    processors: Iterable[structlog.typing.Processor],
+    #    context: structlog.typing.Context,
+    # ):
+    #    super().__init__(logger, processors, context)
+    #    # setattr(logger, "logger_name", context.get("logger"))
 
-base_logger = structlog.PrintLoggerFactory()
+    @property
+    def name(self) -> str:
+        name: str = self._context.get("logger") or ""
+        if not name:
+            return str(self._logger.name or "")
+        return name
 
-console_logger: structlog.stdlib.BoundLogger = structlog.get_logger(
-    base_logger,
+    @property
+    def level(self) -> int:
+        try:
+            return int(self._logger.level)
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).level
+
+    @property
+    def parent(self) -> Any:
+        try:
+            return self._logger.parent
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).parent
+
+    @property
+    def propagate(self) -> bool:
+        try:
+            return bool(self._logger.propagate)
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).propagate
+
+    @property
+    def handlers(self) -> Any:
+        try:
+            return self._logger.handlers
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).handlers
+
+    @property
+    def disabled(self) -> int:
+        try:
+            return int(bool(self._logger.disabled))
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).disabled
+
+    def setLevel(self, level: int) -> None:
+        name = self._context.get("logger") or None
+        logging.getLogger(name).setLevel(level)
+
+        try:
+            self._logger.setLevel(level)
+        except AttributeError:
+            pass
+
+    def findCaller(self, stack_info: bool = False) -> Tuple[str, int, str, Optional[str]]:
+        try:
+            return cast(Tuple[str, int, str, Optional[str]], self._logger.findCaller(stack_info=stack_info))
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).findCaller(stack_info=stack_info)
+
+    def makeRecord(
+        self,
+        name: str,
+        level: int,
+        fn: str,
+        lno: int,
+        msg: str,
+        args: tuple[Any, ...],
+        exc_info: structlog.typing.ExcInfo,
+        func: str | None = None,
+        extra: Any = None,
+    ) -> logging.LogRecord:
+        try:
+            return cast(
+                logging.LogRecord,
+                self._logger.makeRecord(name, level, fn, lno, msg, args, exc_info, func=func, extra=extra),
+            )
+        except AttributeError:
+            name_ = self._context.get("logger") or None
+            return logging.getLogger(name_).makeRecord(
+                name, level, fn, lno, msg, args, exc_info, func=func, extra=extra
+            )
+
+    def handle(self, record: logging.LogRecord) -> None:
+        try:
+            self._logger.handle(record)
+        except AttributeError:
+            name = self._context.get("logger") or None
+            logging.getLogger(name).handle(record)
+
+    def addHandler(self, hdlr: logging.Handler) -> None:
+        try:
+            self._logger.addHandler(hdlr)
+        except AttributeError:
+            name = self._context.get("logger") or None
+            logging.getLogger(name).addHandler(hdlr)
+
+    def removeHandler(self, hdlr: logging.Handler) -> None:
+        try:
+            self._logger.removeHandler(hdlr)
+        except AttributeError:
+            name = self._context.get("logger") or None
+            logging.getLogger(name).removeHandler(hdlr)
+
+    def hasHandlers(self) -> bool:
+        try:
+            return bool(self._logger.hasHandlers())
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).hasHandlers()
+
+    def callHandlers(self, record: logging.LogRecord) -> None:
+        try:
+            self._logger.callHandlers(record)
+        except AttributeError:
+            name = self._context.get("logger") or None
+            logging.getLogger(name).callHandlers(record)
+
+    def getEffectiveLevel(self) -> int:
+        try:
+            return int(self._logger.getEffectiveLevel())
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).getEffectiveLevel()
+
+    def isEnabledFor(self, level: int) -> bool:
+        try:
+            return bool(self._logger.isEnabledFor(level))
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).isEnabledFor(level)
+
+    def getChild(self, suffix: str) -> logging.Logger:
+        try:
+            return cast(logging.Logger, self._logger.getChild(suffix))
+        except AttributeError:
+            name = self._context.get("logger") or None
+            return logging.getLogger(name).getChild(suffix)
+
+
+console_logger: structlog.stdlib.BoundLogger = structlog.wrap_logger(
+    None,
     processors=[
         structlog.processors.add_log_level,
         merge_contextvars,
@@ -294,16 +451,17 @@ console_logger: structlog.stdlib.BoundLogger = structlog.get_logger(
         RenameKeys(pairs=RENAME_KEYS),
         add_exception_info,
         AddMissingDictKey(key="message"),
+        remove_ellipsis_values,
         SquelchDisabledLogger(),
         structlog.dev.ConsoleRenderer(sort_keys=False, event_key="message"),
     ],
-    wrapper_class=structlog.stdlib.BoundLogger,
+    wrapper_class=Logger,
     context_class=LoggerContext,
     cache_logger_on_first_use=False,
 )
 
-json_logger: structlog.stdlib.BoundLogger = structlog.get_logger(
-    base_logger,
+json_logger: structlog.stdlib.BoundLogger = structlog.wrap_logger(
+    None,
     processors=[
         structlog.processors.add_log_level,
         merge_contextvars,
@@ -313,10 +471,11 @@ json_logger: structlog.stdlib.BoundLogger = structlog.get_logger(
         RenameKeys(pairs=RENAME_KEYS),
         add_exception_info,
         RemoveDictKey(key="exc_info"),
+        remove_ellipsis_values,
         SquelchDisabledLogger(),
         structlog.processors.JSONRenderer(serializer=serializer_func),
     ],
-    wrapper_class=structlog.stdlib.BoundLogger,
+    wrapper_class=Logger,
     context_class=LoggerContext,
     cache_logger_on_first_use=False,
 )
@@ -376,6 +535,9 @@ def get_logger(name: Optional[str] = None) -> structlog.stdlib.BoundLogger:
 # CamelCase alias for `get_logger`.
 getLogger = get_logger
 
+# Set default logger context
+_context.set(LoggerContext(logger="default", **{LOGGER_DISABLED_KEY: False}))
+
 
 __all__ = [
     "get_logger",
@@ -385,4 +547,12 @@ __all__ = [
     "enable_logger",
     "is_logger_disabled",
     "is_logger_enabled",
+    "CRITICAL",
+    "DEBUG",
+    "ERROR",
+    "FATAL",
+    "INFO",
+    "NOTSET",
+    "WARN",
+    "WARNING",
 ]

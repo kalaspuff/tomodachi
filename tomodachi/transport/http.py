@@ -2,7 +2,6 @@ import asyncio
 import functools
 import inspect
 import ipaddress
-import logging
 import os
 import pathlib
 import platform
@@ -21,6 +20,7 @@ from aiohttp.streams import EofStream
 from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
 
+from tomodachi import logging
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -30,7 +30,7 @@ from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 from tomodachi.options import Options
 
-http_logger = logging.getLogger("transport.http")
+http_logger = logging.getLogger("tomodachi.http")
 
 
 # Should be implemented as lazy load instead
@@ -146,21 +146,34 @@ class RequestHandler(web_protocol.RequestHandler):
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = "HTTP/{}.{}".format(request.version.major, request.version.minor)
+                # http_logger.info(
+                #     '[{}] [{}] {} {} "{} {}{}{}" - {} "{}" -'.format(
+                #         RequestHandler.colorize_status("http", 499),
+                #         RequestHandler.colorize_status(499),
+                #         request_ip or "",
+                #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
+                #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
+                #         else "-",
+                #         request.method,
+                #         request.path,
+                #         "?{}".format(request.query_string) if request.query_string else "",
+                #         " {}".format(version_string) if version_string else "",
+                #         request.content_length if request.content_length is not None else "-",
+                #         request.headers.get("User-Agent", "").replace('"', ""),
+                #     )
+                # )
+                status_code = 499
                 http_logger.info(
-                    '[{}] [{}] {} {} "{} {}{}{}" - {} "{}" -'.format(
-                        RequestHandler.colorize_status("http", 499),
-                        RequestHandler.colorize_status(499),
-                        request_ip or "",
-                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                        if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                        else "-",
-                        request.method,
-                        request.path,
-                        "?{}".format(request.query_string) if request.query_string else "",
-                        " {}".format(version_string) if version_string else "",
-                        request.content_length if request.content_length is not None else "-",
-                        request.headers.get("User-Agent", "").replace('"', ""),
-                    )
+                    "http [{}]: {} {}".format(status_code, request.method, request.path),
+                    status_code=status_code,
+                    remote_ip=request_ip or "",
+                    auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                    request_method=request.method,
+                    request_path=request.path,
+                    request_query_string=request.query_string or Ellipsis,
+                    http_version=version_string,
+                    request_content_length=request.content_length if request.content_length is not None else Ellipsis,
+                    user_agent=request.headers.get("User-Agent", ""),
                 )
 
         headers: CIMultiDict = CIMultiDict({})
@@ -190,16 +203,23 @@ class RequestHandler(web_protocol.RequestHandler):
                 if peername:
                     request_ip, _ = peername
             if self._access_log:
+                # http_logger.info(
+                #     '[{}] [{}] {} {} "INVALID" {} - "" -'.format(
+                #         RequestHandler.colorize_status("http", status),
+                #         RequestHandler.colorize_status(status),
+                #         request_ip or "",
+                #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
+                #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
+                #         else "-",
+                #         len(msg),
+                #     )
+                # )
                 http_logger.info(
-                    '[{}] [{}] {} {} "INVALID" {} - "" -'.format(
-                        RequestHandler.colorize_status("http", status),
-                        RequestHandler.colorize_status(status),
-                        request_ip or "",
-                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                        if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                        else "-",
-                        len(msg),
-                    )
+                    "bad http request [{}]".format(status),
+                    status_code=status,
+                    remote_ip=request_ip or "",
+                    auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                    request_content_length=len(msg),
                 )
 
         return resp
@@ -628,19 +648,28 @@ class HttpTransport(Invoker):
                     pass
 
                 if access_log:
+                    # http_logger.info(
+                    #     '[{}] {} {} "CANCELLED {}{}" {} "{}" {}'.format(
+                    #         RequestHandler.colorize_status("websocket", 101),
+                    #         request_ip,
+                    #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
+                    #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
+                    #         else "-",
+                    #         request.path,
+                    #         "?{}".format(request.query_string) if request.query_string else "",
+                    #         request._cache.get("websocket_uuid", ""),
+                    #         request.headers.get("User-Agent", "").replace('"', ""),
+                    #         "-",
+                    #     )
+                    # )
                     http_logger.info(
-                        '[{}] {} {} "CANCELLED {}{}" {} "{}" {}'.format(
-                            RequestHandler.colorize_status("websocket", 101),
-                            request_ip,
-                            '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                            if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                            else "-",
-                            request.path,
-                            "?{}".format(request.query_string) if request.query_string else "",
-                            request._cache.get("websocket_uuid", ""),
-                            request.headers.get("User-Agent", "").replace('"', ""),
-                            "-",
-                        )
+                        "websocket [cancelled]: {}".format(request.path),
+                        remote_ip=request_ip,
+                        auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                        request_path=request.path,
+                        request_query_string=request.query_string or Ellipsis,
+                        websocket_id=request._cache.get("websocket_uuid", ""),
+                        user_agent=request.headers.get("User-Agent", ""),
                     )
 
                 return
@@ -649,19 +678,28 @@ class HttpTransport(Invoker):
             context["_http_open_websockets"].append(websocket)
 
             if access_log:
+                # http_logger.info(
+                #     '[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
+                #         RequestHandler.colorize_status("websocket", 101),
+                #         request_ip,
+                #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
+                #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
+                #         else "-",
+                #         request.path,
+                #         "?{}".format(request.query_string) if request.query_string else "",
+                #         request._cache.get("websocket_uuid", ""),
+                #         request.headers.get("User-Agent", "").replace('"', ""),
+                #         "-",
+                #     )
+                # )
                 http_logger.info(
-                    '[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
-                        RequestHandler.colorize_status("websocket", 101),
-                        request_ip,
-                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                        if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                        else "-",
-                        request.path,
-                        "?{}".format(request.query_string) if request.query_string else "",
-                        request._cache.get("websocket_uuid", ""),
-                        request.headers.get("User-Agent", "").replace('"', ""),
-                        "-",
-                    )
+                    "websocket [open]: {}".format(request.path),
+                    remote_ip=request_ip,
+                    auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                    request_path=request.path,
+                    request_query_string=request.query_string or Ellipsis,
+                    websocket_id=request._cache.get("websocket_uuid", ""),
+                    user_agent=request.headers.get("User-Agent", ""),
                 )
 
             kwargs = dict(original_kwargs)
@@ -711,20 +749,29 @@ class HttpTransport(Invoker):
                     pass
 
                 if access_log:
+                    # http_logger.info(
+                    #     '[{}] {} {} "{} {}{}" {} "{}" {}'.format(
+                    #         RequestHandler.colorize_status("websocket", 500),
+                    #         request_ip,
+                    #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
+                    #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
+                    #         else "-",
+                    #         RequestHandler.colorize_status("ERROR", 500),
+                    #         request.path,
+                    #         "?{}".format(request.query_string) if request.query_string else "",
+                    #         request._cache.get("websocket_uuid", ""),
+                    #         request.headers.get("User-Agent", "").replace('"', ""),
+                    #         "-",
+                    #     )
+                    # )
                     http_logger.info(
-                        '[{}] {} {} "{} {}{}" {} "{}" {}'.format(
-                            RequestHandler.colorize_status("websocket", 500),
-                            request_ip,
-                            '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                            if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                            else "-",
-                            RequestHandler.colorize_status("ERROR", 500),
-                            request.path,
-                            "?{}".format(request.query_string) if request.query_string else "",
-                            request._cache.get("websocket_uuid", ""),
-                            request.headers.get("User-Agent", "").replace('"', ""),
-                            "-",
-                        )
+                        "websocket [error]: {}".format(request.path),
+                        remote_ip=request_ip,
+                        auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                        request_path=request.path,
+                        request_query_string=request.query_string or Ellipsis,
+                        websocket_id=request._cache.get("websocket_uuid", ""),
+                        user_agent=request.headers.get("User-Agent", ""),
                     )
 
                 return
@@ -758,7 +805,7 @@ class HttpTransport(Invoker):
                                     "Uncaught exception: {}".format(str(ws_exception))
                                 )
                             else:
-                                http_logger.warning('Websocket exception: "{}"'.format(ws_exception))
+                                http_logger.warning("websocket exception", websocket_exception=ws_exception)
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
             except Exception:
@@ -879,42 +926,70 @@ class HttpTransport(Invoker):
                             elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
                                 pass
                             else:
+                                # http_logger.info(
+                                #     '[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
+                                #         RequestHandler.colorize_status("http", status_code),
+                                #         RequestHandler.colorize_status(status_code),
+                                #         request_ip,
+                                #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
+                                #         if request._cache.get("auth")
+                                #         and getattr(request._cache.get("auth"), "login", None)
+                                #         else "-",
+                                #         request.method,
+                                #         request.path,
+                                #         "?{}".format(request.query_string) if request.query_string else "",
+                                #         " {}".format(version_string) if version_string else "",
+                                #         response.content_length
+                                #         if response is not None and response.content_length is not None
+                                #         else "-",
+                                #         request.content_length if request.content_length is not None else "-",
+                                #         request.headers.get("User-Agent", "").replace('"', ""),
+                                #         "{0:.5f}s".format(round(request_time, 5)),
+                                #     )
+                                # )
                                 http_logger.info(
-                                    '[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                        RequestHandler.colorize_status("http", status_code),
-                                        RequestHandler.colorize_status(status_code),
-                                        request_ip,
-                                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                                        if request._cache.get("auth")
-                                        and getattr(request._cache.get("auth"), "login", None)
-                                        else "-",
-                                        request.method,
-                                        request.path,
-                                        "?{}".format(request.query_string) if request.query_string else "",
-                                        " {}".format(version_string) if version_string else "",
-                                        response.content_length
-                                        if response is not None and response.content_length is not None
-                                        else "-",
-                                        request.content_length if request.content_length is not None else "-",
-                                        request.headers.get("User-Agent", "").replace('"', ""),
-                                        "{0:.5f}s".format(round(request_time, 5)),
-                                    )
+                                    "http [{}]: {} {}".format(status_code, request.method, request.path),
+                                    status_code=status_code,
+                                    remote_ip=request_ip,
+                                    auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                                    request_method=request.method,
+                                    request_path=request.path,
+                                    request_query_string=request.query_string or Ellipsis,
+                                    http_version=version_string,
+                                    response_content_length=response.content_length
+                                    if response is not None and response.content_length is not None
+                                    else Ellipsis,
+                                    request_content_length=request.content_length
+                                    if request.content_length is not None
+                                    else Ellipsis,
+                                    user_agent=request.headers.get("User-Agent", ""),
+                                    request_time="{0:.5f}s".format(round(request_time, 5)),
                                 )
                         else:
                             http_logger.info(
-                                '[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
-                                    RequestHandler.colorize_status("websocket", 101),
-                                    request_ip,
-                                    '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                                    if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                                    else "-",
-                                    request.path,
-                                    "?{}".format(request.query_string) if request.query_string else "",
-                                    request._cache.get("websocket_uuid", ""),
-                                    request.headers.get("User-Agent", "").replace('"', ""),
-                                    "{0:.5f}s".format(round(request_time, 5)),
-                                )
+                                "websocket [close]: {}".format(request.path),
+                                remote_ip=request_ip,
+                                auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                                request_path=request.path,
+                                request_query_string=request.query_string or Ellipsis,
+                                websocket_id=request._cache.get("websocket_uuid", ""),
+                                user_agent=request.headers.get("User-Agent", ""),
+                                request_time="{0:.5f}s".format(round(request_time, 5)),
                             )
+                            # http_logger.info(
+                            #     '[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
+                            #         RequestHandler.colorize_status("websocket", 101),
+                            #         request_ip,
+                            #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
+                            #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
+                            #         else "-",
+                            #         request.path,
+                            #         "?{}".format(request.query_string) if request.query_string else "",
+                            #         request._cache.get("websocket_uuid", ""),
+                            #         request.headers.get("User-Agent", "").replace('"', ""),
+                            #         "{0:.5f}s".format(round(request_time, 5)),
+                            #     )
+                            # )
 
                     if response is not None:
                         response.headers[hdrs.SERVER] = server_header or ""
@@ -1204,9 +1279,12 @@ class HttpTransport(Invoker):
                 context["_http_accept_new_requests"] = False
                 error_message = re.sub(".*: ", "", e.strerror)
                 http_logger.warning(
-                    "Unable to bind service [http] to http://{}:{}/ ({})".format(
-                        "127.0.0.1" if host == "0.0.0.0" else host, port, error_message
-                    )
+                    "unable to bind service [http] to http://{}:{}/".format(
+                        "127.0.0.1" if host == "0.0.0.0" else host, port
+                    ),
+                    host=host,
+                    port=port,
+                    error_message=error_message,
                 )
                 raise HttpException(str(e), log_level=context.get("log_level")) from e
 
@@ -1237,7 +1315,8 @@ class HttpTransport(Invoker):
 
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
-                    http_logger.info("Closing {} websocket connection(s)".format(len(open_websockets)))
+                    # http_logger.info("Closing {} websocket connection(s)".format(len(open_websockets)))
+                    http_logger.info("closing websocket connections", connection_count=len(open_websockets))
                     tasks = []
                     for websocket in open_websockets:
                         try:
@@ -1274,16 +1353,24 @@ class HttpTransport(Invoker):
                         if log_wait_message:
                             log_wait_message = False
                             if len(web_server.connections) and len(web_server.connections) != len(active_requests):
+                                # http_logger.info(
+                                #     "Waiting for {} keep-alive connection(s) to close".format(
+                                #         len(web_server.connections)
+                                #     )
+                                # )
                                 http_logger.info(
-                                    "Waiting for {} keep-alive connection(s) to close".format(
-                                        len(web_server.connections)
-                                    )
+                                    "awaiting keep-alive connections", connection_count=len(web_server.connections)
                                 )
                             if active_requests:
+                                # http_logger.info(
+                                #     "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
+                                #         len(active_requests), termination_grace_period_seconds
+                                #     )
+                                # )
                                 http_logger.info(
-                                    "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
-                                        len(active_requests), termination_grace_period_seconds
-                                    )
+                                    "awaiting requests to complete",
+                                    request_count=len(active_requests),
+                                    grace_period_seconds=termination_grace_period_seconds,
                                 )
 
                         await asyncio.sleep(0.25)
@@ -1295,10 +1382,15 @@ class HttpTransport(Invoker):
                 active_requests = context.get("_http_active_requests", set())
                 if active_requests:
                     if log_wait_message:
+                        # http_logger.info(
+                        #     "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
+                        #         len(active_requests), termination_grace_period_seconds
+                        #     )
+                        # )
                         http_logger.info(
-                            "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
-                                len(active_requests), termination_grace_period_seconds
-                            )
+                            "awaiting requests to complete",
+                            request_count=len(active_requests),
+                            grace_period_seconds=termination_grace_period_seconds,
                         )
 
                     try:
@@ -1311,10 +1403,14 @@ class HttpTransport(Invoker):
                     except (Exception, asyncio.TimeoutError, asyncio.CancelledError):
                         active_requests = context.get("_http_active_requests", set())
                         if active_requests:
+                            # http_logger.warning(
+                            #     "All requests did not gracefully finish execution - {} request(s) remaining".format(
+                            #         len(active_requests)
+                            #     )
+                            # )
                             http_logger.warning(
-                                "All requests did not gracefully finish execution - {} request(s) remaining".format(
-                                    len(active_requests)
-                                )
+                                "all requests did not gracefully finish execution",
+                                remaining_request_count=len(active_requests),
                             )
                     context["_http_active_requests"] = set()
 
@@ -1322,10 +1418,13 @@ class HttpTransport(Invoker):
                     await asyncio.sleep(shutdown_sleep)
 
                 if len(web_server.connections):
+                    # http_logger.warning(
+                    #     "The remaining {} open TCP connections will be forcefully closed".format(
+                    #         len(web_server.connections)
+                    #     )
+                    # )
                     http_logger.warning(
-                        "The remaining {} open TCP connections will be forcefully closed".format(
-                            len(web_server.connections)
-                        )
+                        "forcefully closing open tcp connections", connection_count=len(web_server.connections)
                     )
                     await app.shutdown()
                     await asyncio.sleep(1)
@@ -1345,9 +1444,11 @@ class HttpTransport(Invoker):
                     if getattr(registry, "add_http_endpoint", None):
                         await registry.add_http_endpoint(obj, host, port, method, pattern)
 
-            http_logger.info(
-                "Listening [http] on http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
-            )
+            # http_logger.info(
+            #    "Listening [http] on http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
+            # )
+            listen_url = "http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
+            http_logger.info("accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port)
 
         return _start_server
 

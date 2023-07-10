@@ -1,10 +1,10 @@
 import asyncio
-import logging
 import os
 import sys
 import zlib
 from typing import Any, Callable, Dict, List, Optional
 
+from tomodachi import logging
 from tomodachi.options import Options
 
 
@@ -134,23 +134,18 @@ class Watcher(object):
                     added = updated_files.get("added")
                     removed = updated_files.get("removed")
                     updated = updated_files.get("updated")
-                    if removed:
-                        if len(removed) > 2:
-                            removed[2] = "..."
-                        logging.getLogger("watcher.files").warning(
-                            "Removed files: {}".format(", ".join([file for file in removed][0:3]))
-                        )
-                    if added:
-                        if len(added) > 2:
-                            added[2] = "..."
-                        logging.getLogger("watcher.files").warning(
-                            "New files: {}".format(", ".join([file for file in added][0:3]))
-                        )
-                    if updated:
-                        if len(updated) > 2:
-                            updated[2] = "..."
-                        logging.getLogger("watcher.files").warning(
-                            "Updated files: {}".format(", ".join([file for file in updated][0:3]))
+                    if removed and not added and not updated:
+                        logging.getLogger("watcher").warning("removed files", removed_files=[file for file in removed])
+                    elif added and not removed and not updated:
+                        logging.getLogger("watcher").warning("added files", added_files=[file for file in added])
+                    elif updated and not removed and not added:
+                        logging.getLogger("watcher").warning("updated files", updated_files=[file for file in updated])
+                    else:
+                        logging.getLogger("watcher").warning(
+                            "modified files or filepaths",
+                            updated_files=[file for file in updated] if updated else Ellipsis,
+                            added_files=[file for file in added] if added else Ellipsis,
+                            removed_files=[file for file in removed] if removed else Ellipsis,
                         )
 
                     if callback_func:

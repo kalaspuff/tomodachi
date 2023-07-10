@@ -1,6 +1,5 @@
 import asyncio
 import inspect
-import logging
 import os
 import re
 import sys
@@ -10,7 +9,7 @@ from types import ModuleType, TracebackType
 from typing import Any, Dict, Optional, Set, Type, cast
 
 import tomodachi
-from tomodachi import CLASS_ATTRIBUTE
+from tomodachi import CLASS_ATTRIBUTE, logging
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import set_service, unset_service
 from tomodachi.invoker import FUNCTION_ATTRIBUTE, INVOKER_TASK_START_KEYWORD, START_ATTRIBUTE
@@ -25,7 +24,8 @@ class ServiceContainer(object):
             module_import.__name__.rsplit("/", 1)[1] if "/" in module_import.__name__ else module_import.__name__
         ).rsplit(".", 1)[-1]
         self.configuration = configuration
-        self.logger = logging.getLogger("services.{}".format(self.module_name))
+        self.logger = logging.getLogger("tomodachi")
+        # self.logger = self.logger.bind(file_path=self.file_path)
 
         self._close_waiter: Optional[asyncio.Future] = None
         self.started_waiter: Optional[asyncio.Future] = None
@@ -170,7 +170,8 @@ class ServiceContainer(object):
         if services_started:
             try:
                 for name, instance, log_level in services_started:
-                    self.logger.info('Initializing service "{}" [id: {}]'.format(name, instance.uuid))
+                    # self.logger.info('Initializing service "{}" [id: {}]'.format(name, instance.uuid))
+                    self.logger.info("initializing service", service_name=name, service_uuid=instance.uuid)
 
                 if start_futures:
                     start_task_results = await asyncio.wait(
@@ -199,9 +200,12 @@ class ServiceContainer(object):
                     stop_futures.add(getattr(instance, "_stopping_service", None))
                     stop_futures.add(getattr(instance, "_stop_service", None))
 
-                    self.logger.info('Started service "{}" [id: {}]'.format(name, instance.uuid))
+                    # self.logger.info('Started service "{}" [id: {}]'.format(name, instance.uuid))
+                    self.logger.info("started service", service_name=name, service_uuid=instance.uuid)
             except Exception as e:
-                self.logger.warning("Failed to start service")
+                # self.logger.warning("Failed to start service")
+                for name, instance, log_level in services_started:
+                    self.logger.warning("failed to start service", service_name=name, service_uuid=instance.uuid)
                 started_futures = set()
                 self.stop_service()
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
@@ -222,7 +226,8 @@ class ServiceContainer(object):
                     except Exception as e:
                         logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
         else:
-            self.logger.warning("No transports defined in service file")
+            # self.logger.warning("No transports defined in service file")
+            self.logger.warning("no transport handlers defined", module_name=self.module_name, file_path=self.file_path)
             self.stop_service()
 
         self.services_started = services_started
@@ -231,7 +236,8 @@ class ServiceContainer(object):
 
         await self.wait_stopped()
         for name, instance, log_level in services_started:
-            self.logger.info('Stopping service "{}" [id: {}]'.format(name, instance.uuid))
+            # self.logger.info('Stopping service "{}" [id: {}]'.format(name, instance.uuid))
+            self.logger.info("stopping service", service_name=name, service_uuid=instance.uuid)
 
         for instance in registered_services:
             for registry in getattr(instance, "discovery", []):
@@ -242,7 +248,8 @@ class ServiceContainer(object):
             await asyncio.wait([asyncio.ensure_future(func()) for func in stop_futures if func])
 
         for name, instance, log_level in services_started:
-            self.logger.info('Stopped service "{}" [id: {}]'.format(name, instance.uuid))
+            # self.logger.info('Stopped service "{}" [id: {}]'.format(name, instance.uuid))
+            self.logger.info("stopped service", service_name=name, service_uuid=instance.uuid)
 
         # Debug output if TOMODACHI_DEBUG env is set. Shows still running tasks on service termination.
         if os.environ.get("TOMODACHI_DEBUG") and os.environ.get("TOMODACHI_DEBUG") != "0":
@@ -260,11 +267,15 @@ class ServiceContainer(object):
                         if "/asyncio/tasks.py" in co_filename and co_name == "wait":
                             continue
 
+                        # self.logger.warning(
+                        #     "** Task '{}' from '{}' has not finished execution or has not been awaited".format(
+                        #         co_name, co_filename
+                        #     )
+                        # )
                         self.logger.warning(
-                            "** Task '{}' from '{}' has not finished execution or has not been awaited".format(
-                                co_name, co_filename
-                            )
+                            "task has not been awaited", task_function_name=co_name, task_filename=co_filename
                         )
+
                     except Exception:
                         pass
             except Exception:

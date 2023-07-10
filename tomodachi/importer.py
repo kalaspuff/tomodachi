@@ -1,10 +1,11 @@
 import importlib
 import importlib.util
-import logging
 import os
 import sys
 from types import ModuleType
 from typing import Any
+
+from tomodachi import logging
 
 
 class ServicePackageError(ImportError):
@@ -43,7 +44,7 @@ class ServiceImporter(object):
                 if str(e) == "__path__ attribute not found on '{}' while trying to find '{}'".format(
                     file_path_package_name.rsplit("/", 2)[1], ".".join(file_path_package_name.rsplit("/", 2)[1:])
                 ):
-                    logging.getLogger("import").warning(
+                    logging.getLogger("tomodachi.importer").warning(
                         'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
                             file_path.rsplit("/", 2)[1]
                         )
@@ -52,7 +53,7 @@ class ServiceImporter(object):
                 if str(e) == "__path__ attribute not found on '{}'while trying to find '{}'".format(
                     file_path_package_name.rsplit("/", 2)[1], ".".join(file_path_package_name.rsplit("/", 2)[1:])
                 ):
-                    logging.getLogger("import").warning(
+                    logging.getLogger("tomodachi.importer").warning(
                         'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
                             file_path.rsplit("/", 2)[1]
                         )
@@ -82,14 +83,14 @@ class ServiceImporter(object):
                 spec.loader.exec_module(service_import)
             except ImportError as e:
                 if service_import_name and str(e) == "No module named '{}'".format(service_import_name):
-                    logging.getLogger("import").warning(
+                    logging.getLogger("tomodachi.importer").warning(
                         'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
                             file_path.rsplit("/", 2)[1]
                         )
                     )
                     raise ServicePackageError from e
                 if str(e) == "attempted relative import with no known parent package":
-                    logging.getLogger("import").warning(
+                    logging.getLogger("tomodachi.importer").warning(
                         'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
                             file_path.rsplit("/", 2)[1]
                         )
@@ -100,14 +101,14 @@ class ServiceImporter(object):
                 if service_import_name and str(
                     e
                 ) == "Parent module '{}' not loaded, cannot perform relative import".format(service_import_name):
-                    logging.getLogger("import").warning(
+                    logging.getLogger("tomodachi.importer").warning(
                         'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
                             file_path.rsplit("/", 2)[1]
                         )
                     )
                     raise ServicePackageError from e
                 if str(e) == "Parent module '' not loaded, cannot perform relative import":
-                    logging.getLogger("import").warning(
+                    logging.getLogger("tomodachi.importer").warning(
                         'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
                             file_path.rsplit("/", 2)[1]
                         )
@@ -121,20 +122,23 @@ class ServiceImporter(object):
                 return cls.import_service_file(file_name[:-3])
             if file_name.endswith(".py"):
                 file_name = file_name[:-3]
-            logging.getLogger("import").warning(
-                'Invalid service, unable to load service file "{}.py"'.format(file_name)
+            logging.getLogger("tomodachi.importer").warning(
+                "unable to load service file", file_path="{}.py".format(file_name)
             )
             raise e
         except OSError:
             if file_name.endswith(".py"):
                 file_name = file_name[:-3]
-            logging.getLogger("import").warning('Invalid service, no such service file "{}.py"'.format(file_name))
+            logging.getLogger("tomodachi.importer").error("no such service file", file_path="{}.py".format(file_name))
             sys.exit(2)
         except Exception as e:
             if file_name.endswith(".py"):
                 file_name = file_name[:-3]
-            logging.getLogger("import").warning('Unable to load service file "{}.py"'.format(file_name))
-            logging.getLogger("import").warning("Error: {}".format(e))
+            logging.getLogger("tomodachi.importer").error(
+                "unable to load service file", file_path="{}.py".format(file_name)
+            )
+            if not isinstance(e, (SyntaxError, IndentationError)):
+                logging.getLogger("tomodachi.importer").warning("error during import", exception=e)
             raise e
         return service_import
 

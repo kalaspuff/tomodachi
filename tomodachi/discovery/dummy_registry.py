@@ -1,5 +1,6 @@
-import logging
 from typing import Any, Dict
+
+from tomodachi import logging
 
 
 # An example discovery class which would could be extended to register which
@@ -14,16 +15,16 @@ class DummyRegistry(object):
 
     @classmethod
     async def _register_service(cls, service: Any) -> None:
-        logging.getLogger("discovery.dummy_registry").info(
-            'Registering service "{}" [id: {}]'.format(service.name, service.uuid)
+        logging.getLogger("tomodachi.discovery.example").info(
+            "registering service endpoints", service_name=service.name, service_uuid=service.uuid
         )
         for host, port, method, pattern in cls.http_endpoints.get(service, []):
             pass
 
     @classmethod
     async def _deregister_service(cls, service: Any) -> None:
-        logging.getLogger("discovery.dummy_registry").info(
-            'Deregistering service "{}" [id: {}]'.format(service.name, service.uuid)
+        logging.getLogger("tomodachi.discovery.example").info(
+            "deregistering service", service_name=service.name, service_uuid=service.uuid
         )
         for host, port, method, pattern in cls.http_endpoints.pop(service, []):
             pass
