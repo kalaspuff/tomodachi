@@ -303,15 +303,6 @@ class Service(metaclass=TomodachiServiceMeta):
     def log(self, *args: Any, **kwargs: Any) -> None:
         __getattr__("_log")(self, *args, **kwargs)
 
-    def log_setup(
-        self,
-        name: Optional[str] = None,
-        level: Optional[Union[str, int]] = None,
-        formatter: Any = True,
-        filename: Optional[str] = None,
-    ) -> Any:
-        return __getattr__("_log_setup")(self, name=name, level=level, formatter=formatter, filename=filename)
-
     def __setattr__(self, item: str, value: Any) -> None:
         if item == "options" and not isinstance(value, Options):
             if not isinstance(value, dict):

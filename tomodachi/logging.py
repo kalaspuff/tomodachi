@@ -288,15 +288,6 @@ class LoggerContext(dict):
 
 
 class Logger(structlog.stdlib.BoundLogger):
-    # def __init__(
-    #    self,
-    #    logger: structlog.typing.WrappedLogger,
-    #    processors: Iterable[structlog.typing.Processor],
-    #    context: structlog.typing.Context,
-    # ):
-    #    super().__init__(logger, processors, context)
-    #    # setattr(logger, "logger_name", context.get("logger"))
-
     @property
     def name(self) -> str:
         name: str = self._context.get("logger") or ""

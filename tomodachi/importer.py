@@ -45,18 +45,16 @@ class ServiceImporter(object):
                     file_path_package_name.rsplit("/", 2)[1], ".".join(file_path_package_name.rsplit("/", 2)[1:])
                 ):
                     logging.getLogger("tomodachi.importer").warning(
-                        'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
-                            file_path.rsplit("/", 2)[1]
-                        )
+                        "invalid service package name or parent name may conflict with builtin python modules - change parent folder name",
+                        package_name=file_path.rsplit("/", 2)[1],
                     )
                     raise ServicePackageError from e
                 if str(e) == "__path__ attribute not found on '{}'while trying to find '{}'".format(
                     file_path_package_name.rsplit("/", 2)[1], ".".join(file_path_package_name.rsplit("/", 2)[1:])
                 ):
                     logging.getLogger("tomodachi.importer").warning(
-                        'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
-                            file_path.rsplit("/", 2)[1]
-                        )
+                        "invalid service package name or parent name may conflict with builtin python modules - change parent folder name",
+                        package_name=file_path.rsplit("/", 2)[1],
                     )
                     raise ServicePackageError from e
                 raise e
@@ -84,16 +82,14 @@ class ServiceImporter(object):
             except ImportError as e:
                 if service_import_name and str(e) == "No module named '{}'".format(service_import_name):
                     logging.getLogger("tomodachi.importer").warning(
-                        'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
-                            file_path.rsplit("/", 2)[1]
-                        )
+                        "invalid service package name or parent name may conflict with builtin python modules - change parent folder name",
+                        package_name=file_path.rsplit("/", 2)[1],
                     )
                     raise ServicePackageError from e
                 if str(e) == "attempted relative import with no known parent package":
                     logging.getLogger("tomodachi.importer").warning(
-                        'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
-                            file_path.rsplit("/", 2)[1]
-                        )
+                        "invalid service package name or parent name may conflict with builtin python modules - change parent folder name",
+                        package_name=file_path.rsplit("/", 2)[1],
                     )
                     raise ServicePackageError from e
                 raise e
@@ -102,16 +98,14 @@ class ServiceImporter(object):
                     e
                 ) == "Parent module '{}' not loaded, cannot perform relative import".format(service_import_name):
                     logging.getLogger("tomodachi.importer").warning(
-                        'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
-                            file_path.rsplit("/", 2)[1]
-                        )
+                        "invalid service package name or parent name may conflict with builtin python modules - change parent folder name",
+                        package_name=file_path.rsplit("/", 2)[1],
                     )
                     raise ServicePackageError from e
                 if str(e) == "Parent module '' not loaded, cannot perform relative import":
                     logging.getLogger("tomodachi.importer").warning(
-                        'Invalid service package/parent name, may conflict with Python internals: "{}" - change parent folder name'.format(
-                            file_path.rsplit("/", 2)[1]
-                        )
+                        "invalid service package name or parent name may conflict with builtin python modules - change parent folder name",
+                        package_name=file_path.rsplit("/", 2)[1],
                     )
                     raise ServicePackageError from e
                 raise e

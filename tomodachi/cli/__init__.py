@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import asyncio
+import datetime
 import getopt
 import logging
 import os
@@ -295,8 +296,26 @@ class CLI:
                 if len(args) > index:
                     log_level = getattr(logging, args.pop(index).upper(), None) or log_level
 
-            logging.basicConfig(format="%(asctime)s (%(name)s): %(message)s", level=log_level)
-            logging.Formatter(fmt="%(asctime)s.%(msecs).03d", datefmt="%Y-%m-%d %H:%M:%S")
+            logging.addLevelName(logging.NOTSET, "notset")
+            logging.addLevelName(logging.DEBUG, "debug")
+            logging.addLevelName(logging.INFO, "info")
+            logging.addLevelName(logging.WARN, "warn")
+            logging.addLevelName(logging.WARNING, "warning")
+            logging.addLevelName(logging.ERROR, "error")
+            logging.addLevelName(logging.FATAL, "fatal")
+            logging.addLevelName(logging.CRITICAL, "critical")
+
+            logging.basicConfig(
+                format="%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]",
+                datefmt="%Y-%m-%dT%H:%M:%S",
+                level=log_level,
+            )
+            logging.Formatter.formatTime = (
+                lambda self, record, datefmt=None: datetime.datetime.utcfromtimestamp(record.created).isoformat(
+                    timespec="microseconds"
+                )
+                + "Z"
+            )
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(tomodachi.SERVICE_EXIT_CODE)
