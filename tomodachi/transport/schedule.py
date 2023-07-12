@@ -41,9 +41,9 @@ class Scheduler(Invoker):
 
         async def handler() -> None:
             logging.bind_logger(
-                logging.getLogger("service.handler").bind(handler=func.__name__, handler_type="tomodachi.schedule")
+                logging.getLogger("tomodachi.schedule.handler").bind(handler=func.__name__, type="tomodachi.schedule")
             )
-            get_contextvar("service.logger").set("service.handler")
+            get_contextvar("service.logger").set("tomodachi.schedule.handler")
 
             increase_execution_context_value("scheduled_functions_current_tasks")
             try:
@@ -328,7 +328,7 @@ class Scheduler(Invoker):
         timezone: Optional[str] = None,
         immediately: Optional[bool] = False,
     ) -> None:
-        logger = logging.getLogger("tomodachi.scheduler").bind(wrapped_handler=func.__name__)
+        logger = logging.getLogger("tomodachi.scheduler").bind(handler=func.__name__)
         logging.bind_logger(logger)
 
         timezone = cls.get_timezone(timezone)

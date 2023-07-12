@@ -364,7 +364,7 @@ def exit(exit_code: Optional[int] = None) -> None:
     from tomodachi.launcher import ServiceLauncher  # noqa  # isort:skip
 
     exit_code = exit_code if exit_code is not None else SERVICE_EXIT_CODE
-    get_logger("tomodachi.exit").warning("termination initiated via tomodachi.exit call", exit_code=exit_code)
+    get_logger("tomodachi.exit").warning("tomodachi.exit [{}] was called".format(exit_code), exit_code=exit_code)
     ServiceLauncher.restart_services = False
     setattr(sys.modules[__name__], "SERVICE_EXIT_CODE", exit_code)
     ServiceLauncher.stop_services()

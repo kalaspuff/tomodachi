@@ -163,8 +163,8 @@ class RequestHandler(web_protocol.RequestHandler):
                 #     )
                 # )
                 status_code = 499
-                logging.getLogger().info(
-                    "http [{}]: {} {}".format(status_code, request.method, request.path),
+                logging.getLogger("tomodachi.http.response").info(
+                    # "http [{}]: {} {}".format(status_code, request.method, request.path),
                     status_code=status_code,
                     remote_ip=request_ip or "",
                     auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -214,7 +214,7 @@ class RequestHandler(web_protocol.RequestHandler):
                 #         len(msg),
                 #     )
                 # )
-                logging.getLogger().info(
+                logging.getLogger("tomodachi.http.response").info(
                     "bad http request [{}]".format(status),
                     status_code=status,
                     remote_ip=request_ip or "",
@@ -373,9 +373,9 @@ class HttpTransport(Invoker):
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             logging.bind_logger(
-                logging.getLogger("service.handler").bind(handler=func.__name__, handler_type="tomodachi.http")
+                logging.getLogger("tomodachi.http.handler").bind(handler=func.__name__, type="tomodachi.http")
             )
-            get_contextvar("service.logger").set("service.handler")
+            get_contextvar("service.logger").set("tomodachi.http.handler")
 
             kwargs = dict(original_kwargs)
             arg_matches: Dict[str, Any] = {}
@@ -556,12 +556,12 @@ class HttpTransport(Invoker):
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             logging.bind_logger(
-                logging.getLogger("service.handler").bind(
-                    handler=func.__name__, handler_type="tomodachi.http_error", status_code=status_code
+                logging.getLogger("tomodachi.http.handler").bind(
+                    handler=func.__name__, type="tomodachi.http_error", status_code=status_code
                 )
             )
 
-            get_contextvar("service.logger").set("service.handler")
+            get_contextvar("service.logger").set("tomodachi.http.handler")
 
             kwargs = dict(original_kwargs)
             arg_matches: Dict[str, Any] = {}
@@ -630,6 +630,7 @@ class HttpTransport(Invoker):
     @classmethod
     async def websocket_handler(cls, obj: Any, context: Dict, func: Any, url: str) -> Any:
         logger = logging.getLogger("tomodachi.http")
+        response_logger = logging.getLogger("tomodachi.http.websocket")
 
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
         compiled_pattern = re.compile(pattern)
@@ -640,7 +641,7 @@ class HttpTransport(Invoker):
             request._cache["is_websocket"] = True
             request._cache["websocket_uuid"] = str(uuid.uuid4())
 
-            logging.bind_logger(logging.getLogger().bind(handler=func.__name__, handler_type="tomodachi.websocket"))
+            logging.bind_logger(logging.getLogger().bind(handler=func.__name__, type="tomodachi.websocket"))
 
         values = inspect.getfullargspec(func)
         original_kwargs = (
@@ -679,8 +680,9 @@ class HttpTransport(Invoker):
                     #         "-",
                     #     )
                     # )
-                    logger.info(
-                        "websocket [cancelled]: {}".format(request.path),
+                    response_logger.info(
+                        # "websocket [cancelled]: {}".format(request.path),
+                        websocket_state="cancelled",
                         remote_ip=request_ip,
                         auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
                         request_path=request.path,
@@ -709,8 +711,9 @@ class HttpTransport(Invoker):
                 #         "-",
                 #     )
                 # )
-                logger.info(
-                    "websocket [open]: {}".format(request.path),
+                response_logger.info(
+                    # "websocket [open]: {}".format(request.path),
+                    websocket_state="open",
                     remote_ip=request_ip,
                     auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
                     request_path=request.path,
@@ -781,8 +784,9 @@ class HttpTransport(Invoker):
                     #         "-",
                     #     )
                     # )
-                    logger.info(
-                        "websocket [error]: {}".format(request.path),
+                    response_logger.info(
+                        websocket_state="error",
+                        # "websocket [error]: {}".format(request.path),
                         remote_ip=request_ip,
                         auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
                         request_path=request.path,
@@ -822,7 +826,7 @@ class HttpTransport(Invoker):
                                     "Uncaught exception: {}".format(str(ws_exception))
                                 )
                             else:
-                                http_logger.warning("websocket exception", websocket_exception=ws_exception)
+                                response_logger.warning("websocket exception", websocket_exception=ws_exception)
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
             except Exception:
@@ -880,6 +884,7 @@ class HttpTransport(Invoker):
         async def _start_server() -> None:
             logger = logging.getLogger("tomodachi.http")
             logging.bind_logger(logger)
+            response_logger = logging.getLogger("tomodachi.http.response")
 
             loop = asyncio.get_event_loop()
 
@@ -970,8 +975,8 @@ class HttpTransport(Invoker):
                                 #         "{0:.5f}s".format(round(request_time, 5)),
                                 #     )
                                 # )
-                                logger.info(
-                                    "http [{}]: {} {}".format(status_code, request.method, request.path),
+                                response_logger.info(
+                                    # "http [{}]: {} {}".format(status_code, request.method, request.path),
                                     status_code=status_code,
                                     remote_ip=request_ip,
                                     auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -989,7 +994,7 @@ class HttpTransport(Invoker):
                                     request_time="{0:.5f}s".format(round(request_time, 5)),
                                 )
                         else:
-                            logger.info(
+                            response_logger.info(
                                 "websocket [close]: {}".format(request.path),
                                 remote_ip=request_ip,
                                 auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -1253,7 +1258,7 @@ class HttpTransport(Invoker):
 
             reuse_port = True if http_options.reuse_port else False
             if reuse_port and platform.system() != "Linux":
-                http_logger.warning(
+                logger.warning(
                     "The http option reuse_port (socket.SO_REUSEPORT) can only enabled on Linux platforms - current "
                     f"platform is {platform.system()} - will revert option setting to not reuse ports"
                 )

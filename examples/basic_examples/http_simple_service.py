@@ -6,7 +6,6 @@ from aiohttp import web
 
 import tomodachi
 from tomodachi import HttpResponse, Options, http, http_error, http_static, websocket
-from tomodachi.discovery import DummyRegistry
 
 
 class ExampleHttpService(tomodachi.Service):
@@ -16,7 +15,7 @@ class ExampleHttpService(tomodachi.Service):
 
     # Build own "discovery" functions, to be run on start and stop
     # See tomodachi/discovery/dummy_registry.py for example
-    discovery = [DummyRegistry]
+    discovery = [tomodachi.discovery.example]
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
     options = Options(

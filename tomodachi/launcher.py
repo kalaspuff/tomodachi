@@ -69,11 +69,15 @@ class ServiceLauncher(object):
         def sigintHandler(*args: Any) -> None:
             sys.stdout.write("\b\b\r")
             sys.stdout.flush()
-            logging.getLogger("interrupt.exit").warning("interrupt signal <ctrl+c>", signal="SIGINT")
+            logging.getLogger("tomodachi.signal").warning(
+                "interrupt signal <ctrl+c>", signal="SIGINT", process_id=os.getpid()
+            )
             cls.restart_services = False
 
         def sigtermHandler(*args: Any) -> None:
-            logging.getLogger("interrupt.exit").warning("received termination signal", signal="SIGTERM")
+            logging.getLogger("tomodachi.signal").warning(
+                "received termination signal", signal="SIGTERM", process_id=os.getpid()
+            )
             cls.restart_services = False
 
         # logging.basicConfig(level=logging.DEBUG)
@@ -118,12 +122,12 @@ class ServiceLauncher(object):
                         error_lineno = getattr(e, "lineno", None)
                         error_location = error_filename + (":" + str(error_lineno)) if error_lineno else ""
 
-                        logging.getLogger("watcher").error(
+                        logging.getLogger("tomodachi.watcher").error(
                             "indentation error in file" if type(e) is IndentationError else "syntax error in file",
                             error_location=error_location if error_filename else Ellipsis,
                         )
                         traceback.print_exception(e, limit=0)
-                        logging.getLogger("watcher").warning(
+                        logging.getLogger("tomodachi.watcher").warning(
                             "restart failed due to error",
                             error_location=error_location if error_filename else Ellipsis,
                         )
@@ -148,19 +152,19 @@ class ServiceLauncher(object):
                             error_lineno = getattr(e, "lineno", None)
                             error_location = error_filename + (":" + str(error_lineno)) if error_lineno else ""
 
-                            logging.getLogger("watcher").error(
+                            logging.getLogger("tomodachi.watcher").error(
                                 "indentation error in file" if type(e) is IndentationError else "syntax error in file",
                                 error_location=error_location if error_filename else Ellipsis,
                             )
                             traceback.print_exception(e, limit=0)
-                            logging.getLogger("watcher").warning(
+                            logging.getLogger("tomodachi.watcher").warning(
                                 "restart failed due to error",
                                 error_location=error_location if error_filename else Ellipsis,
                             )
                             cls.restart_services = False
                             return
 
-                logging.getLogger("tomodachi.restart").warning("restarting services")
+                logging.getLogger("tomodachi.watcher").warning("restarting services")
                 cls.stop_services()
 
             watcher_future = loop.run_until_complete(watcher.watch(loop=loop, callback_func=_watcher_restart))

@@ -57,7 +57,7 @@ def log(service: Any, *args: Any, **kwargs: Any) -> None:
     if not level:
         level = logging.INFO
     if not name:
-        name = str(service.name) if getattr(service, "name", None) else context("service.logger")
+        name = context("service.logger")
     if not message:
         message = ""
 

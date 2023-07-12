@@ -202,6 +202,15 @@ def remove_ellipsis_values(
     return {k: v for k, v in event_dict.items() if v is not Ellipsis}
 
 
+def modify_logger(
+    logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
+) -> structlog.typing.EventDict:
+    name = str(event_dict.get("logger") or "")
+    if name:
+        event_dict["logger"] = name.split("tomodachi.", 1)[-1]  # .split("service.", 1)[-1]
+    return event_dict
+
+
 class LoggerContext(dict):
     def __init__(self, *a: Any, **kw: Any) -> None:
         if a:
@@ -467,6 +476,7 @@ console_logger: Logger = structlog.wrap_logger(
         AddMissingDictKey(key="message"),
         remove_ellipsis_values,
         SquelchDisabledLogger(),
+        # modify_logger,
         structlog.dev.ConsoleRenderer(sort_keys=False, event_key="message"),
     ],
     wrapper_class=Logger,
