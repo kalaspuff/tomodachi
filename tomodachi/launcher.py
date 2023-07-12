@@ -3,6 +3,7 @@ import datetime
 import importlib
 import os
 import platform
+import shlex
 import signal
 import sys
 import time
@@ -27,6 +28,35 @@ try:
         _CancelledError = asyncioexceptions.CancelledError
 except (Exception, ModuleNotFoundError, ImportError):
     _CancelledError = asyncio.CancelledError
+
+
+TOMODACHI_ASCII = """
+███████████████████████████████████████████████████
+█─▄─▄─█─▄▄─█▄─▀█▀─▄█─▄▄─█▄─▄▄▀██▀▄─██─▄▄▄─█─█─█▄─▄█
+███─███─██─██─█▄█─██─██─██─██─██─▀─██─███▀█─▄─██─██
+▀▀▄▄▄▀▀▄▄▄▄▀▄▄▄▀▄▄▄▀▄▄▄▄▀▄▄▄▄▀▀▄▄▀▄▄▀▄▄▄▄▄▀▄▀▄▀▄▄▄▀
+"""
+
+TOMODACHI_ASCII = """
+█████████████████████████████████████████████████████████████████████████
+████████████─▄─▄─█─▄▄─█▄─▀█▀─▄█─▄▄─█▄─▄▄▀██▀▄─██─▄▄▄─█─█─█▄─▄████████████
+██████████████─███─██─██─█▄█─██─██─██─██─██─▀─██─███▀█─▄─██─█████████████
+▀▀▀▀▀▀▀▀▀▀▀▀▀▄▄▄▀▀▄▄▄▄▀▄▄▄▀▄▄▄▀▄▄▄▄▀▄▄▄▄▀▀▄▄▀▄▄▀▄▄▄▄▄▀▄▀▄▀▄▄▄▀▀▀▀▀▀▀▀▀▀▀▀
+"""
+
+TOMODACHI_ASCII = """
+███████████████████████████████████████████████████████████████████████████████
+███████████████─▄─▄─█─▄▄─█▄─▀█▀─▄█─▄▄─█▄─▄▄▀██▀▄─██─▄▄▄─█─█─█▄─▄███████████████
+█████████████████─███─██─██─█▄█─██─██─██─██─██─▀─██─███▀█─▄─██─████████████████
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄▄▄▀▀▄▄▄▄▀▄▄▄▀▄▄▄▀▄▄▄▄▀▄▄▄▄▀▀▄▄▀▄▄▀▄▄▄▄▄▀▄▀▄▀▄▄▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+"""
+
+TOMODACHI_ASCII_ = """
+
+▀▀█▀▀ █▀▀█ █▀▄▀█ █▀▀█ █▀▀▄ █▀▀█ █▀▀ █──█ ─▀─
+──█── █──█ █─▀─█ █──█ █──█ █▄▄█ █── █▀▀█ ▀█▀
+──▀── ▀▀▀▀ ▀───▀ ▀▀▀▀ ▀▀▀─ ▀──▀ ▀▀▀ ▀──▀ ▀▀▀
+"""
 
 
 class ServiceLauncher(object):
@@ -239,9 +269,144 @@ class ServiceLauncher(object):
                 )
 
                 print("---")
-                print("Starting tomodachi services (pid: {}) ...".format(process_id))
-                for file in service_files:
-                    print("* {}".format(file))
+
+                print(TOMODACHI_ASCII)
+
+                arg0 = sys.argv[0]
+                if arg0.endswith("/__main__.py"):
+                    for path in sys.path:
+                        if arg0.startswith(path + "/"):
+                            arg0 = arg0.split(path + "/", 1)[-1].rsplit("/__main__.py", 1)[0]
+                            break
+
+                    arg0 = arg0.replace("/", ".")
+                    process_cmd = ["python", "-m", arg0] + sys.argv[1:]
+                else:
+                    process_cmd = [arg0.rsplit(os.sep, 1)[-1]] + sys.argv[1:]
+
+                actual_file_paths = []
+                potential_file_paths = set()
+
+                for file_path in service_files:
+                    file_path_ = file_path
+                    potential_file_paths.add(file_path)
+
+                    try:
+
+                        async def _import_module() -> Any:
+                            logging.disable_logger("tomodachi.importer")
+                            return ServiceImporter.import_service_file(file_path)
+
+                        service_import = loop.run_until_complete(_import_module())
+                        if service_import and service_import.__file__:
+                            file_path_ = service_import.__file__
+                            potential_file_paths.add(file_path_)
+                            if file_path_.endswith(".pyc"):
+                                file_path_ = file_path_[:-1]
+                                potential_file_paths.add(file_path_)
+
+                            if file_path_.startswith(os.getcwd() + "/"):
+                                file_path_ = file_path_.split(os.getcwd() + "/", 1)[-1]
+                                potential_file_paths.add(file_path_)
+                    except tomodachi.importer.ServicePackageError:
+                        pass
+                    except (SyntaxError, IndentationError):
+                        pass
+                    except Exception:
+                        pass
+
+                    if file_path_ not in actual_file_paths:
+                        actual_file_paths.append(file_path_)
+
+                for file_path in potential_file_paths:
+                    if file_path in process_cmd:
+                        process_cmd = [arg for arg in process_cmd if arg != file_path]
+                        if "<...>" not in process_cmd:
+                            process_cmd.append("<...>")
+
+                for value in ("-c", "--config"):
+                    if value in process_cmd:
+                        config_file_path = (process_cmd[process_cmd.index(value, 0) :] + ["..."])[1]
+                        if config_file_path.endswith(".json"):
+                            process_cmd = [arg if arg != config_file_path else "<...>" for arg in process_cmd]
+
+                process_cmd = [arg for arg in process_cmd if arg.strip()]
+                process_cmd_str: str
+                while True:
+                    process_cmd_str = shlex.join(process_cmd).replace("'<...>'", "<...>")
+                    if len(process_cmd_str) <= 40:
+                        break
+                    process_cmd = [arg for arg in process_cmd if arg.strip() and arg != "..."][:-1] + ["..."]
+
+                pid_str = f"[pid: {process_id}]"
+                print(f" process {pid_str:<14} ⇢ `{process_cmd_str}`")
+
+                for file_path in actual_file_paths:
+                    file_path_ = file_path
+                    while True:
+                        if len(file_path_) <= 50:
+                            break
+                        file_path_ = ".../" + "/".join(file_path_.replace(".../", "").split("/")[1:])
+
+                    print(f' service file           ⇢ "{file_path_}"')
+
+                venv_prompt = ""
+                if "venv" in sys.exec_prefix or "virtualenv" in sys.exec_prefix:
+                    venv_config = open(os.path.join(sys.exec_prefix, "pyvenv.cfg"), "r").read()
+                    for line in venv_config.split("\n"):
+                        if line.startswith("prompt = "):
+                            venv_prompt = line.split("prompt = ", 1)[-1]
+                            break
+
+                init_local_time_str = init_local_datetime.strftime("%B %d, %Y - %H:%M:%S") + " " + str(tz)
+                print("")
+                print(
+                    f" python runtime         ⇢ {platform.python_implementation()} {platform.python_version()} (build: {platform.python_build()[1]})"
+                )
+                print(
+                    f" tomodachi version      ⇢ {tomodachi.__version__}"
+                    + (f" [in venv: {venv_prompt}]" if venv_prompt else "")
+                )
+                print(
+                    f" event loop             ⇢ {event_loop_alias}"
+                    + (f" {event_loop_version}" if event_loop_version else "")
+                )
+                if tz:
+                    print(f" local time             ⇢ {init_local_time_str}")
+                print(f" start timestamp        ⇢ {init_timestamp_str}")
+                print("")
+                print(" ---- file watcher is enabled (code changes will auto restart services)")
+                print(" ---- stop running services with <ctrl+c> (graceful teardown)")
+                print("")
+                sys.exit(0)
+                #         process [pid: 876140]         ⇢ `tomodachi run --loop asyncio ...`
+                # print(f'process [pid: 1]      ⇢ "tomodachi run --loop uvloop ..."')
+
+                # process [pid: 1]      ⇢ "tomodachi run --loop uvloop ..."
+                # service file          ⇢ "examples/basic_examples/scheduler_example.py"
+                #
+                # tomodachi version     ⇢ 0.25.0 (released 3 months ago)
+                # python runtime        ⇢ CPython 3.11.4 [venv: "tomodachi-py3.11"]
+                # event loop impl.      ⇢ asyncio (auto)
+                # local time            ⇢ Wed July 12, 2023 - 10:21:39 Europe/Stockholm
+                # timestamp in UTC      ⇢ 2023-07-12T08:21:39.552710Z
+                #
+                # ---- file watcher is enabled (code changes will auto restart services)
+                # ---- stop running services with <ctrl+c> (graceful teardown)
+
+                # ---- service file ⇢ "examples/basic_examples/scheduler_example.py" ----
+                #    print(f' ---- service file ⇢ "{file_path_}"')
+
+                # : {', '.join(service_files)}")
+
+                # print(f"    pid ⇢ {process_id}")
+                # print(process_cmd)
+                # print(sys.argv[0].rsplit(os.sep, 1)[-1])
+                # print(" ".join(sys.argv[1:]))
+
+                # print("Starting tomodachi services (pid: {}) ...".format(process_id))
+                # for file in service_files:
+                #     print("* {}".format(file))
 
                 print()
                 print(
