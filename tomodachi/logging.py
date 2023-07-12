@@ -526,11 +526,15 @@ def bind_logger(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, st
 
 
 def disable_logger(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, str]) -> None:
-    get_context(logger)[LOGGER_DISABLED_KEY] = True
+    ctx = get_context(logger)
+    # ctx[LOGGER_DISABLED_KEY] = True
+    get_logger(ctx["logger"]).bind(**{LOGGER_DISABLED_KEY: True})
 
 
 def enable_logger(logger: LoggerContext | dict | structlog.BoundLoggerBase | str) -> None:
-    get_context(logger)[LOGGER_DISABLED_KEY] = False
+    ctx = get_context(logger)
+    # ctx[LOGGER_DISABLED_KEY] = False
+    get_logger(ctx["logger"]).bind(**{LOGGER_DISABLED_KEY: False})
 
 
 def is_logger_disabled(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, str]) -> bool:

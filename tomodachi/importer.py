@@ -5,6 +5,7 @@ import sys
 from types import ModuleType
 from typing import Any
 
+import tomodachi
 from tomodachi import logging
 
 
@@ -124,7 +125,8 @@ class ServiceImporter(object):
             if file_name.endswith(".py"):
                 file_name = file_name[:-3]
             logging.getLogger("tomodachi.importer").error("no such service file", file_path="{}.py".format(file_name))
-            sys.exit(2)
+            tomodachi.SERVICE_EXIT_CODE = 2
+            raise
         except Exception as e:
             if file_name.endswith(".py"):
                 file_name = file_name[:-3]
