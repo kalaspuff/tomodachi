@@ -2,6 +2,8 @@
 import contextvars
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
+# from tomodachi import discovery
+from tomodachi import discovery as discovery
 from tomodachi.__version__ import __version_info__ as __version_info__
 from tomodachi.helpers.aiobotocore_connector import ClientConnector as _AiobotocoreClientConnector
 from tomodachi.helpers.aiobotocore_connector import connector as _aiobotocore_client_connector
@@ -11,11 +13,13 @@ from tomodachi.helpers.execution_context import decrease_execution_context_value
 from tomodachi.helpers.execution_context import get_execution_context as get_execution_context
 from tomodachi.helpers.execution_context import get_instance as get_instance
 from tomodachi.helpers.execution_context import get_service as get_service
+from tomodachi.helpers.execution_context import get_services as get_services
 from tomodachi.helpers.execution_context import increase_execution_context_value as increase_execution_context_value
 from tomodachi.helpers.execution_context import set_execution_context as set_execution_context
 from tomodachi.helpers.execution_context import set_service as _set_service
 from tomodachi.helpers.execution_context import unset_service as _unset_service
 from tomodachi.invoker import decorator as decorator
+from tomodachi.logging import LoggerProtocol
 from tomodachi.options import Options as Options
 from tomodachi.options import OptionsInterface as OptionsInterface
 from tomodachi.transport.amqp import amqp as amqp
@@ -62,8 +66,8 @@ class Service(metaclass=TomodachiServiceMeta):
     name: str = ...
     uuid: str = ...
     options: Options
+    logger: LoggerProtocol
     log: Callable = ...
-    log_setup: Callable = ...
 
 def service(cls: Type[object]) -> Type[TomodachiServiceMeta]: ...
 def exit(exit_code: Optional[int] = None) -> None: ...

@@ -6,6 +6,7 @@ from tomodachi import logging
 # An example discovery class which would could be extended to register which
 # the started service' HTTP endpoints are.
 class DummyRegistry(object):
+    name: str = "tomodachi.discovery.example"
     http_endpoints: Dict = {}
 
     @classmethod
@@ -15,16 +16,12 @@ class DummyRegistry(object):
 
     @classmethod
     async def _register_service(cls, service: Any) -> None:
-        logging.getLogger("tomodachi.discovery.example").info(
-            "registering service endpoints", service_name=service.name, service_uuid=service.uuid
-        )
+        logging.getLogger().info("registering service endpoints")
         for host, port, method, pattern in cls.http_endpoints.get(service, []):
             pass
 
     @classmethod
     async def _deregister_service(cls, service: Any) -> None:
-        logging.getLogger("tomodachi.discovery.example").info(
-            "deregistering service", service_name=service.name, service_uuid=service.uuid
-        )
+        logging.getLogger().info("deregistering service")
         for host, port, method, pattern in cls.http_endpoints.pop(service, []):
             pass

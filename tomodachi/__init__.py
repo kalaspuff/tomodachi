@@ -6,6 +6,7 @@ import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
 from tomodachi.__version__ import __version__, __version_info__
+from tomodachi.logging import Logger, LoggerProtocol, get_logger
 from tomodachi.options import Options, OptionsInterface
 
 try:
@@ -51,8 +52,8 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
     "aiobotocore_client_connector": ("tomodachi.helpers.aiobotocore_connector", "connector"),
     "AiobotocoreClientConnector": ("tomodachi.helpers.aiobotocore_connector", "ClientConnector"),
     "_log": ("tomodachi.helpers.logging", "log"),
-    "_log_setup": ("tomodachi.helpers.logging", "log_setup"),
     "cli": ("tomodachi.cli", None),
+    "discovery": ("tomodachi.discovery", None),
 }
 __imported_modules: Dict[str, Any] = {}
 __cached_defs: Dict[str, Any] = {}
@@ -217,6 +218,7 @@ __all__ = [
     "__email__",
     "decorator",
     "cli",
+    "discovery",
     "run",
     "_run",
     "_set_service",
@@ -236,6 +238,8 @@ __all__ = [
     "aiobotocore_client_connector",
     "Options",
     "OptionsInterface",
+    "Logger",
+    "get_logger",
     "amqp",
     "amqp_publish",
     "aws_sns_sqs",
@@ -272,6 +276,8 @@ class TomodachiServiceMeta(type):
             result.uuid = str(uuid_.uuid4())
         if bases and not result.name:
             result.name = "service"
+        if bases and not hasattr(result, "logger"):
+            result.logger = cast(Logger, property(lambda *a: get_logger(context("service.logger"))))
 
         if bases and (not hasattr(result, "options") or not result.options):
             result.options = Options()
@@ -299,9 +305,30 @@ class Service(metaclass=TomodachiServiceMeta):
     name: str = ""
     uuid: str = ""
     options: Options
+    logger: LoggerProtocol
 
     def log(self, *args: Any, **kwargs: Any) -> None:
+        import warnings  # isort:skip
+
+        warnings.warn(
+            "Using the 'service.log' function is deprecated. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.",
+            DeprecationWarning,
+        )
         __getattr__("_log")(self, *args, **kwargs)
+
+    def log_setup(
+        self,
+        name: Optional[str] = None,
+        level: Optional[Union[str, int]] = None,
+        formatter: Any = True,
+        filename: Optional[str] = None,
+    ) -> None:
+        import warnings  # isort:skip
+
+        warnings.warn(
+            "Using the 'service.log_setup' function is deprecated and has no effect. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.",
+            DeprecationWarning,
+        )
 
     def __setattr__(self, item: str, value: Any) -> None:
         if item == "options" and not isinstance(value, Options):
@@ -318,6 +345,13 @@ class Service(metaclass=TomodachiServiceMeta):
 
 
 def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
+    import warnings  # isort:skip
+
+    warnings.warn(
+        "Using the '@tomodachi.service' decorator is deprecated. Service classes should instead inherit from the 'tomodachi.Service' class.",
+        DeprecationWarning,
+    )
+
     if isinstance(cls, TomodachiServiceMeta):
         return cls
 
@@ -326,12 +360,11 @@ def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
 
 
 def exit(exit_code: Optional[int] = None) -> None:
-    import logging  # noqa # isort:skip
     import sys  # noqa # isort:skip
     from tomodachi.launcher import ServiceLauncher  # noqa  # isort:skip
 
     exit_code = exit_code if exit_code is not None else SERVICE_EXIT_CODE
-    logging.getLogger("system").warning(f"Termination initiatied via tomodachi.exit call [exit_code: {exit_code}]")
+    get_logger("tomodachi").warning("termination initiated via tomodachi.exit call", exit_code=exit_code)
     ServiceLauncher.restart_services = False
     setattr(sys.modules[__name__], "SERVICE_EXIT_CODE", exit_code)
     ServiceLauncher.stop_services()

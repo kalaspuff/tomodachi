@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 import pytz
 import tzlocal
 
-from tomodachi import logging
+from tomodachi import get_contextvar, logging
 from tomodachi.helpers.crontab import get_next_datetime
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
@@ -40,6 +40,11 @@ class Scheduler(Invoker):
         )
 
         async def handler() -> None:
+            logging.bind_logger(
+                logging.getLogger("service.handler").bind(handler=func.__name__, handler_type="tomodachi.schedule")
+            )
+            get_contextvar("service.logger").set("service.handler")
+
             increase_execution_context_value("scheduled_functions_current_tasks")
             try:
                 kwargs = dict(original_kwargs)
@@ -323,6 +328,9 @@ class Scheduler(Invoker):
         timezone: Optional[str] = None,
         immediately: Optional[bool] = False,
     ) -> None:
+        logger = logging.getLogger("tomodachi.scheduler").bind(wrapped_handler=func.__name__)
+        logging.bind_logger(logger)
+
         timezone = cls.get_timezone(timezone)
 
         if not cls.close_waiter:
@@ -346,9 +354,8 @@ class Scheduler(Invoker):
                     #         func.__name__
                     #     )
                     # )
-                    logging.getLogger("tomodachi.scheduler").warning(
+                    logger.warning(
                         "scheduled function loop cannot start yet - start waiter not done for 10 seconds",
-                        handler_name=func.__qualname__,
                     )
                     sleep_task = asyncio.ensure_future(asyncio.sleep(110))
                     await asyncio.wait([sleep_task, start_waiter], return_when=asyncio.FIRST_COMPLETED)
@@ -360,14 +367,13 @@ class Scheduler(Invoker):
                         #         func.__name__
                         #     )
                         # )
-                        logging.getLogger("tomodachi.scheduler").warning(
+                        logger.warning(
                             "scheduled function loop cannot start yet - start waiter not done for 120 seconds",
-                            handler_name=func.__qualname__,
                         )
                         try:
                             raise Exception("scheduled function loop not started for 120 seconds")
                         except Exception as e:
-                            logging.getLogger("exception").exception(str(e), handler_name=func.__qualname__)
+                            logging.getLogger("exception").exception(str(e))
 
                 await asyncio.sleep(0.1)
                 await start_waiter
@@ -378,9 +384,8 @@ class Scheduler(Invoker):
                     #         func.__name__
                     #     )
                     # )
-                    logging.getLogger("tomodachi.scheduler").warning(
+                    logger.warning(
                         "scheduled function loop never started before service termination",
-                        handler_name=func.__qualname__,
                     )
                 else:
                     ts0 = cls.next_call_at(current_time, interval, timestamp, timezone)
@@ -402,9 +407,8 @@ class Scheduler(Invoker):
                     #         func.__name__
                     #     )
                     # )
-                    logging.getLogger("tomodachi.scheduler").warning(
+                    logger.warning(
                         "scheduled function loop never started before service termination",
-                        handler_name=func.__qualname__,
                     )
 
             next_call_at: Optional[int] = None
@@ -430,14 +434,13 @@ class Scheduler(Invoker):
                                     #         func.__name__
                                     #     )
                                     # )
-                                    logging.getLogger("tomodachi.scheduler").warning(
+                                    logger.warning(
                                         "scheduled function loop has lost time sync and may not run",
-                                        handler_name=func.__qualname__,
                                     )
                                     try:
                                         raise Exception("scheduled function loop has lost time sync and may not run")
                                     except Exception as e:
-                                        logging.getLogger("exception").exception(str(e), handler_name=func.__qualname__)
+                                        logging.getLogger("exception").exception(str(e))
 
                                 next_call_at = None
                                 await asyncio.sleep(1)
@@ -471,9 +474,8 @@ class Scheduler(Invoker):
                             # logging.getLogger("tomodachi.scheduler").warning(
                             #     "Too many scheduled tasks ({}) for function '{}'".format(threshold, func.__name__)
                             # )
-                            logging.getLogger("tomodachi.scheduler").warning(
+                            logger.warning(
                                 "too many scheduled tasks for function in scheduled function loop",
-                                handler_name=func.__qualname__,
                                 task_count=len(tasks),
                                 task_limit=threshold,
                             )
@@ -492,9 +494,8 @@ class Scheduler(Invoker):
                         #     "Tasks within threshold for function '{}' - resumed".format(func.__name__)
                         # )
                         threshold = 20
-                        logging.getLogger("tomodachi.scheduler").info(
+                        logger.info(
                             "scheduled function loop resumed as task count is within threshold",
-                            handler_name=func.__qualname__,
                             task_count=len(tasks),
                             task_limit=threshold,
                         )
@@ -532,7 +533,7 @@ class Scheduler(Invoker):
                     # logging.getLogger("tomodachi.scheduler").warning(
                     #     "Awaiting task '{}' to finish execution".format(task_name)
                     # )
-                    logging.getLogger("tomodachi.scheduler").warning(
+                    logger.warning(
                         "awaiting task to complete",
                         task_name=task_name,
                     )
@@ -549,7 +550,7 @@ class Scheduler(Invoker):
                         # logging.getLogger("tomodachi.scheduler").warning(
                         #     "Still awaiting task '{}' to finish execution".format(task_name)
                         # )
-                        logging.getLogger("tomodachi.scheduler").warning(
+                        logger.warning(
                             "still awaiting task to finish",
                             task_name=task_name,
                         )
@@ -616,7 +617,9 @@ class Scheduler(Invoker):
             for interval, timestamp, timezone, immediately, func, handler in context.get(
                 "_schedule_scheduled_functions", []
             ):
-                await cls.start_schedule_loop(obj, context, handler, func, interval, timestamp, timezone, immediately)
+                await asyncio.create_task(
+                    cls.start_schedule_loop(obj, context, handler, func, interval, timestamp, timezone, immediately)
+                )
 
         return _schedule
 

@@ -10,6 +10,7 @@ from tomodachi.transport.aws_sns_sqs import aws_sns_sqs_publish
 # by sending a message on the 'services-registration-deregister' when shutting
 # down.
 class AWSSNSRegistration(object):
+    name: str = "tomodachi.discovery.awssns"
     http_endpoints: Dict = {}
 
     @classmethod
@@ -19,21 +20,16 @@ class AWSSNSRegistration(object):
 
     @classmethod
     async def _register_service(cls, service: Any) -> None:
-        logging.getLogger("tomodachi.discovery.snssqs").info(
-            "registering service endpoints", service_name=service.name, service_uuid=service.uuid
-        )
+        logging.getLogger().info("registering service endpoints")
         data = {"name": service.name, "uuid": service.uuid, "http_endpoints": cls.http_endpoints.get(service)}
         await aws_sns_sqs_publish(service, data, topic="services-registration-register")
 
     @classmethod
     async def _deregister_service(cls, service: Any) -> None:
-        logging.getLogger("tomodachi.discovery.snssqs").info(
-            "deregistering service", service_name=service.name, service_uuid=service.uuid
-        )
+        logger = logging.getLogger()
+        logger.info("deregistering service")
         data = {"name": service.name, "uuid": service.uuid}
         try:
             await aws_sns_sqs_publish(service, data, topic="services-registration-deregister")
         except Exception as e:
-            logging.getLogger("tomodachi.discovery.snssqs").warning(
-                "deregistering failed", service_name=service.name, service_uuid=service.uuid, error=str(e)
-            )
+            logger.warning("deregistering failed", error=str(e))

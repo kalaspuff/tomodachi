@@ -6,13 +6,13 @@ import logging
 import sys
 from contextvars import ContextVar
 from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
-from typing import Any, Dict, Iterable, KeysView, Literal, Optional, Sequence, TextIO, Tuple, Union, cast
+from typing import Any, Dict, Iterable, KeysView, Literal, Optional, Protocol, Sequence, TextIO, Tuple, Union, cast
 
 import structlog
 
 LOGGER_DISABLED_KEY = "_logger_disabled"
-RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"),)
-EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message", "event")
+RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
+EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message")
 TOMODACHI_LOGGER: Literal["json", "console"] = "console"
 
 _context: ContextVar[Union[LoggerContext, Dict]] = ContextVar("tomodachi.logging._context", default={})
@@ -100,17 +100,20 @@ class RenameKeys:
 
     def __init__(
         self,
-        pairs: Sequence[Tuple[str, str]],
+        pairs: Union[Sequence[Tuple[str, str]], Dict[str, str]],
     ) -> None:
+        if not isinstance(pairs, dict):
+            pairs = {k: v for k, v in pairs}
         self.pairs = pairs
 
     def __call__(
         self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
     ) -> structlog.typing.EventDict:
-        for old_key, new_key in self.pairs:
-            if old_key in event_dict:
-                event_dict[new_key] = event_dict.pop(old_key)
-        return event_dict
+        return {(self.pairs.get(k, k)): v for k, v in event_dict.items()}
+        # for old_key, new_key in self.pairs:
+        #     if old_key in event_dict:
+        #         event_dict[new_key] = event_dict.pop(old_key)
+        # return event_dict
 
 
 _ordered_items = structlog.processors._items_sorter(
@@ -431,7 +434,27 @@ class Logger(structlog.stdlib.BoundLogger):
             return logging.getLogger(name).getChild(suffix)
 
 
-console_logger: structlog.stdlib.BoundLogger = structlog.wrap_logger(
+class LoggerProtocol(Protocol):
+    def info(self, *args: Any, **kwargs: Any) -> None:
+        ...
+
+    def debug(self, *args: Any, **kwargs: Any) -> None:
+        ...
+
+    def warning(self, *args: Any, **kwargs: Any) -> None:
+        ...
+
+    def error(self, *args: Any, **kwargs: Any) -> None:
+        ...
+
+    def critical(self, *args: Any, **kwargs: Any) -> None:
+        ...
+
+    def exception(self, *args: Any, **kwargs: Any) -> None:
+        ...
+
+
+console_logger: Logger = structlog.wrap_logger(
     None,
     processors=[
         structlog.processors.add_log_level,
@@ -451,7 +474,7 @@ console_logger: structlog.stdlib.BoundLogger = structlog.wrap_logger(
     cache_logger_on_first_use=False,
 )
 
-json_logger: structlog.stdlib.BoundLogger = structlog.wrap_logger(
+json_logger: Logger = structlog.wrap_logger(
     None,
     processors=[
         structlog.processors.add_log_level,
@@ -508,7 +531,7 @@ def is_logger_enabled(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBa
     return not is_logger_disabled(logger)
 
 
-def get_logger(name: Optional[str] = None) -> structlog.stdlib.BoundLogger:
+def get_logger(name: Optional[str] = None) -> Logger:
     logger = console_logger if TOMODACHI_LOGGER == "console" else json_logger if TOMODACHI_LOGGER == "json" else None
     if not logger:
         raise Exception("Invalid TOMODACHI_LOGGER value: '{}' (exected 'console' or 'json')".format(TOMODACHI_LOGGER))
@@ -516,11 +539,11 @@ def get_logger(name: Optional[str] = None) -> structlog.stdlib.BoundLogger:
     if name:
         ctx = _loggers.get().get(name)
         if ctx:
-            return logger.new(**ctx)
+            return cast(Logger, logger.new(**ctx))
 
-        return logger.new(**LoggerContext(logger=name, **{LOGGER_DISABLED_KEY: False}))
+        return cast(Logger, logger.new(**LoggerContext(logger=name, **{LOGGER_DISABLED_KEY: False})))
 
-    return logger.new(**_context.get())
+    return cast(Logger, logger.new(**_context.get()))
 
 
 # CamelCase alias for `get_logger`.

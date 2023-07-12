@@ -76,6 +76,25 @@ class ServiceContainer(object):
         if not self.started_waiter:
             self.started_waiter = asyncio.Future()
 
+        tomodachi.get_contextvar("service.logger").set("service")
+
+        def logging_context_wrapper(coro: Any, service_name_: str, **logger_context: Any) -> Any:
+            async def _wrapper(*args: Any, **kwargs: Any) -> Any:
+                if not coro:
+                    return
+
+                logger = logging.get_logger("service").bind(service_name=service_name_)
+                if logger_context:
+                    logger = logging.get_logger().new(**logger_context)
+                logging.bind_logger(logger)
+                name = logger._context.get("logger", "service")
+                if name == "service" or name.startswith("service."):
+                    tomodachi.get_contextvar("service.logger").set(name)
+
+                return await coro(*args, **kwargs)
+
+            return _wrapper
+
         for _, cls in inspect.getmembers(self.module_import):
             if inspect.isclass(cls):
                 if not getattr(cls, CLASS_ATTRIBUTE, False):
@@ -152,14 +171,35 @@ class ServiceContainer(object):
                 if invoker_functions:
                     invoker_tasks = invoker_tasks | set(
                         [
-                            asyncio.ensure_future(getattr(instance, name)(**{INVOKER_TASK_START_KEYWORD: True}))
+                            (
+                                service_name,
+                                asyncio.ensure_future(
+                                    logging_context_wrapper(
+                                        getattr(instance, name),
+                                        service_name,
+                                        logger="tomodachi.setup",
+                                        wrapped_handler=name,
+                                    )(**{INVOKER_TASK_START_KEYWORD: True})
+                                ),
+                            )
                             for name in invoker_functions
                         ]
                     )
                     services_started.add((service_name, instance, log_level))
 
                 try:
-                    start_futures.add(getattr(instance, "_start_service"))
+                    start_futures.add(
+                        logging_context_wrapper(
+                            getattr(instance, "_start_service"),
+                            service_name,
+                            logger="service.lifecycle",
+                            # service_handler="_start_service",
+                            # operation="lifecycle.initialize",
+                            # triggered="start",
+                            lifecycle_handler="_start_service",
+                            operation="service.start",
+                        )
+                    )
                     services_started.add((service_name, instance, log_level))
                 except AttributeError:
                     pass
@@ -171,7 +211,11 @@ class ServiceContainer(object):
             try:
                 for name, instance, log_level in services_started:
                     # self.logger.info('Initializing service "{}" [id: {}]'.format(name, instance.uuid))
-                    self.logger.info("initializing service", service_name=name, service_uuid=instance.uuid)
+                    self.logger.info(
+                        "initializing service",
+                        service=name,
+                        lifecycle="initializing",
+                    )
 
                 if start_futures:
                     start_task_results = await asyncio.wait(
@@ -183,29 +227,105 @@ class ServiceContainer(object):
                     if exception:
                         raise cast(Exception, exception[0])
                 if invoker_tasks:
-                    task_results = await asyncio.wait(
-                        [asyncio.ensure_future(func()) for func in (await asyncio.gather(*invoker_tasks)) if func]
+                    await asyncio.gather(*set([future for _, future in invoker_tasks]))
+                    wrapped_invoker_tasks = set(
+                        [
+                            logging_context_wrapper(
+                                future.result(),
+                                name,
+                                logger="tomodachi.invoker",
+                                invoker_module=future.result().__module__,
+                                invoker_function=future.result().__qualname__.split(".<locals>", 1)[0],
+                            )
+                            for name, future in invoker_tasks
+                            if future and future.result()
+                        ]
                     )
+                    task_results = await asyncio.wait(
+                        [asyncio.ensure_future(func()) for func in wrapped_invoker_tasks if func]
+                    )
+                    # print(name, future)
+                    # task_results = await asyncio.wait(
+                    #     [
+                    #         asyncio.ensure_future(func())
+                    #         for func in (await asyncio.gather(*invoker_tasks))
+                    #         if print(func.__qualname__ if func else func) or func
+                    #     ]
+                    # )
                     exception = [v.exception() for v in [value for value in task_results if value][0] if v.exception()]
                     if exception:
                         raise cast(Exception, exception[0])
 
                 for name, instance, log_level in services_started:
                     for registry in getattr(instance, "discovery", []):
-                        registered_services.add(instance)
+                        registered_services.add((name, instance))
                         if getattr(registry, "_register_service", None):
-                            await registry._register_service(instance)
+                            await asyncio.create_task(
+                                logging_context_wrapper(
+                                    registry._register_service,
+                                    name,
+                                    logger="tomodachi.discovery",
+                                    registry=registry.name
+                                    if hasattr(registry, "name")
+                                    else (
+                                        registry.__name__
+                                        if hasattr(registry, "__name__")
+                                        else (
+                                            type(registry).__name__
+                                            if hasattr(type(registry), "__name__")
+                                            else str(type(registry))
+                                        )
+                                    ),
+                                    operation="discovery.register",
+                                )(instance)
+                            )
 
-                    started_futures.add(getattr(instance, "_started_service", None))
-                    stop_futures.add(getattr(instance, "_stopping_service", None))
-                    stop_futures.add(getattr(instance, "_stop_service", None))
+                    if getattr(instance, "_started_service", None):
+                        started_futures.add(
+                            logging_context_wrapper(
+                                getattr(instance, "_started_service", None),
+                                name,
+                                logger="service.lifecycle",
+                                # operation="lifecycle.ready",
+                                # handler_function="_started_service",
+                                lifecycle_handler="_started_service",
+                                operation="service.started",
+                            )
+                        )
+
+                    if getattr(instance, "_stopping_service", None):
+                        stop_futures.add(
+                            logging_context_wrapper(
+                                getattr(instance, "_stopping_service", None),
+                                name,
+                                logger="service.lifecycle",
+                                # operation="lifecycle.stop",
+                                # handler_function="_stopping_service",
+                                lifecycle_handler="_stopping_service",
+                                operation="service.teardown",
+                            )
+                        )
+
+                    if getattr(instance, "_stop_service", None):
+                        stop_futures.add(
+                            logging_context_wrapper(
+                                getattr(instance, "_stop_service", None),
+                                name,
+                                logger="service.lifecycle",
+                                # operation="lifecycle.stop",
+                                # handler_function="_stop_service",
+                                lifecycle_handler="_stop_service",
+                                operation="service.terminate",
+                                # lifecycle="stopping",
+                            )
+                        )
 
                     # self.logger.info('Started service "{}" [id: {}]'.format(name, instance.uuid))
-                    self.logger.info("started service", service_name=name, service_uuid=instance.uuid)
+                    self.logger.info("service handlers initialized", service=name, lifecycle="initialized")
             except Exception as e:
                 # self.logger.warning("Failed to start service")
                 for name, instance, log_level in services_started:
-                    self.logger.warning("failed to start service", service_name=name, service_uuid=instance.uuid)
+                    self.logger.warning("failed to start service", service=name, lifecycle="aborting")
                 started_futures = set()
                 self.stop_service()
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
@@ -218,7 +338,8 @@ class ServiceContainer(object):
                     v.exception() for v in [value for value in started_futures_result if value][0] if v.exception()
                 ]
                 if exception:
-                    self.logger.warning("Failed to start service (exception raised in '_started_service')")
+                    for name, instance, log_level in services_started:
+                        self.logger.warning("failed to start service", service=name, lifecycle="aborting")
                     started_futures = set()
                     self.stop_service()
                     try:
@@ -227,29 +348,63 @@ class ServiceContainer(object):
                         logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
         else:
             # self.logger.warning("No transports defined in service file")
-            self.logger.warning("no transport handlers defined", module_name=self.module_name, file_path=self.file_path)
+            self.logger.warning("no transport handlers defined", module=self.module_name, file_path=self.file_path)
             self.stop_service()
 
         self.services_started = services_started
         if self.started_waiter and not self.started_waiter.done():
             self.started_waiter.set_result(services_started)
 
+            if not self._close_waiter or not self._close_waiter.done():
+                for name, instance, log_level in services_started:
+                    self.logger.info("service started successfully", service=name, lifecycle="ready")
+
         await self.wait_stopped()
         for name, instance, log_level in services_started:
             # self.logger.info('Stopping service "{}" [id: {}]'.format(name, instance.uuid))
-            self.logger.info("stopping service", service_name=name, service_uuid=instance.uuid)
+            self.logger.info("stopping service", service=name, lifecycle="stopping")
 
-        for instance in registered_services:
+        for name, instance in registered_services:
             for registry in getattr(instance, "discovery", []):
                 if getattr(registry, "_deregister_service", None):
-                    await registry._deregister_service(instance)
+                    await asyncio.create_task(
+                        logging_context_wrapper(
+                            registry._deregister_service,
+                            name,
+                            logger="tomodachi.discovery",
+                            registry=registry.name
+                            if hasattr(registry, "name")
+                            else (
+                                registry.__name__
+                                if hasattr(registry, "__name__")
+                                else (
+                                    type(registry).__name__
+                                    if hasattr(type(registry), "__name__")
+                                    else str(type(registry))
+                                )
+                            ),
+                            operation="discovery.deregister",
+                            # function="{}.{}.{}".format(
+                            #     registry.__module__,
+                            #     registry.__name__
+                            #     if hasattr(registry, "__name__")
+                            #     else (
+                            #         type(registry).__name__
+                            #         if hasattr(type(registry), "__name__")
+                            #         else str(type(registry))
+                            #     ),
+                            #     "_deregister_service",
+                            # ),
+                            # function=registry._deregister_service.__name__,
+                        )(instance)
+                    )
 
         if stop_futures and any(stop_futures):
             await asyncio.wait([asyncio.ensure_future(func()) for func in stop_futures if func])
 
         for name, instance, log_level in services_started:
             # self.logger.info('Stopped service "{}" [id: {}]'.format(name, instance.uuid))
-            self.logger.info("stopped service", service_name=name, service_uuid=instance.uuid)
+            self.logger.info("stopped service", service=name, lifecycle="stopped")
 
         # Debug output if TOMODACHI_DEBUG env is set. Shows still running tasks on service termination.
         if os.environ.get("TOMODACHI_DEBUG") and os.environ.get("TOMODACHI_DEBUG") != "0":

@@ -20,7 +20,7 @@ from aiohttp.streams import EofStream
 from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
 
-from tomodachi import logging
+from tomodachi import get_contextvar, logging
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -163,7 +163,7 @@ class RequestHandler(web_protocol.RequestHandler):
                 #     )
                 # )
                 status_code = 499
-                http_logger.info(
+                logging.getLogger().info(
                     "http [{}]: {} {}".format(status_code, request.method, request.path),
                     status_code=status_code,
                     remote_ip=request_ip or "",
@@ -214,7 +214,7 @@ class RequestHandler(web_protocol.RequestHandler):
                 #         len(msg),
                 #     )
                 # )
-                http_logger.info(
+                logging.getLogger().info(
                     "bad http request [{}]".format(status),
                     status_code=status,
                     remote_ip=request_ip or "",
@@ -372,6 +372,9 @@ class HttpTransport(Invoker):
         middlewares = context.get("http_middleware", [])
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
+            logging.bind_logger(logging.getLogger("service.handler").bind(handler=func.__name__, handler_type="http"))
+            get_contextvar("service.logger").set("service.handler")
+
             kwargs = dict(original_kwargs)
             arg_matches: Dict[str, Any] = {}
 
@@ -550,6 +553,12 @@ class HttpTransport(Invoker):
         middlewares = context.get("http_middleware", [])
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
+            logging.bind_logger(
+                logging.getLogger("service.handler").bind(handler=func.__name__, handler_type="tomodachi.http_error")
+            )
+
+            get_contextvar("service.logger").set("service.handler")
+
             kwargs = dict(original_kwargs)
             arg_matches: Dict[str, Any] = {}
 
@@ -616,6 +625,8 @@ class HttpTransport(Invoker):
 
     @classmethod
     async def websocket_handler(cls, obj: Any, context: Dict, func: Any, url: str) -> Any:
+        logger = logging.getLogger("tomodachi.http")
+
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
         compiled_pattern = re.compile(pattern)
 
@@ -624,6 +635,8 @@ class HttpTransport(Invoker):
         async def _pre_handler_func(_: Any, request: web.Request) -> None:
             request._cache["is_websocket"] = True
             request._cache["websocket_uuid"] = str(uuid.uuid4())
+
+            logging.bind_logger(logging.getLogger().bind(handler=func.__name__, handler_type="websocket"))
 
         values = inspect.getfullargspec(func)
         original_kwargs = (
@@ -662,7 +675,7 @@ class HttpTransport(Invoker):
                     #         "-",
                     #     )
                     # )
-                    http_logger.info(
+                    logger.info(
                         "websocket [cancelled]: {}".format(request.path),
                         remote_ip=request_ip,
                         auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -692,7 +705,7 @@ class HttpTransport(Invoker):
                 #         "-",
                 #     )
                 # )
-                http_logger.info(
+                logger.info(
                     "websocket [open]: {}".format(request.path),
                     remote_ip=request_ip,
                     auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -764,7 +777,7 @@ class HttpTransport(Invoker):
                     #         "-",
                     #     )
                     # )
-                    http_logger.info(
+                    logger.info(
                         "websocket [error]: {}".format(request.path),
                         remote_ip=request_ip,
                         auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -830,6 +843,9 @@ class HttpTransport(Invoker):
 
     @staticmethod
     async def start_server(obj: Any, context: Dict) -> Optional[Callable]:
+        logger = logging.getLogger("tomodachi.http")
+        logging.bind_logger(logger)
+
         if context.get("_http_server_started"):
             return None
         context["_http_server_started"] = True
@@ -858,6 +874,9 @@ class HttpTransport(Invoker):
             http_logger.addHandler(logger_handler)
 
         async def _start_server() -> None:
+            logger = logging.getLogger("tomodachi.http")
+            logging.bind_logger(logger)
+
             loop = asyncio.get_event_loop()
 
             logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
@@ -947,7 +966,7 @@ class HttpTransport(Invoker):
                                 #         "{0:.5f}s".format(round(request_time, 5)),
                                 #     )
                                 # )
-                                http_logger.info(
+                                logger.info(
                                     "http [{}]: {} {}".format(status_code, request.method, request.path),
                                     status_code=status_code,
                                     remote_ip=request_ip,
@@ -966,7 +985,7 @@ class HttpTransport(Invoker):
                                     request_time="{0:.5f}s".format(round(request_time, 5)),
                                 )
                         else:
-                            http_logger.info(
+                            logger.info(
                                 "websocket [close]: {}".format(request.path),
                                 remote_ip=request_ip,
                                 auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -1262,12 +1281,12 @@ class HttpTransport(Invoker):
                 )
                 if reuse_port:
                     if not port:
-                        http_logger.warning(
+                        logger.warning(
                             "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
                             "listening on random ports with SO_REUSEPORT is dangerous - please double check your intent"
                         )
                     elif str(port) in HttpTransport.server_port_mapping.values():
-                        http_logger.warning(
+                        logger.warning(
                             "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
                             "different service classes should not use the same port ({})".format(port)
                         )
@@ -1278,7 +1297,7 @@ class HttpTransport(Invoker):
             except OSError as e:
                 context["_http_accept_new_requests"] = False
                 error_message = re.sub(".*: ", "", e.strerror)
-                http_logger.warning(
+                logger.warning(
                     "unable to bind service [http] to http://{}:{}/".format(
                         "127.0.0.1" if host == "0.0.0.0" else host, port
                     ),
@@ -1316,7 +1335,7 @@ class HttpTransport(Invoker):
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
                     # http_logger.info("Closing {} websocket connection(s)".format(len(open_websockets)))
-                    http_logger.info("closing websocket connections", connection_count=len(open_websockets))
+                    logger.info("closing websocket connections", connection_count=len(open_websockets))
                     tasks = []
                     for websocket in open_websockets:
                         try:
@@ -1358,7 +1377,7 @@ class HttpTransport(Invoker):
                                 #         len(web_server.connections)
                                 #     )
                                 # )
-                                http_logger.info(
+                                logger.info(
                                     "awaiting keep-alive connections", connection_count=len(web_server.connections)
                                 )
                             if active_requests:
@@ -1367,7 +1386,7 @@ class HttpTransport(Invoker):
                                 #         len(active_requests), termination_grace_period_seconds
                                 #     )
                                 # )
-                                http_logger.info(
+                                logger.info(
                                     "awaiting requests to complete",
                                     request_count=len(active_requests),
                                     grace_period_seconds=termination_grace_period_seconds,
@@ -1387,7 +1406,7 @@ class HttpTransport(Invoker):
                         #         len(active_requests), termination_grace_period_seconds
                         #     )
                         # )
-                        http_logger.info(
+                        logger.info(
                             "awaiting requests to complete",
                             request_count=len(active_requests),
                             grace_period_seconds=termination_grace_period_seconds,
@@ -1408,7 +1427,7 @@ class HttpTransport(Invoker):
                             #         len(active_requests)
                             #     )
                             # )
-                            http_logger.warning(
+                            logger.warning(
                                 "all requests did not gracefully finish execution",
                                 remaining_request_count=len(active_requests),
                             )
@@ -1423,7 +1442,7 @@ class HttpTransport(Invoker):
                     #         len(web_server.connections)
                     #     )
                     # )
-                    http_logger.warning(
+                    logger.warning(
                         "forcefully closing open tcp connections", connection_count=len(web_server.connections)
                     )
                     await app.shutdown()
@@ -1432,7 +1451,7 @@ class HttpTransport(Invoker):
                     await app.shutdown()
 
                 if logger_handler:
-                    http_logger.removeHandler(logger_handler)
+                    logger.removeHandler(logger_handler)
                 await app.cleanup()
                 if stop_method:
                     await stop_method(*args, **kwargs)
@@ -1448,7 +1467,7 @@ class HttpTransport(Invoker):
             #    "Listening [http] on http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
             # )
             listen_url = "http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
-            http_logger.info("accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port)
+            logger.info("accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port)
 
         return _start_server
 

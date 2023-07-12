@@ -1,11 +1,11 @@
 from typing import Any
 
-from tomodachi import logging
+from tomodachi import context, logging
 
 
 def log(service: Any, *args: Any, **kwargs: Any) -> None:
-    service_name = str(service.name) if getattr(service, "name", None) else Ellipsis
-    name: str = "service"
+    # service_name = str(service.name) if getattr(service, "name", None) else Ellipsis
+    name: str = context("service.logger") or ""
     level = None
     message = None
 
@@ -57,11 +57,8 @@ def log(service: Any, *args: Any, **kwargs: Any) -> None:
     if not level:
         level = logging.INFO
     if not name:
-        name = str(service.name) if getattr(service, "name", None) else "service"
+        name = str(service.name) if getattr(service, "name", None) else context("service.logger")
     if not message:
         message = ""
 
-    if "service_name" not in kwargs:
-        kwargs["service_name"] = service_name
-
-    logging.getLogger(name).log(level, message, **kwargs)
+    logging.getLogger(name or None).log(level, message, **kwargs)
