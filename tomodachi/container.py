@@ -68,9 +68,10 @@ class ServiceContainer(object):
     async def run_until_complete(self) -> None:
         services_started: Set = set()
         invoker_tasks: Set = set()
-        start_futures: Set = set()
-        stop_futures: Set = set()
-        started_futures: Set = set()
+        setup_coros: Set = set()
+        teardown_coros: Set = set()
+        interrupt_coros: Set = set()
+        initialized_coros: Set = set()
         registered_services: Set = set()
 
         if not self.started_waiter:
@@ -188,16 +189,17 @@ class ServiceContainer(object):
                     services_started.add((service_name, instance, log_level))
 
                 try:
-                    start_futures.add(
+                    setup_coros.add(
                         logging_context_wrapper(
                             getattr(instance, "_start_service"),
                             service_name,
-                            logger="service.lifecycle",
+                            logger="service.handler",
                             # service_handler="_start_service",
                             # operation="lifecycle.initialize",
                             # triggered="start",
-                            lifecycle_handler="_start_service",
-                            operation="service.start",
+                            handler="_start_service",
+                            handler_type="tomodachi.lifecycle",
+                            operation="setup",
                         )
                     )
                     services_started.add((service_name, instance, log_level))
@@ -213,22 +215,36 @@ class ServiceContainer(object):
                     # self.logger.info('Initializing service "{}" [id: {}]'.format(name, instance.uuid))
                     self.logger.info(
                         "initializing service",
+                        state="initializing",
+                        event_="lifecycle.setup",
                         service=name,
-                        lifecycle="initializing",
                     )
 
-                if start_futures:
-                    start_task_results = await asyncio.wait(
-                        [asyncio.ensure_future(func()) for func in start_futures if func]
-                    )
-                    exception = [
-                        v.exception() for v in [value for value in start_task_results if value][0] if v.exception()
-                    ]
-                    if exception:
-                        raise cast(Exception, exception[0])
+                if setup_coros:
+                    results = await asyncio.wait([asyncio.ensure_future(func()) for func in setup_coros if func])
+                    exceptions = [v.exception() for v in [value for value in results if value][0] if v.exception()]
+                    if exceptions:
+                        for exception in exceptions:
+                            try:
+                                raise cast(Exception, exception)
+                            except Exception as e:
+                                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+
+                        for name, instance, log_level in services_started:
+                            self.logger.warning(
+                                "failed to start service", state="aborting", event_="lifecycle.abort", service=name
+                            )
+
+                        if invoker_tasks:
+                            await asyncio.gather(*set([future for _, future in invoker_tasks]))
+                            invoker_tasks = set()
+
+                        tomodachi.SERVICE_EXIT_CODE = 1
+                        self.stop_service()
+
                 if invoker_tasks:
                     await asyncio.gather(*set([future for _, future in invoker_tasks]))
-                    wrapped_invoker_tasks = set(
+                    invoker_coros = set(
                         [
                             logging_context_wrapper(
                                 future.result(),
@@ -241,9 +257,7 @@ class ServiceContainer(object):
                             if future and future.result()
                         ]
                     )
-                    task_results = await asyncio.wait(
-                        [asyncio.ensure_future(func()) for func in wrapped_invoker_tasks if func]
-                    )
+                    results = await asyncio.wait([asyncio.ensure_future(func()) for func in invoker_coros if func])
                     # print(name, future)
                     # task_results = await asyncio.wait(
                     #     [
@@ -252,103 +266,107 @@ class ServiceContainer(object):
                     #         if print(func.__qualname__ if func else func) or func
                     #     ]
                     # )
-                    exception = [v.exception() for v in [value for value in task_results if value][0] if v.exception()]
-                    if exception:
-                        raise cast(Exception, exception[0])
+                    exceptions = [v.exception() for v in [value for value in results if value][0] if v.exception()]
+                    if exceptions:
+                        for exception in exceptions:
+                            try:
+                                raise cast(Exception, exception)
+                            except Exception as e:
+                                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
-                for name, instance, log_level in services_started:
-                    for registry in getattr(instance, "discovery", []):
-                        registered_services.add((name, instance))
-                        if getattr(registry, "_register_service", None):
-                            await asyncio.create_task(
-                                logging_context_wrapper(
-                                    registry._register_service,
-                                    name,
-                                    logger="tomodachi.discovery",
-                                    registry=registry.name
-                                    if hasattr(registry, "name")
-                                    else (
-                                        registry.__name__
-                                        if hasattr(registry, "__name__")
+                        for name, instance, log_level in services_started:
+                            self.logger.warning(
+                                "failed to start service", state="aborting", event_="lifecycle.abort", service=name
+                            )
+
+                        tomodachi.SERVICE_EXIT_CODE = 1
+                        self.stop_service()
+
+                if (
+                    self.started_waiter
+                    and not self.started_waiter.done()
+                    and (not self._close_waiter or not self._close_waiter.done())
+                ):
+                    for name, instance, log_level in services_started:
+                        for registry in getattr(instance, "discovery", []):
+                            registered_services.add((name, instance))
+                            if getattr(registry, "_register_service", None):
+                                await asyncio.create_task(
+                                    logging_context_wrapper(
+                                        registry._register_service,
+                                        name,
+                                        logger="tomodachi.discovery",
+                                        registry=registry.name
+                                        if hasattr(registry, "name")
                                         else (
-                                            type(registry).__name__
-                                            if hasattr(type(registry), "__name__")
-                                            else str(type(registry))
-                                        )
-                                    ),
-                                    operation="discovery.register",
-                                )(instance)
-                            )
+                                            registry.__name__
+                                            if hasattr(registry, "__name__")
+                                            else (
+                                                type(registry).__name__
+                                                if hasattr(type(registry), "__name__")
+                                                else str(type(registry))
+                                            )
+                                        ),
+                                        operation="discovery.register",
+                                    )(instance)
+                                )
 
-                    if getattr(instance, "_started_service", None):
-                        started_futures.add(
-                            logging_context_wrapper(
-                                getattr(instance, "_started_service", None),
-                                name,
-                                logger="service.lifecycle",
-                                # operation="lifecycle.ready",
-                                # handler_function="_started_service",
-                                lifecycle_handler="_started_service",
-                                operation="service.started",
+                        if getattr(instance, "_started_service", None):
+                            initialized_coros.add(
+                                logging_context_wrapper(
+                                    getattr(instance, "_started_service", None),
+                                    name,
+                                    logger="service.handler",
+                                    # operation="lifecycle.ready",
+                                    # handler_function="_started_service",
+                                    handler="_started_service",
+                                    handler_type="tomodachi.lifecycle",
+                                    operation="initialized",
+                                )
                             )
-                        )
-
-                    if getattr(instance, "_stopping_service", None):
-                        stop_futures.add(
-                            logging_context_wrapper(
-                                getattr(instance, "_stopping_service", None),
-                                name,
-                                logger="service.lifecycle",
-                                # operation="lifecycle.stop",
-                                # handler_function="_stopping_service",
-                                lifecycle_handler="_stopping_service",
-                                operation="service.teardown",
-                            )
-                        )
-
-                    if getattr(instance, "_stop_service", None):
-                        stop_futures.add(
-                            logging_context_wrapper(
-                                getattr(instance, "_stop_service", None),
-                                name,
-                                logger="service.lifecycle",
-                                # operation="lifecycle.stop",
-                                # handler_function="_stop_service",
-                                lifecycle_handler="_stop_service",
-                                operation="service.terminate",
-                                # lifecycle="stopping",
-                            )
-                        )
 
                     # self.logger.info('Started service "{}" [id: {}]'.format(name, instance.uuid))
-                    self.logger.info("service handlers initialized", service=name, lifecycle="initialized")
+                    self.logger.info(
+                        "service handlers initialized",
+                        state="initialized",
+                        event_="lifecycle.initialized",
+                        service=name,
+                    )
             except Exception as e:
                 # self.logger.warning("Failed to start service")
-                for name, instance, log_level in services_started:
-                    self.logger.warning("failed to start service", service=name, lifecycle="aborting")
-                started_futures = set()
-                self.stop_service()
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
-            if started_futures and any(started_futures):
-                started_futures_result = await asyncio.wait(
-                    [asyncio.ensure_future(func()) for func in started_futures if func]
-                )
-                exception = [
-                    v.exception() for v in [value for value in started_futures_result if value][0] if v.exception()
-                ]
-                if exception:
+                for name, instance, log_level in services_started:
+                    self.logger.warning(
+                        "failed to start service", state="aborting", event_="lifecycle.abort", service=name
+                    )
+
+                tomodachi.SERVICE_EXIT_CODE = 1
+                initialized_coros = set()
+                self.stop_service()
+
+            if initialized_coros and any(initialized_coros):
+                results = await asyncio.wait([asyncio.ensure_future(func()) for func in initialized_coros if func])
+                exceptions = [v.exception() for v in [value for value in results if value][0] if v.exception()]
+                if exceptions:
+                    for exception in exceptions:
+                        try:
+                            raise cast(Exception, exception)
+                        except Exception as e:
+                            logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+
                     for name, instance, log_level in services_started:
-                        self.logger.warning("failed to start service", service=name, lifecycle="aborting")
-                    started_futures = set()
+                        self.logger.warning(
+                            "failed to start service", state="aborting", event_="lifecycle.abort", service=name
+                        )
+
+                    tomodachi.SERVICE_EXIT_CODE = 1
                     self.stop_service()
-                    try:
-                        raise cast(Exception, exception[0])
-                    except Exception as e:
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+
         else:
             # self.logger.warning("No transports defined in service file")
             self.logger.warning("no transport handlers defined", module=self.module_name, file_path=self.file_path)
+            tomodachi.SERVICE_EXIT_CODE = 1
             self.stop_service()
 
         self.services_started = services_started
@@ -357,12 +375,54 @@ class ServiceContainer(object):
 
             if not self._close_waiter or not self._close_waiter.done():
                 for name, instance, log_level in services_started:
-                    self.logger.info("service started successfully", service=name, lifecycle="ready")
+                    self.logger.info(
+                        "service started successfully", state="ready", event_="lifecycle.ready", service=name
+                    )
 
         await self.wait_stopped()
+
+        for name, instance, log_level in services_started:
+            if getattr(instance, "_stopping_service", None):
+                interrupt_coros.add(
+                    logging_context_wrapper(
+                        getattr(instance, "_stopping_service", None),
+                        name,
+                        logger="service.handler",
+                        # operation="lifecycle.stop",
+                        # handler_function="_stopping_service",
+                        handler="_stopping_service",
+                        handler_type="tomodachi.lifecycle",
+                        operation="interrupt",
+                    )
+                )
+
+            if getattr(instance, "_stop_service", None):
+                teardown_coros.add(
+                    logging_context_wrapper(
+                        getattr(instance, "_stop_service", None),
+                        name,
+                        logger="service.handler",
+                        # operation="lifecycle.stop",
+                        # handler_function="_stop_service",
+                        handler="_stop_service",
+                        handler_type="tomodachi.lifecycle",
+                        operation="teardown",
+                        # lifecycle="stopping",
+                    )
+                )
+
         for name, instance, log_level in services_started:
             # self.logger.info('Stopping service "{}" [id: {}]'.format(name, instance.uuid))
-            self.logger.info("stopping service", service=name, lifecycle="stopping")
+            self.logger.info("lifecycle interrupt notice", state="stopping", event_="lifecycle.interrupt", service=name)
+
+        interrupt_futures = []
+        if interrupt_coros and any(interrupt_coros):
+            interrupt_futures = [asyncio.ensure_future(func()) for func in interrupt_coros if func]
+            await asyncio.sleep(0.01)
+
+        for name, instance, log_level in services_started:
+            # self.logger.info('Stopping service "{}" [id: {}]'.format(name, instance.uuid))
+            self.logger.info("stopping service", state="stopping", event_="lifecycle.teardown", service=name)
 
         for name, instance in registered_services:
             for registry in getattr(instance, "discovery", []):
@@ -399,12 +459,23 @@ class ServiceContainer(object):
                         )(instance)
                     )
 
-        if stop_futures and any(stop_futures):
-            await asyncio.wait([asyncio.ensure_future(func()) for func in stop_futures if func])
+        teardown_futures = []
+        if teardown_coros and any(teardown_coros):
+            teardown_futures = [asyncio.ensure_future(func()) for func in teardown_coros if func]
+
+        if teardown_futures or interrupt_futures:
+            results = await asyncio.wait(teardown_futures + interrupt_futures)
+            exceptions = [v.exception() for v in [value for value in results if value][0] if v.exception()]
+            if exceptions:
+                for exception in exceptions:
+                    try:
+                        raise cast(Exception, exception)
+                    except Exception as e:
+                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
         for name, instance, log_level in services_started:
             # self.logger.info('Stopped service "{}" [id: {}]'.format(name, instance.uuid))
-            self.logger.info("stopped service", service=name, lifecycle="stopped")
+            self.logger.info("terminated service", state="terminated", service=name)
 
         # Debug output if TOMODACHI_DEBUG env is set. Shows still running tasks on service termination.
         if os.environ.get("TOMODACHI_DEBUG") and os.environ.get("TOMODACHI_DEBUG") != "0":

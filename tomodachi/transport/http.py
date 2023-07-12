@@ -372,7 +372,9 @@ class HttpTransport(Invoker):
         middlewares = context.get("http_middleware", [])
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
-            logging.bind_logger(logging.getLogger("service.handler").bind(handler=func.__name__, handler_type="http"))
+            logging.bind_logger(
+                logging.getLogger("service.handler").bind(handler=func.__name__, handler_type="tomodachi.http")
+            )
             get_contextvar("service.logger").set("service.handler")
 
             kwargs = dict(original_kwargs)
@@ -554,7 +556,9 @@ class HttpTransport(Invoker):
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
             logging.bind_logger(
-                logging.getLogger("service.handler").bind(handler=func.__name__, handler_type="tomodachi.http_error")
+                logging.getLogger("service.handler").bind(
+                    handler=func.__name__, handler_type="tomodachi.http_error", status_code=status_code
+                )
             )
 
             get_contextvar("service.logger").set("service.handler")
@@ -636,7 +640,7 @@ class HttpTransport(Invoker):
             request._cache["is_websocket"] = True
             request._cache["websocket_uuid"] = str(uuid.uuid4())
 
-            logging.bind_logger(logging.getLogger().bind(handler=func.__name__, handler_type="websocket"))
+            logging.bind_logger(logging.getLogger().bind(handler=func.__name__, handler_type="tomodachi.websocket"))
 
         values = inspect.getfullargspec(func)
         original_kwargs = (

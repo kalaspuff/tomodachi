@@ -69,11 +69,11 @@ class ServiceLauncher(object):
         def sigintHandler(*args: Any) -> None:
             sys.stdout.write("\b\b\r")
             sys.stdout.flush()
-            logging.getLogger("tomodachi").warning("interrupt signal <ctrl+c>", signal="SIGINT")
+            logging.getLogger("interrupt.exit").warning("interrupt signal <ctrl+c>", signal="SIGINT")
             cls.restart_services = False
 
         def sigtermHandler(*args: Any) -> None:
-            logging.getLogger("tomodachi").warning("received termination signal", signal="SIGTERM")
+            logging.getLogger("interrupt.exit").warning("received termination signal", signal="SIGTERM")
             cls.restart_services = False
 
         # logging.basicConfig(level=logging.DEBUG)
@@ -160,7 +160,7 @@ class ServiceLauncher(object):
                             cls.restart_services = False
                             return
 
-                logging.getLogger("tomodachi").warning("restarting services")
+                logging.getLogger("tomodachi.restart").warning("restarting services")
                 cls.stop_services()
 
             watcher_future = loop.run_until_complete(watcher.watch(loop=loop, callback_func=_watcher_restart))
@@ -284,6 +284,12 @@ class ServiceLauncher(object):
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
                     raise cast(Exception, exception[0])
+                elif restarting and tomodachi.SERVICE_EXIT_CODE and cls._close_waiter and not cls._close_waiter.done():
+                    cls.restart_services = True
+                    logging.getLogger("tomodachi.watcher").warning("service exited due to errors")
+                    logging.getLogger("tomodachi.watcher").warning("trying again in 1.5 seconds")
+                    loop.run_until_complete(asyncio.sleep(1.5))
+
             except tomodachi.importer.ServicePackageError:
                 pass
             except (SyntaxError, IndentationError) as e:
