@@ -258,8 +258,8 @@ def render_banner(
     machine = platform.machine() or platform.processor()
     node_name = platform.node() or os.environ.get("HOSTNAME", "") or "..."
 
-    LABEL_HIGHLIGHT = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
-    LABEL_HIGHLIGHT_BRIGHT = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
+    LABEL_HIGHLIGHT = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
+    LABEL_HIGHLIGHT_BRIGHT = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
     LABEL_NORMAL = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.DIM}"  # LABEL_HIGHLIGHT  # f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.DIM}"
     DELIMITER = f"{COLOR_RESET}{COLOR_STYLE.DIM}⇢{COLOR_RESET}"
     DELIMITER_BRIGHT = f"{COLOR_RESET}{COLOR_STYLE.BRIGHT}⇢{COLOR_RESET}"
@@ -427,7 +427,7 @@ def render_banner(
         )
     ):
         print(
-            f"{LABEL_HIGHLIGHT}python path            {DELIMITER} {TEXT_HIGHLIGHT}{python_path}{LABEL_NORMAL}"
+            f"{LABEL_HIGHLIGHT}python executable      {DELIMITER} {TEXT_HIGHLIGHT}{python_path}{LABEL_NORMAL}"
             + (
                 f" {COLOR_RESET}{COLOR.LIGHTRED_EX}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}[outside venv]"
                 if python_path_is_outside_venv

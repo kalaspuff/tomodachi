@@ -5,7 +5,7 @@ import importlib
 import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
-from tomodachi.__version__ import __version__, __version_info__
+from tomodachi.__version__ import __release_date__, __version__, __version_info__
 from tomodachi.logging import Logger, LoggerProtocol, get_logger
 from tomodachi.options import Options, OptionsInterface
 
@@ -214,6 +214,7 @@ __all__ = [
     "Service",
     "__version__",
     "__version_info__",
+    "__release_date__",
     "__author__",
     "__email__",
     "decorator",
