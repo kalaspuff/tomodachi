@@ -200,6 +200,7 @@ class CLI:
             configuration = None
             log_level = logging.INFO
 
+            tomodachi.get_contextvar("run.args").set(args[:])
             env_loop = str(os.getenv("TOMODACHI_LOOP", "")).lower() or None
 
             if env_loop or "--loop" in args:
@@ -217,10 +218,10 @@ class CLI:
                     value = "auto"
 
                 if value in ("auto", "default"):
-                    pass
+                    value = "auto"
                 elif value in ("asyncio", "aio", "async"):
                     asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
-                    pass
+                    value = "asyncio"
                 elif value in ("uvloop", "libuv", "uv"):
                     try:
                         import uvloop  # noqa  # isort:skip
@@ -228,9 +229,14 @@ class CLI:
                         print("The 'uvloop' package needs to be installed to use uvloop event loop")
                         sys.exit(2)
                     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+                    value = "uvloop"
                 else:
                     print("Invalid argument to --loop, event loop '{}' not recognized".format(value))
                     sys.exit(2)
+
+                tomodachi.get_contextvar("loop.setting").set(value)
+            else:
+                tomodachi.get_contextvar("loop.setting").set("auto")
 
             if "-c" in args or "--config" in args:
                 index = args.index("-c") if "-c" in args else args.index("--config")
