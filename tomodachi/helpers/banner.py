@@ -9,9 +9,11 @@ import time
 from typing import Any, List, Optional, Union, cast
 
 import tomodachi
-import tomodachi.__version__
 import tomodachi.importer
 from tomodachi import logging
+from tomodachi.__version__ import __build_time__ as tomodachi_build_time
+from tomodachi.__version__ import __version__ as tomodachi_version
+from tomodachi.helpers.build_time import get_time_since_build
 from tomodachi.helpers.execution_context import get_execution_context
 from tomodachi.importer import ServiceImporter
 
@@ -382,11 +384,41 @@ def render_banner(
     #     + COLOR_RESET
     # )
 
-    tomodachi_release_date = ""
+    time_since_tomodachi_build = get_time_since_build()
+    # if tomodachi_build_time:
+    #     try:
+    #         tomodachi_build_datetime = datetime.datetime.strptime(
+    #             tomodachi_build_time, "%Y-%m-%dT%H:%M:%S.%f%z"
+    #         ).replace(tzinfo=None)
+    #         timedelta_since_tomodachi_build = datetime.datetime.utcnow() - tomodachi_build_datetime
+    #         if timedelta_since_tomodachi_build.days == 0:
+    #             seconds = timedelta_since_tomodachi_build.seconds
+    #             if seconds >= 3600:
+    #                 hours = seconds // 3600
+    #                 time_since_tomodachi_build = f"released {hours} hour{'s' if hours > 1 else ''} ago"
+    #             elif seconds >= 60:
+    #                 minutes = seconds // 60
+    #                 time_since_tomodachi_build = f"released {minutes} minute{'s' if minutes > 1 else ''} ago"
+    #             else:
+    #                 time_since_tomodachi_build = "released just now"
+    #         else:
+    #             days = timedelta_since_tomodachi_build.days
+    #             if days >= 720:
+    #                 years = days // 365
+    #                 if years < 2:
+    #                     years = 2
+    #                 time_since_tomodachi_build = f"released over {years} year{'s' if years > 1 else ''} ago"
+    #             elif days >= 90:
+    #                 months = days // 30
+    #                 time_since_tomodachi_build = f"released {months} month{'s' if months > 1 else ''} ago"
+    #             else:
+    #                 time_since_tomodachi_build = f"released {days} day{'s' if days > 1 else ''} ago"
+    #     except Exception:
+    #         pass
 
     print(
-        f"{LABEL_HIGHLIGHT}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi.__version__}{LABEL_NORMAL}"
-        + (f" ({tomodachi_release_date})" if tomodachi_release_date else " (local development version)")
+        f"{LABEL_HIGHLIGHT}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi_version}{LABEL_NORMAL}"
+        + (f" ({time_since_tomodachi_build})" if time_since_tomodachi_build else " (local development version)")
         + COLOR_RESET
     )
 

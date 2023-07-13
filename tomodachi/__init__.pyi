@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 # from tomodachi import discovery
 from tomodachi import discovery as discovery
+from tomodachi.__version__ import __build_time__ as __build_time__
 from tomodachi.__version__ import __version_info__ as __version_info__
 from tomodachi.helpers.aiobotocore_connector import ClientConnector as _AiobotocoreClientConnector
 from tomodachi.helpers.aiobotocore_connector import connector as _aiobotocore_client_connector

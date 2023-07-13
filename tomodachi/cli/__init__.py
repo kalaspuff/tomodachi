@@ -9,11 +9,13 @@ from typing import Dict, List, Optional, Tuple, cast
 
 import tomodachi
 from tomodachi.config import parse_config_files
+from tomodachi.helpers.build_time import get_time_since_build
 from tomodachi.launcher import ServiceLauncher
 
 
 class CLI:
     def help_command_usage(self) -> str:
+        time_since_tomodadchi_build = get_time_since_build() or "local development version"
         return (
             "Usage: tomodachi <command> [options] [arguments]\n"
             "\n"
@@ -33,9 +35,9 @@ class CLI:
             "  | -c, --config <files>                    Use configuration from JSON files\n"
             "  | -l, --log <level>, --log-level <level>  Specify log level\n"
             "\n"
-            ">> Version: {}\n"
+            ">> Version: {} ({})\n"
             ">> Full documentation at: https://tomodachi.dev/docs"
-        ).format(tomodachi.__version__)
+        ).format(tomodachi.__version__, time_since_tomodadchi_build)
 
     def help_command(self) -> None:
         print(self.help_command_usage())

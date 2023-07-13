@@ -105,7 +105,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 120
-target_version = ["py38", "py39", "py310"]
+target_version = ["py38", "py39", "py310", "py311"]
 include = '\.pyi?$'
 exclude = '\.eggs/|tomodachi\.egg-info/|\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/|proto_build/|syntax_error_service\.py|setup\.py'
 
