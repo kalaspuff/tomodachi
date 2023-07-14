@@ -254,44 +254,26 @@ def render_banner(
     machine = platform.machine() or platform.processor()
     node_name = platform.node() or os.environ.get("HOSTNAME", "") or "..."
 
-    LABEL_HIGHLIGHT = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
-    LABEL_HIGHLIGHT_BRIGHT = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
-    LABEL_NORMAL = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.DIM}"  # LABEL_HIGHLIGHT  # f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.DIM}"
+    LABEL = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
     DELIMITER = f"{COLOR_RESET}{COLOR_STYLE.DIM}⇢{COLOR_RESET}"
-    DELIMITER_BRIGHT = f"{COLOR_RESET}{COLOR_STYLE.BRIGHT}⇢{COLOR_RESET}"
-    TOMODACHI_HIGHLIGHT = f"{COLOR_BACK.LIGHTWHITE_EX}{COLOR.BLACK}{COLOR_STYLE.BRIGHT}"
-    TEXT_HIGHLIGHT = f"{COLOR_RESET}{COLOR_STYLE.DIM}{COLOR_STYLE.BRIGHT}"
-    TEXT_HIGHLIGHT = f"{COLOR_RESET}{COLOR.LIGHTWHITE_EX}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
-    TEXT_HIGHLIGHT = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.BRIGHT}"
-    NOTICE_TEXT = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.DIM}"  # LABEL_NORMAL  # f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.DIM}"
-    NOTICE_TEXT_HIGHLIGHT = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.NORMAL}"
+    TEXT_NORMAL = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
+    TEXT_HIGHLIGHT = f"{COLOR_RESET}{COLOR.WHITE}"
     NOTICE_TEXT_TOPIC_WATCHER = f"{COLOR_RESET}{COLOR.LIGHTCYAN_EX}{COLOR_STYLE.DIM}{COLOR_STYLE.BRIGHT}"
     NOTICE_TEXT_TOPIC_EXIT = f"{COLOR_RESET}{COLOR.LIGHTYELLOW_EX}{COLOR_STYLE.DIM}{COLOR_STYLE.BRIGHT}"
-    # PID_HIGHLIGHT = f"{colorama.Back.LIGHTYELLOW_EX}{COLOR.BLACK}{COLOR_STYLE.BRIGHT}"
-    PID_HIGHLIGHT = TEXT_HIGHLIGHT  # f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.BRIGHT}"
+    PID_HIGHLIGHT = f"{COLOR_RESET}{COLOR.GREEN}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
     pid_str = f"[pid: {process_id}]"
     pid_str = f"{pid_str:<14}"
     pid_str = (
         pid_str[0:1]
         + COLOR_RESET
         + PID_HIGHLIGHT
-        + pid_str[1:4]
+        + pid_str[1 : 6 + len(str(process_id))]
         + COLOR_RESET
-        + PID_HIGHLIGHT
-        + pid_str[4:6]
-        + COLOR_RESET
-        + PID_HIGHLIGHT
-        + pid_str[6 : 6 + len(str(process_id))]
-        + COLOR_RESET
-        + LABEL_HIGHLIGHT
+        + LABEL
         + pid_str[6 + len(str(process_id)) :]
     )
 
-    # output.append(f" {TOMODACHI_HIGHLIGHT}tomodachi{COLOR_RESET}")
-    # output.append("")
-    output.append(
-        f"{LABEL_HIGHLIGHT_BRIGHT}process {pid_str}{COLOR_RESET} {DELIMITER} {colorama.Back.LIGHTWHITE_EX}{COLOR.BLACK}{COLOR_STYLE.BRIGHT}{TEXT_HIGHLIGHT}$ {process_cmd_str}{COLOR_RESET}"
-    )
+    output.append(f"{LABEL}process {pid_str}{COLOR_RESET} {DELIMITER} {TEXT_HIGHLIGHT}$ {process_cmd_str}{COLOR_RESET}")
 
     for file_num, file_path in enumerate(actual_file_paths, 1):
         file_path_ = file_path
@@ -305,7 +287,7 @@ def render_banner(
         else:
             file_num = f"[{file_num}]"
         output.append(
-            f"{LABEL_HIGHLIGHT_BRIGHT}service file {file_num:4s}      {DELIMITER} {COLOR.YELLOW}{COLOR_STYLE.BRIGHT}{TEXT_HIGHLIGHT}{file_path_}{COLOR_RESET}"
+            f"{LABEL}service file {file_num:4s}      {DELIMITER} {COLOR.YELLOW}{COLOR_STYLE.BRIGHT}{TEXT_HIGHLIGHT}{file_path_}{COLOR_RESET}"
         )
 
     venv_prompt = ""
@@ -363,18 +345,18 @@ def render_banner(
     output.append("")
 
     output.append(
-        f"{LABEL_HIGHLIGHT}operating system       {DELIMITER} {TEXT_HIGHLIGHT}{os_name} on {machine}{LABEL_NORMAL}"
+        f"{LABEL}operating system       {DELIMITER} {TEXT_HIGHLIGHT}{os_name} on {machine}{TEXT_NORMAL}"
         + (f" (hostname: {node_name})" if node_name else "")
         + COLOR_RESET
     )
 
     output.append(
-        f"{LABEL_HIGHLIGHT}python runtime         {DELIMITER} {TEXT_HIGHLIGHT}{platform.python_implementation()} {platform.python_version()}{LABEL_NORMAL} (build: {platform.python_build()[1]}){COLOR_RESET}"
+        f"{LABEL}python runtime         {DELIMITER} {TEXT_HIGHLIGHT}{platform.python_implementation()} {platform.python_version()}{TEXT_NORMAL} (build: {platform.python_build()[1]}){COLOR_RESET}"
     )
 
     # output.append(
-    #     f"{LABEL_HIGHLIGHT}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi.__version__}{LABEL_NORMAL}"
-    #     + (f" [in venv: {TEXT_HIGHLIGHT}{venv_prompt}{LABEL_NORMAL}]" if venv_prompt else "")
+    #     f"{LABEL}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi.__version__}{TEXT_NORMAL}"
+    #     + (f" [in venv: {TEXT_HIGHLIGHT}{venv_prompt}{TEXT_NORMAL}]" if venv_prompt else "")
     #     + COLOR_RESET
     # )
 
@@ -411,26 +393,26 @@ def render_banner(
     #         pass
 
     output.append(
-        f"{LABEL_HIGHLIGHT}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi_version}{LABEL_NORMAL}"
+        f"{LABEL}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi_version}{TEXT_NORMAL}"
         + (f" ({time_since_tomodachi_build})" if time_since_tomodachi_build else " (local development version)")
         + COLOR_RESET
     )
 
     if poetry_venv and poetry_venv != venv_path and venv_path.rsplit("/", 1)[-1] not in (".venv", "venv"):
         output.append(
-            f"{LABEL_HIGHLIGHT}virtualenv             {DELIMITER} {TEXT_HIGHLIGHT}poetry env{LABEL_NORMAL} (name: {poetry_venv})"
+            f"{LABEL}virtualenv             {DELIMITER} {TEXT_HIGHLIGHT}poetry env{TEXT_NORMAL} (name: {poetry_venv})"
             + COLOR_RESET
         )
     elif poetry_venv:
         output.append(
-            f"{LABEL_HIGHLIGHT}virtualenv path        {DELIMITER} {TEXT_HIGHLIGHT}{poetry_venv}{LABEL_NORMAL} (poetry active)"
+            f"{LABEL}virtualenv path        {DELIMITER} {TEXT_HIGHLIGHT}{poetry_venv}{TEXT_NORMAL} (poetry active)"
             # + (f" [{venv_path}" if venv_path else "")
             + COLOR_RESET
         )
     elif venv_path:
         if venv_path:
             output.append(
-                f"{LABEL_HIGHLIGHT}virtualenv path        {DELIMITER} {TEXT_HIGHLIGHT}{venv_path}{LABEL_NORMAL}"
+                f"{LABEL}virtualenv path        {DELIMITER} {TEXT_HIGHLIGHT}{venv_path}{TEXT_NORMAL}"
                 + (f" (prompt: {venv_prompt})" if venv_prompt and venv_prompt != venv_path.rsplit("/", 1)[-1] else "")
                 + COLOR_RESET
             )
@@ -453,7 +435,7 @@ def render_banner(
         )
     ):
         output.append(
-            f"{LABEL_HIGHLIGHT}python executable      {DELIMITER} {TEXT_HIGHLIGHT}{python_path}{LABEL_NORMAL}"
+            f"{LABEL}python executable      {DELIMITER} {TEXT_HIGHLIGHT}{python_path}{TEXT_NORMAL}"
             + (
                 f" {COLOR_RESET}{COLOR.LIGHTRED_EX}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}[outside venv]"
                 if python_path_is_outside_venv
@@ -463,15 +445,15 @@ def render_banner(
         )
 
     output.append(
-        f"{LABEL_HIGHLIGHT}event loop             {DELIMITER} {TEXT_HIGHLIGHT}{event_loop_alias}{LABEL_NORMAL}"
+        f"{LABEL}event loop             {DELIMITER} {TEXT_HIGHLIGHT}{event_loop_alias}{TEXT_NORMAL}"
         + (f" (version: {event_loop_version})" if event_loop_version else "")
         + (f" ({event_loop_setting})" if event_loop_setting == "auto" else "")
         + COLOR_RESET
     )
 
     #    if tz:
-    #        output.append(f"{LABEL_HIGHLIGHT}local time             {DELIMITER} {LABEL_NORMAL}{init_local_time_str}{COLOR_RESET}")
-    #    output.append(f"{LABEL_HIGHLIGHT}start timestamp        {DELIMITER} {LABEL_NORMAL}{init_timestamp_str}{COLOR_RESET}")
+    #        output.append(f"{LABEL}local time             {DELIMITER} {TEXT_NORMAL}{init_local_time_str}{COLOR_RESET}")
+    #    output.append(f"{LABEL}start timestamp        {DELIMITER} {TEXT_NORMAL}{init_timestamp_str}{COLOR_RESET}")
 
     output.append("")
 
