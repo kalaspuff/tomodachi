@@ -90,6 +90,8 @@ def render_banner(
     cwd: Optional[str] = None,
     watcher_enabled: Optional[bool] = None,
 ) -> None:
+    output = []
+
     context = get_execution_context()
     if isinstance(init_timestamp, str):
         init_timestamp_str = init_timestamp
@@ -171,19 +173,11 @@ def render_banner(
         else datetime.datetime.utcfromtimestamp(init_timestamp)
     )
 
-    # print("")
-    # print("---")
-    print("")
-    print(
-        COLOR_RESET
-        + COLOR.RESET
-        + COLOR.LIGHTBLACK_EX
-        + COLOR_STYLE.BRIGHT
-        + COLOR_STYLE.DIM
-        + TOMODACHI_ASCII
-        + COLOR_RESET
+    output.append("")
+    output.append(
+        COLOR_RESET + COLOR.LIGHTBLACK_EX + COLOR_STYLE.BRIGHT + COLOR_STYLE.DIM + TOMODACHI_ASCII + COLOR_RESET
     )
-    print("")
+    output.append("")
 
     arg0 = sys.argv[0]
     if arg0.endswith("/__main__.py"):
@@ -293,9 +287,9 @@ def render_banner(
         + pid_str[6 + len(str(process_id)) :]
     )
 
-    # print(f" {TOMODACHI_HIGHLIGHT}tomodachi{COLOR_RESET}")
-    # print("")
-    print(
+    # output.append(f" {TOMODACHI_HIGHLIGHT}tomodachi{COLOR_RESET}")
+    # output.append("")
+    output.append(
         f"{LABEL_HIGHLIGHT_BRIGHT}process {pid_str}{COLOR_RESET} {DELIMITER} {colorama.Back.LIGHTWHITE_EX}{COLOR.BLACK}{COLOR_STYLE.BRIGHT}{TEXT_HIGHLIGHT}$ {process_cmd_str}{COLOR_RESET}"
     )
 
@@ -310,7 +304,7 @@ def render_banner(
             file_num = ""
         else:
             file_num = f"[{file_num}]"
-        print(
+        output.append(
             f"{LABEL_HIGHLIGHT_BRIGHT}service file {file_num:4s}      {DELIMITER} {COLOR.YELLOW}{COLOR_STYLE.BRIGHT}{TEXT_HIGHLIGHT}{file_path_}{COLOR_RESET}"
         )
 
@@ -366,19 +360,19 @@ def render_banner(
 
     init_local_time_str = init_local_datetime.strftime("%B %d, %Y - %H:%M:%S") + " " + str(tz)
 
-    print("")
+    output.append("")
 
-    print(
+    output.append(
         f"{LABEL_HIGHLIGHT}operating system       {DELIMITER} {TEXT_HIGHLIGHT}{os_name} on {machine}{LABEL_NORMAL}"
         + (f" (hostname: {node_name})" if node_name else "")
         + COLOR_RESET
     )
 
-    print(
+    output.append(
         f"{LABEL_HIGHLIGHT}python runtime         {DELIMITER} {TEXT_HIGHLIGHT}{platform.python_implementation()} {platform.python_version()}{LABEL_NORMAL} (build: {platform.python_build()[1]}){COLOR_RESET}"
     )
 
-    # print(
+    # output.append(
     #     f"{LABEL_HIGHLIGHT}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi.__version__}{LABEL_NORMAL}"
     #     + (f" [in venv: {TEXT_HIGHLIGHT}{venv_prompt}{LABEL_NORMAL}]" if venv_prompt else "")
     #     + COLOR_RESET
@@ -416,26 +410,26 @@ def render_banner(
     #     except Exception:
     #         pass
 
-    print(
+    output.append(
         f"{LABEL_HIGHLIGHT}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi_version}{LABEL_NORMAL}"
         + (f" ({time_since_tomodachi_build})" if time_since_tomodachi_build else " (local development version)")
         + COLOR_RESET
     )
 
     if poetry_venv and poetry_venv != venv_path and venv_path.rsplit("/", 1)[-1] not in (".venv", "venv"):
-        print(
+        output.append(
             f"{LABEL_HIGHLIGHT}virtualenv             {DELIMITER} {TEXT_HIGHLIGHT}poetry env{LABEL_NORMAL} (name: {poetry_venv})"
             + COLOR_RESET
         )
     elif poetry_venv:
-        print(
+        output.append(
             f"{LABEL_HIGHLIGHT}virtualenv path        {DELIMITER} {TEXT_HIGHLIGHT}{poetry_venv}{LABEL_NORMAL} (poetry active)"
             # + (f" [{venv_path}" if venv_path else "")
             + COLOR_RESET
         )
     elif venv_path:
         if venv_path:
-            print(
+            output.append(
                 f"{LABEL_HIGHLIGHT}virtualenv path        {DELIMITER} {TEXT_HIGHLIGHT}{venv_path}{LABEL_NORMAL}"
                 + (f" (prompt: {venv_prompt})" if venv_prompt and venv_prompt != venv_path.rsplit("/", 1)[-1] else "")
                 + COLOR_RESET
@@ -458,7 +452,7 @@ def render_banner(
             "/opt/homebrew/opt/bin/python3",
         )
     ):
-        print(
+        output.append(
             f"{LABEL_HIGHLIGHT}python executable      {DELIMITER} {TEXT_HIGHLIGHT}{python_path}{LABEL_NORMAL}"
             + (
                 f" {COLOR_RESET}{COLOR.LIGHTRED_EX}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}[outside venv]"
@@ -468,7 +462,7 @@ def render_banner(
             + COLOR_RESET
         )
 
-    print(
+    output.append(
         f"{LABEL_HIGHLIGHT}event loop             {DELIMITER} {TEXT_HIGHLIGHT}{event_loop_alias}{LABEL_NORMAL}"
         + (f" (version: {event_loop_version})" if event_loop_version else "")
         + (f" ({event_loop_setting})" if event_loop_setting == "auto" else "")
@@ -476,15 +470,19 @@ def render_banner(
     )
 
     #    if tz:
-    #        print(f"{LABEL_HIGHLIGHT}local time             {DELIMITER} {LABEL_NORMAL}{init_local_time_str}{COLOR_RESET}")
-    #    print(f"{LABEL_HIGHLIGHT}start timestamp        {DELIMITER} {LABEL_NORMAL}{init_timestamp_str}{COLOR_RESET}")
+    #        output.append(f"{LABEL_HIGHLIGHT}local time             {DELIMITER} {LABEL_NORMAL}{init_local_time_str}{COLOR_RESET}")
+    #    output.append(f"{LABEL_HIGHLIGHT}start timestamp        {DELIMITER} {LABEL_NORMAL}{init_timestamp_str}{COLOR_RESET}")
 
-    print("")
+    output.append("")
 
     if watcher_enabled:
-        print(
+        output.append(
             f"{NOTICE_TEXT_TOPIC_WATCHER}⌁ [watcher] file watcher enabled (code changes auto restart services){COLOR_RESET}"
         )
-    print(f"{NOTICE_TEXT_TOPIC_EXIT}⌁ [notice ] stop running services with <ctrl+c> (graceful teardown){COLOR_RESET}")
+    output.append(
+        f"{NOTICE_TEXT_TOPIC_EXIT}⌁ [notice ] stop running services with <ctrl+c> (graceful teardown){COLOR_RESET}"
+    )
 
-    print(COLOR_RESET + "")
+    output.append(COLOR_RESET + "")
+
+    print("\n".join(output))
