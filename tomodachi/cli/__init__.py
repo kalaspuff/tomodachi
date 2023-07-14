@@ -8,6 +8,7 @@ import sys
 from typing import Dict, List, Optional, Tuple, cast
 
 import tomodachi
+from tomodachi.__version__ import __version__
 from tomodachi.config import parse_config_files
 from tomodachi.helpers.build_time import get_time_since_build
 from tomodachi.launcher import ServiceLauncher
@@ -37,14 +38,14 @@ class CLI:
             "\n"
             ">> Version: {} ({})\n"
             ">> Full documentation at: https://tomodachi.dev/docs"
-        ).format(tomodachi.__version__, time_since_tomodadchi_build)
+        ).format(__version__, time_since_tomodadchi_build)
 
     def help_command(self) -> None:
         print(self.help_command_usage())
         sys.exit(2)
 
     def version_command(self) -> None:
-        print("tomodachi {}".format(tomodachi.__version__))
+        print("tomodachi {}".format(__version__))
         sys.exit(0)
 
     def dependency_versions_command(self) -> None:

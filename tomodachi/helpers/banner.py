@@ -1,32 +1,21 @@
 import asyncio
-import datetime
-import enum
 import os
 import platform
 import shlex
 import sys
-import time
-from typing import Any, List, Optional, Union, cast
+from typing import Any, List, Optional, Union
 
 import tomodachi
 import tomodachi.importer
 from tomodachi import logging
-from tomodachi.__version__ import __build_time__ as tomodachi_build_time
 from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.helpers.build_time import get_time_since_build
 from tomodachi.helpers.execution_context import get_execution_context
 from tomodachi.importer import ServiceImporter
 
 TOMODACHI_ASCII = """
-███████████████████████████████████████████████████████████████████████████████
-███████████████─▄─▄─█─▄▄─█▄─▀█▀─▄█─▄▄─█▄─▄▄▀██▀▄─██─▄▄▄─█─█─█▄─▄███████████████
-█████████████████─███─██─██─█▄█─██─██─██─██─██─▀─██─███▀█─▄─██─████████████████
-▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄▄▄▀▀▄▄▄▄▀▄▄▄▀▄▄▄▀▄▄▄▄▀▄▄▄▄▀▀▄▄▀▄▄▀▄▄▄▄▄▀▄▀▄▀▄▄▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-""".strip()
-
-TOMODACHI_ASCII = """
-▀█▀ █▀█ █▀▄▀█ █▀█ █▀▄ ▄▀█ █▀▀ █░█ █
-░█░ █▄█ █░▀░█ █▄█ █▄▀ █▀█ █▄▄ █▀█ █
+▀█▀ █▀█ █▀▄▀█ █▀█ █▀▄ ▄▀█ █▀▀ █ █ █
+ █  █▄█ █ ▀ █ █▄█ █▄▀ █▀█ █▄▄ █▀█ █  友達
 """.strip()
 
 
@@ -51,13 +40,6 @@ class ColorFore:
     LIGHTWHITE_EX = ""
 
 
-class ColorBack:
-    LIGHTGREEN_EX = ""
-    LIGHTYELLOW_EX = ""
-    LIGHTBLUE_EX = ""
-    LIGHTWHITE_EX = ""
-
-
 class ColorStyle:
     BRIGHT = ""
     DIM = ""
@@ -66,14 +48,12 @@ class ColorStyle:
 
 
 COLOR = ColorFore()
-COLOR_BACK = ColorBack()
 COLOR_STYLE = ColorStyle()
 COLOR_RESET = ""
 try:
     import colorama  # noqa  # isort:skip
 
     COLOR = colorama.Fore
-    COLOR_BACK = colorama.Back
     COLOR_STYLE = colorama.Style
     COLOR_RESET = colorama.Style.RESET_ALL
 except Exception:
@@ -83,7 +63,6 @@ except Exception:
 def render_banner(
     service_files: Union[List, set],
     loop: Optional[asyncio.AbstractEventLoop] = None,
-    init_timestamp: Optional[Union[float, str]] = None,
     process_id: Optional[int] = None,
     event_loop_alias: Optional[str] = None,
     event_loop_version: Optional[str] = None,
@@ -93,20 +72,6 @@ def render_banner(
     output = []
 
     context = get_execution_context()
-    if isinstance(init_timestamp, str):
-        init_timestamp_str = init_timestamp
-        init_timestamp = datetime.datetime.strptime(init_timestamp_str, "%Y-%m-%dT%H:%M:%S.%f%z").timestamp()
-    elif isinstance(init_timestamp, (int, float)):
-        init_timestamp_str = datetime.datetime.utcfromtimestamp(init_timestamp).isoformat(timespec="microseconds") + "Z"
-    elif init_timestamp is None:
-        init_timestamp_str = context.get("init_timestamp") or ""
-        if init_timestamp_str:
-            init_timestamp = datetime.datetime.strptime(init_timestamp_str, "%Y-%m-%dT%H:%M:%S.%f%z").timestamp()
-        else:
-            init_timestamp = time.time()
-            init_timestamp_str = (
-                datetime.datetime.utcfromtimestamp(init_timestamp).isoformat(timespec="microseconds") + "Z"
-            )
 
     if process_id is None:
         process_id = context.get("process_id", os.getpid()) or os.getpid()
@@ -149,29 +114,6 @@ def render_banner(
         watcher_enabled = context.get("watcher_enabled", False)
 
     event_loop_setting = str(tomodachi.context("loop.setting") or "")
-
-    tz: Any = None
-    utc_tz: Any = None
-
-    try:
-        import pytz  # noqa  # isort:skip
-        import tzlocal  # noqa  # isort:skip
-
-        utc_tz = pytz.UTC
-        try:
-            tz = tzlocal.get_localzone()
-            if not tz:
-                tz = pytz.UTC
-        except Exception:
-            tz = pytz.UTC
-    except Exception:
-        pass
-
-    init_local_datetime = (
-        datetime.datetime.fromtimestamp(init_timestamp)
-        if tz and tz is not utc_tz and str(tz) != "UTC"
-        else datetime.datetime.utcfromtimestamp(init_timestamp)
-    )
 
     output.append("")
     output.append(
@@ -261,6 +203,7 @@ def render_banner(
     NOTICE_TEXT_TOPIC_WATCHER = f"{COLOR_RESET}{COLOR.LIGHTCYAN_EX}{COLOR_STYLE.DIM}{COLOR_STYLE.BRIGHT}"
     NOTICE_TEXT_TOPIC_EXIT = f"{COLOR_RESET}{COLOR.LIGHTYELLOW_EX}{COLOR_STYLE.DIM}{COLOR_STYLE.BRIGHT}"
     PID_HIGHLIGHT = f"{COLOR_RESET}{COLOR.GREEN}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.DIM}"
+
     pid_str = f"[pid: {process_id}]"
     pid_str = f"{pid_str:<14}"
     pid_str = (
@@ -283,12 +226,14 @@ def render_banner(
             file_path_ = ".../" + "/".join(file_path_.replace(".../", "").split("/")[1:])
 
         if len(actual_file_paths) == 1:
-            file_num = ""
+            file_num_ = ""
         else:
-            file_num = f"[{file_num}]"
+            file_num_ = f"[{file_num}]"
         output.append(
-            f"{LABEL}service file {file_num:4s}      {DELIMITER} {COLOR.YELLOW}{COLOR_STYLE.BRIGHT}{TEXT_HIGHLIGHT}{file_path_}{COLOR_RESET}"
+            f"{LABEL}service file {file_num_:4s}      {DELIMITER} {COLOR.YELLOW}{COLOR_STYLE.BRIGHT}{TEXT_HIGHLIGHT}{file_path_}{COLOR_RESET}"
         )
+
+    time_since_tomodachi_build = get_time_since_build()
 
     venv_prompt = ""
     venv_path = ""
@@ -296,10 +241,6 @@ def render_banner(
     python_exec_prefix = sys.exec_prefix
     python_path = sys.executable
     venv_environ = os.environ.get("VIRTUAL_ENV", "")
-
-    # venv_environ = os.getcwd() + "/.venv"
-    # python_exec_prefix = os.getcwd() + "/.venv"
-    # python_path = "/usr/local/bin/python"
 
     if "venv" in python_exec_prefix or "virtualenv" in python_exec_prefix or venv_environ:
         try:
@@ -340,8 +281,6 @@ def render_banner(
     elif poetry_venv and "/" in poetry_venv and python_path.startswith(poetry_venv + "/"):
         python_path = "$VIRTUAL_ENV/" + python_path.split(poetry_venv + "/", 1)[-1]
 
-    init_local_time_str = init_local_datetime.strftime("%B %d, %Y - %H:%M:%S") + " " + str(tz)
-
     output.append("")
 
     output.append(
@@ -353,44 +292,6 @@ def render_banner(
     output.append(
         f"{LABEL}python runtime         {DELIMITER} {TEXT_HIGHLIGHT}{platform.python_implementation()} {platform.python_version()}{TEXT_NORMAL} (build: {platform.python_build()[1]}){COLOR_RESET}"
     )
-
-    # output.append(
-    #     f"{LABEL}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi.__version__}{TEXT_NORMAL}"
-    #     + (f" [in venv: {TEXT_HIGHLIGHT}{venv_prompt}{TEXT_NORMAL}]" if venv_prompt else "")
-    #     + COLOR_RESET
-    # )
-
-    time_since_tomodachi_build = get_time_since_build()
-    # if tomodachi_build_time:
-    #     try:
-    #         tomodachi_build_datetime = datetime.datetime.strptime(
-    #             tomodachi_build_time, "%Y-%m-%dT%H:%M:%S.%f%z"
-    #         ).replace(tzinfo=None)
-    #         timedelta_since_tomodachi_build = datetime.datetime.utcnow() - tomodachi_build_datetime
-    #         if timedelta_since_tomodachi_build.days == 0:
-    #             seconds = timedelta_since_tomodachi_build.seconds
-    #             if seconds >= 3600:
-    #                 hours = seconds // 3600
-    #                 time_since_tomodachi_build = f"released {hours} hour{'s' if hours > 1 else ''} ago"
-    #             elif seconds >= 60:
-    #                 minutes = seconds // 60
-    #                 time_since_tomodachi_build = f"released {minutes} minute{'s' if minutes > 1 else ''} ago"
-    #             else:
-    #                 time_since_tomodachi_build = "released just now"
-    #         else:
-    #             days = timedelta_since_tomodachi_build.days
-    #             if days >= 720:
-    #                 years = days // 365
-    #                 if years < 2:
-    #                     years = 2
-    #                 time_since_tomodachi_build = f"released over {years} year{'s' if years > 1 else ''} ago"
-    #             elif days >= 90:
-    #                 months = days // 30
-    #                 time_since_tomodachi_build = f"released {months} month{'s' if months > 1 else ''} ago"
-    #             else:
-    #                 time_since_tomodachi_build = f"released {days} day{'s' if days > 1 else ''} ago"
-    #     except Exception:
-    #         pass
 
     output.append(
         f"{LABEL}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi_version}{TEXT_NORMAL}"
@@ -406,7 +307,6 @@ def render_banner(
     elif poetry_venv:
         output.append(
             f"{LABEL}virtualenv path        {DELIMITER} {TEXT_HIGHLIGHT}{poetry_venv}{TEXT_NORMAL} (poetry active)"
-            # + (f" [{venv_path}" if venv_path else "")
             + COLOR_RESET
         )
     elif venv_path:
@@ -450,10 +350,6 @@ def render_banner(
         + (f" ({event_loop_setting})" if event_loop_setting == "auto" else "")
         + COLOR_RESET
     )
-
-    #    if tz:
-    #        output.append(f"{LABEL}local time             {DELIMITER} {TEXT_NORMAL}{init_local_time_str}{COLOR_RESET}")
-    #    output.append(f"{LABEL}start timestamp        {DELIMITER} {TEXT_NORMAL}{init_timestamp_str}{COLOR_RESET}")
 
     output.append("")
 
