@@ -8,7 +8,7 @@ import warnings
 from contextvars import ContextVar
 from io import StringIO
 from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
-from typing import Any, Dict, Iterable, KeysView, Literal, Optional, Protocol, Sequence, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterable, KeysView, Literal, Optional, Protocol, Sequence, Tuple, Union, cast
 
 import structlog
 from structlog._log_levels import _NAME_TO_LEVEL
@@ -700,7 +700,7 @@ def get_logger(name: Optional[str] = None) -> Logger:
 
 
 # CamelCase alias for `get_logger`.
-getLogger = get_logger
+getLogger: Callable[..., Logger] = get_logger
 
 # Set default logger context
 _context.set(LoggerContext(logger="default", **{LOGGER_DISABLED_KEY: False}))
