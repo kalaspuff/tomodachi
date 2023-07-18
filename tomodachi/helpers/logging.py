@@ -4,7 +4,6 @@ from tomodachi import context, logging
 
 
 def log(service: Any, *args: Any, **kwargs: Any) -> None:
-    # service_name = str(service.name) if getattr(service, "name", None) else Ellipsis
     name: str = context("service.logger") or ""
     level = None
     message = None
