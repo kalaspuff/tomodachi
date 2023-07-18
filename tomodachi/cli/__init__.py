@@ -12,6 +12,7 @@ from tomodachi.__version__ import __version__
 from tomodachi.config import parse_config_files
 from tomodachi.helpers.build_time import get_time_since_build
 from tomodachi.launcher import ServiceLauncher
+from tomodachi.logging import StdLoggingHandler
 
 
 class CLI:
@@ -303,7 +304,16 @@ class CLI:
                 )
                 args.pop(index)
                 if len(args) > index:
-                    log_level = getattr(logging, args.pop(index).upper(), None) or log_level
+                    arg_value = args.pop(index)
+                    log_level_ = getattr(logging, arg_value.upper(), None) or logging.NOTSET
+                    if type(log_level_) is not int or log_level_ == logging.NOTSET:
+                        print(
+                            "Invalid log level: '{}' - expected: 'debug', 'info', 'warning', 'error' or 'critical'".format(
+                                arg_value
+                            )
+                        )
+                        sys.exit(2)
+                    log_level = log_level_
 
             logging.addLevelName(logging.NOTSET, "notset")
             logging.addLevelName(logging.DEBUG, "debug")
@@ -319,23 +329,10 @@ class CLI:
                     format="%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]",
                     datefmt="%Y-%m-%dT%H:%M:%S",
                     level=log_level,
+                    handlers=[StdLoggingHandler()],
                 )
             except Exception as e:
                 logging.getLogger().warning("Unable to set log config: {}".format(str(e)))
-
-            try:
-                setattr(
-                    logging.Formatter,
-                    "formatTime",
-                    (
-                        lambda self_, record, datefmt=None: datetime.datetime.utcfromtimestamp(
-                            record.created
-                        ).isoformat(timespec="microseconds")
-                        + "Z"
-                    ),
-                )
-            except Exception as e:
-                logging.getLogger().warning("Unable to modify logging.Formatter.formatTime function: {}".format(str(e)))
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(tomodachi.SERVICE_EXIT_CODE)

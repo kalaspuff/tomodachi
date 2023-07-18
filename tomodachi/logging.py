@@ -11,6 +11,7 @@ from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
 from typing import Any, Dict, Iterable, KeysView, Literal, Optional, Protocol, Sequence, Tuple, Union, cast
 
 import structlog
+from structlog._log_levels import _NAME_TO_LEVEL
 
 LOGGER_DISABLED_KEY = "_logger_disabled"
 RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
@@ -33,7 +34,8 @@ class LogProcessorTimestamp:
     def __call__(
         self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
     ) -> structlog.typing.EventDict:
-        event_dict[self.key] = datetime.datetime.utcnow().isoformat(timespec="microseconds") + "Z"
+        if self.key not in event_dict:
+            event_dict[self.key] = datetime.datetime.utcnow().isoformat(timespec="microseconds") + "Z"
         return event_dict
 
 
@@ -209,8 +211,71 @@ def modify_logger(
 ) -> structlog.typing.EventDict:
     name = str(event_dict.get("logger") or "")
     if name:
-        event_dict["logger"] = name.split("tomodachi.", 1)[-1]  # .split("service.", 1)[-1]
+        event_dict["logger"] = name.split("tomodachi.", 1)[-1]
     return event_dict
+
+
+class _StdLoggingFormatter(logging.Formatter):
+    #    def format(self, record: logging.LogRecord) -> str:
+    #        timestamp = self.formatTime(record, self.datefmt)
+    #        print(timestamp, record.levelname, record.name, record.getMessage())
+    #        get_logger(record.name).log(record.levelno, record.getMessage(), timestamp=timestamp)
+    #        return ""
+
+    def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
+        return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
+
+
+_defaultFormatter = _StdLoggingFormatter("%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]", "%Y-%m-%dT%H:%M:%S")
+
+
+class StdLoggingHandler(logging.Handler):
+    # def __init__(self, stream: Optional[TextIO] = None):
+    #     super().__init__(stream=stream)
+    #     self.formatter = _defaultFormatter
+
+    def __init__(self, level: int = NOTSET) -> None:
+        super().__init__(level=level)
+        self.formatter = _defaultFormatter
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            # msg = self.format(record)
+            get_logger(record.name).log(
+                record.levelno,
+                record.getMessage(),
+                timestamp=self.formatter.formatTime(record) if self.formatter else None,
+            )
+            # stream = self.stream
+            # stream.write(msg + self.terminator)
+            # self.flush()
+        except RecursionError:
+            raise
+        except Exception:
+            self.handleError(record)
+
+
+# logging.addLevelName(logging.NOTSET, "notset")
+# logging.addLevelName(logging.DEBUG, "debug")
+# logging.addLevelName(logging.INFO, "info")
+# logging.addLevelName(logging.WARN, "warn")
+# logging.addLevelName(logging.WARNING, "warning")
+# logging.addLevelName(logging.ERROR, "error")
+# logging.addLevelName(logging.FATAL, "fatal")
+# logging.addLevelName(logging.CRITICAL, "critical")
+#
+# logging.basicConfig(
+#     # format="%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]",
+#     # datefmt="%Y-%m-%dT%H:%M:%S",
+#     level=logging.INFO,
+#     handlers=[StdLoggingHandler()],
+# )
+
+
+# logging.root.addHandler(_StdLoggingHandler())
+
+# logging.warning("test")
+# sys.exit(0)
 
 
 class LoggerContext(dict):
@@ -299,6 +364,27 @@ class LoggerContext(dict):
 
 
 class Logger(structlog.stdlib.BoundLogger):
+    def _proxy_to_logger(self, method_name: str, event: Optional[str] = None, **event_kw: Any) -> Any:
+        try:
+            if not self.isEnabledFor(_NAME_TO_LEVEL[method_name]):
+                return None
+        except Exception:
+            try:
+                level = self.level
+            except Exception:
+                try:
+                    level = logging.root.level
+                except Exception:
+                    level = NOTSET
+
+            try:
+                if level > _NAME_TO_LEVEL[method_name]:
+                    return None
+            except Exception:
+                pass
+
+        return super()._proxy_to_logger(method_name, event, **event_kw)
+
     @property
     def name(self) -> str:
         name: str = self._context.get("logger") or ""
@@ -312,7 +398,7 @@ class Logger(structlog.stdlib.BoundLogger):
             return int(self._logger.level)
         except AttributeError:
             name = self._context.get("logger") or None
-            return logging.getLogger(name).level
+            return logging.getLogger(name).level or logging.root.level
 
     @property
     def parent(self) -> Any:
@@ -669,6 +755,8 @@ __all__ = [
     "enable_logger",
     "is_logger_disabled",
     "is_logger_enabled",
+    "Logger",
+    "StdLoggingHandler",
     "CRITICAL",
     "DEBUG",
     "ERROR",

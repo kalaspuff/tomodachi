@@ -29,14 +29,6 @@ except (Exception, ModuleNotFoundError, ImportError):
     _CancelledError = asyncio.CancelledError
 
 
-TOMODACHI_ASCII = """
-███████████████████████████████████████████████████████████████████████████████
-███████████████─▄─▄─█─▄▄─█▄─▀█▀─▄█─▄▄─█▄─▄▄▀██▀▄─██─▄▄▄─█─█─█▄─▄███████████████
-█████████████████─███─██─██─█▄█─██─██─██─██─██─▀─██─███▀█─▄─██─████████████████
-▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄▄▄▀▀▄▄▄▄▀▄▄▄▀▄▄▄▀▄▄▄▄▀▄▄▄▄▀▀▄▄▀▄▄▀▄▄▄▄▄▀▄▀▄▀▄▄▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-"""
-
-
 class ServiceLauncher(object):
     _close_waiter: Optional[asyncio.Future] = None
     _stopped_waiter: Optional[asyncio.Future] = None

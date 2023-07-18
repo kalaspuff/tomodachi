@@ -78,7 +78,6 @@ class ServiceContainer(object):
             self.started_waiter = asyncio.Future()
 
         tomodachi.get_contextvar("service.logger").set("tomodachi.service")
-        logging.getLogger("tomodachi.event").bind(**{logging.LOGGER_DISABLED_KEY: True})
 
         def logging_context_wrapper(coro: Any, service_name_: str, **logger_context: Any) -> Any:
             async def _wrapper(*args: Any, **kwargs: Any) -> Any:
