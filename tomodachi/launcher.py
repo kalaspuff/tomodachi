@@ -3,7 +3,6 @@ import datetime
 import importlib
 import os
 import platform
-import shlex
 import signal
 import sys
 import time
@@ -287,7 +286,7 @@ class ServiceLauncher(object):
                 error_lineno = getattr(e, "lineno", None)
                 error_location = error_filename + (":" + str(error_lineno)) if error_lineno else ""
 
-                logging.getLogger("tomodachi").error(
+                logging.getLogger("exception").error(
                     "indentation error in file" if type(e) is IndentationError else "syntax error in file",
                     error_location=error_location if error_filename else Ellipsis,
                 )
