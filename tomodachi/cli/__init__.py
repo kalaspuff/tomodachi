@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import asyncio
-import datetime
 import getopt
 import logging
 import os

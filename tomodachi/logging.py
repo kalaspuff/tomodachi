@@ -114,10 +114,6 @@ class RenameKeys:
         self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
     ) -> structlog.typing.EventDict:
         return {(self.pairs.get(k, k)): v for k, v in event_dict.items()}
-        # for old_key, new_key in self.pairs:
-        #     if old_key in event_dict:
-        #         event_dict[new_key] = event_dict.pop(old_key)
-        # return event_dict
 
 
 _ordered_items = structlog.processors._items_sorter(
@@ -216,12 +212,6 @@ def modify_logger(
 
 
 class _StdLoggingFormatter(logging.Formatter):
-    #    def format(self, record: logging.LogRecord) -> str:
-    #        timestamp = self.formatTime(record, self.datefmt)
-    #        print(timestamp, record.levelname, record.name, record.getMessage())
-    #        get_logger(record.name).log(record.levelno, record.getMessage(), timestamp=timestamp)
-    #        return ""
-
     def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
         return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
 
@@ -230,52 +220,21 @@ _defaultFormatter = _StdLoggingFormatter("%(asctime)s [%(levelname)-9s] %(messag
 
 
 class StdLoggingHandler(logging.Handler):
-    # def __init__(self, stream: Optional[TextIO] = None):
-    #     super().__init__(stream=stream)
-    #     self.formatter = _defaultFormatter
-
     def __init__(self, level: int = NOTSET) -> None:
         super().__init__(level=level)
         self.formatter = _defaultFormatter
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            # msg = self.format(record)
             get_logger(record.name).log(
                 record.levelno,
                 record.getMessage(),
                 timestamp=self.formatter.formatTime(record) if self.formatter else None,
             )
-            # stream = self.stream
-            # stream.write(msg + self.terminator)
-            # self.flush()
         except RecursionError:
             raise
         except Exception:
             self.handleError(record)
-
-
-# logging.addLevelName(logging.NOTSET, "notset")
-# logging.addLevelName(logging.DEBUG, "debug")
-# logging.addLevelName(logging.INFO, "info")
-# logging.addLevelName(logging.WARN, "warn")
-# logging.addLevelName(logging.WARNING, "warning")
-# logging.addLevelName(logging.ERROR, "error")
-# logging.addLevelName(logging.FATAL, "fatal")
-# logging.addLevelName(logging.CRITICAL, "critical")
-#
-# logging.basicConfig(
-#     # format="%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]",
-#     # datefmt="%Y-%m-%dT%H:%M:%S",
-#     level=logging.INFO,
-#     handlers=[StdLoggingHandler()],
-# )
-
-
-# logging.root.addHandler(_StdLoggingHandler())
-
-# logging.warning("test")
-# sys.exit(0)
 
 
 class LoggerContext(dict):
@@ -364,7 +323,7 @@ class LoggerContext(dict):
 
 
 class Logger(structlog.stdlib.BoundLogger):
-    def _proxy_to_logger(self, method_name: str, event: Optional[str] = None, **event_kw: Any) -> Any:
+    def _proxy_to_logger(self, method_name: str, event: Optional[str] = None, *event_args: Any, **event_kw: Any) -> Any:
         try:
             if not self.isEnabledFor(_NAME_TO_LEVEL[method_name]):
                 return None
@@ -383,7 +342,7 @@ class Logger(structlog.stdlib.BoundLogger):
             except Exception:
                 pass
 
-        return super()._proxy_to_logger(method_name, event, **event_kw)
+        return super()._proxy_to_logger(method_name, event, *event_args, **event_kw)
 
     @property
     def name(self) -> str:
