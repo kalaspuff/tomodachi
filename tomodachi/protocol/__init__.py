@@ -4,10 +4,10 @@ __cached_defs: Dict[str, Any] = {}
 
 
 def __getattr__(name: str) -> Any:
-    import importlib  # noqa  # isort:skip
-
     if name in __cached_defs:
         return __cached_defs[name]
+
+    import importlib  # noqa  # isort:skip
 
     if name in ("JsonBase", "ProtobufBase"):
         module = importlib.import_module("tomodachi.envelope")

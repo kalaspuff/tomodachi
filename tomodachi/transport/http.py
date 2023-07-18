@@ -850,12 +850,12 @@ class HttpTransport(Invoker):
 
     @staticmethod
     async def start_server(obj: Any, context: Dict) -> Optional[Callable]:
-        logger = logging.getLogger("tomodachi.http")
-        logging.bind_logger(logger)
-
         if context.get("_http_server_started"):
             return None
         context["_http_server_started"] = True
+
+        logger = logging.getLogger("tomodachi.http")
+        logging.bind_logger(logger)
 
         http_options: Options.HTTP = HttpTransport.options(context).http
 

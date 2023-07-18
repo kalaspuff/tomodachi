@@ -3,13 +3,13 @@ import binascii
 import functools
 import hashlib
 import inspect
-import logging
 import re
 import time
 from typing import Any, Callable, Dict, List, Match, Optional, Set, Tuple, Union, cast
 
 import aioamqp
 
+from tomodachi import get_contextvar, logging
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -232,6 +232,11 @@ class AmqpTransport(Invoker):
         args_set = (set(values.args[1:]) | set(values.kwonlyargs) | set(callback_kwargs or [])) - set(["self"])
 
         async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
+            logging.bind_logger(
+                logging.getLogger("tomodachi.amqp.handler").bind(handler=func.__name__, type="tomodachi.amqp")
+            )
+            get_contextvar("service.logger").set("tomodachi.amqp.handler")
+
             kwargs = dict(original_kwargs)
 
             message = payload
@@ -353,6 +358,9 @@ class AmqpTransport(Invoker):
 
     @classmethod
     async def connect(cls, obj: Any, context: Dict) -> Any:
+        logger = logging.getLogger("tomodachi.amqp")
+        logging.bind_logger(logger)
+
         logging.getLogger("aioamqp.protocol").setLevel(logging.WARNING)
         logging.getLogger("aioamqp.channel").setLevel(logging.WARNING)
 
@@ -381,21 +389,15 @@ class AmqpTransport(Invoker):
             cls.transport = transport
         except ConnectionRefusedError as e:
             error_message = "connection refused"
-            logging.getLogger("transport.amqp").warning(
-                "Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message)
-            )
+            logger.warning("Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get("log_level")) from e
         except aioamqp.exceptions.AmqpClosedConnection as e:
             error_message = e.__context__
-            logging.getLogger("transport.amqp").warning(
-                "Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message)
-            )
+            logger.warning("Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get("log_level")) from e
         except OSError as e:
             error_message = e.strerror
-            logging.getLogger("transport.amqp").warning(
-                "Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message)
-            )
+            logger.warning("Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get("log_level")) from e
 
         channel = await protocol.channel()
@@ -425,6 +427,9 @@ class AmqpTransport(Invoker):
             return None
         context["_amqp_subscribed"] = True
 
+        logger = logging.getLogger("tomodachi.amqp")
+        logging.bind_logger(logger)
+
         set_execution_context(
             {
                 "amqp_enabled": True,
@@ -445,6 +450,9 @@ class AmqpTransport(Invoker):
         )
 
         async def _subscribe() -> None:
+            logger = logging.getLogger("tomodachi.amqp")
+            logging.bind_logger(logger)
+
             async def declare_queue(
                 routing_key: str,
                 func: Callable,
@@ -457,6 +465,14 @@ class AmqpTransport(Invoker):
                 auto_delete: bool = False,
                 competing_consumer: Optional[bool] = None,
             ) -> Optional[str]:
+                logger = logging.getLogger("tomodachi.amqp").bind(
+                    wrapped_handler=func.__name__,
+                    routing_key=routing_key or Ellipsis,
+                    exchange_name=exchange_name or Ellipsis,
+                    queue_name=queue_name or Ellipsis,
+                )
+                logging.bind_logger(logger)
+
                 try:
                     if exchange_name and exchange_name != "amq.topic":
                         await channel.exchange_declare(
@@ -469,21 +485,21 @@ class AmqpTransport(Invoker):
                 except aioamqp.exceptions.ChannelClosed as e:
                     error_message = e.args[1]
                     if e.args[0] == 403 and exchange_name.startswith("amq."):
-                        logging.getLogger("transport.amqp").warning(
+                        logger.warning(
                             'Unable to declare exchange [amqp] "{}", starts with reserved "amq." ({})'.format(
                                 exchange_name, error_message
                             )
                         )
                         raise
                     elif e.args[0] == 507 or e.args[0] == 406:
-                        logging.getLogger("transport.amqp").warning(
+                        logger.warning(
                             'Unable to change type of existing exchange [amqp] "{}" ({})'.format(
                                 exchange_name, error_message
                             )
                         )
                         raise
                     else:
-                        logging.getLogger("transport.amqp").warning(
+                        logger.warning(
                             'Unable to declare exchange [amqp] "{}" ({})'.format(exchange_name, error_message)
                         )
                         raise
@@ -516,7 +532,7 @@ class AmqpTransport(Invoker):
                         arguments=amqp_arguments,
                     )
                     if max_consumers is not None and data.get("consumer_count", 0) >= max_consumers:
-                        logging.getLogger("transport.amqp").warning(
+                        logger.warning(
                             'Max consumers ({}) for queue [amqp] "{}" has been reached'.format(
                                 max_consumers, queue_name
                             )
@@ -545,8 +561,14 @@ class AmqpTransport(Invoker):
             for routing_key, exchange_name, competing, queue_name, func, handler in context.get(
                 "_amqp_subscribers", []
             ):
-                queue_name = await declare_queue(
-                    routing_key, func, exchange_name=exchange_name, competing_consumer=competing, queue_name=queue_name
+                queue_name = await asyncio.create_task(
+                    declare_queue(
+                        routing_key,
+                        func,
+                        exchange_name=exchange_name,
+                        competing_consumer=competing,
+                        queue_name=queue_name,
+                    )
                 )
                 await channel.basic_consume(callback(routing_key, handler), queue_name=queue_name)
 
@@ -554,6 +576,7 @@ class AmqpTransport(Invoker):
 
 
 __amqp = AmqpTransport.decorator(AmqpTransport.subscribe_handler)
+
 amqp_publish = AmqpTransport.publish
 publish = AmqpTransport.publish
 

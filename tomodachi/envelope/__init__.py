@@ -4,10 +4,10 @@ __cached_defs: Dict[str, Any] = {}
 
 
 def __getattr__(name: str) -> Any:
-    import importlib  # noqa  # isort:skip
-
     if name in __cached_defs:
         return __cached_defs[name]
+
+    import importlib  # noqa  # isort:skip
 
     if name == "JsonBase":
         module = importlib.import_module(".json_base", "tomodachi.envelope")
@@ -33,6 +33,12 @@ def __getattr__(name: str) -> Any:
 
             __cached_defs[name] = ProtobufBase
             return __cached_defs[name]
+    elif name == "json_base":
+        __cached_defs[name] = module = importlib.import_module(".json_base", "tomodachi.envelope")
+        return __cached_defs[name]
+    elif name == "protobuf_base":
+        __cached_defs[name] = module = importlib.import_module(".protobuf_base", "tomodachi.envelope")
+        return __cached_defs[name]
     else:
         raise AttributeError("module 'tomodachi.envelope' has no attribute '{}'".format(name))
 
@@ -40,4 +46,4 @@ def __getattr__(name: str) -> Any:
     return __cached_defs[name]
 
 
-__all__ = ["JsonBase", "ProtobufBase"]
+__all__ = ["JsonBase", "ProtobufBase", "json_base", "protobuf_base"]
