@@ -14,7 +14,7 @@ import tomodachi.__version__
 import tomodachi.container
 import tomodachi.importer
 import tomodachi.invoker
-from tomodachi import get_services, logging
+from tomodachi import logging
 from tomodachi.container import ServiceContainer
 from tomodachi.helpers.execution_context import clear_execution_context, clear_services, set_execution_context
 from tomodachi.helpers.safe_modules import SAFE_MODULES

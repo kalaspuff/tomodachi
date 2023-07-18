@@ -629,7 +629,6 @@ class HttpTransport(Invoker):
 
     @classmethod
     async def websocket_handler(cls, obj: Any, context: Dict, func: Any, url: str) -> Any:
-        logger = logging.getLogger("tomodachi.http")
         response_logger = logging.getLogger("tomodachi.http.websocket")
 
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))

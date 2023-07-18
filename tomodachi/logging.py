@@ -6,7 +6,7 @@ import logging
 import sys
 from contextvars import ContextVar
 from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
-from typing import Any, Dict, Iterable, KeysView, Literal, Optional, Protocol, Sequence, TextIO, Tuple, Union, cast
+from typing import Any, Dict, KeysView, Literal, Optional, Protocol, Sequence, Tuple, Union, cast
 
 import structlog
 
@@ -271,7 +271,7 @@ class LoggerContext(dict):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def keys(self) -> KeysView:
+    def keys(self) -> KeysView:  # type: ignore
         return self._data.keys()
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -280,11 +280,8 @@ class LoggerContext(dict):
     def copy(self) -> dict:
         return {**self._data}
 
-    def update(self, *a: Any, **kw: Any) -> LoggerContext:
-        if a:
-            return LoggerContext(self, {**a[0], **kw})
-        else:
-            return LoggerContext(self, {**kw})
+    def update(self, *a: Any, **kw: Any) -> None:
+        self._data.update(*a, **kw)
 
     def pop(self, item: str, *default: Any) -> Any:
         if not default:
@@ -358,7 +355,7 @@ class Logger(structlog.stdlib.BoundLogger):
 
     def findCaller(self, stack_info: bool = False) -> Tuple[str, int, str, Optional[str]]:
         try:
-            return cast(Tuple[str, int, str, Optional[str]], self._logger.findCaller(stack_info=stack_info))
+            return cast(Tuple[str, int, str, Optional[str]], self._logger.findCaller(stack_info=stack_info))  # type: ignore
         except AttributeError:
             name = self._context.get("logger") or None
             return logging.getLogger(name).findCaller(stack_info=stack_info)
@@ -376,7 +373,7 @@ class Logger(structlog.stdlib.BoundLogger):
         extra: Any = None,
     ) -> logging.LogRecord:
         try:
-            return cast(
+            return cast(  # type: ignore
                 logging.LogRecord,
                 self._logger.makeRecord(name, level, fn, lno, msg, args, exc_info, func=func, extra=extra),
             )
@@ -437,7 +434,7 @@ class Logger(structlog.stdlib.BoundLogger):
 
     def getChild(self, suffix: str) -> logging.Logger:
         try:
-            return cast(logging.Logger, self._logger.getChild(suffix))
+            return cast(logging.Logger, self._logger.getChild(suffix))  # type: ignore
         except AttributeError:
             name = self._context.get("logger") or None
             return logging.getLogger(name).getChild(suffix)

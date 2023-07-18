@@ -131,9 +131,9 @@ class Watcher(object):
                 loop_counter = (loop_counter + 1) % 20
                 updated_files = self.update_watched_files(reindex=(loop_counter == 0))
                 if updated_files:
-                    added = updated_files.get("added")
-                    removed = updated_files.get("removed")
-                    updated = updated_files.get("updated")
+                    added = updated_files.get("added") or []
+                    removed = updated_files.get("removed") or []
+                    updated = updated_files.get("updated") or []
                     if removed and not added and not updated:
                         logging.getLogger("tomodachi.watcher").warning(
                             "removed files", removed_files=[file for file in removed]

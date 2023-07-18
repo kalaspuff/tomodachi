@@ -314,17 +314,28 @@ class CLI:
             logging.addLevelName(logging.FATAL, "fatal")
             logging.addLevelName(logging.CRITICAL, "critical")
 
-            logging.basicConfig(
-                format="%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]",
-                datefmt="%Y-%m-%dT%H:%M:%S",
-                level=log_level,
-            )
-            logging.Formatter.formatTime = (
-                lambda self, record, datefmt=None: datetime.datetime.utcfromtimestamp(record.created).isoformat(
-                    timespec="microseconds"
+            try:
+                logging.basicConfig(
+                    format="%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]",
+                    datefmt="%Y-%m-%dT%H:%M:%S",
+                    level=log_level,
                 )
-                + "Z"
-            )
+            except Exception as e:
+                logging.getLogger().warning("Unable to set log level to {}: {}".format(log_level, str(e)))
+
+            try:
+                setattr(
+                    logging.Formatter,
+                    "formatTime",
+                    (
+                        lambda self, record, datefmt=None: datetime.datetime.utcfromtimestamp(record.created).isoformat(
+                            timespec="microseconds"
+                        )
+                        + "Z"
+                    ),
+                )
+            except Exception as e:
+                logging.getLogger().warning("Unable to modify logging.Formatter.formatTime function".format(str(e)))
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(tomodachi.SERVICE_EXIT_CODE)
