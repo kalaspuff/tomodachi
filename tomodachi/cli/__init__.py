@@ -328,9 +328,9 @@ class CLI:
                     logging.Formatter,
                     "formatTime",
                     (
-                        lambda self, record, datefmt=None: datetime.datetime.utcfromtimestamp(record.created).isoformat(
-                            timespec="microseconds"
-                        )
+                        lambda self_, record, datefmt=None: datetime.datetime.utcfromtimestamp(
+                            record.created
+                        ).isoformat(timespec="microseconds")
                         + "Z"
                     ),
                 )
