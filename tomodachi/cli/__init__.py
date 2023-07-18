@@ -321,7 +321,7 @@ class CLI:
                     level=log_level,
                 )
             except Exception as e:
-                logging.getLogger().warning("Unable to set log level to {}: {}".format(log_level, str(e)))
+                logging.getLogger().warning("Unable to set log config: {}".format(str(e)))
 
             try:
                 setattr(
@@ -335,7 +335,7 @@ class CLI:
                     ),
                 )
             except Exception as e:
-                logging.getLogger().warning("Unable to modify logging.Formatter.formatTime function".format(str(e)))
+                logging.getLogger().warning("Unable to modify logging.Formatter.formatTime function: {}".format(str(e)))
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(tomodachi.SERVICE_EXIT_CODE)
