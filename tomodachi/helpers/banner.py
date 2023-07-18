@@ -207,16 +207,16 @@ def render_banner(
     pid_str = f"[pid: {process_id}]"
     pid_str = f"{pid_str:<14}"
     pid_str = (
-        pid_str[0:1]
-        + COLOR_RESET
+        LABEL
+        + "process "
+        + pid_str[0:1]
         + PID_HIGHLIGHT
         + pid_str[1 : 6 + len(str(process_id))]
-        + COLOR_RESET
         + LABEL
         + pid_str[6 + len(str(process_id)) :]
     )
 
-    output.append(f"{LABEL}process {pid_str}{COLOR_RESET} {DELIMITER} {TEXT_HIGHLIGHT}$ {process_cmd_str}{COLOR_RESET}")
+    output.append(f"{pid_str} {DELIMITER} {TEXT_HIGHLIGHT}$ {process_cmd_str}{COLOR_RESET}")
 
     for file_num, file_path in enumerate(actual_file_paths, 1):
         file_path_ = file_path
@@ -224,14 +224,15 @@ def render_banner(
             if len(file_path_) <= 60:
                 break
             file_path_ = ".../" + "/".join(file_path_.replace(".../", "").split("/")[1:])
+            if file_path_.startswith(".../") and file_path_.count("/") == 1:
+                file_path_ = file_path_[4:]
+                break
 
         if len(actual_file_paths) == 1:
             file_num_ = ""
         else:
             file_num_ = f"[{file_num}]"
-        output.append(
-            f"{LABEL}service file {file_num_:4s}      {DELIMITER} {COLOR.YELLOW}{COLOR_STYLE.BRIGHT}{TEXT_HIGHLIGHT}{file_path_}{COLOR_RESET}"
-        )
+        output.append(f"{LABEL}service file {file_num_:4s}      {DELIMITER} {TEXT_HIGHLIGHT}{file_path_}{COLOR_RESET}")
 
     time_since_tomodachi_build = get_time_since_build()
 
@@ -263,7 +264,9 @@ def render_banner(
         python_path = "~/" + python_path.split(home_path + "/", 1)[-1]
 
     poetry_venv = ""
-    poetry_is_active = os.environ.get("POETRY_ACTIVE", "").lower() in ("1", "true") and venv_environ
+    poetry_is_active = (os.environ.get("POETRY_ACTIVE", "").lower() in ("1", "true") and venv_environ) or (
+        "/pypoetry/virtualenvs/" in venv_environ or "/poetry/virtualenvs/" in venv_environ
+    )
     if poetry_is_active:
         if cwd.rstrip("/") and venv_environ.startswith(cwd.rstrip("/") + "/"):
             poetry_venv = venv_environ
