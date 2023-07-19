@@ -43,6 +43,7 @@ from tomodachi import get_contextvar, logging
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
+    get_execution_context,
     increase_execution_context_value,
     set_execution_context,
 )
@@ -1764,16 +1765,32 @@ class AWSSNSSQSTransport(Invoker):
 
         async def stop_service(*args: Any, **kwargs: Any) -> None:
             if cls.close_waiter and not cls.close_waiter.done():
-                logger.warning("Draining message pool - awaiting running tasks")
                 cls.close_waiter.set_result(None)
+                logger.info("draining sqs receiver loop")
 
                 if not start_waiter.done():
                     start_waiter.set_result(None)
+
+                sleep_task: asyncio.Future = asyncio.ensure_future(asyncio.sleep(2))
+                await asyncio.wait([sleep_task, stop_waiter], return_when=asyncio.FIRST_COMPLETED)
+                if not sleep_task.done():
+                    sleep_task.cancel()
+                else:
+                    task_count = get_execution_context().get("aws_sns_sqs_current_tasks", 0)
+                    if task_count > 0:
+                        logger.warning(
+                            "awaiting running tasks",
+                            task_count=task_count,
+                        )
+
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
                 await connector.close()
             else:
+                if not start_waiter.done():
+                    start_waiter.set_result(None)
+
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)

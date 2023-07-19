@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import binascii
 import functools
@@ -5,7 +7,7 @@ import hashlib
 import inspect
 import re
 import time
-from typing import Any, Callable, Dict, List, Match, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Literal, Match, Optional, Set, Tuple, Union, cast, overload
 
 import aioamqp
 
@@ -63,6 +65,57 @@ class AmqpTransport(Invoker):
     transport: Any = None
     exchange_name: str
 
+    @overload
+    @classmethod
+    async def publish(
+        cls,
+        service: Any,
+        data: Any,
+        routing_key: str = "",
+        exchange_name: str = "",
+        wait: Literal[True] = True,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    @overload
+    @classmethod
+    async def publish(
+        cls,
+        service: Any,
+        data: Any,
+        routing_key: str,
+        exchange_name: str,
+        wait: Literal[False],
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
+        **kwargs: Any,
+    ) -> asyncio.Task[None]:
+        ...
+
+    @overload
+    @classmethod
+    async def publish(
+        cls,
+        service: Any,
+        data: Any,
+        routing_key: str = "",
+        exchange_name: str = "",
+        *,
+        wait: Literal[False],
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
+        **kwargs: Any,
+    ) -> asyncio.Task[None]:
+        ...
+
     @classmethod
     async def publish(
         cls,
@@ -76,7 +129,7 @@ class AmqpTransport(Invoker):
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
         **kwargs: Any,
-    ) -> None:
+    ) -> Optional[asyncio.Task[None]]:
         if not cls.channel:
             await cls.connect(service, service.context)
         exchange_name = exchange_name or cls.exchange_name or "amq.topic"
@@ -95,7 +148,7 @@ class AmqpTransport(Invoker):
         if message_envelope:
             build_message_func = getattr(message_envelope, "build_message", None)
             if build_message_func:
-                payload = await build_message_func(service, routing_key, data, **kwargs)
+                payload = await asyncio.create_task(build_message_func(service, routing_key, data, **kwargs))
 
         async def _publish_message() -> None:
             success = False
@@ -111,10 +164,9 @@ class AmqpTransport(Invoker):
                     await cls.connect(service, service.context)
 
         if wait:
-            await _publish_message()
+            return await asyncio.create_task(_publish_message())
         else:
-            loop: Any = asyncio.get_event_loop()
-            loop.create_task(_publish_message())
+            return asyncio.create_task(_publish_message())
 
     @classmethod
     def get_routing_key(
@@ -247,9 +299,11 @@ class AmqpTransport(Invoker):
                     parse_message_func = getattr(message_envelope, "parse_message", None)
                     if parse_message_func:
                         if len(parser_kwargs):
-                            message, message_uuid, timestamp = await parse_message_func(payload, **parser_kwargs)
+                            message, message_uuid, timestamp = await asyncio.create_task(
+                                parse_message_func(payload, **parser_kwargs)
+                            )
                         else:
-                            message, message_uuid, timestamp = await parse_message_func(payload)
+                            message, message_uuid, timestamp = await asyncio.create_task(parse_message_func(payload))
                     if message_uuid:
                         if not context.get("_amqp_received_messages"):
                             context["_amqp_received_messages"] = {}
@@ -324,14 +378,16 @@ class AmqpTransport(Invoker):
             increase_execution_context_value("amqp_current_tasks")
             increase_execution_context_value("amqp_total_tasks")
             try:
-                return_value = await execute_middlewares(
-                    func,
-                    routine_func,
-                    context.get("message_middleware", []),
-                    *(obj, message, routing_key),
-                    message=message,
-                    message_uuid=message_uuid,
-                    routing_key=routing_key,
+                return_value = await asyncio.create_task(
+                    execute_middlewares(
+                        func,
+                        routine_func,
+                        context.get("message_middleware", []),
+                        *(obj, message, routing_key),
+                        message=message,
+                        message_uuid=message_uuid,
+                        routing_key=routing_key,
+                    )
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))

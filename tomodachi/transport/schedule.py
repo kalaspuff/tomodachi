@@ -375,7 +375,7 @@ class Scheduler(Invoker):
                         except Exception as e:
                             logging.getLogger("exception").exception(str(e))
 
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.001)
                 await start_waiter
 
                 if not cls.close_waiter or cls.close_waiter.done():
@@ -398,7 +398,7 @@ class Scheduler(Invoker):
             except (Exception, asyncio.CancelledError) as e:
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.001)
                 await start_waiter
 
                 if not cls.close_waiter or cls.close_waiter.done():
@@ -558,8 +558,6 @@ class Scheduler(Invoker):
             if not stop_waiter.done():
                 stop_waiter.set_result(None)
 
-        loop: Any = asyncio.get_event_loop()
-
         stop_method = getattr(obj, "_stop_service", None)
 
         async def stop_service(*args: Any, **kwargs: Any) -> None:
@@ -568,10 +566,14 @@ class Scheduler(Invoker):
 
                 if not start_waiter.done():
                     start_waiter.set_result(None)
+
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
             else:
+                if not start_waiter.done():
+                    start_waiter.set_result(None)
+
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
@@ -588,7 +590,7 @@ class Scheduler(Invoker):
 
         setattr(obj, "_started_service", started_service)
 
-        loop.create_task(schedule_loop())
+        asyncio.create_task(schedule_loop())
 
     @classmethod
     async def start_scheduler(cls, obj: Any, context: Dict) -> Optional[Callable]:
