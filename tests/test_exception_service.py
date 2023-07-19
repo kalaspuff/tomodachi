@@ -11,7 +11,7 @@ def test_exception_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     loop.run_until_complete(future)
 
     out, err = capsys.readouterr()
-    assert "fail in _start_service()" in err
+    assert "fail in _start_service()" in (out + err)
 
 
 def test_exception_service_in_init(monkeypatch: Any, capsys: Any, loop: Any) -> None:

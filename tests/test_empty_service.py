@@ -9,7 +9,7 @@ def test_empty_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     loop.run_until_complete(future)
 
     out, err = capsys.readouterr()
-    assert "No transports defined in service file" in err
+    assert "No transports defined in service file" in (out + err)
 
 
 def test_non_decorated_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
@@ -18,4 +18,4 @@ def test_non_decorated_service(monkeypatch: Any, capsys: Any, loop: Any) -> None
     loop.run_until_complete(future)
 
     out, err = capsys.readouterr()
-    assert "No transports defined in service file" in err
+    assert "No transports defined in service file" in (out + err)

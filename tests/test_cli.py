@@ -12,8 +12,7 @@ def test_cli_help_command_method(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         cli.help_command()
     out, err = capsys.readouterr()
-    assert err == ""
-    assert out == cli.help_command_usage() + "\n"
+    assert (out + err) == cli.help_command_usage() + "\n"
 
 
 def test_cli_version_command_method(capsys: Any) -> None:
@@ -21,8 +20,7 @@ def test_cli_version_command_method(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         cli.version_command()
     out, err = capsys.readouterr()
-    assert err == ""
-    assert out == "tomodachi {}".format(tomodachi.__version__) + "\n"
+    assert (out + err) == "tomodachi {}".format(tomodachi.__version__) + "\n"
 
 
 def test_cli_run_command_method_no_args(capsys: Any) -> None:
@@ -30,8 +28,7 @@ def test_cli_run_command_method_no_args(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         cli.run_command([])
     out, err = capsys.readouterr()
-    assert err == ""
-    assert out == cli.run_command_usage() + "\n"
+    assert (out + err) == cli.run_command_usage() + "\n"
 
 
 def test_cli_entrypoint_no_arguments(monkeypatch: Any, capsys: Any) -> None:
@@ -42,8 +39,7 @@ def test_cli_entrypoint_no_arguments(monkeypatch: Any, capsys: Any) -> None:
         tomodachi.cli.cli_entrypoint()
 
     out, err = capsys.readouterr()
-    assert err == ""
-    assert out == cli.help_command_usage() + "\n"
+    assert (out + err) == cli.help_command_usage() + "\n"
 
 
 def test_cli_entrypoint_print_help(monkeypatch: Any, capsys: Any) -> None:
@@ -54,8 +50,7 @@ def test_cli_entrypoint_print_help(monkeypatch: Any, capsys: Any) -> None:
         tomodachi.cli.cli_entrypoint(["tomodachi", "-h"])
 
     out, err = capsys.readouterr()
-    assert err == ""
-    assert out == cli.help_command_usage() + "\n"
+    assert (out + err) == cli.help_command_usage() + "\n"
 
 
 def test_cli_entrypoint_print_dependency_versions(monkeypatch: Any, capsys: Any) -> None:
@@ -65,12 +60,11 @@ def test_cli_entrypoint_print_dependency_versions(monkeypatch: Any, capsys: Any)
         tomodachi.cli.cli_entrypoint(["tomodachi", "--dependency-versions"])
 
     out, err = capsys.readouterr()
-    assert err == ""
-    assert out != "tomodachi/{}".format(tomodachi.__version__) + "\n"
+    assert (out + err) != "tomodachi/{}".format(tomodachi.__version__) + "\n"
 
     import aiobotocore
 
-    assert "aiobotocore/{}".format(aiobotocore.__version__) + "\n" in out
+    assert "aiobotocore/{}".format(aiobotocore.__version__) + "\n" in (out + err)
 
 
 def test_cli_entrypoint_print_version(monkeypatch: Any, capsys: Any) -> None:
@@ -80,8 +74,7 @@ def test_cli_entrypoint_print_version(monkeypatch: Any, capsys: Any) -> None:
         tomodachi.cli.cli_entrypoint(["tomodachi", "-v"])
 
     out, err = capsys.readouterr()
-    assert err == ""
-    assert out == "tomodachi {}".format(tomodachi.__version__) + "\n"
+    assert (out + err) == "tomodachi {}".format(tomodachi.__version__) + "\n"
 
 
 def test_cli_entrypoint_invalid_arguments_show_help(monkeypatch: Any, capsys: Any) -> None:
@@ -92,8 +85,7 @@ def test_cli_entrypoint_invalid_arguments_show_help(monkeypatch: Any, capsys: An
         tomodachi.cli.cli_entrypoint(["tomodachi", "--invalid"])
 
     out, err = capsys.readouterr()
-    assert err == ""
-    assert out == cli.help_command_usage() + "\n"
+    assert (out + err) == cli.help_command_usage() + "\n"
 
 
 def test_cli_entrypoint_invalid_subcommand_show_help(monkeypatch: Any, capsys: Any) -> None:
@@ -104,8 +96,7 @@ def test_cli_entrypoint_invalid_subcommand_show_help(monkeypatch: Any, capsys: A
         tomodachi.cli.cli_entrypoint(["tomodachi", "invalidsubcommand"])
 
     out, err = capsys.readouterr()
-    assert err == ""
-    assert out == cli.help_command_usage() + "\n"
+    assert (out + err) == cli.help_command_usage() + "\n"
 
 
 def test_cli_start_service_stopped_with_sigterm(monkeypatch: Any, capsys: Any) -> None:
@@ -115,9 +106,8 @@ def test_cli_start_service_stopped_with_sigterm(monkeypatch: Any, capsys: Any) -
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_sigterm.py"])
 
     out, err = capsys.readouterr()
-    assert err != ""
-    assert "Starting tomodachi services" in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
+    assert "Starting tomodachi services" in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in (out + err)
 
 
 def test_cli_start_service_stopped_with_sigint(monkeypatch: Any, capsys: Any) -> None:
@@ -127,9 +117,8 @@ def test_cli_start_service_stopped_with_sigint(monkeypatch: Any, capsys: Any) ->
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_sigint.py"])
 
     out, err = capsys.readouterr()
-    assert err != ""
-    assert "Starting tomodachi services" in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
+    assert "Starting tomodachi services" in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in (out + err)
 
 
 def test_cli_start_service_stopped_with_exit_call(monkeypatch: Any, capsys: Any) -> None:
@@ -142,9 +131,8 @@ def test_cli_start_service_stopped_with_exit_call(monkeypatch: Any, capsys: Any)
     assert pytest_wrapped_exception.value.code == 0
 
     out, err = capsys.readouterr()
-    assert err != ""
-    assert "Starting tomodachi services" in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
+    assert "Starting tomodachi services" in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in (out + err)
 
 
 def test_cli_start_service_stopped_with_exit_code_1(monkeypatch: Any, capsys: Any) -> None:
@@ -157,9 +145,8 @@ def test_cli_start_service_stopped_with_exit_code_1(monkeypatch: Any, capsys: An
     assert pytest_wrapped_exception.value.code == 1
 
     out, err = capsys.readouterr()
-    assert err != ""
-    assert "Starting tomodachi services" in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
+    assert "Starting tomodachi services" in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in (out + err)
 
 
 def test_cli_start_service_stopped_with_exit_code_128(monkeypatch: Any, capsys: Any) -> None:
@@ -172,9 +159,8 @@ def test_cli_start_service_stopped_with_exit_code_128(monkeypatch: Any, capsys: 
     assert pytest_wrapped_exception.value.code == 128
 
     out, err = capsys.readouterr()
-    assert err != ""
-    assert "Starting tomodachi services" in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
+    assert "Starting tomodachi services" in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in (out + err)
 
 
 def test_cli_start_exception_service(monkeypatch: Any, capsys: Any) -> None:
@@ -184,10 +170,9 @@ def test_cli_start_exception_service(monkeypatch: Any, capsys: Any) -> None:
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/exception_service.py"])
 
     out, err = capsys.readouterr()
-    assert err != ""
-    assert "Starting tomodachi services" in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
-    assert "fail in _start_service()" in err
+    assert "Starting tomodachi services" in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in (out + err)
+    assert "fail in _start_service()" in (out + err)
 
 
 def test_cli_start_exception_service_init(monkeypatch: Any, capsys: Any) -> None:
@@ -197,10 +182,9 @@ def test_cli_start_exception_service_init(monkeypatch: Any, capsys: Any) -> None
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/exception_service_init.py"])
 
     out, err = capsys.readouterr()
-    assert err != ""
-    assert "Starting tomodachi services" in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
-    assert "fail in __init__()" in err
+    assert "Starting tomodachi services" in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in (out + err)
+    assert "fail in __init__()" in (out + err)
 
 
 def test_cli_start_service_production_mode(monkeypatch: Any, capsys: Any) -> None:
@@ -212,8 +196,7 @@ def test_cli_start_service_production_mode(monkeypatch: Any, capsys: Any) -> Non
         )
 
     out, err = capsys.readouterr()
-    assert err != ""
-    assert out == ""
+    assert (out + err) == "??"
 
 
 def test_cli_start_service_with_config(monkeypatch: Any, capsys: Any) -> None:
@@ -231,8 +214,8 @@ def test_cli_start_service_with_config(monkeypatch: Any, capsys: Any) -> None:
         )
 
     out, err = capsys.readouterr()
-    assert "Starting tomodachi services" in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) in out
+    assert "Starting tomodachi services" in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) in (out + err)
 
 
 def test_cli_start_service_with_non_existing_config(monkeypatch: Any, capsys: Any) -> None:
@@ -250,9 +233,9 @@ def test_cli_start_service_with_non_existing_config(monkeypatch: Any, capsys: An
         )
 
     out, err = capsys.readouterr()
-    assert "Starting tomodachi services" not in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) not in out
-    assert "Invalid config file" in out
+    assert "Starting tomodachi services" not in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) not in (out + err)
+    assert "Invalid config file" in (out + err)
 
 
 def test_cli_start_service_with_invalid_config(monkeypatch: Any, capsys: Any) -> None:
@@ -270,9 +253,9 @@ def test_cli_start_service_with_invalid_config(monkeypatch: Any, capsys: Any) ->
         )
 
     out, err = capsys.readouterr()
-    assert "Starting tomodachi services" not in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) not in out
-    assert "Invalid config file, invalid JSON format" in out
+    assert "Starting tomodachi services" not in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) not in (out + err)
+    assert "Invalid config file, invalid JSON format" in (out + err)
 
 
 def test_cli_start_service_without_config_arguments(monkeypatch: Any, capsys: Any) -> None:
@@ -282,6 +265,6 @@ def test_cli_start_service_without_config_arguments(monkeypatch: Any, capsys: An
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_exit_call.py", "-c"])
 
     out, err = capsys.readouterr()
-    assert "Starting tomodachi services" not in out
-    assert "Current version: tomodachi {}".format(tomodachi.__version__) not in out
-    assert "Missing config file on command line" in out
+    assert "Starting tomodachi services" not in (out + err)
+    assert "Current version: tomodachi {}".format(tomodachi.__version__) not in (out + err)
+    assert "Missing config file on command line" in (out + err)

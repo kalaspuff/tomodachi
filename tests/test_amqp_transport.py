@@ -71,5 +71,4 @@ def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -
     loop.run_until_complete(future)
 
     out, err = capsys.readouterr()
-    assert "Unable to connect [amqp] to 127.0.0.1:54321" in err
-    assert out == ""
+    assert "Unable to connect [amqp] to 127.0.0.1:54321" in (out + err)

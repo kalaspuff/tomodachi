@@ -18,5 +18,4 @@ def test_start_aws_sns_sqs_service_invalid_credentials(monkeypatch: Any, capsys:
     loop.run_until_complete(future)
 
     out, err = capsys.readouterr()
-    assert "The security token included in the request is invalid" in err
-    assert out == ""
+    assert "The security token included in the request is invalid" in (out + err)

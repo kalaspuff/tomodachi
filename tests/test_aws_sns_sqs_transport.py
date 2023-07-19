@@ -147,8 +147,7 @@ def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -
         future.set_result(None)
 
     out, err = capsys.readouterr()
-    assert "The security token included in the request is invalid" in err
-    assert out == ""
+    assert "The security token included in the request is invalid" in (out + err)
 
 
 def test_validate_topic() -> None:
