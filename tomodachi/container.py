@@ -110,7 +110,22 @@ class ServiceContainer(object):
                 if not getattr(cls, CLASS_ATTRIBUTE, False):
                     continue
 
-                instance = cls()
+                try:
+                    instance = cls()
+                except Exception as e:
+                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    logging.getLogger("tomodachi.init").error(
+                        "failed to initialize instance",
+                        module=self.module_name,
+                        class_=cls.__name__,
+                        file_path=self.file_path,
+                    )
+
+                    tomodachi.SERVICE_EXIT_CODE = 1
+                    services_started = set()
+                    self.stop_service()
+                    break
+
                 if not getattr(instance, "context", None):
                     setattr(
                         instance,
@@ -383,9 +398,11 @@ class ServiceContainer(object):
                     tomodachi.SERVICE_EXIT_CODE = 1
                     self.stop_service()
 
-        else:
+        elif not tomodachi.SERVICE_EXIT_CODE:
             # self.logger.warning("No transports defined in service file")
-            self.logger.warning("no transport handlers defined", module=self.module_name, file_path=self.file_path)
+            logging.getLogger("tomodachi.init").warning(
+                "no transport handlers defined", module=self.module_name, file_path=self.file_path
+            )
             tomodachi.SERVICE_EXIT_CODE = 1
             self.stop_service()
 

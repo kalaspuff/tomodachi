@@ -144,8 +144,8 @@ exclude = ["tomodachi.egg-info", ".git", ".mypy_cache", ".pytest_cache", ".venv"
 filterwarnings = [
     "ignore:Assigning a dict or dict-like mapping to 'service.options' is deprecated. Use the 'tomodachi.Options' class instead.:DeprecationWarning:tomodachi",
     "ignore:Using the '@tomodachi.service' decorator is deprecated. Service classes should instead inherit from the 'tomodachi.Service' class.:DeprecationWarning:tomodachi",
-    "ignore:Using the 'service.log_setup' function is deprecated and has no effect. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.:DeprecationWarning:tomodachi",
-    "ignore:Using the 'service.log' function is deprecated. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.:DeprecationWarning:tomodachi",
+    "ignore:Using the 'service.log_setup' function is deprecated and has no effect. Use the structlog logger from 'tomodachi.logging.get_logger\\(\\)' instead.:DeprecationWarning:tomodachi",
+    "ignore:Using the 'service.log' function is deprecated. Use the structlog logger from 'tomodachi.logging.get_logger\\(\\)' instead.:DeprecationWarning:tomodachi",
 ]
 
 [tool.coverage.run]
