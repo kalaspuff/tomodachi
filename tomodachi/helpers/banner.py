@@ -18,6 +18,18 @@ TOMODACHI_ASCII = """
  █  █▄█ █ ▀ █ █▄█ █▄▀ █▀█ █▄▄ █▀█ █  友達
 """.strip()
 
+NO_COLOR = any(
+    [
+        os.environ.get("NO_COLOR", "").lower() in ("1", "true"),
+        os.environ.get("NOCOLOR", "").lower() in ("1", "true"),
+        os.environ.get("TOMODACHI_NO_COLOR", "").lower() in ("1", "true"),
+        os.environ.get("TOMODACHI_NOCOLOR", "").lower() in ("1", "true"),
+        os.environ.get("CLICOLOR", "").lower() in ("0", "false"),
+        os.environ.get("CLI_COLOR", "").lower() in ("0", "false"),
+        os.environ.get("CLICOLOR_FORCE", "").lower() in ("0", "false"),
+    ]
+)
+
 
 class ColorFore:
     BLACK = ""
@@ -53,9 +65,10 @@ COLOR_RESET = ""
 try:
     import colorama  # noqa  # isort:skip
 
-    COLOR = colorama.Fore
-    COLOR_STYLE = colorama.Style
-    COLOR_RESET = colorama.Style.RESET_ALL
+    if not NO_COLOR:
+        COLOR = colorama.Fore
+        COLOR_STYLE = colorama.Style
+        COLOR_RESET = colorama.Style.RESET_ALL
 except Exception:
     pass
 

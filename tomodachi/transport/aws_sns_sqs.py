@@ -1605,12 +1605,12 @@ class AWSSNSSQSTransport(Invoker):
                                 )
                             if is_disconnected:
                                 is_disconnected = False
-                                logging.getLogger("transport.aws_sns_sqs").warning("Reconnected - receiving messages")
+                                logger.warning("Reconnected - receiving messages")
                         except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError) as e:
                             if not is_disconnected:
                                 is_disconnected = True
                                 error_message = str(e) if e and str(e) not in ["", "None"] else "Server disconnected"
-                                logging.getLogger("transport.aws_sns_sqs").warning(
+                                logger.warning(
                                     "Unable to receive message from queue [sqs] on AWS ({}) - reconnecting".format(
                                         error_message
                                     )
@@ -1622,7 +1622,7 @@ class AWSSNSSQSTransport(Invoker):
                             if not is_disconnected:
                                 is_disconnected = True
                                 error_message = "Unable to parse response: the server was not able to produce a timely response to your request"
-                                logging.getLogger("transport.aws_sns_sqs").warning(
+                                logger.warning(
                                     "Unable to receive message from queue [sqs] on AWS ({}) - reconnecting".format(
                                         error_message
                                     )
@@ -1638,9 +1638,7 @@ class AWSSNSSQSTransport(Invoker):
                             if "AWS.SimpleQueueService.NonExistentQueue" in error_message:
                                 if is_disconnected:
                                     is_disconnected = False
-                                    logging.getLogger("transport.aws_sns_sqs").warning(
-                                        "Reconnected - receiving messages"
-                                    )
+                                    logger.warning("Reconnected - receiving messages")
                                 try:
                                     context["_aws_sns_sqs_subscribed"] = False
                                     cls.topics = {}
@@ -1652,7 +1650,7 @@ class AWSSNSSQSTransport(Invoker):
                                 await asyncio.sleep(20)
                                 continue
                             if not is_disconnected:
-                                logging.getLogger("transport.aws_sns_sqs").warning(
+                                logger.warning(
                                     "Unable to receive message from queue [sqs] on AWS ({})".format(error_message)
                                 )
                             if isinstance(e, (asyncio.TimeoutError, aiohttp.client_exceptions.ClientConnectorError)):
@@ -1661,7 +1659,7 @@ class AWSSNSSQSTransport(Invoker):
                             continue
                         except Exception as e:
                             error_message = str(e)
-                            logging.getLogger("transport.aws_sns_sqs").warning(
+                            logger.warning(
                                 "Unexpected error while receiving message from queue [sqs] on AWS ({})".format(
                                     error_message
                                 )
@@ -1670,7 +1668,7 @@ class AWSSNSSQSTransport(Invoker):
                             continue
                         except BaseException as e:
                             error_message = str(e)
-                            logging.getLogger("transport.aws_sns_sqs").warning(
+                            logger.warning(
                                 "Unexpected error while receiving message from queue [sqs] on AWS ({})".format(
                                     error_message
                                 )
@@ -1697,7 +1695,7 @@ class AWSSNSSQSTransport(Invoker):
                             except ValueError:
                                 # Malformed SQS message, not in SNS format and should be discarded
                                 await cls.delete_message(receipt_handle, queue_url, context)
-                                logging.getLogger("transport.aws_sns_sqs").warning("Discarded malformed message")
+                                logger.warning("Discarded malformed message")
                                 continue
 
                             payload = message_body.get("Message")

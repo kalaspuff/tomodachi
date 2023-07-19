@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import json
 import logging
+import os
 import sys
 import warnings
 from contextvars import ContextVar
@@ -17,6 +18,18 @@ LOGGER_DISABLED_KEY = "_logger_disabled"
 RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
 EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message")
 TOMODACHI_LOGGER: Literal["json", "console"] = "console"
+
+NO_COLOR = any(
+    [
+        os.environ.get("NO_COLOR", "").lower() in ("1", "true"),
+        os.environ.get("NOCOLOR", "").lower() in ("1", "true"),
+        os.environ.get("TOMODACHI_NO_COLOR", "").lower() in ("1", "true"),
+        os.environ.get("TOMODACHI_NOCOLOR", "").lower() in ("1", "true"),
+        os.environ.get("CLICOLOR", "").lower() in ("0", "false"),
+        os.environ.get("CLI_COLOR", "").lower() in ("0", "false"),
+        os.environ.get("CLICOLOR_FORCE", "").lower() in ("0", "false"),
+    ]
+)
 
 _context: ContextVar[Union[LoggerContext, Dict]] = ContextVar("tomodachi.logging._context", default={})
 _loggers: ContextVar[Dict] = ContextVar("tomodachi.logging._loggers", default={})
@@ -235,6 +248,9 @@ class StdLoggingHandler(logging.Handler):
             raise
         except Exception:
             self.handleError(record)
+
+
+_defaultHandler = StdLoggingHandler()
 
 
 class LoggerContext(dict):
@@ -616,11 +632,11 @@ console_logger: Logger = structlog.wrap_logger(
         remove_ellipsis_values,
         SquelchDisabledLogger(),
         # modify_logger,
-        ConsoleRenderer(sort_keys=False, event_key="message"),
+        ConsoleRenderer(colors=False if NO_COLOR else True, sort_keys=False, event_key="message"),
     ],
     wrapper_class=Logger,
     context_class=LoggerContext,
-    cache_logger_on_first_use=False,
+    cache_logger_on_first_use=True,
 )
 
 json_logger: Logger = structlog.wrap_logger(
@@ -640,7 +656,7 @@ json_logger: Logger = structlog.wrap_logger(
     ],
     wrapper_class=Logger,
     context_class=LoggerContext,
-    cache_logger_on_first_use=False,
+    cache_logger_on_first_use=True,
 )
 
 
@@ -716,6 +732,7 @@ __all__ = [
     "is_logger_enabled",
     "Logger",
     "StdLoggingHandler",
+    "_defaultHandler",
     "CRITICAL",
     "DEBUG",
     "ERROR",

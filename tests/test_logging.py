@@ -1,6 +1,8 @@
 import os
 from typing import Any
 
+import pytest
+
 from run_test_service_helper import start_service
 
 
@@ -15,12 +17,9 @@ def test_logging_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
 
     loop.run_until_complete(future)
 
-    with open(log_path) as f:
-        log_content = str(f.read().strip())
-
-        assert "_start_service" in log_content
-        assert "_started_service" in log_content
-        assert "_stop_service" in log_content
+    # logging to file is deprecated and does not work anymore so nothing should be written to log file
+    with pytest.raises(FileNotFoundError):
+        open(log_path)
 
     try:
         os.remove(log_path)

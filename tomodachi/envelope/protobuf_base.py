@@ -1,10 +1,10 @@
 import base64
-import logging
 import time
 import uuid
 import zlib
 from typing import Any, Dict, Tuple, Union
 
+from tomodachi import logging
 from tomodachi.envelope.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMessage
 
 PROTOCOL_VERSION = "tomodachi-protobuf-base--1.0.0"
@@ -79,7 +79,7 @@ class ProtobufBase(object):
                     # for non-static functions
                     validator(obj)
             except Exception as e:
-                logging.getLogger("envelope.protobuf_base").warning(e.__str__())
+                logging.getLogger("tomodachi.envelope").warning(e.__str__(), envelope="ProtobufBase")
                 raise e
 
         return (

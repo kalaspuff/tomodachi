@@ -30,8 +30,6 @@ from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 from tomodachi.options import Options
 
-http_logger = logging.getLogger("tomodachi.http")
-
 
 # Should be implemented as lazy load instead
 class ColoramaCache:
@@ -94,44 +92,6 @@ class RequestHandler(web_protocol.RequestHandler):
 
         return None
 
-    @staticmethod
-    def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]] = False) -> str:
-        if ColoramaCache._is_colorama_installed is None:
-            try:
-                import colorama  # noqa  # isort:skip
-
-                ColoramaCache._is_colorama_installed = True
-                ColoramaCache._colorama = colorama
-            except Exception:
-                ColoramaCache._is_colorama_installed = False
-
-        if ColoramaCache._is_colorama_installed is False:
-            return str(text) if text else ""
-
-        if status is False:
-            status = text
-        status_code = str(status) if status else None
-        if status_code and not http_logger.handlers:
-            output_text = str(text) if text else ""
-            color = None
-
-            if status_code == "101":
-                color = ColoramaCache._colorama.Fore.CYAN
-            elif status_code[0] == "2":
-                color = ColoramaCache._colorama.Fore.GREEN
-            elif status_code[0] == "3" or status_code == "499":
-                color = ColoramaCache._colorama.Fore.YELLOW
-            elif status_code[0] == "4":
-                color = ColoramaCache._colorama.Fore.RED
-            elif status_code[0] == "5":
-                color = ColoramaCache._colorama.Fore.WHITE + ColoramaCache._colorama.Back.RED
-
-            if color:
-                return "{}{}{}".format(color, output_text, ColoramaCache._colorama.Style.RESET_ALL)
-            return output_text
-
-        return str(text) if text else ""
-
     def handle_error(
         self, request: Any, status: int = 500, exc: Any = None, message: Optional[str] = None
     ) -> web.Response:
@@ -146,22 +106,7 @@ class RequestHandler(web_protocol.RequestHandler):
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = "HTTP/{}.{}".format(request.version.major, request.version.minor)
-                # http_logger.info(
-                #     '[{}] [{}] {} {} "{} {}{}{}" - {} "{}" -'.format(
-                #         RequestHandler.colorize_status("http", 499),
-                #         RequestHandler.colorize_status(499),
-                #         request_ip or "",
-                #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                #         else "-",
-                #         request.method,
-                #         request.path,
-                #         "?{}".format(request.query_string) if request.query_string else "",
-                #         " {}".format(version_string) if version_string else "",
-                #         request.content_length if request.content_length is not None else "-",
-                #         request.headers.get("User-Agent", "").replace('"', ""),
-                #     )
-                # )
+
                 status_code = 499
                 logging.getLogger("tomodachi.http.response").info(
                     # "http [{}]: {} {}".format(status_code, request.method, request.path),
@@ -203,17 +148,6 @@ class RequestHandler(web_protocol.RequestHandler):
                 if peername:
                     request_ip, _ = peername
             if self._access_log:
-                # http_logger.info(
-                #     '[{}] [{}] {} {} "INVALID" {} - "" -'.format(
-                #         RequestHandler.colorize_status("http", status),
-                #         RequestHandler.colorize_status(status),
-                #         request_ip or "",
-                #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                #         else "-",
-                #         len(msg),
-                #     )
-                # )
                 logging.getLogger("tomodachi.http.response").info(
                     "bad http request [{}]".format(status),
                     status_code=status,
@@ -683,22 +617,7 @@ class HttpTransport(Invoker):
                     pass
 
                 if access_log:
-                    # http_logger.info(
-                    #     '[{}] {} {} "CANCELLED {}{}" {} "{}" {}'.format(
-                    #         RequestHandler.colorize_status("websocket", 101),
-                    #         request_ip,
-                    #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                    #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                    #         else "-",
-                    #         request.path,
-                    #         "?{}".format(request.query_string) if request.query_string else "",
-                    #         request._cache.get("websocket_uuid", ""),
-                    #         request.headers.get("User-Agent", "").replace('"', ""),
-                    #         "-",
-                    #     )
-                    # )
                     response_logger.info(
-                        # "websocket [cancelled]: {}".format(request.path),
                         websocket_state="cancelled",
                         remote_ip=request_ip,
                         auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -714,22 +633,7 @@ class HttpTransport(Invoker):
             context["_http_open_websockets"].append(websocket)
 
             if access_log:
-                # http_logger.info(
-                #     '[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
-                #         RequestHandler.colorize_status("websocket", 101),
-                #         request_ip,
-                #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                #         else "-",
-                #         request.path,
-                #         "?{}".format(request.query_string) if request.query_string else "",
-                #         request._cache.get("websocket_uuid", ""),
-                #         request.headers.get("User-Agent", "").replace('"', ""),
-                #         "-",
-                #     )
-                # )
                 response_logger.info(
-                    # "websocket [open]: {}".format(request.path),
                     websocket_state="open",
                     remote_ip=request_ip,
                     auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -786,24 +690,8 @@ class HttpTransport(Invoker):
                     pass
 
                 if access_log:
-                    # http_logger.info(
-                    #     '[{}] {} {} "{} {}{}" {} "{}" {}'.format(
-                    #         RequestHandler.colorize_status("websocket", 500),
-                    #         request_ip,
-                    #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                    #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                    #         else "-",
-                    #         RequestHandler.colorize_status("ERROR", 500),
-                    #         request.path,
-                    #         "?{}".format(request.query_string) if request.query_string else "",
-                    #         request._cache.get("websocket_uuid", ""),
-                    #         request.headers.get("User-Agent", "").replace('"', ""),
-                    #         "-",
-                    #     )
-                    # )
                     response_logger.info(
                         websocket_state="error",
-                        # "websocket [error]: {}".format(request.path),
                         remote_ip=request_ip,
                         auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
                         request_path=request.path,
@@ -883,20 +771,30 @@ class HttpTransport(Invoker):
         logger_handler = None
         if isinstance(access_log, str):
             from logging.handlers import WatchedFileHandler  # noqa  # isort:skip
+            import logging as logging_
+
+            response_logger = logging.getLogger("tomodachi.http.response")
 
             try:
                 wfh = WatchedFileHandler(filename=access_log)
             except FileNotFoundError as e:
-                http_logger.warning('Unable to use file for access log - invalid path ("{}")'.format(access_log))
+                logger.warning('Unable to use file for access log - invalid path ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             except PermissionError as e:
-                http_logger.warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
+                logger.warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             wfh.setLevel(logging.DEBUG)
-            http_logger.setLevel(logging.DEBUG)
-            http_logger.info('Logging to "{}"'.format(access_log))
+            response_logger.setLevel(logging.DEBUG)
+            logger.info("logging to file", file_path=access_log)
             logger_handler = wfh
-            http_logger.addHandler(logger_handler)
+            response_logger._logger = logging_.getLogger("tomodachi.http.response")
+            response_logger.removeHandler(logging._defaultHandler)
+            response_logger.addHandler(logger_handler)
+            response_logger._logger.propagate = False
+
+            response_logger.info("test")
+            with open("/tmp/03c2ad00-d47d-4569-84a3-0958f88f6c14.log", "r") as fp:
+                print(fp.read())
 
         async def _start_server() -> None:
             logger = logging.getLogger("tomodachi.http")
@@ -971,29 +869,7 @@ class HttpTransport(Invoker):
                             elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
                                 pass
                             else:
-                                # http_logger.info(
-                                #     '[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                #         RequestHandler.colorize_status("http", status_code),
-                                #         RequestHandler.colorize_status(status_code),
-                                #         request_ip,
-                                #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                                #         if request._cache.get("auth")
-                                #         and getattr(request._cache.get("auth"), "login", None)
-                                #         else "-",
-                                #         request.method,
-                                #         request.path,
-                                #         "?{}".format(request.query_string) if request.query_string else "",
-                                #         " {}".format(version_string) if version_string else "",
-                                #         response.content_length
-                                #         if response is not None and response.content_length is not None
-                                #         else "-",
-                                #         request.content_length if request.content_length is not None else "-",
-                                #         request.headers.get("User-Agent", "").replace('"', ""),
-                                #         "{0:.5f}s".format(round(request_time, 5)),
-                                #     )
-                                # )
                                 response_logger.info(
-                                    # "http [{}]: {} {}".format(status_code, request.method, request.path),
                                     status_code=status_code,
                                     remote_ip=request_ip,
                                     auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -1021,20 +897,6 @@ class HttpTransport(Invoker):
                                 user_agent=request.headers.get("User-Agent", ""),
                                 request_time="{0:.5f}s".format(round(request_time, 5)),
                             )
-                            # http_logger.info(
-                            #     '[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
-                            #         RequestHandler.colorize_status("websocket", 101),
-                            #         request_ip,
-                            #         '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                            #         if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                            #         else "-",
-                            #         request.path,
-                            #         "?{}".format(request.query_string) if request.query_string else "",
-                            #         request._cache.get("websocket_uuid", ""),
-                            #         request.headers.get("User-Agent", "").replace('"', ""),
-                            #         "{0:.5f}s".format(round(request_time, 5)),
-                            #     )
-                            # )
 
                     if response is not None:
                         response.headers[hdrs.SERVER] = server_header or ""
@@ -1360,7 +1222,6 @@ class HttpTransport(Invoker):
 
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
-                    # http_logger.info("Closing {} websocket connection(s)".format(len(open_websockets)))
                     logger.info("closing websocket connections", connection_count=len(open_websockets))
                     tasks = []
                     for websocket in open_websockets:
@@ -1398,20 +1259,10 @@ class HttpTransport(Invoker):
                         if log_wait_message:
                             log_wait_message = False
                             if len(web_server.connections) and len(web_server.connections) != len(active_requests):
-                                # http_logger.info(
-                                #     "Waiting for {} keep-alive connection(s) to close".format(
-                                #         len(web_server.connections)
-                                #     )
-                                # )
                                 logger.info(
                                     "awaiting keep-alive connections", connection_count=len(web_server.connections)
                                 )
                             if active_requests:
-                                # http_logger.info(
-                                #     "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
-                                #         len(active_requests), termination_grace_period_seconds
-                                #     )
-                                # )
                                 logger.info(
                                     "awaiting requests to complete",
                                     request_count=len(active_requests),
@@ -1427,11 +1278,6 @@ class HttpTransport(Invoker):
                 active_requests = context.get("_http_active_requests", set())
                 if active_requests:
                     if log_wait_message:
-                        # http_logger.info(
-                        #     "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
-                        #         len(active_requests), termination_grace_period_seconds
-                        #     )
-                        # )
                         logger.info(
                             "awaiting requests to complete",
                             request_count=len(active_requests),
@@ -1448,11 +1294,6 @@ class HttpTransport(Invoker):
                     except (Exception, asyncio.TimeoutError, asyncio.CancelledError):
                         active_requests = context.get("_http_active_requests", set())
                         if active_requests:
-                            # http_logger.warning(
-                            #     "All requests did not gracefully finish execution - {} request(s) remaining".format(
-                            #         len(active_requests)
-                            #     )
-                            # )
                             logger.warning(
                                 "all requests did not gracefully finish execution",
                                 remaining_request_count=len(active_requests),
@@ -1463,11 +1304,6 @@ class HttpTransport(Invoker):
                     await asyncio.sleep(shutdown_sleep)
 
                 if len(web_server.connections):
-                    # http_logger.warning(
-                    #     "The remaining {} open TCP connections will be forcefully closed".format(
-                    #         len(web_server.connections)
-                    #     )
-                    # )
                     logger.warning(
                         "forcefully closing open tcp connections", connection_count=len(web_server.connections)
                     )
@@ -1477,7 +1313,8 @@ class HttpTransport(Invoker):
                     await app.shutdown()
 
                 if logger_handler:
-                    logger.removeHandler(logger_handler)
+                    response_logger = logging.getLogger("tomodachi.http.response")
+                    response_logger.removeHandler(logger_handler)
                 await app.cleanup()
                 if stop_method:
                     await stop_method(*args, **kwargs)
@@ -1489,9 +1326,6 @@ class HttpTransport(Invoker):
                     if getattr(registry, "add_http_endpoint", None):
                         await registry.add_http_endpoint(obj, host, port, method, pattern)
 
-            # http_logger.info(
-            #    "Listening [http] on http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
-            # )
             listen_url = "http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
             logger.info("accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port)
 

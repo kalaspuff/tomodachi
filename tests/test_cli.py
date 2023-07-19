@@ -166,8 +166,11 @@ def test_cli_start_service_stopped_with_exit_code_128(monkeypatch: Any, capsys: 
 def test_cli_start_exception_service(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(logging.root, "handlers", [])
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/exception_service.py"])
+
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 1
 
     out, err = capsys.readouterr()
     assert "initializing service instance" in (out + err)
@@ -179,8 +182,11 @@ def test_cli_start_exception_service(monkeypatch: Any, capsys: Any) -> None:
 def test_cli_start_exception_service_init(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(logging.root, "handlers", [])
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/exception_service_init.py"])
+
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 1
 
     out, err = capsys.readouterr()
     assert "failed to initialize instance" in (out + err)
@@ -192,13 +198,21 @@ def test_cli_start_exception_service_init(monkeypatch: Any, capsys: Any) -> None
 def test_cli_start_service_production_mode(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(logging.root, "handlers", [])
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
         tomodachi.cli.cli_entrypoint(
             ["tomodachi", "run", "tests/services/auto_closing_service_exit_call.py", "--production"]
         )
 
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 0
+
     out, err = capsys.readouterr()
-    assert (out + err) == "??"
+    assert "initializing service instance" in (out + err)
+    assert "starting the service" in (out + err)
+    assert "enabled handler functions" in (out + err)
+    assert "tomodachi.exit [0] was called" in (out + err)
+    assert "stopping service" in (out + err)
+    assert "terminated service" in (out + err)
 
 
 def test_cli_start_service_with_config(monkeypatch: Any, capsys: Any) -> None:

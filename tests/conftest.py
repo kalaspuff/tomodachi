@@ -1,11 +1,11 @@
 import asyncio
+import os
 import sys
 from typing import Generator
 
 import pytest
 
-# def pytest_keyboard_interrupt(excinfo):
-#     breakpoint()
+os.environ["TOMODACHI_NO_COLOR"] = "1"
 
 
 @pytest.fixture(scope="module")
