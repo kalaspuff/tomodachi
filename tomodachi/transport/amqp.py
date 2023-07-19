@@ -284,10 +284,7 @@ class AmqpTransport(Invoker):
         args_set = (set(values.args[1:]) | set(values.kwonlyargs) | set(callback_kwargs or [])) - set(["self"])
 
         async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
-            logging.bind_logger(
-                logging.getLogger("tomodachi.amqp.handler").bind(handler=func.__name__, type="tomodachi.amqp")
-            )
-            get_contextvar("service.logger").set("tomodachi.amqp.handler")
+            logging.bind_logger(logging.getLogger("tomodachi.amqp").new(logger="tomodachi.amqp"))
 
             kwargs = dict(original_kwargs)
 
@@ -358,6 +355,11 @@ class AmqpTransport(Invoker):
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.amqp.handler").bind(handler=func.__name__, type="tomodachi.amqp")
+                )
+                get_contextvar("service.logger").set("tomodachi.amqp.handler")
+
                 kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
@@ -378,6 +380,11 @@ class AmqpTransport(Invoker):
             increase_execution_context_value("amqp_current_tasks")
             increase_execution_context_value("amqp_total_tasks")
             try:
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.amqp.middleware").bind(
+                        middleware=Ellipsis, handler=func.__name__, type="tomodachi.amqp"
+                    )
+                )
                 return_value = await asyncio.create_task(
                     execute_middlewares(
                         func,

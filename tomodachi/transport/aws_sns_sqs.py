@@ -440,7 +440,7 @@ class AWSSNSSQSTransport(Invoker):
             sqs_message_id: Optional[str] = None,
             message_timestamp: Optional[str] = None,
         ) -> Any:
-            logging.getLogger("tomodachi.awssnssqs").new(logger="tomodachi.awssnssqs")
+            logging.bind_logger(logging.getLogger("tomodachi.awssnssqs").new(logger="tomodachi.awssnssqs"))
 
             if not payload or payload == DRAIN_MESSAGE_PAYLOAD:
                 try:
@@ -448,11 +448,6 @@ class AWSSNSSQSTransport(Invoker):
                 except (Exception, asyncio.CancelledError):
                     pass
                 return
-
-            logging.bind_logger(
-                logging.getLogger("tomodachi.awssnssqs.handler").bind(handler=func.__name__, type="tomodachi.awssnssqs")
-            )
-            get_contextvar("service.logger").set("tomodachi.awssnssqs.handler")
 
             kwargs = dict(original_kwargs)
 
@@ -577,6 +572,13 @@ class AWSSNSSQSTransport(Invoker):
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.awssnssqs.handler").bind(
+                        handler=func.__name__, type="tomodachi.awssnssqs"
+                    )
+                )
+                get_contextvar("service.logger").set("tomodachi.awssnssqs.handler")
+
                 kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
@@ -597,6 +599,11 @@ class AWSSNSSQSTransport(Invoker):
             increase_execution_context_value("aws_sns_sqs_total_tasks")
             keep_message_in_queue = False
             try:
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.awssnssqs.middleware").bind(
+                        middleware=Ellipsis, handler=func.__name__, type="tomodachi.awssnssqs"
+                    )
+                )
                 return_value = await asyncio.create_task(
                     execute_middlewares(
                         func,

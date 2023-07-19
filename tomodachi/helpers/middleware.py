@@ -1,6 +1,9 @@
+import asyncio
 import functools
 import inspect
 from typing import Any, Callable, Dict, List, Set, Tuple, cast
+
+from tomodachi import get_contextvar, logging
 
 TOMODACHI_MIDDLEWARE_ATTRIBUTE = "_tomodachi_middleware_attribute"
 
@@ -9,10 +12,29 @@ async def execute_middlewares(
     func: Callable, routine_func: Callable, middlewares: List, *args: Any, **init_kwargs: Any
 ) -> Any:
     if middlewares:
+        logger = logging.getLogger()
+
         middleware_context: Dict = {}
 
         async def middleware_wrapper(idx: int = 0, *ma: Any, **mkw: Any) -> Any:
             middleware: Callable = middlewares[idx]
+
+            logging.bind_logger(
+                logger.bind(
+                    middleware=getattr(middleware, "name", Ellipsis)
+                    if hasattr(middleware, "name")
+                    else (
+                        middleware.__name__
+                        if hasattr(middleware, "__name__")
+                        else (
+                            type(middleware).__name__
+                            if hasattr(type(middleware), "__name__")
+                            else str(type(middleware))
+                        )
+                    )
+                )
+            )
+            get_contextvar("service.logger").set(logger._context["logger"])
 
             if getattr(middleware, TOMODACHI_MIDDLEWARE_ATTRIBUTE, None) is None:
                 values = inspect.getfullargspec(inspect.unwrap(middleware))
@@ -69,14 +91,14 @@ async def execute_middlewares(
 
                 @functools.wraps(func)
                 async def _func_wrapper(*a: Any, **kw: Any) -> Any:
-                    return await routine_func(*args, **{**mkw, **kw, **init_kwargs})
+                    return await asyncio.create_task(routine_func(*args, **{**mkw, **kw, **init_kwargs}))
 
                 middleware_arguments = [middleware, _func_wrapper, *args, middleware_context][arg_start:arg_len]
             else:
 
                 @functools.wraps(func)
                 async def _middleware_wrapper(*a: Any, **kw: Any) -> Any:
-                    return await middleware_wrapper(idx + 1, *a, **{**mkw, **kw, **init_kwargs})
+                    return await asyncio.create_task(middleware_wrapper(idx + 1, *a, **{**mkw, **kw, **init_kwargs}))
 
                 middleware_arguments = [middleware, _middleware_wrapper, *args, middleware_context][arg_start:arg_len]
 
@@ -89,12 +111,12 @@ async def execute_middlewares(
                     middleware_arguments[i] = mkw_cleaned.pop(key)
 
             if is_bound_method:
-                return await middleware(*middleware_arguments[1:], **mkw_cleaned)
+                return await asyncio.create_task(middleware(*middleware_arguments[1:], **mkw_cleaned))
 
-            return await middleware(*middleware_arguments, **mkw_cleaned)
+            return await asyncio.create_task(middleware(*middleware_arguments, **mkw_cleaned))
 
-        return_value = await middleware_wrapper(**init_kwargs)
+        return_value = await asyncio.create_task(middleware_wrapper(**init_kwargs))
     else:
-        return_value = await routine_func(*args, **init_kwargs)
+        return_value = await asyncio.create_task(routine_func(*args, **init_kwargs))
 
     return return_value

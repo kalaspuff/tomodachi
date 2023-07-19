@@ -372,10 +372,7 @@ class HttpTransport(Invoker):
         middlewares = context.get("http_middleware", [])
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
-            logging.bind_logger(
-                logging.getLogger("tomodachi.http.handler").bind(handler=func.__name__, type="tomodachi.http")
-            )
-            get_contextvar("service.logger").set("tomodachi.http.handler")
+            logger = logging.getLogger("tomodachi.http.handler").bind(handler=func.__name__, type="tomodachi.http")
 
             kwargs = dict(original_kwargs)
             arg_matches: Dict[str, Any] = {}
@@ -394,10 +391,20 @@ class HttpTransport(Invoker):
                 if "request" in values.args:
                     arg_matches["request"] = request
 
+            if not context.get("_http_accept_new_requests"):
+                raise web.HTTPServiceUnavailable()
+
+            if pre_handler_func:
+                await pre_handler_func(obj, request)
+                logger = logging.getLogger("tomodachi.http.handler")
+
             @functools.wraps(func)
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
+                logging.bind_logger(logger)
+                get_contextvar("service.logger").set("tomodachi.http.handler")
+
                 kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
@@ -412,18 +419,20 @@ class HttpTransport(Invoker):
                 )
                 return return_value
 
-            if not context.get("_http_accept_new_requests"):
-                raise web.HTTPServiceUnavailable()
-
-            if pre_handler_func:
-                await pre_handler_func(obj, request)
-
             return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
             if middlewares:
-                return_value = await execute_middlewares(
-                    func, routine_func, middlewares, *(obj, request), request=request
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.http.middleware").bind(
+                        middleware=Ellipsis, handler=func.__name__, type="tomodachi.http"
+                    )
+                )
+                return_value = await asyncio.create_task(
+                    execute_middlewares(func, routine_func, middlewares, *(obj, request), request=request)
                 )
             else:
+                logging.bind_logger(logger)
+                get_contextvar("service.logger").set("tomodachi.http.handler")
+
                 a = [arg_matches[k] if k in arg_matches else (request,)[i] for i, k in enumerate(args_list)]
                 args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
 
@@ -555,13 +564,9 @@ class HttpTransport(Invoker):
         middlewares = context.get("http_middleware", [])
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
-            logging.bind_logger(
-                logging.getLogger("tomodachi.http.handler").bind(
-                    handler=func.__name__, type="tomodachi.http_error", status_code=status_code
-                )
+            logger = logging.getLogger("tomodachi.http.handler").bind(
+                handler=func.__name__, type="tomodachi.http_error", status_code=status_code
             )
-
-            get_contextvar("service.logger").set("tomodachi.http.handler")
 
             kwargs = dict(original_kwargs)
             arg_matches: Dict[str, Any] = {}
@@ -582,6 +587,9 @@ class HttpTransport(Invoker):
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
+                logging.bind_logger(logger)
+                get_contextvar("service.logger").set("tomodachi.http.handler")
+
                 kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
@@ -598,10 +606,20 @@ class HttpTransport(Invoker):
 
             return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
             if middlewares:
-                return_value = await execute_middlewares(
-                    func, routine_func, middlewares, *(obj, request), request=request, status_code=status_code
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.http.middleware").bind(
+                        middleware=Ellipsis, handler=func.__name__, type="tomodachi.http_error", status_code=status_code
+                    )
+                )
+                return_value = await asyncio.create_task(
+                    execute_middlewares(
+                        func, routine_func, middlewares, *(obj, request), request=request, status_code=status_code
+                    )
                 )
             else:
+                logging.bind_logger(logger)
+                get_contextvar("service.logger").set("tomodachi.http.handler")
+
                 a = [arg_matches[k] if k in arg_matches else (request,)[i] for i, k in enumerate(args_list)]
                 args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
 
@@ -640,7 +658,7 @@ class HttpTransport(Invoker):
             request._cache["is_websocket"] = True
             request._cache["websocket_uuid"] = str(uuid.uuid4())
 
-            logging.bind_logger(logging.getLogger().bind(handler=func.__name__, type="tomodachi.websocket"))
+            logging.getLogger("tomodachi.http.handler").bind(handler=func.__name__, type="tomodachi.websocket")
 
         values = inspect.getfullargspec(func)
         original_kwargs = (
