@@ -141,7 +141,12 @@ ignore = ["E203", "E501", "W503"]
 exclude = ["tomodachi.egg-info", ".git", ".mypy_cache", ".pytest_cache", ".venv", ".vscode", "__pycache__", "build", "dist", "proto_build", "tmp"]
 
 [tool.pytest.ini_options]
-filterwarnings = ["ignore:Assigning a dict or dict-like mapping to 'service.options' is deprecated. Use the 'tomodachi.Options' class instead.:DeprecationWarning:tomodachi"]
+filterwarnings = [
+    "ignore:Assigning a dict or dict-like mapping to 'service.options' is deprecated. Use the 'tomodachi.Options' class instead.:DeprecationWarning:tomodachi",
+    "ignore:Using the '@tomodachi.service' decorator is deprecated. Service classes should instead inherit from the 'tomodachi.Service' class.:DeprecationWarning:tomodachi",
+    "ignore:Using the 'service.log_setup' function is deprecated and has no effect. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.:DeprecationWarning:tomodachi",
+    "ignore:Using the 'service.log' function is deprecated. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.:DeprecationWarning:tomodachi",
+]
 
 [tool.coverage.run]
 omit = ["examples/*", "tests/*", "tomodachi/__main__.py", "tomodachi/__version__.py"]
