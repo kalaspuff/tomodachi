@@ -7,7 +7,7 @@ from run_test_service_helper import start_service
 from tomodachi.transport.amqp import AmqpException, AmqpTransport
 
 
-def test_routing_key(monkeypatch: Any) -> None:
+def test_routing_key() -> None:
     routing_key = AmqpTransport.get_routing_key("test.topic", {})
     assert routing_key == "test.topic"
 
@@ -15,7 +15,7 @@ def test_routing_key(monkeypatch: Any) -> None:
     assert routing_key == "prefix-test.topic"
 
 
-def test_encode_routing_key(monkeypatch: Any) -> None:
+def test_encode_routing_key() -> None:
     routing_key = AmqpTransport.encode_routing_key("test-topic")
     assert routing_key == "test-topic"
 
@@ -23,7 +23,7 @@ def test_encode_routing_key(monkeypatch: Any) -> None:
     assert routing_key == "test.topic"
 
 
-def test_decode_routing_key(monkeypatch: Any) -> None:
+def test_decode_routing_key() -> None:
     routing_key = AmqpTransport.decode_routing_key("test-topic")
     assert routing_key == "test-topic"
 
@@ -31,7 +31,7 @@ def test_decode_routing_key(monkeypatch: Any) -> None:
     assert routing_key == "test.topic"
 
 
-def test_queue_name(monkeypatch: Any) -> None:
+def test_queue_name() -> None:
     _uuid = "5d0b530f-5c44-4981-b01f-342801bd48f5"
     queue_name = AmqpTransport.get_queue_name("test.topic", "func", _uuid, False, {})
     assert queue_name == "b444917b9b922e8c29235737c7775c823e092c2374d1bfde071d42c637e3b4fd"
@@ -56,8 +56,8 @@ def test_queue_name(monkeypatch: Any) -> None:
     assert queue_name == "prefix-540e8e5bc604e4ea618f7e0517a04f030ad1dcbff2e121e9466ddd1c811450bf"
 
 
-def test_publish_invalid_credentials(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_service.py", monkeypatch, loop=loop)
+def test_publish_invalid_credentials(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_service.py", loop=loop)
 
     instance = services.get("test_dummy")
 

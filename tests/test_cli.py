@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 
 import pytest
@@ -31,9 +30,8 @@ def test_cli_run_command_method_no_args(capsys: Any) -> None:
     assert (out + err) == cli.run_command_usage() + "\n"
 
 
-def test_cli_entrypoint_no_arguments(monkeypatch: Any, capsys: Any) -> None:
+def test_cli_entrypoint_no_arguments(capsys: Any) -> None:
     cli = tomodachi.cli.CLI()
-    monkeypatch.setattr(logging.root, "handlers", [])
 
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint()
@@ -42,9 +40,8 @@ def test_cli_entrypoint_no_arguments(monkeypatch: Any, capsys: Any) -> None:
     assert (out + err) == cli.help_command_usage() + "\n"
 
 
-def test_cli_entrypoint_print_help(monkeypatch: Any, capsys: Any) -> None:
+def test_cli_entrypoint_print_help(capsys: Any) -> None:
     cli = tomodachi.cli.CLI()
-    monkeypatch.setattr(logging.root, "handlers", [])
 
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "-h"])
@@ -53,9 +50,7 @@ def test_cli_entrypoint_print_help(monkeypatch: Any, capsys: Any) -> None:
     assert (out + err) == cli.help_command_usage() + "\n"
 
 
-def test_cli_entrypoint_print_dependency_versions(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_entrypoint_print_dependency_versions(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "--dependency-versions"])
 
@@ -67,9 +62,7 @@ def test_cli_entrypoint_print_dependency_versions(monkeypatch: Any, capsys: Any)
     assert "aiobotocore/{}".format(aiobotocore.__version__) + "\n" in (out + err)
 
 
-def test_cli_entrypoint_print_version(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_entrypoint_print_version(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "-v"])
 
@@ -77,9 +70,8 @@ def test_cli_entrypoint_print_version(monkeypatch: Any, capsys: Any) -> None:
     assert (out + err) == "tomodachi {}".format(tomodachi.__version__) + "\n"
 
 
-def test_cli_entrypoint_invalid_arguments_show_help(monkeypatch: Any, capsys: Any) -> None:
+def test_cli_entrypoint_invalid_arguments_show_help(capsys: Any) -> None:
     cli = tomodachi.cli.CLI()
-    monkeypatch.setattr(logging.root, "handlers", [])
 
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "--invalid"])
@@ -88,9 +80,8 @@ def test_cli_entrypoint_invalid_arguments_show_help(monkeypatch: Any, capsys: An
     assert (out + err) == cli.help_command_usage() + "\n"
 
 
-def test_cli_entrypoint_invalid_subcommand_show_help(monkeypatch: Any, capsys: Any) -> None:
+def test_cli_entrypoint_invalid_subcommand_show_help(capsys: Any) -> None:
     cli = tomodachi.cli.CLI()
-    monkeypatch.setattr(logging.root, "handlers", [])
 
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "invalidsubcommand"])
@@ -99,9 +90,7 @@ def test_cli_entrypoint_invalid_subcommand_show_help(monkeypatch: Any, capsys: A
     assert (out + err) == cli.help_command_usage() + "\n"
 
 
-def test_cli_start_service_stopped_with_sigterm(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_stopped_with_sigterm(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_sigterm.py"])
 
@@ -110,9 +99,7 @@ def test_cli_start_service_stopped_with_sigterm(monkeypatch: Any, capsys: Any) -
     assert "tomodachi version      ⇢ {}".format(tomodachi.__version__) in (out + err)
 
 
-def test_cli_start_service_stopped_with_sigint(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_stopped_with_sigint(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_sigint.py"])
 
@@ -121,9 +108,7 @@ def test_cli_start_service_stopped_with_sigint(monkeypatch: Any, capsys: Any) ->
     assert "tomodachi version      ⇢ {}".format(tomodachi.__version__) in (out + err)
 
 
-def test_cli_start_service_stopped_with_exit_call(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_stopped_with_exit_call(capsys: Any) -> None:
     with pytest.raises(SystemExit) as pytest_wrapped_exception:
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_exit_call.py"])
 
@@ -135,9 +120,7 @@ def test_cli_start_service_stopped_with_exit_call(monkeypatch: Any, capsys: Any)
     assert "tomodachi version      ⇢ {}".format(tomodachi.__version__) in (out + err)
 
 
-def test_cli_start_service_stopped_with_exit_code_1(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_stopped_with_exit_code_1(capsys: Any) -> None:
     with pytest.raises(SystemExit) as pytest_wrapped_exception:
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_exit_code_1.py"])
 
@@ -149,9 +132,7 @@ def test_cli_start_service_stopped_with_exit_code_1(monkeypatch: Any, capsys: An
     assert "tomodachi version      ⇢ {}".format(tomodachi.__version__) in (out + err)
 
 
-def test_cli_start_service_stopped_with_exit_code_128(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_stopped_with_exit_code_128(capsys: Any) -> None:
     with pytest.raises(SystemExit) as pytest_wrapped_exception:
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_exit_code_128.py"])
 
@@ -163,9 +144,7 @@ def test_cli_start_service_stopped_with_exit_code_128(monkeypatch: Any, capsys: 
     assert "tomodachi version      ⇢ {}".format(tomodachi.__version__) in (out + err)
 
 
-def test_cli_start_exception_service(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_exception_service(capsys: Any) -> None:
     with pytest.raises(SystemExit) as pytest_wrapped_exception:
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/exception_service.py"])
 
@@ -179,9 +158,7 @@ def test_cli_start_exception_service(monkeypatch: Any, capsys: Any) -> None:
     assert "fail in _start_service()" in (out + err)
 
 
-def test_cli_start_exception_service_init(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_exception_service_init(capsys: Any) -> None:
     with pytest.raises(SystemExit) as pytest_wrapped_exception:
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/exception_service_init.py"])
 
@@ -195,9 +172,7 @@ def test_cli_start_exception_service_init(monkeypatch: Any, capsys: Any) -> None
     assert "fail in __init__()" in (out + err)
 
 
-def test_cli_start_service_production_mode(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_production_mode(capsys: Any) -> None:
     with pytest.raises(SystemExit) as pytest_wrapped_exception:
         tomodachi.cli.cli_entrypoint(
             ["tomodachi", "run", "tests/services/auto_closing_service_exit_call.py", "--production"]
@@ -215,9 +190,7 @@ def test_cli_start_service_production_mode(monkeypatch: Any, capsys: Any) -> Non
     assert "terminated service" in (out + err)
 
 
-def test_cli_start_service_with_config(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_with_config(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(
             [
@@ -234,9 +207,7 @@ def test_cli_start_service_with_config(monkeypatch: Any, capsys: Any) -> None:
     assert "tomodachi version      ⇢ {}".format(tomodachi.__version__) in (out + err)
 
 
-def test_cli_start_service_with_non_existing_config(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_with_non_existing_config(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(
             [
@@ -254,9 +225,7 @@ def test_cli_start_service_with_non_existing_config(monkeypatch: Any, capsys: An
     assert "Invalid config file" in (out + err)
 
 
-def test_cli_start_service_with_invalid_config(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_with_invalid_config(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(
             [
@@ -274,9 +243,7 @@ def test_cli_start_service_with_invalid_config(monkeypatch: Any, capsys: Any) ->
     assert "Invalid config file, invalid JSON format" in (out + err)
 
 
-def test_cli_start_service_without_config_arguments(monkeypatch: Any, capsys: Any) -> None:
-    monkeypatch.setattr(logging.root, "handlers", [])
-
+def test_cli_start_service_without_config_arguments(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_exit_call.py", "-c"])
 

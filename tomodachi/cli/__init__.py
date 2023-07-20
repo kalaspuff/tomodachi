@@ -11,7 +11,7 @@ from tomodachi.__version__ import __version__
 from tomodachi.config import parse_config_files
 from tomodachi.helpers.build_time import get_time_since_build
 from tomodachi.launcher import ServiceLauncher
-from tomodachi.logging import _defaultHandler
+from tomodachi.logging import DefaultHandler as DefaultRootLoggerHandler
 
 
 class CLI:
@@ -328,7 +328,7 @@ class CLI:
                     format="%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]",
                     datefmt="%Y-%m-%dT%H:%M:%S",
                     level=log_level,
-                    handlers=[_defaultHandler],
+                    handlers=[DefaultRootLoggerHandler],
                 )
             except Exception as e:
                 logging.getLogger().warning("Unable to set log config: {}".format(str(e)))

@@ -5,7 +5,55 @@ from typing import Generator
 
 import pytest
 
-os.environ["TOMODACHI_NO_COLOR"] = "1"
+os.environ["TOMODACHI_BANNER_NO_COLOR"] = "1"
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_configure(config: pytest.Config) -> None:
+    try:
+        from tomodachi.logging import ConsoleFormatter
+
+        plugin = config.pluginmanager.get_plugin("logging-plugin")
+        plugin.caplog_handler.setFormatter(ConsoleFormatter)
+        plugin.report_handler.setFormatter(ConsoleFormatter)
+    except Exception as exc:
+        import logging
+
+        logging.warning("Unable to import tomodachi.logging.DefaultHandler: {}".format(str(exc)))
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_logger() -> None:
+    import logging
+
+    logging.addLevelName(logging.NOTSET, "notset")
+    logging.addLevelName(logging.DEBUG, "debug")
+    logging.addLevelName(logging.INFO, "info")
+    logging.addLevelName(logging.WARN, "warn")
+    logging.addLevelName(logging.WARNING, "warning")
+    logging.addLevelName(logging.ERROR, "error")
+    logging.addLevelName(logging.FATAL, "fatal")
+    logging.addLevelName(logging.CRITICAL, "critical")
+
+    try:
+        from tomodachi.logging import NoColorConsoleFormatter
+
+        class _StderrHandler(logging.StreamHandler):
+            def __init__(self, level=logging.NOTSET):
+                """
+                Initialize the handler.
+                """
+                logging.Handler.__init__(self, level)
+                self.formatter = NoColorConsoleFormatter
+
+            @property
+            def stream(self):
+                return sys.stderr
+
+        logging.root.setLevel(logging.INFO)
+        logging.root.addHandler(_StderrHandler())  # captures stderr
+    except Exception as exc:
+        logging.warning("Unable to import tomodachi.logging.DefaultHandler: {}".format(str(exc)))
 
 
 @pytest.fixture(scope="module")

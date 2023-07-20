@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import logging
 import signal
 import sys
 from typing import Any, Dict, Optional, Tuple
@@ -10,9 +9,7 @@ from tomodachi.importer import ServiceImporter
 from tomodachi.launcher import ServiceLauncher
 
 
-def start_service(
-    filename: str, monkeypatch: Any = None, wait: bool = True, loop: Optional[asyncio.AbstractEventLoop] = None
-) -> Tuple:
+def start_service(filename: str, wait: bool = True, loop: Optional[asyncio.AbstractEventLoop] = None) -> Tuple:
     if not loop:
         if sys.version_info.major == 3 and sys.version_info.minor < 10:
             loop = asyncio.get_event_loop()
@@ -24,17 +21,12 @@ def start_service(
             asyncio.set_event_loop(loop)
 
     async def _async() -> Tuple:
-        return await _start_service(filename, monkeypatch, wait=wait, loop=asyncio.get_event_loop())
+        return await _start_service(filename, wait=wait, loop=asyncio.get_event_loop())
 
     return loop.run_until_complete(_async())
 
 
-async def _start_service(
-    filename: str, monkeypatch: Any = None, wait: bool = True, loop: Optional[asyncio.AbstractEventLoop] = None
-) -> Tuple:
-    if monkeypatch:
-        monkeypatch.setattr(logging.root, "handlers", [])
-
+async def _start_service(filename: str, wait: bool = True, loop: Optional[asyncio.AbstractEventLoop] = None) -> Tuple:
     if not loop:
         raise Exception("loop missing")
 

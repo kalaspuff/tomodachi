@@ -24,6 +24,8 @@ NO_COLOR = any(
         os.environ.get("NOCOLOR", "").lower() in ("1", "true"),
         os.environ.get("TOMODACHI_NO_COLOR", "").lower() in ("1", "true"),
         os.environ.get("TOMODACHI_NOCOLOR", "").lower() in ("1", "true"),
+        os.environ.get("TOMODACHI_BANNER_NO_COLOR", "").lower() in ("1", "true"),
+        os.environ.get("TOMODACHI_BANNER_NOCOLOR", "").lower() in ("1", "true"),
         os.environ.get("CLICOLOR", "").lower() in ("0", "false"),
         os.environ.get("CLI_COLOR", "").lower() in ("0", "false"),
         os.environ.get("CLICOLOR_FORCE", "").lower() in ("0", "false"),

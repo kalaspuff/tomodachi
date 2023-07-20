@@ -12,8 +12,8 @@ from tomodachi.envelope.proto_build.protobuf.sns_sqs_message_pb2 import SNSSQSMe
 from tomodachi.validation.validation import RegexMissmatchException, validate_field_regex
 
 
-def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_service.py", monkeypatch, loop=loop)
+def test_json_base(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_service.py", loop=loop)
 
     instance = services.get("test_dummy")
 
@@ -41,8 +41,8 @@ def test_json_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     loop.run_until_complete(future)
 
 
-def test_json_base_large_message(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_service.py", monkeypatch, loop=loop)
+def test_json_base_large_message(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_service.py", loop=loop)
 
     instance = services.get("test_dummy")
 
@@ -71,8 +71,8 @@ def test_json_base_large_message(monkeypatch: Any, capsys: Any, loop: Any) -> No
     loop.run_until_complete(future)
 
 
-def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
+def test_protobuf_base(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_protobuf_service.py", loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -106,8 +106,8 @@ def test_protobuf_base(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     loop.run_until_complete(future)
 
 
-def test_protobuf_base_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
+def test_protobuf_base_no_proto_class(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_protobuf_service.py", loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -131,8 +131,8 @@ def test_protobuf_base_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) 
     loop.run_until_complete(future)
 
 
-def test_protobuf_base_bad_proto_class(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
+def test_protobuf_base_bad_proto_class(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_protobuf_service.py", loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -153,8 +153,8 @@ def test_protobuf_base_bad_proto_class(monkeypatch: Any, capsys: Any, loop: Any)
     loop.run_until_complete(future)
 
 
-def test_protobuf_validation_no_proto_class(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
+def test_protobuf_validation_no_proto_class(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_protobuf_service.py", loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -171,8 +171,8 @@ def test_protobuf_validation_no_proto_class(monkeypatch: Any, capsys: Any, loop:
     loop.run_until_complete(future)
 
 
-def test_protobuf_validation_bad_proto_class(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
+def test_protobuf_validation_bad_proto_class(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_protobuf_service.py", loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -189,8 +189,8 @@ def test_protobuf_validation_bad_proto_class(monkeypatch: Any, capsys: Any, loop
     loop.run_until_complete(future)
 
 
-def test_protobuf_object_validation_function(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
+def test_protobuf_object_validation_function(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_protobuf_service.py", loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -213,8 +213,8 @@ def test_protobuf_object_validation_function(monkeypatch: Any, capsys: Any, loop
     loop.run_until_complete(future)
 
 
-def test_protobuf_object_static_validation_function(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
+def test_protobuf_object_static_validation_function(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_protobuf_service.py", loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -238,8 +238,8 @@ def test_protobuf_object_static_validation_function(monkeypatch: Any, capsys: An
     loop.run_until_complete(future)
 
 
-def test_protobuf_object_validation_function_fail(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
+def test_protobuf_object_validation_function_fail(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_protobuf_service.py", loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 
@@ -263,8 +263,8 @@ def test_protobuf_object_validation_function_fail(monkeypatch: Any, capsys: Any,
     loop.run_until_complete(future)
 
 
-def test_protobuf_object_static_validation_function_fail(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_protobuf_service.py", monkeypatch, loop=loop)
+def test_protobuf_object_static_validation_function_fail(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_protobuf_service.py", loop=loop)
 
     instance = services.get("test_dummy_protobuf")
 

@@ -3,8 +3,8 @@ from typing import Any
 from run_test_service_helper import start_service
 
 
-def test_exception_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/exception_service.py", monkeypatch, loop=loop)
+def test_exception_service(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/exception_service.py", loop=loop)
 
     loop.run_until_complete(future)
 
@@ -13,8 +13,8 @@ def test_exception_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     assert "fail in _start_service()" in (out + err)
 
 
-def test_exception_service_in_init(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/exception_service_init.py", monkeypatch, loop=loop)
+def test_exception_service_in_init(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/exception_service_init.py", loop=loop)
 
     loop.run_until_complete(future)
 

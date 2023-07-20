@@ -9,7 +9,21 @@ import warnings
 from contextvars import ContextVar
 from io import StringIO
 from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
-from typing import Any, Callable, Dict, Iterable, KeysView, Literal, Optional, Protocol, Sequence, Tuple, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    KeysView,
+    Literal,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+    overload,
+)
 
 import structlog
 from structlog._log_levels import _LEVEL_TO_NAME, _NAME_TO_LEVEL
@@ -25,9 +39,38 @@ NO_COLOR = any(
         os.environ.get("NOCOLOR", "").lower() in ("1", "true"),
         os.environ.get("TOMODACHI_NO_COLOR", "").lower() in ("1", "true"),
         os.environ.get("TOMODACHI_NOCOLOR", "").lower() in ("1", "true"),
+        os.environ.get("TOMODACHI_LOGGER_NO_COLOR", "").lower() in ("1", "true"),
+        os.environ.get("TOMODACHI_LOGGER_NOCOLOR", "").lower() in ("1", "true"),
         os.environ.get("CLICOLOR", "").lower() in ("0", "false"),
         os.environ.get("CLI_COLOR", "").lower() in ("0", "false"),
         os.environ.get("CLICOLOR_FORCE", "").lower() in ("0", "false"),
+    ]
+)
+
+STD_LOGGER_FIELDS = set(
+    [
+        "name",
+        "levelno",
+        "levelname",
+        "pathname",
+        "filename",
+        "module",
+        "lineno",
+        "funcName",
+        "created",
+        "asctime",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "process",
+        "message",
+        "args",
+        "exc_text",
+        "stack_info",
+        "msg",
+        "processName",
+        "exc_info",
     ]
 )
 
@@ -221,41 +264,19 @@ def to_logger_args_kwargs(
     return ((event_dict.get("event") or "",), {"extra": {"_kw_from_structlog": event_dict}})
 
 
-STD_LOGGER_FIELDS = set(
-    [
-        "name",
-        "levelno",
-        "levelname",
-        "pathname",
-        "filename",
-        "module",
-        "lineno",
-        "funcName",
-        "created",
-        "asctime",
-        "msecs",
-        "relativeCreated",
-        "thread",
-        "threadName",
-        "process",
-        "message",
-        "args",
-        "exc_text",
-        "stack_info",
-        "msg",
-        "processName",
-        "exc_info",
-    ]
-)
-
-
 class _StdLoggingFormatter(logging.Formatter):
     _logger_type: Literal["json", "console", "null"]
+    _force_no_color: bool
 
     def __init__(
-        self, logger_type: Literal["json", "console", "null"] = TOMODACHI_LOGGER_TYPE, *a: Any, **kw: Any
+        self,
+        logger_type: Literal["json", "console", "null"] = TOMODACHI_LOGGER_TYPE,
+        force_no_color: bool = False,
+        *a: Any,
+        **kw: Any,
     ) -> None:
         self._logger_type = logger_type
+        self._force_no_color = force_no_color
 
     def format(self, record: logging.LogRecord) -> str:
         if "_kw_from_structlog" in record.__dict__:
@@ -278,7 +299,11 @@ class _StdLoggingFormatter(logging.Formatter):
         if method_name == "error" and kw and kw.get("exc_info") is True:
             method_name = "exception"
 
-        args, _ = get_logger(record.name, logger_type=self._logger_type)._process_event(
+        logger = get_logger(record.name, logger_type=self._logger_type)
+        if getattr(logger._logger, "_force_no_color", False) is not self._force_no_color:
+            setattr(logger._logger, "_force_no_color", self._force_no_color)
+
+        args, _ = logger._process_event(
             method_name,
             None,
             kw,
@@ -291,11 +316,41 @@ class _StdLoggingFormatter(logging.Formatter):
 
 NullFormatter = _StdLoggingFormatter(logger_type="null")
 ConsoleFormatter = _StdLoggingFormatter(logger_type="console")
+NoColorConsoleFormatter = _StdLoggingFormatter(logger_type="console", force_no_color=True)
 JSONFormatter = _StdLoggingFormatter(logger_type="json")
 
 DefaultFormatter = _defaultFormatter = _StdLoggingFormatter(logger_type=TOMODACHI_LOGGER_TYPE)
 DefaultHandler = _defaultHandler = logging.StreamHandler()
 DefaultHandler.setFormatter(DefaultFormatter)
+
+
+@overload
+def set_default_formatter(*, logger_type: Literal["json", "console", "null"]) -> None:
+    ...
+
+
+@overload
+def set_default_formatter(*, formatter: logging.Formatter) -> None:
+    ...
+
+
+def set_default_formatter(
+    *, logger_type: Literal["json", "console", "null"] = "json", formatter: Optional[logging.Formatter] = None
+) -> None:
+    if logger_type is not None:
+        formatter = (
+            JSONFormatter
+            if logger_type == "json"
+            else ConsoleFormatter
+            if logger_type == "console"
+            else NullFormatter
+            if logger_type == "null"
+            else None
+        )
+        if not formatter:
+            raise Exception("Invalid logger type: '{}' (exected 'console', 'json' or 'null')".format(logger_type))
+
+    DefaultHandler.setFormatter(formatter)
 
 
 class LoggerContext(dict):
@@ -589,6 +644,8 @@ class LoggerProtocol(Protocol):
 
 # backport of structlog 23.x ConsoleRenderer to be usable with structlog 21.x+.
 class ConsoleRenderer(structlog.dev.ConsoleRenderer):
+    _colors: bool
+
     def __init__(
         self,
         **kw: Any,
@@ -599,27 +656,38 @@ class ConsoleRenderer(structlog.dev.ConsoleRenderer):
             self._event_key = kw.pop("event_key", "event")
             super().__init__(**kw)
 
+        self._colors = kw.get("colors", not NO_COLOR) and not NO_COLOR
+
     def __call__(
         self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
     ) -> str:
         sio = StringIO()
 
+        colors = self._colors and not getattr(logger, "_force_no_color", False)
+
+        if not colors:
+            _styles: Any = structlog.dev._PlainStyles
+            _level_to_color = self.get_default_level_styles(False)
+        else:
+            _styles = self._styles
+            _level_to_color = self._level_to_color
+
         ts = event_dict.pop("timestamp", None)
         if ts is not None:
             sio.write(
                 # can be a number if timestamp is UNIXy
-                self._styles.timestamp
+                _styles.timestamp
                 + str(ts)
-                + self._styles.reset
+                + _styles.reset
                 + " "
             )
         level = event_dict.pop("level", None)
         if level is not None:
             sio.write(
                 "["
-                + self._level_to_color.get(level, "")
+                + _level_to_color.get(level, "")
                 + structlog.dev._pad(level, self._longest_level)
-                + self._styles.reset
+                + _styles.reset
                 + "] "
             )
 
@@ -629,17 +697,17 @@ class ConsoleRenderer(structlog.dev.ConsoleRenderer):
             event = str(event)
 
         if event_dict:
-            event = structlog.dev._pad(event, self._pad_event) + self._styles.reset + " "
+            event = structlog.dev._pad(event, self._pad_event) + _styles.reset + " "
         else:
-            event += self._styles.reset
-        sio.write(self._styles.bright + event)
+            event += _styles.reset
+        sio.write(_styles.bright + event)
 
         logger_name = event_dict.pop("logger", None)
         if logger_name is None:
             logger_name = event_dict.pop("logger_name", None)
 
         if logger_name is not None:
-            sio.write("[" + self._styles.logger_name + self._styles.bright + logger_name + self._styles.reset + "] ")
+            sio.write("[" + _styles.logger_name + _styles.bright + logger_name + _styles.reset + "] ")
 
         stack = event_dict.pop("stack", None)
         exc = event_dict.pop("exception", None)
@@ -651,13 +719,13 @@ class ConsoleRenderer(structlog.dev.ConsoleRenderer):
 
         sio.write(
             " ".join(
-                self._styles.kv_key
+                _styles.kv_key
                 + key
-                + self._styles.reset
+                + _styles.reset
                 + "="
-                + self._styles.kv_value
+                + _styles.kv_value
                 + self._repr(event_dict[key])
-                + self._styles.reset
+                + _styles.reset
                 for key in event_dict_keys
             )
         )
@@ -783,10 +851,10 @@ def get_logger(
     name: Optional[str] = None, *, logger_type: Literal["json", "console", "forward", "null"] = "forward"
 ) -> Logger:
     logger = (
-        console_logger
-        if logger_type == "console"
-        else json_logger
+        json_logger
         if logger_type == "json"
+        else console_logger
+        if logger_type == "console"
         else forward_logger
         if logger_type == "forward"
         else null_logger
@@ -826,6 +894,7 @@ __all__ = [
     "Logger",
     "NullFormatter",
     "ConsoleFormatter",
+    "NoColorConsoleFormatter",
     "JSONFormatter",
     "DefaultFormatter",
     "DefaultHandler",

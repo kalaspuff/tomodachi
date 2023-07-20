@@ -791,7 +791,7 @@ class HttpTransport(Invoker):
             wfh.setLevel(logging.DEBUG)
             wfh.setFormatter(logging.JSONFormatter)
             logger_handler = wfh
-            logger.info("logging to file", file_path=access_log)
+            logger.info("logging requests to file", file_path=access_log)
             logging.getLogger("tomodachi.http.response").addHandler(logger_handler)
 
         async def _start_server() -> None:
@@ -1360,6 +1360,14 @@ class HttpTransport(Invoker):
 
             listen_url = "http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
             logger.info("accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port)
+
+            if logger_handler:
+                response_logger = logging.getLogger("tomodachi.http.response")
+                response_logger._logger.propagate = False
+                response_logger.info(
+                    "accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port
+                )
+                response_logger._logger.propagate = True
 
         return _start_server
 
