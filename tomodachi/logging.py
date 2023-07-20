@@ -21,6 +21,7 @@ from typing import (
     Sequence,
     TextIO,
     Tuple,
+    Type,
     Union,
     cast,
     overload,
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
 LOGGER_DISABLED_KEY = "_logger_disabled"
 RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
 EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message")
-TOMODACHI_LOGGER_TYPE: Literal["json", "console", "null"] = "console"
+TOMODACHI_LOGGER_TYPE: Literal["json", "console", "no_color_console", "null"] = "console"
 
 NO_COLOR = any(
     [
@@ -266,11 +267,15 @@ class _NullLoggerFormatter(logging.Formatter):
         style: str = "%",
         validate: bool = True,
         *,
-        defaults: Dict[str, Any] = None,
+        defaults: Optional[Dict[str, Any]] = None,
     ):
         if style not in logging._STYLES:
             raise ValueError("Style must be one of: %s" % ",".join(logging._STYLES.keys()))
-        self.style = logging._STYLES[style][0](fmt, defaults=defaults)
+        style_cls = cast(
+            Union[Type[logging.PercentStyle], Type[logging.StrFormatStyle], Type[logging.StringTemplateStyle]],
+            logging._STYLES[style][0],
+        )
+        self.style = style_cls(fmt or "", defaults=defaults)
         if validate:
             self.style.validate()
 
@@ -304,7 +309,6 @@ class _StdLoggingFormatter(logging.Formatter):
     def __init__(
         self,
         logger_type: Literal["json", "console", "no_color_console", "null"] = TOMODACHI_LOGGER_TYPE,
-        force_no_color: bool = False,
         *a: Any,
         **kw: Any,
     ) -> None:
@@ -326,6 +330,9 @@ class _StdLoggingFormatter(logging.Formatter):
             kw["event"] = record.getMessage()
 
         kw["logger"] = record.name
+
+        if "extra" in kw and isinstance(kw["extra"], dict) and len(kw["extra"]) == 0:
+            kw.pop("extra")
 
         method_name = _LEVEL_TO_NAME[record.levelno]
         if method_name == "error" and kw and kw.get("exc_info") is True:
@@ -355,7 +362,7 @@ class StderrHandler(logging.StreamHandler):
 
 _default_fmt = "%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]"
 try:
-    if len(logging.root.handlers) and logging.root.handlers[0].formatter._fmt:
+    if len(logging.root.handlers) and logging.root.handlers[0].formatter and logging.root.handlers[0].formatter._fmt:
         _default_fmt = logging.root.handlers[0].formatter._fmt
 except AttributeError:
     pass
@@ -369,7 +376,12 @@ DefaultHandler = DefaultRootLoggerHandler = _defaultHandler = StderrHandler()
 
 
 @overload
-def set_default_formatter(*, logger_type: Literal["json", "console", "null"]) -> None:
+def set_default_formatter(*, logger_type: Literal["json", "console", "no_color_console", "null"]) -> None:
+    ...
+
+
+@overload
+def set_default_formatter(logger_type: Literal["json", "console", "no_color_console", "null"], /) -> None:
     ...
 
 
@@ -378,15 +390,38 @@ def set_default_formatter(*, formatter: logging.Formatter) -> None:
     ...
 
 
+@overload
+def set_default_formatter(formatter: logging.Formatter, /) -> None:
+    ...
+
+
 def set_default_formatter(
-    *, logger_type: Optional[Literal["json", "console", "null"]] = None, formatter: Optional[logging.Formatter] = None
+    _arg: Optional[Union[logging.Formatter, Literal["json", "console", "no_color_console", "null"]]] = None,
+    /,
+    *,
+    logger_type: Optional[Literal["json", "console", "no_color_console", "null"]] = None,
+    formatter: Optional[logging.Formatter] = None,
 ) -> None:
+    if _arg is not None and (logger_type is not None or formatter is not None):
+        raise TypeError("Invalid combination of arguments given to set_default_formatter()")
+    if logger_type is not None and formatter is not None:
+        raise TypeError("Invalid combination of arguments given to set_default_formatter()")
+    if _arg is not None:
+        if isinstance(_arg, logging.Formatter):
+            formatter = _arg
+        elif isinstance(_arg, str):
+            logger_type = _arg
+        else:
+            raise TypeError("Invalid logger type or formatter given")
+
     if logger_type is not None:
         formatter = (
             JSONFormatter
             if logger_type == "json"
             else ConsoleFormatter
             if logger_type == "console"
+            else NoColorConsoleFormatter
+            if logger_type == "no_color_console"
             else NullFormatter
             if logger_type == "null"
             else None
@@ -404,9 +439,8 @@ def set_default_formatter(
     DefaultHandler.setFormatter(formatter)
 
 
-set_default_formatter(logger_type=TOMODACHI_LOGGER_TYPE)
+set_default_formatter(TOMODACHI_LOGGER_TYPE)
 DefaultFormatter = _defaultFormatter = DefaultHandler.formatter
-print(TOMODACHI_LOGGER_TYPE)
 
 
 class LoggerContext(dict):
@@ -994,12 +1028,17 @@ def configure(log_level: Union[int, str] = logging.INFO, force: bool = False) ->
 
     global _default_fmt
     try:
-        if len(logging.root.handlers) and logging.root.handlers[0].formatter._fmt:
+        if (
+            len(logging.root.handlers)
+            and logging.root.handlers[0].formatter
+            and logging.root.handlers[0].formatter._fmt
+        ):
             _default_fmt = logging.root.handlers[0].formatter._fmt
     except AttributeError:
         pass
 
-    NullFormatter._fmt = _default_fmt
+    if NullFormatter._fmt != _default_fmt:
+        NullFormatter._fmt = _default_fmt
 
     try:
         logging.basicConfig(
