@@ -390,6 +390,7 @@ def exit(exit_code: Optional[int] = None) -> None:
     get_logger("tomodachi.exit").warning("tomodachi.exit [{}] was called".format(exit_code), exit_code=exit_code)
     ServiceLauncher.restart_services = False
     setattr(sys.modules[__name__], "SERVICE_EXIT_CODE", exit_code)
+    get_contextvar("exit_code").set(SERVICE_EXIT_CODE)
     ServiceLauncher.stop_services()
 
 

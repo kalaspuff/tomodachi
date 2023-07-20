@@ -234,6 +234,7 @@ class ServiceLauncher(object):
 
                 render_banner(service_files=service_files)
 
+            tomodachi.get_contextvar("exit_code").set(-1)
             tomodachi.SERVICE_EXIT_CODE = tomodachi.DEFAULT_SERVICE_EXIT_CODE
 
             async def _set_waiters() -> None:

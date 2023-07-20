@@ -38,6 +38,7 @@ class ServiceContainer(object):
         sys.excepthook = catch_uncaught_exceptions
 
     def stop_service(self) -> None:
+        tomodachi.get_contextvar("exit_code").set(tomodachi.SERVICE_EXIT_CODE)
         if not self._close_waiter:
             self._close_waiter = asyncio.Future()
 

@@ -4,6 +4,7 @@ import signal
 import sys
 from typing import Any, Dict, Optional, Tuple
 
+import tomodachi
 from tomodachi.container import ServiceContainer
 from tomodachi.importer import ServiceImporter
 from tomodachi.launcher import ServiceLauncher
@@ -21,12 +22,18 @@ def start_service(filename: str, wait: bool = True, loop: Optional[asyncio.Abstr
             asyncio.set_event_loop(loop)
 
     async def _async() -> Tuple:
-        return await _start_service(filename, wait=wait, loop=asyncio.get_event_loop())
+        result = await _start_service(filename, wait=wait, loop=asyncio.get_event_loop())
+        if wait and tomodachi.context("exit_code") not in (None, -1):
+            tomodachi.SERVICE_EXIT_CODE = tomodachi.context("exit_code")
+        return result
 
     return loop.run_until_complete(_async())
 
 
 async def _start_service(filename: str, wait: bool = True, loop: Optional[asyncio.AbstractEventLoop] = None) -> Tuple:
+    tomodachi.get_contextvar("exit_code").set(-1)
+    tomodachi.SERVICE_EXIT_CODE = tomodachi.DEFAULT_SERVICE_EXIT_CODE
+
     if not loop:
         raise Exception("loop missing")
 
@@ -67,10 +74,14 @@ async def _start_service(filename: str, wait: bool = True, loop: Optional[asynci
             loop = asyncio.get_event_loop()
             try:
                 await service.run_until_complete()
+                if tomodachi.context("exit_code") not in (None, -1):
+                    tomodachi.SERVICE_EXIT_CODE = tomodachi.context("exit_code")
             except Exception:
                 loop = asyncio.get_event_loop()
                 stop_services(loop)
                 force_stop_services(loop)
+                if tomodachi.context("exit_code") not in (None, -1):
+                    tomodachi.SERVICE_EXIT_CODE = tomodachi.context("exit_code")
                 raise
 
         future = asyncio.ensure_future(_async())
