@@ -275,7 +275,11 @@ class _NullLoggerFormatter(logging.Formatter):
             Union[Type[logging.PercentStyle], Type[logging.StrFormatStyle], Type[logging.StringTemplateStyle]],
             logging._STYLES[style][0],
         )
-        self.style = style_cls(fmt or "", defaults=defaults)
+        try:
+            self.style = style_cls(fmt or "", defaults=defaults)
+        except TypeError:
+            self.style = style_cls(fmt or "")
+
         if validate:
             self.style.validate()
 
