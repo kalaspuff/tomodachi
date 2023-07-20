@@ -122,7 +122,6 @@ class ServiceContainer(object):
                     )
 
                     tomodachi.SERVICE_EXIT_CODE = 1
-                    services_started = set()
                     self.stop_service()
                     break
 
@@ -141,31 +140,57 @@ class ServiceContainer(object):
 
                 getattr(instance, "context", {})["_service_file_path"] = self.file_path
 
-                self.setup_configuration(instance)
+                try:
+                    self.setup_configuration(instance)
+                except Exception as e:
+                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    logging.getLogger("tomodachi.init").error(
+                        "failed to setup config",
+                        module=self.module_name,
+                        class_=cls.__name__,
+                        file_path=self.file_path,
+                    )
+
+                    tomodachi.SERVICE_EXIT_CODE = 1
+                    self.stop_service()
+                    break
 
                 context_options = getattr(instance, "context", {}).get("options", {})
                 if context_options:
-                    for key in list(context_options.keys()):
-                        if "." in key:
-                            key_split = key.split(".")
-                            op_lvl = context_options
-                            for i, k_lvl in enumerate(key_split):
-                                if i + 1 == len(key_split):
-                                    if k_lvl in op_lvl and op_lvl[k_lvl] != context_options[key]:
-                                        raise Exception(
-                                            'Missmatching options for \'{}\': ({}) "{}" and ({}) "{}" differs'.format(
-                                                key,
-                                                type(context_options[key]).__name__,
-                                                context_options[key],
-                                                type(op_lvl[k_lvl]).__name__,
-                                                op_lvl[k_lvl],
+                    try:
+                        for key in list(context_options.keys()):
+                            if "." in key:
+                                key_split = key.split(".")
+                                op_lvl = context_options
+                                for i, k_lvl in enumerate(key_split):
+                                    if i + 1 == len(key_split):
+                                        if k_lvl in op_lvl and op_lvl[k_lvl] != context_options[key]:
+                                            raise Exception(
+                                                'Missmatching options for \'{}\': ({}) "{}" and ({}) "{}" differs'.format(
+                                                    key,
+                                                    type(context_options[key]).__name__,
+                                                    context_options[key],
+                                                    type(op_lvl[k_lvl]).__name__,
+                                                    op_lvl[k_lvl],
+                                                )
                                             )
-                                        )
-                                    op_lvl[k_lvl] = context_options[key]
-                                    continue
-                                if k_lvl not in op_lvl:
-                                    op_lvl[k_lvl] = {}
-                                op_lvl = op_lvl.get(k_lvl)
+                                        op_lvl[k_lvl] = context_options[key]
+                                        continue
+                                    if k_lvl not in op_lvl:
+                                        op_lvl[k_lvl] = {}
+                                    op_lvl = op_lvl.get(k_lvl)
+                    except Exception as e:
+                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                        logging.getLogger("tomodachi.init").error(
+                            "failed to setup options",
+                            module=self.module_name,
+                            class_=cls.__name__,
+                            file_path=self.file_path,
+                        )
+
+                        tomodachi.SERVICE_EXIT_CODE = 1
+                        self.stop_service()
+                        break
 
                 if not getattr(instance, "uuid", None):
                     instance.uuid = str(uuid.uuid4())
@@ -212,7 +237,7 @@ class ServiceContainer(object):
                     )
                     services_started.add((service_name, instance, log_level))
 
-                try:
+                if getattr(instance, "_start_service", None):
                     setup_coros.add(
                         logging_context_wrapper(
                             getattr(instance, "_start_service"),
@@ -228,8 +253,6 @@ class ServiceContainer(object):
                         )
                     )
                     services_started.add((service_name, instance, log_level))
-                except AttributeError:
-                    pass
 
                 if getattr(instance, "_started_service", None):
                     services_started.add((service_name, instance, log_level))
@@ -399,11 +422,15 @@ class ServiceContainer(object):
                     self.stop_service()
 
         elif not tomodachi.SERVICE_EXIT_CODE:
-            # self.logger.warning("No transports defined in service file")
             logging.getLogger("tomodachi.init").warning(
                 "no transport handlers defined", module=self.module_name, file_path=self.file_path
             )
             tomodachi.SERVICE_EXIT_CODE = 1
+            self.stop_service()
+        else:
+            logging.getLogger("tomodachi.init").warning(
+                "error during initializing", module=self.module_name, file_path=self.file_path
+            )
             self.stop_service()
 
         self.services_started = services_started
