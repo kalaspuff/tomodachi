@@ -10,8 +10,8 @@ from contextvars import ContextVar
 from io import StringIO
 from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
 from typing import (
+    TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     Iterable,
     KeysView,
@@ -19,6 +19,7 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
+    TextIO,
     Tuple,
     Union,
     cast,
@@ -27,6 +28,12 @@ from typing import (
 
 import structlog
 from structlog._log_levels import _LEVEL_TO_NAME, _NAME_TO_LEVEL
+
+if TYPE_CHECKING:
+    try:
+        from structlog.typing import Context, EventDict, ExcInfo, Processor, WrappedLogger
+    except (ImportError, ModuleNotFoundError):
+        from structlog.types import Context, EventDict, ExcInfo, Processor, WrappedLogger
 
 LOGGER_DISABLED_KEY = "_logger_disabled"
 RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
@@ -87,9 +94,7 @@ class LogProcessorTimestamp:
     ) -> None:
         self.key = key
 
-    def __call__(
-        self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-    ) -> structlog.typing.EventDict:
+    def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
         if self.key not in event_dict:
             event_dict[self.key] = datetime.datetime.utcnow().isoformat(timespec="microseconds") + "Z"
         return event_dict
@@ -104,9 +109,7 @@ class AddMissingDictKey:
     ) -> None:
         self.key = key
 
-    def __call__(
-        self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-    ) -> structlog.typing.EventDict:
+    def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
         if self.key not in event_dict:
             event_dict[self.key] = ""
         return event_dict
@@ -121,18 +124,14 @@ class RemoveDictKey:
     ) -> None:
         self.key = key
 
-    def __call__(
-        self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-    ) -> structlog.typing.EventDict:
+    def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
         if self.key in event_dict:
             event_dict.pop(self.key)
         return event_dict
 
 
 class SquelchDisabledLogger:
-    def __call__(
-        self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-    ) -> structlog.typing.EventDict:
+    def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
         is_disabled = False
         name = event_dict.get("logger")
         if name:
@@ -147,7 +146,7 @@ class SquelchDisabledLogger:
         if is_disabled:
             _func = getattr(logger, method_name, None)
 
-            def func(self: structlog.typing.WrappedLogger, message: str) -> None:
+            def func(self: WrappedLogger, message: str) -> None:
                 setattr(logger, method_name, _func)
 
             setattr(logger, method_name, func.__get__(logger))
@@ -166,9 +165,7 @@ class RenameKeys:
             pairs = {k: v for k, v in pairs}
         self.pairs = pairs
 
-    def __call__(
-        self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-    ) -> structlog.typing.EventDict:
+    def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
         return {(self.pairs.get(k, k)): v for k, v in event_dict.items()}
 
 
@@ -177,13 +174,11 @@ _ordered_items = structlog.processors._items_sorter(
 )
 
 
-def serializer_func(event_dict: structlog.typing.EventDict, **dumps_kw: Any) -> str:
+def serializer_func(event_dict: EventDict, **dumps_kw: Any) -> str:
     return json.dumps(dict(_ordered_items(event_dict)), **dumps_kw)
 
 
-def merge_contextvars(
-    logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-) -> structlog.typing.EventDict:
+def merge_contextvars(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
     ctx = structlog.contextvars._CONTEXT_VARS.copy()
 
     for k, v in ctx.items():
@@ -193,9 +188,7 @@ def merge_contextvars(
     return event_dict
 
 
-def add_exception_info(
-    logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-) -> structlog.typing.EventDict:
+def add_exception_info(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
     exception = None
     for key in EXCEPTION_KEYS:
         if key in event_dict and isinstance(event_dict.get(key), BaseException):
@@ -252,31 +245,70 @@ def add_exception_info(
     return event_dict
 
 
-def remove_ellipsis_values(
-    logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-) -> structlog.typing.EventDict:
+def remove_ellipsis_values(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
     return {k: v for k, v in event_dict.items() if v is not Ellipsis}
 
 
 def to_logger_args_kwargs(
-    logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
+    logger: WrappedLogger, method_name: str, event_dict: EventDict
 ) -> Tuple[Tuple, Dict[str, Any]]:
     return ((event_dict.get("event") or "",), {"extra": {"_kw_from_structlog": event_dict}})
 
 
-class _StdLoggingFormatter(logging.Formatter):
-    _logger_type: Literal["json", "console", "null"]
-    _force_no_color: bool
+class _NullLoggerFormatter(logging.Formatter):
+    style: Union[logging.PercentStyle, logging.StrFormatStyle, logging.StringTemplateStyle]
+    fmt: str
 
     def __init__(
         self,
-        logger_type: Literal["json", "console", "null"] = TOMODACHI_LOGGER_TYPE,
+        fmt: Optional[str] = None,
+        datefmt: Optional[str] = None,
+        style: str = "%",
+        validate: bool = True,
+        *,
+        defaults: Dict[str, Any] = None,
+    ):
+        if style not in logging._STYLES:
+            raise ValueError("Style must be one of: %s" % ",".join(logging._STYLES.keys()))
+        self.style = logging._STYLES[style][0](fmt, defaults=defaults)
+        if validate:
+            self.style.validate()
+
+        self.fmt = self.style._fmt
+        self.datefmt = datefmt
+
+    @property
+    def _style(self) -> Union[logging.PercentStyle, logging.StrFormatStyle, logging.StringTemplateStyle]:  # type: ignore
+        if self.style._fmt != self.fmt:
+            self.fmt = self.style._fmt
+        return self.style
+
+    @property  # type: ignore
+    def _fmt(self) -> str:
+        if self.style._fmt != self.fmt:
+            self.fmt = self._style._fmt
+        return self.fmt
+
+    @_fmt.setter
+    def _fmt(self, fmt: str) -> None:
+        self.fmt = fmt
+        self.style._fmt = fmt
+
+    def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
+        return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
+
+
+class _StdLoggingFormatter(logging.Formatter):
+    _logger_type: Literal["json", "console", "no_color_console", "null"]
+
+    def __init__(
+        self,
+        logger_type: Literal["json", "console", "no_color_console", "null"] = TOMODACHI_LOGGER_TYPE,
         force_no_color: bool = False,
         *a: Any,
         **kw: Any,
     ) -> None:
         self._logger_type = logger_type
-        self._force_no_color = force_no_color
 
     def format(self, record: logging.LogRecord) -> str:
         if "_kw_from_structlog" in record.__dict__:
@@ -300,8 +332,6 @@ class _StdLoggingFormatter(logging.Formatter):
             method_name = "exception"
 
         logger = get_logger(record.name, logger_type=self._logger_type)
-        if getattr(logger._logger, "_force_no_color", False) is not self._force_no_color:
-            setattr(logger._logger, "_force_no_color", self._force_no_color)
 
         args, _ = logger._process_event(
             method_name,
@@ -314,14 +344,28 @@ class _StdLoggingFormatter(logging.Formatter):
         return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
 
 
-NullFormatter = _StdLoggingFormatter(logger_type="null")
+class StderrHandler(logging.StreamHandler):
+    def __init__(self, level: int = NOTSET) -> None:
+        logging.Handler.__init__(self, level)
+
+    @property
+    def stream(self) -> TextIO:  # type: ignore
+        return sys.stderr
+
+
+_default_fmt = "%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]"
+try:
+    if len(logging.root.handlers) and logging.root.handlers[0].formatter._fmt:
+        _default_fmt = logging.root.handlers[0].formatter._fmt
+except AttributeError:
+    pass
+
+NullFormatter = _NullLoggerFormatter(fmt=_default_fmt)
 ConsoleFormatter = _StdLoggingFormatter(logger_type="console")
-NoColorConsoleFormatter = _StdLoggingFormatter(logger_type="console", force_no_color=True)
+NoColorConsoleFormatter = _StdLoggingFormatter(logger_type="no_color_console")
 JSONFormatter = _StdLoggingFormatter(logger_type="json")
 
-DefaultFormatter = _defaultFormatter = _StdLoggingFormatter(logger_type=TOMODACHI_LOGGER_TYPE)
-DefaultHandler = _defaultHandler = logging.StreamHandler()
-DefaultHandler.setFormatter(DefaultFormatter)
+DefaultHandler = DefaultRootLoggerHandler = _defaultHandler = StderrHandler()
 
 
 @overload
@@ -335,7 +379,7 @@ def set_default_formatter(*, formatter: logging.Formatter) -> None:
 
 
 def set_default_formatter(
-    *, logger_type: Literal["json", "console", "null"] = "json", formatter: Optional[logging.Formatter] = None
+    *, logger_type: Optional[Literal["json", "console", "null"]] = None, formatter: Optional[logging.Formatter] = None
 ) -> None:
     if logger_type is not None:
         formatter = (
@@ -347,10 +391,22 @@ def set_default_formatter(
             if logger_type == "null"
             else None
         )
+
         if not formatter:
             raise Exception("Invalid logger type: '{}' (exected 'console', 'json' or 'null')".format(logger_type))
 
+    global TOMODACHI_LOGGER_TYPE
+    if isinstance(formatter, _StdLoggingFormatter):
+        TOMODACHI_LOGGER_TYPE = formatter._logger_type
+    else:
+        TOMODACHI_LOGGER_TYPE = "null"
+
     DefaultHandler.setFormatter(formatter)
+
+
+set_default_formatter(logger_type=TOMODACHI_LOGGER_TYPE)
+DefaultFormatter = _defaultFormatter = DefaultHandler.formatter
+print(TOMODACHI_LOGGER_TYPE)
 
 
 class LoggerContext(dict):
@@ -441,9 +497,9 @@ class LoggerContext(dict):
 class Logger(structlog.stdlib.BoundLogger):
     def __init__(
         self,
-        logger: structlog.typing.WrappedLogger,
-        processors: Iterable[structlog.typing.Processor],
-        context: Union[LoggerContext, structlog.typing.Context],
+        logger: WrappedLogger,
+        processors: Iterable[Processor],
+        context: Union[LoggerContext, Context],
     ):
         if (
             logger
@@ -550,7 +606,7 @@ class Logger(structlog.stdlib.BoundLogger):
         lno: int,
         msg: str,
         args: tuple[Any, ...],
-        exc_info: structlog.typing.ExcInfo,
+        exc_info: ExcInfo,
         func: str | None = None,
         extra: Any = None,
     ) -> logging.LogRecord:
@@ -658,19 +714,11 @@ class ConsoleRenderer(structlog.dev.ConsoleRenderer):
 
         self._colors = kw.get("colors", not NO_COLOR) and not NO_COLOR
 
-    def __call__(
-        self, logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-    ) -> str:
+    def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> str:
         sio = StringIO()
 
-        colors = self._colors and not getattr(logger, "_force_no_color", False)
-
-        if not colors:
-            _styles: Any = structlog.dev._PlainStyles
-            _level_to_color = self.get_default_level_styles(False)
-        else:
-            _styles = self._styles
-            _level_to_color = self._level_to_color
+        _styles = self._styles
+        _level_to_color = self._level_to_color
 
         ts = event_dict.pop("timestamp", None)
         if ts is not None:
@@ -770,6 +818,26 @@ console_logger: Logger = structlog.wrap_logger(
     cache_logger_on_first_use=False,
 )
 
+no_color_console_logger: Logger = structlog.wrap_logger(
+    None,
+    processors=[
+        structlog.processors.add_log_level,
+        merge_contextvars,
+        structlog.processors.StackInfoRenderer(),
+        structlog.dev.set_exc_info,
+        LogProcessorTimestamp(),
+        RenameKeys(pairs=RENAME_KEYS),
+        add_exception_info,
+        AddMissingDictKey(key="message"),
+        remove_ellipsis_values,
+        SquelchDisabledLogger(),
+        ConsoleRenderer(colors=False, sort_keys=False, event_key="message"),
+    ],
+    wrapper_class=Logger,
+    context_class=LoggerContext,
+    cache_logger_on_first_use=False,
+)
+
 json_logger: Logger = structlog.wrap_logger(
     None,
     processors=[
@@ -799,8 +867,18 @@ forward_logger: Logger = structlog.wrap_logger(
 )
 
 null_logger: Logger = structlog.wrap_logger(
-    None,
-    processors=[],
+    logging.getLogger("default"),
+    processors=[
+        # structlog.processors.add_log_level,
+        # merge_contextvars,
+        # structlog.processors.StackInfoRenderer(),
+        # structlog.dev.set_exc_info,
+        # LogProcessorTimestamp(),
+        # RenameKeys(pairs=RENAME_KEYS),
+        # add_exception_info,
+        # remove_ellipsis_values,
+        to_logger_args_kwargs,
+    ],
     wrapper_class=Logger,
     context_class=LoggerContext,
     cache_logger_on_first_use=False,
@@ -848,13 +926,20 @@ def is_logger_enabled(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBa
 
 
 def get_logger(
-    name: Optional[str] = None, *, logger_type: Literal["json", "console", "forward", "null"] = "forward"
+    name: Optional[str] = None,
+    *,
+    logger_type: Literal["json", "console", "no_color_console", "forward", "null"] = "forward",
 ) -> Logger:
+    if logger_type == "forward" and TOMODACHI_LOGGER_TYPE == "null":
+        logger_type = "null"
+
     logger = (
         json_logger
         if logger_type == "json"
         else console_logger
         if logger_type == "console"
+        else no_color_console_logger
+        if logger_type == "no_color_console"
         else forward_logger
         if logger_type == "forward"
         else null_logger
@@ -877,7 +962,62 @@ def get_logger(
 
 
 # CamelCase alias for `get_logger`.
-getLogger: Callable[..., Logger] = get_logger
+def getLogger(
+    name: Optional[str] = None, *, logger_type: Literal["json", "console", "forward", "null"] = "forward"
+) -> Logger:
+    return get_logger(name, logger_type=logger_type)
+
+
+is_configured: bool = False
+
+
+def configure(log_level: Union[int, str] = logging.INFO, force: bool = False) -> None:
+    log_level_ = log_level
+    if isinstance(log_level, str) and not log_level.isdigit():
+        log_level_ = getattr(logging, log_level.upper(), None) or logging.NOTSET
+    if isinstance(log_level, str) and log_level.isdigit():
+        log_level_ = int(log_level)
+    if type(log_level_) is not int or log_level_ == logging.NOTSET:
+        raise Exception(
+            f"Invalid log level: '{log_level}' (expected 'debug', 'info', 'warning', 'error' or 'critical')"
+        )
+    log_level = log_level_
+
+    logging.addLevelName(logging.NOTSET, "notset")
+    logging.addLevelName(logging.DEBUG, "debug")
+    logging.addLevelName(logging.INFO, "info")
+    logging.addLevelName(logging.WARN, "warn")
+    logging.addLevelName(logging.WARNING, "warning")
+    logging.addLevelName(logging.ERROR, "error")
+    logging.addLevelName(logging.FATAL, "fatal")
+    logging.addLevelName(logging.CRITICAL, "critical")
+
+    global _default_fmt
+    try:
+        if len(logging.root.handlers) and logging.root.handlers[0].formatter._fmt:
+            _default_fmt = logging.root.handlers[0].formatter._fmt
+    except AttributeError:
+        pass
+
+    NullFormatter._fmt = _default_fmt
+
+    try:
+        logging.basicConfig(
+            format=_default_fmt,
+            level=log_level,
+            handlers=[DefaultRootLoggerHandler],
+            force=force,
+        )
+
+        global is_configured
+        is_configured = True
+    except Exception as e:
+        logging.getLogger().warning("Unable to set log config: {}".format(str(e)))
+
+
+def configure_logging(log_level: Union[int, str] = logging.INFO, force: bool = False) -> None:
+    configure(log_level=log_level, force=force)
+
 
 # Set default logger context
 _context.set(LoggerContext(logger="default", **{LOGGER_DISABLED_KEY: False}))
@@ -898,8 +1038,13 @@ __all__ = [
     "JSONFormatter",
     "DefaultFormatter",
     "DefaultHandler",
+    "DefaultRootLoggerHandler",
     "_defaultFormatter",
     "_defaultHandler",
+    "StderrHandler",
+    "configure",
+    "configure_logging",
+    "is_configured",
     "CRITICAL",
     "DEBUG",
     "ERROR",

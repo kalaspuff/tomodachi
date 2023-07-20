@@ -36,22 +36,12 @@ def setup_logger() -> None:
     logging.addLevelName(logging.CRITICAL, "critical")
 
     try:
-        from tomodachi.logging import NoColorConsoleFormatter
+        from tomodachi.logging import NoColorConsoleFormatter, StderrHandler
 
-        class _StderrHandler(logging.StreamHandler):
-            def __init__(self, level=logging.NOTSET):
-                """
-                Initialize the handler.
-                """
-                logging.Handler.__init__(self, level)
-                self.formatter = NoColorConsoleFormatter
-
-            @property
-            def stream(self):
-                return sys.stderr
-
+        hdlr = StderrHandler()
+        hdlr.setFormatter(NoColorConsoleFormatter)
         logging.root.setLevel(logging.INFO)
-        logging.root.addHandler(_StderrHandler())  # captures stderr
+        logging.root.addHandler(hdlr)  # captures stderr
     except Exception as exc:
         logging.warning("Unable to import tomodachi.logging.DefaultHandler: {}".format(str(exc)))
 

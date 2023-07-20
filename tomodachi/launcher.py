@@ -80,8 +80,6 @@ class ServiceLauncher(object):
             )
             cls.restart_services = False
 
-        # logging.basicConfig(level=logging.DEBUG)
-
         loop: asyncio.AbstractEventLoop
         if sys.version_info.major == 3 and sys.version_info.minor < 10:
             loop = asyncio.get_event_loop()

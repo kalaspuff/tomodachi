@@ -11,7 +11,6 @@ from tomodachi.__version__ import __version__
 from tomodachi.config import parse_config_files
 from tomodachi.helpers.build_time import get_time_since_build
 from tomodachi.launcher import ServiceLauncher
-from tomodachi.logging import DefaultHandler as DefaultRootLoggerHandler
 
 
 class CLI:
@@ -314,24 +313,7 @@ class CLI:
                         sys.exit(2)
                     log_level = log_level_
 
-            logging.addLevelName(logging.NOTSET, "notset")
-            logging.addLevelName(logging.DEBUG, "debug")
-            logging.addLevelName(logging.INFO, "info")
-            logging.addLevelName(logging.WARN, "warn")
-            logging.addLevelName(logging.WARNING, "warning")
-            logging.addLevelName(logging.ERROR, "error")
-            logging.addLevelName(logging.FATAL, "fatal")
-            logging.addLevelName(logging.CRITICAL, "critical")
-
-            try:
-                logging.basicConfig(
-                    format="%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]",
-                    datefmt="%Y-%m-%dT%H:%M:%S",
-                    level=log_level,
-                    handlers=[DefaultRootLoggerHandler],
-                )
-            except Exception as e:
-                logging.getLogger().warning("Unable to set log config: {}".format(str(e)))
+            tomodachi.configure_logging(log_level=log_level)
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
         sys.exit(tomodachi.SERVICE_EXIT_CODE)
