@@ -779,9 +779,6 @@ class HttpTransport(Invoker):
         logger_handler = None
         if isinstance(access_log, str):
             from logging.handlers import WatchedFileHandler  # noqa  # isort:skip
-            import logging as logging_
-
-            response_logger = logging.getLogger("tomodachi.http.response")
 
             try:
                 wfh = WatchedFileHandler(filename=access_log)
@@ -795,7 +792,7 @@ class HttpTransport(Invoker):
             wfh.setFormatter(logging.JSONFormatter)
             logger_handler = wfh
             logger.info("logging to file", file_path=access_log)
-            response_logger.addHandler(logger_handler)
+            logging.getLogger("tomodachi.http.response").addHandler(logger_handler)
 
         async def _start_server() -> None:
             logger = logging.getLogger("tomodachi.http")

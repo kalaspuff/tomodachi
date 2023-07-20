@@ -215,34 +215,11 @@ def remove_ellipsis_values(
     return {k: v for k, v in event_dict.items() if v is not Ellipsis}
 
 
-def modify_logger(
-    logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
-) -> structlog.typing.EventDict:
-    name = str(event_dict.get("logger") or "")
-    if name:
-        event_dict["logger"] = name.split("tomodachi.", 1)[-1]
-    return event_dict
-
-
 def to_logger_args_kwargs(
     logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
 ) -> Tuple[Tuple, Dict[str, Any]]:
     return ((event_dict.get("event") or "",), {"extra": {"_kw_from_structlog": event_dict}})
 
-
-#     "extra": {
-#         k: v
-#         for k, v in {**event_dict, "_kw_from_structlog": event_dict}.items()
-#         if k not in ("message", "asctime", "exc_info", "exc_text", "stack_info", "msg")
-#     }
-
-
-# class _StdLoggingFormatter(logging.Formatter):
-#     def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
-#         return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
-#
-#
-# _defaultFormatter = _StdLoggingFormatter("%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]", "%Y-%m-%dT%H:%M:%S")
 
 STD_LOGGER_FIELDS = set(
     [
@@ -271,60 +248,8 @@ STD_LOGGER_FIELDS = set(
     ]
 )
 
-STD_LOGGER_RENAME_KEYS_MAP = {
-    "event": "event_",
-    "timestamp": "timestamp_",
-    "logger_": "logger_",
-    "logger_name": "logger_name_",
-    "level": "level_",
-    # stack
-    # exception
-    # exc_info
-}
 
-
-# class StdLoggingHandler(logging.Handler):
-#     def emit(self, record: logging.LogRecord) -> None:
-#         try:
-#             if "_kw_from_structlog" in record.__dict__:
-#                 kw = record.__dict__["_kw_from_structlog"]
-#             else:
-#                 extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
-#                 kw = {"extra": {k: v for k, v in record.__dict__.items() if k in extra_keys}}
-#                 # kw = {extra: record.extra}
-#                 if record.exc_info and "exception" not in kw:
-#                     kw["exception"] = record.exc_info[1]
-#                     kw["exc_info"] = True
-#
-#             if "timestamp" not in kw:
-#                 # kw["timestamp"] = self.formatter.formatTime(record) if self.formatter else None
-#                 kw["timestamp"] = (
-#                     datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
-#                 )
-#             if "event" not in kw:
-#                 kw["event"] = record.getMessage()
-#
-#             kw["logger"] = record.name
-#             kw["level"] = record.levelno
-#
-#             # print(record.getMessage(), kw["event"])
-#             get_logger(record.name, logger_type=TOMODACHI_LOGGER_TYPE).log(
-#                 # record.levelno,
-#                 # record.getMessage(),
-#                 # timestamp=self.formatter.formatTime(record) if self.formatter else None,
-#                 **kw,
-#             )
-#         except RecursionError:
-#             raise
-#         except Exception:
-#             self.handleError(record)
-
-
-# import logging.handlers
-# from io import TextIOWrapper
-
-
-class StdLoggingFormatter(logging.Formatter):
+class _StdLoggingFormatter(logging.Formatter):
     _logger_type: Literal["json", "console", "null"]
 
     def __init__(
@@ -338,16 +263,9 @@ class StdLoggingFormatter(logging.Formatter):
         else:
             extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
             kw = {"extra": {k: v for k, v in record.__dict__.items() if k in extra_keys}}
-            # kw = {extra: record.extra}
             if record.exc_info and "exception" not in kw:
                 kw["exception"] = record.exc_info[1]
                 kw["exc_info"] = True
-
-            # extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
-            # kw = {STD_LOGGER_RENAME_KEYS_MAP.get(k, k): v for k, v in record.__dict__.items() if k in extra_keys}
-            # if record.exc_info and "exception" not in kw:
-            #     kw["exception"] = record.exc_info[1]
-            #     kw["exc_info"] = True
 
         if "timestamp" not in kw:
             kw["timestamp"] = self.formatTime(record)
@@ -371,90 +289,13 @@ class StdLoggingFormatter(logging.Formatter):
         return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
 
 
-# class StdLoggingHandler(logging.Handler):
-#     def __init__(self, level: int = NOTSET) -> None:
-#         super().__init__(level=level)
-#         self.formatter = StdLoggingJSONFormatter()
-#
-#     def emit(self, record: logging.LogRecord) -> None:
-#         msg = self.formatter.format(record)
-#         get_logger(record.name, logger_type=TOMODACHI_LOGGER).log(record.levelno, msg)
+NullFormatter = _StdLoggingFormatter(logger_type="null")
+ConsoleFormatter = _StdLoggingFormatter(logger_type="console")
+JSONFormatter = _StdLoggingFormatter(logger_type="json")
 
-
-# class StdLoggingWatchedFileHandler(logging.handlers.WatchedFileHandler):
-#     _closed: bool
-#     stream: TextIOWrapper
-#
-#     def __init__(
-#         self,
-#         filename: str,
-#         mode: str = "a",
-#         encoding: Optional[str] = None,
-#         delay: bool = False,
-#         errors: Optional[str] = None,
-#     ):
-#         super().__init__(filename=filename, mode=mode, encoding=encoding, delay=delay, errors=errors)
-#         self.formatter = _defaultFormatter
-#
-#     @property
-#     def _stream(self) -> Optional[TextIOWrapper]:
-#         return self.stream
-#
-#     def emit(self, record: logging.LogRecord) -> None:
-#         self.reopenIfNeeded()
-#
-#         if self._stream is None:
-#             if self.mode != "w" or not self._closed:
-#                 self.stream = self._open()
-#
-#         if not self.stream:
-#             return
-#
-#         try:
-#             logger = get_logger(record.name, logger_type="json").bind(logger=f"{record.name}.json")
-#             args, kw = logger._process_event(
-#                 _LEVEL_TO_NAME[record.levelno],
-#                 record.getMessage(),
-#                 {"timestamp": self.formatter.formatTime(record) if self.formatter else None},
-#             )
-#             # return getattr(self._logger, method_name)(*args, **kw)
-#             logger.
-#             msg = self.format(record)
-#             stream = self.stream
-#             # issue 35046: merged two stream.writes into one.
-#             stream.write(msg + self.terminator)
-#             self.flush()
-#         except RecursionError:  # See issue 36272
-#             raise
-#         except Exception:
-#             self.handleError(record)
-#
-#     def emit(self, record: logging.LogRecord) -> None:
-#         try:
-#             extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
-#             kw = {STD_LOGGER_RENAME_KEYS_MAP.get(k, k): v for k, v in record.__dict__.items() if k in extra_keys}
-#             if record.exc_info and "exception" not in kw:
-#                 kw["exception"] = record.exc_info[1]
-#                 kw["exc_info"] = True
-#             logger = get_logger(record.name, logger_type="json").bind(logger=f"{record.name}.json")
-#             logger._logger = logging.handlers.WatchedFileHandler()
-#             get_logger(record.name, logger_type="json").bind(logger=f"{record.name}.json").log(
-#                 record.levelno,
-#                 record.getMessage(),
-#                 timestamp=self.formatter.formatTime(record) if self.formatter else None,
-#                 **kw,
-#             )
-#         except RecursionError:
-#             raise
-#         except Exception:
-#             self.handleError(record)
-
-
-# _defaultHandler = StdLoggingHandler()
-_defaultHandler = logging.StreamHandler()
-_defaultHandler.setFormatter(StdLoggingFormatter(logger_type=TOMODACHI_LOGGER_TYPE))
-
-JSONFormatter = StdLoggingFormatter(logger_type="json")
+DefaultFormatter = _defaultFormatter = _StdLoggingFormatter(logger_type=TOMODACHI_LOGGER_TYPE)
+DefaultHandler = _defaultHandler = logging.StreamHandler()
+DefaultHandler.setFormatter(DefaultFormatter)
 
 
 class LoggerContext(dict):
@@ -557,9 +398,7 @@ class Logger(structlog.stdlib.BoundLogger):
         ):
             logger = logging.getLogger(context.get("logger"))
 
-        self._logger = logger
-        self._processors = processors
-        self._context = context
+        super().__init__(logger, processors, context)
 
     def _proxy_to_logger(self, method_name: str, event: Optional[str] = None, *event_args: Any, **event_kw: Any) -> Any:
         if method_name == "error" and event_kw and event_kw.get("exc_info") is True:
@@ -582,11 +421,6 @@ class Logger(structlog.stdlib.BoundLogger):
                     return None
             except Exception:
                 pass
-
-        # if self.name == "tomodachi.http.response":
-        #     result, kwresult = super()._process_event(method_name, event, event_kw)
-        #     print(result, kwresult)
-        #     return
 
         return super()._proxy_to_logger(method_name, event, *event_args, **event_kw)
 
@@ -861,7 +695,6 @@ console_logger: Logger = structlog.wrap_logger(
         AddMissingDictKey(key="message"),
         remove_ellipsis_values,
         SquelchDisabledLogger(),
-        # modify_logger,
         ConsoleRenderer(colors=False if NO_COLOR else True, sort_keys=False, event_key="message"),
     ],
     wrapper_class=Logger,
@@ -991,8 +824,12 @@ __all__ = [
     "is_logger_disabled",
     "is_logger_enabled",
     "Logger",
-    "StdLoggingHandler",
-    "StdLoggingFormatter",
+    "NullFormatter",
+    "ConsoleFormatter",
+    "JSONFormatter",
+    "DefaultFormatter",
+    "DefaultHandler",
+    "_defaultFormatter",
     "_defaultHandler",
     "CRITICAL",
     "DEBUG",
