@@ -96,7 +96,7 @@ def test_cli_start_service_stopped_with_sigterm(capsys: Any) -> None:
 
     out, err = capsys.readouterr()
     assert "initializing service instance" in (out + err)
-    assert "tomodachi versions      ⇢ {}".format(tomodachi.__version__) in (out + err)
+    assert "tomodachi version      ⇢ {}".format(tomodachi.__version__) in (out + err)
 
 
 def test_cli_start_service_stopped_with_sigint(capsys: Any) -> None:
