@@ -149,6 +149,9 @@ def render_banner(
     actual_file_paths = []
     potential_file_paths = set()
 
+    importer_logger_disabled_value = logging.get_logger("tomodachi.importer")._logger.disabled
+    logging.get_logger("tomodachi.importer")._logger.disabled = True
+
     for file_path in service_files:
         file_path_ = file_path
         potential_file_paths.add(file_path)
@@ -156,7 +159,6 @@ def render_banner(
         try:
 
             async def _import_module_without_logger() -> Any:
-                logging.disable_logger("tomodachi.importer")
                 return ServiceImporter.import_service_file(file_path)
 
             service_import = loop.run_until_complete(_import_module_without_logger())
@@ -181,6 +183,8 @@ def render_banner(
 
         if file_path_ not in actual_file_paths:
             actual_file_paths.append(file_path_)
+
+    logging.get_logger("tomodachi.importer")._logger.disabled = importer_logger_disabled_value
 
     for file_path in potential_file_paths:
         if file_path in process_cmd:

@@ -109,7 +109,6 @@ class RequestHandler(web_protocol.RequestHandler):
 
                 status_code = 499
                 logging.getLogger("tomodachi.http.response").info(
-                    # "http [{}]: {} {}".format(status_code, request.method, request.path),
                     status_code=status_code,
                     remote_ip=request_ip or "",
                     auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -148,13 +147,22 @@ class RequestHandler(web_protocol.RequestHandler):
                 if peername:
                     request_ip, _ = peername
             if self._access_log:
-                logging.getLogger("tomodachi.http.response").info(
-                    "bad http request [{}]".format(status),
-                    status_code=status,
-                    remote_ip=request_ip or "",
-                    auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
-                    request_content_length=len(msg),
-                )
+                if not status or status >= 500:
+                    logging.getLogger("tomodachi.http.response").warning(
+                        "error in request handling",
+                        status_code=status,
+                        remote_ip=request_ip or "",
+                        auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                        request_content_length=len(msg),
+                    )
+                else:
+                    logging.getLogger("tomodachi.http.response").info(
+                        "bad http request",
+                        status_code=status,
+                        remote_ip=request_ip or "",
+                        auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                        request_content_length=len(msg),
+                    )
 
         return resp
 
@@ -784,17 +792,10 @@ class HttpTransport(Invoker):
                 logger.warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             wfh.setLevel(logging.DEBUG)
-            response_logger.setLevel(logging.DEBUG)
-            logger.info("logging to file", file_path=access_log)
+            wfh.setFormatter(logging.JSONFormatter)
             logger_handler = wfh
-            response_logger._logger = logging_.getLogger("tomodachi.http.response")
-            response_logger.removeHandler(logging._defaultHandler)
+            logger.info("logging to file", file_path=access_log)
             response_logger.addHandler(logger_handler)
-            response_logger._logger.propagate = False
-
-            response_logger.info("test")
-            with open("/tmp/03c2ad00-d47d-4569-84a3-0958f88f6c14.log", "r") as fp:
-                print(fp.read())
 
         async def _start_server() -> None:
             logger = logging.getLogger("tomodachi.http")
@@ -832,15 +833,41 @@ class HttpTransport(Invoker):
                 except web.HTTPException as e:
                     error_handler = context.get("_http_error_handler", {}).get(e.status, None)
                     if error_handler:
-                        response = await error_handler(request)
+                        try:
+                            response = await error_handler(request)
+                        except Exception as error_handler_exception:
+                            logging.getLogger("exception").exception(
+                                "Uncaught exception: {}".format(str(error_handler_exception))
+                            )
+                            error_handler = context.get("_http_error_handler", {}).get(500, None)
+                            if error_handler:
+                                try:
+                                    response = await error_handler(request)
+                                except Exception as fallback_error_handler_exception:
+                                    logging.getLogger("exception").exception(
+                                        "Uncaught exception: {}".format(str(fallback_error_handler_exception))
+                                    )
+                                    response = web.HTTPInternalServerError()
+                                    response.body = b""
+                            else:
+                                response = web.HTTPInternalServerError()
+                                response.body = b""
                     else:
                         response = e
                         response.body = str(e).encode("utf-8")
                 except Exception as e:
-                    error_handler = context.get("_http_error_handler", {}).get(500, None)
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    error_handler = context.get("_http_error_handler", {}).get(500, None)
                     if error_handler:
-                        response = await error_handler(request)
+                        try:
+                            response = await error_handler(request)
+                        except Exception as fallback_error_handler_exception:
+                            logging.getLogger("exception").exception(
+                                "Uncaught exception: {}".format(str(fallback_error_handler_exception))
+                            )
+                            response = web.HTTPInternalServerError()
+                            response.body = b""
+
                     else:
                         response = web.HTTPInternalServerError()
                         response.body = b""
@@ -974,12 +1001,20 @@ class HttpTransport(Invoker):
                         except KeyError:
                             pass
                         raise
-                except Exception:
+                except web.HTTPException:
                     decrease_execution_context_value("http_current_tasks")
                     try:
                         context["_http_active_requests"].remove(task)
                     except KeyError:
                         pass
+                    raise
+                except Exception as e:
+                    decrease_execution_context_value("http_current_tasks")
+                    try:
+                        context["_http_active_requests"].remove(task)
+                    except KeyError:
+                        pass
+                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     raise
                 except BaseException:
                     decrease_execution_context_value("http_current_tasks")

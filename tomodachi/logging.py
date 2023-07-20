@@ -12,12 +12,12 @@ from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
 from typing import Any, Callable, Dict, Iterable, KeysView, Literal, Optional, Protocol, Sequence, Tuple, Union, cast
 
 import structlog
-from structlog._log_levels import _NAME_TO_LEVEL
+from structlog._log_levels import _LEVEL_TO_NAME, _NAME_TO_LEVEL
 
 LOGGER_DISABLED_KEY = "_logger_disabled"
 RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
 EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message")
-TOMODACHI_LOGGER: Literal["json", "console"] = "console"
+TOMODACHI_LOGGER_TYPE: Literal["json", "console", "null"] = "console"
 
 NO_COLOR = any(
     [
@@ -224,33 +224,237 @@ def modify_logger(
     return event_dict
 
 
-class _StdLoggingFormatter(logging.Formatter):
+def to_logger_args_kwargs(
+    logger: structlog.typing.WrappedLogger, method_name: str, event_dict: structlog.typing.EventDict
+) -> Tuple[Tuple, Dict[str, Any]]:
+    return ((event_dict.get("event") or "",), {"extra": {"_kw_from_structlog": event_dict}})
+
+
+#     "extra": {
+#         k: v
+#         for k, v in {**event_dict, "_kw_from_structlog": event_dict}.items()
+#         if k not in ("message", "asctime", "exc_info", "exc_text", "stack_info", "msg")
+#     }
+
+
+# class _StdLoggingFormatter(logging.Formatter):
+#     def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
+#         return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
+#
+#
+# _defaultFormatter = _StdLoggingFormatter("%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]", "%Y-%m-%dT%H:%M:%S")
+
+STD_LOGGER_FIELDS = set(
+    [
+        "name",
+        "levelno",
+        "levelname",
+        "pathname",
+        "filename",
+        "module",
+        "lineno",
+        "funcName",
+        "created",
+        "asctime",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "process",
+        "message",
+        "args",
+        "exc_text",
+        "stack_info",
+        "msg",
+        "processName",
+        "exc_info",
+    ]
+)
+
+STD_LOGGER_RENAME_KEYS_MAP = {
+    "event": "event_",
+    "timestamp": "timestamp_",
+    "logger_": "logger_",
+    "logger_name": "logger_name_",
+    "level": "level_",
+    # stack
+    # exception
+    # exc_info
+}
+
+
+# class StdLoggingHandler(logging.Handler):
+#     def emit(self, record: logging.LogRecord) -> None:
+#         try:
+#             if "_kw_from_structlog" in record.__dict__:
+#                 kw = record.__dict__["_kw_from_structlog"]
+#             else:
+#                 extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
+#                 kw = {"extra": {k: v for k, v in record.__dict__.items() if k in extra_keys}}
+#                 # kw = {extra: record.extra}
+#                 if record.exc_info and "exception" not in kw:
+#                     kw["exception"] = record.exc_info[1]
+#                     kw["exc_info"] = True
+#
+#             if "timestamp" not in kw:
+#                 # kw["timestamp"] = self.formatter.formatTime(record) if self.formatter else None
+#                 kw["timestamp"] = (
+#                     datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
+#                 )
+#             if "event" not in kw:
+#                 kw["event"] = record.getMessage()
+#
+#             kw["logger"] = record.name
+#             kw["level"] = record.levelno
+#
+#             # print(record.getMessage(), kw["event"])
+#             get_logger(record.name, logger_type=TOMODACHI_LOGGER_TYPE).log(
+#                 # record.levelno,
+#                 # record.getMessage(),
+#                 # timestamp=self.formatter.formatTime(record) if self.formatter else None,
+#                 **kw,
+#             )
+#         except RecursionError:
+#             raise
+#         except Exception:
+#             self.handleError(record)
+
+
+# import logging.handlers
+# from io import TextIOWrapper
+
+
+class StdLoggingFormatter(logging.Formatter):
+    _logger_type: Literal["json", "console", "null"]
+
+    def __init__(
+        self, logger_type: Literal["json", "console", "null"] = TOMODACHI_LOGGER_TYPE, *a: Any, **kw: Any
+    ) -> None:
+        self._logger_type = logger_type
+
+    def format(self, record: logging.LogRecord) -> str:
+        if "_kw_from_structlog" in record.__dict__:
+            kw: Dict[str, Any] = record.__dict__["_kw_from_structlog"]
+        else:
+            extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
+            kw = {"extra": {k: v for k, v in record.__dict__.items() if k in extra_keys}}
+            # kw = {extra: record.extra}
+            if record.exc_info and "exception" not in kw:
+                kw["exception"] = record.exc_info[1]
+                kw["exc_info"] = True
+
+            # extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
+            # kw = {STD_LOGGER_RENAME_KEYS_MAP.get(k, k): v for k, v in record.__dict__.items() if k in extra_keys}
+            # if record.exc_info and "exception" not in kw:
+            #     kw["exception"] = record.exc_info[1]
+            #     kw["exc_info"] = True
+
+        if "timestamp" not in kw:
+            kw["timestamp"] = self.formatTime(record)
+        if "event" not in kw:
+            kw["event"] = record.getMessage()
+
+        kw["logger"] = record.name
+
+        method_name = _LEVEL_TO_NAME[record.levelno]
+        if method_name == "error" and kw and kw.get("exc_info") is True:
+            method_name = "exception"
+
+        args, _ = get_logger(record.name, logger_type=self._logger_type)._process_event(
+            method_name,
+            None,
+            kw,
+        )
+        return cast(str, args[0])
+
     def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
         return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
 
 
-_defaultFormatter = _StdLoggingFormatter("%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]", "%Y-%m-%dT%H:%M:%S")
+# class StdLoggingHandler(logging.Handler):
+#     def __init__(self, level: int = NOTSET) -> None:
+#         super().__init__(level=level)
+#         self.formatter = StdLoggingJSONFormatter()
+#
+#     def emit(self, record: logging.LogRecord) -> None:
+#         msg = self.formatter.format(record)
+#         get_logger(record.name, logger_type=TOMODACHI_LOGGER).log(record.levelno, msg)
 
 
-class StdLoggingHandler(logging.Handler):
-    def __init__(self, level: int = NOTSET) -> None:
-        super().__init__(level=level)
-        self.formatter = _defaultFormatter
+# class StdLoggingWatchedFileHandler(logging.handlers.WatchedFileHandler):
+#     _closed: bool
+#     stream: TextIOWrapper
+#
+#     def __init__(
+#         self,
+#         filename: str,
+#         mode: str = "a",
+#         encoding: Optional[str] = None,
+#         delay: bool = False,
+#         errors: Optional[str] = None,
+#     ):
+#         super().__init__(filename=filename, mode=mode, encoding=encoding, delay=delay, errors=errors)
+#         self.formatter = _defaultFormatter
+#
+#     @property
+#     def _stream(self) -> Optional[TextIOWrapper]:
+#         return self.stream
+#
+#     def emit(self, record: logging.LogRecord) -> None:
+#         self.reopenIfNeeded()
+#
+#         if self._stream is None:
+#             if self.mode != "w" or not self._closed:
+#                 self.stream = self._open()
+#
+#         if not self.stream:
+#             return
+#
+#         try:
+#             logger = get_logger(record.name, logger_type="json").bind(logger=f"{record.name}.json")
+#             args, kw = logger._process_event(
+#                 _LEVEL_TO_NAME[record.levelno],
+#                 record.getMessage(),
+#                 {"timestamp": self.formatter.formatTime(record) if self.formatter else None},
+#             )
+#             # return getattr(self._logger, method_name)(*args, **kw)
+#             logger.
+#             msg = self.format(record)
+#             stream = self.stream
+#             # issue 35046: merged two stream.writes into one.
+#             stream.write(msg + self.terminator)
+#             self.flush()
+#         except RecursionError:  # See issue 36272
+#             raise
+#         except Exception:
+#             self.handleError(record)
+#
+#     def emit(self, record: logging.LogRecord) -> None:
+#         try:
+#             extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
+#             kw = {STD_LOGGER_RENAME_KEYS_MAP.get(k, k): v for k, v in record.__dict__.items() if k in extra_keys}
+#             if record.exc_info and "exception" not in kw:
+#                 kw["exception"] = record.exc_info[1]
+#                 kw["exc_info"] = True
+#             logger = get_logger(record.name, logger_type="json").bind(logger=f"{record.name}.json")
+#             logger._logger = logging.handlers.WatchedFileHandler()
+#             get_logger(record.name, logger_type="json").bind(logger=f"{record.name}.json").log(
+#                 record.levelno,
+#                 record.getMessage(),
+#                 timestamp=self.formatter.formatTime(record) if self.formatter else None,
+#                 **kw,
+#             )
+#         except RecursionError:
+#             raise
+#         except Exception:
+#             self.handleError(record)
 
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            get_logger(record.name).log(
-                record.levelno,
-                record.getMessage(),
-                timestamp=self.formatter.formatTime(record) if self.formatter else None,
-            )
-        except RecursionError:
-            raise
-        except Exception:
-            self.handleError(record)
 
+# _defaultHandler = StdLoggingHandler()
+_defaultHandler = logging.StreamHandler()
+_defaultHandler.setFormatter(StdLoggingFormatter(logger_type=TOMODACHI_LOGGER_TYPE))
 
-_defaultHandler = StdLoggingHandler()
+JSONFormatter = StdLoggingFormatter(logger_type="json")
 
 
 class LoggerContext(dict):
@@ -339,7 +543,28 @@ class LoggerContext(dict):
 
 
 class Logger(structlog.stdlib.BoundLogger):
+    def __init__(
+        self,
+        logger: structlog.typing.WrappedLogger,
+        processors: Iterable[structlog.typing.Processor],
+        context: Union[LoggerContext, structlog.typing.Context],
+    ):
+        if (
+            logger
+            and isinstance(logger, logging.Logger)
+            and logger.name == "default"
+            and context.get("logger", "default") != "default"
+        ):
+            logger = logging.getLogger(context.get("logger"))
+
+        self._logger = logger
+        self._processors = processors
+        self._context = context
+
     def _proxy_to_logger(self, method_name: str, event: Optional[str] = None, *event_args: Any, **event_kw: Any) -> Any:
+        if method_name == "error" and event_kw and event_kw.get("exc_info") is True:
+            method_name = "exception"
+
         try:
             if not self.isEnabledFor(_NAME_TO_LEVEL[method_name]):
                 return None
@@ -357,6 +582,11 @@ class Logger(structlog.stdlib.BoundLogger):
                     return None
             except Exception:
                 pass
+
+        # if self.name == "tomodachi.http.response":
+        #     result, kwresult = super()._process_event(method_name, event, event_kw)
+        #     print(result, kwresult)
+        #     return
 
         return super()._proxy_to_logger(method_name, event, *event_args, **event_kw)
 
@@ -636,7 +866,7 @@ console_logger: Logger = structlog.wrap_logger(
     ],
     wrapper_class=Logger,
     context_class=LoggerContext,
-    cache_logger_on_first_use=True,
+    cache_logger_on_first_use=False,
 )
 
 json_logger: Logger = structlog.wrap_logger(
@@ -656,7 +886,23 @@ json_logger: Logger = structlog.wrap_logger(
     ],
     wrapper_class=Logger,
     context_class=LoggerContext,
-    cache_logger_on_first_use=True,
+    cache_logger_on_first_use=False,
+)
+
+forward_logger: Logger = structlog.wrap_logger(
+    logging.getLogger("default"),
+    processors=[to_logger_args_kwargs],
+    wrapper_class=Logger,
+    context_class=LoggerContext,
+    cache_logger_on_first_use=False,
+)
+
+null_logger: Logger = structlog.wrap_logger(
+    None,
+    processors=[],
+    wrapper_class=Logger,
+    context_class=LoggerContext,
+    cache_logger_on_first_use=False,
 )
 
 
@@ -700,10 +946,24 @@ def is_logger_enabled(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBa
     return not is_logger_disabled(logger)
 
 
-def get_logger(name: Optional[str] = None) -> Logger:
-    logger = console_logger if TOMODACHI_LOGGER == "console" else json_logger if TOMODACHI_LOGGER == "json" else None
+def get_logger(
+    name: Optional[str] = None, *, logger_type: Literal["json", "console", "forward", "null"] = "forward"
+) -> Logger:
+    logger = (
+        console_logger
+        if logger_type == "console"
+        else json_logger
+        if logger_type == "json"
+        else forward_logger
+        if logger_type == "forward"
+        else null_logger
+        if logger_type == "null"
+        else None
+    )
     if not logger:
-        raise Exception("Invalid TOMODACHI_LOGGER value: '{}' (exected 'console' or 'json')".format(TOMODACHI_LOGGER))
+        raise Exception(
+            "Invalid logger type: '{}' (exected 'console', 'json', 'forward' or 'null')".format(logger_type)
+        )
 
     if name:
         ctx = _loggers.get().get(name)
@@ -732,6 +992,7 @@ __all__ = [
     "is_logger_enabled",
     "Logger",
     "StdLoggingHandler",
+    "StdLoggingFormatter",
     "_defaultHandler",
     "CRITICAL",
     "DEBUG",
