@@ -307,7 +307,7 @@ class CLI:
                     log_level_ = getattr(logging, arg_value.upper(), None) or logging.NOTSET
                     if type(log_level_) is not int or log_level_ == logging.NOTSET:
                         print(
-                            "Invalid log level: '{}' - expected: 'debug', 'info', 'warning', 'error' or 'critical'".format(
+                            "Invalid log level: '{}' (expected 'debug', 'info', 'warning', 'error' or 'critical')".format(
                                 arg_value
                             )
                         )
