@@ -318,7 +318,7 @@ class CLI:
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
 
         # Cleanup log handlers
-        tomodachi.logging.remove_all_handlers()
+        tomodachi.logging.remove_handlers()
 
         sys.exit(tomodachi.SERVICE_EXIT_CODE)
 

@@ -318,7 +318,7 @@ class ServiceLauncher(object):
 
             if cls.restart_services:
                 # Cleanup log handlers
-                logging.remove_all_handlers()
+                logging.remove_handlers()
 
             current_modules = [m for m in sys.modules.keys()]
             for m in current_modules:

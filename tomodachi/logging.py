@@ -1070,8 +1070,11 @@ def configure(log_level: Union[int, str] = logging.INFO, force: bool = False) ->
         logging.getLogger().warning("Unable to set log config: {}".format(str(e)))
 
 
-def remove_all_handlers() -> None:
+def remove_handlers() -> None:
     for name, logger in logging.Logger.manager.loggerDict.items():
+        if name not in ("tomodachi",) and not name.startswith("tomodachi."):
+            continue
+
         if isinstance(logger, logging.PlaceHolder):
             continue
 
@@ -1090,6 +1093,8 @@ def remove_all_handlers() -> None:
                 handler.release()
 
     for handler in logging.root.handlers:
+        if handler is not DefaultRootLoggerHandler:
+            continue
         logging.root.removeHandler(handler)
         try:
             handler.acquire()
@@ -1126,7 +1131,7 @@ __all__ = [
     "StderrHandler",
     "configure",
     "set_default_formatter",
-    "remove_all_handlers",
+    "remove_handlers",
     "is_configured",
     "CRITICAL",
     "DEBUG",
