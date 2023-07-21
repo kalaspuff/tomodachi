@@ -25,7 +25,6 @@ class ServiceContainer(object):
         ).rsplit(".", 1)[-1]
         self.configuration = configuration
         self.logger = logging.getLogger("tomodachi.lifecycle")
-        # self.logger = self.logger.bind(file_path=self.file_path)
 
         self._close_waiter: Optional[asyncio.Future] = None
         self.started_waiter: Optional[asyncio.Future] = None

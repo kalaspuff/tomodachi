@@ -312,9 +312,14 @@ class CLI:
                         sys.exit(2)
                     log_level = log_level_
 
-            tomodachi.configure_logging(log_level=log_level)
+            tomodachi.logging.set_default_formatter()
+            tomodachi.logging.configure(log_level=log_level)
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
+
+        # Cleanup log handlers
+        tomodachi.logging.remove_all_handlers()
+
         sys.exit(tomodachi.SERVICE_EXIT_CODE)
 
     def main(self, argv: List[str]) -> None:

@@ -112,7 +112,6 @@ class ServiceLauncher(object):
                     try:
                         ServiceImporter.import_service_file(file)
                     except (SyntaxError, IndentationError) as e:
-                        # logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                         error_filename = getattr(e, "filename", "")
                         if error_filename.startswith(cwd):
                             error_filename = error_filename[len(cwd) :].lstrip("/")
@@ -141,8 +140,6 @@ class ServiceLauncher(object):
                                 if m == module_name or (len(m) > len(file) and module_name_full_path.endswith(m)):
                                     ServiceImporter.import_module(file)
                         except (SyntaxError, IndentationError) as e:
-                            # logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                            # logging.getLogger("tomodachi.watcher").warning("cannot restart due to errors")
                             error_filename = getattr(e, "filename", "")
                             if error_filename.startswith(cwd):
                                 error_filename = error_filename[len(cwd) :].lstrip("/")
@@ -171,6 +168,11 @@ class ServiceLauncher(object):
 
         restarting = False
         while cls.restart_services:
+            if restarting:
+                log_level = logging.INFO
+                tomodachi.logging.set_default_formatter()
+                tomodachi.logging.configure(log_level=log_level)
+
             init_timestamp = time.time()
             init_timestamp_str = (
                 datetime.datetime.utcfromtimestamp(init_timestamp).isoformat(timespec="microseconds") + "Z"
@@ -192,10 +194,6 @@ class ServiceLauncher(object):
                     event_loop_alias = "{}.{}".format(loop.__class__.__module__, loop.__class__.__name__)
             except Exception:
                 event_loop_alias = str(loop)
-
-            # tomodachi.get_contextvar("loop.type").set(event_loop_alias)
-            # tomodachi.get_contextvar("loop.version").set(event_loop_version)
-            # tomodachi.get_contextvar("init.timestamp").set(init_timestamp_str)
 
             clear_services()
             clear_execution_context()
@@ -267,8 +265,6 @@ class ServiceLauncher(object):
             except tomodachi.importer.ServicePackageError:
                 pass
             except (SyntaxError, IndentationError) as e:
-                # logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                # logging.getLogger("tomodachi.watcher").warning("cannot restart due to errors")
                 cwd = os.getcwd()
                 error_filename = getattr(e, "filename", "")
                 if error_filename.startswith(cwd):
@@ -320,6 +316,10 @@ class ServiceLauncher(object):
                     for signame in ("SIGINT", "SIGTERM"):
                         loop.remove_signal_handler(getattr(signal, signame))
 
+            if cls.restart_services:
+                # Cleanup log handlers
+                logging.remove_all_handlers()
+
             current_modules = [m for m in sys.modules.keys()]
             for m in current_modules:
                 if m not in init_modules and m not in SAFE_MODULES:
@@ -328,6 +328,7 @@ class ServiceLauncher(object):
             importlib.reload(tomodachi.container)
             importlib.reload(tomodachi.invoker)
             importlib.reload(tomodachi.invoker.base)
+            importlib.reload(tomodachi.logging)
             importlib.reload(tomodachi.importer)
 
             restarting = True

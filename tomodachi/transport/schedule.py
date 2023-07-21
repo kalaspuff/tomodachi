@@ -349,11 +349,6 @@ class Scheduler(Invoker):
                 if not sleep_task.done():
                     sleep_task.cancel()
                 else:
-                    # logging.getLogger("tomodachi.scheduler").warning(
-                    #     "Scheduled loop for function '{}' cannot start yet - start waiter not done for 10 seconds".format(
-                    #         func.__name__
-                    #     )
-                    # )
                     logger.warning(
                         "scheduled function loop cannot start yet - start waiter not done for 10 seconds",
                     )
@@ -362,11 +357,6 @@ class Scheduler(Invoker):
                     if not sleep_task.done():
                         sleep_task.cancel()
                     else:
-                        # logging.getLogger("tomodachi.scheduler").warning(
-                        #     "Scheduled loop for function '{}' cannot start yet - start waiter not done for 120 seconds".format(
-                        #         func.__name__
-                        #     )
-                        # )
                         logger.warning(
                             "scheduled function loop cannot start yet - start waiter not done for 120 seconds",
                         )
@@ -379,11 +369,6 @@ class Scheduler(Invoker):
                 await start_waiter
 
                 if not cls.close_waiter or cls.close_waiter.done():
-                    # logging.getLogger("tomodachi.scheduler").warning(
-                    #     "Scheduled loop for function '{}' never started before service termination".format(
-                    #         func.__name__
-                    #     )
-                    # )
                     logger.warning(
                         "scheduled function loop never started before service termination",
                     )
@@ -402,11 +387,6 @@ class Scheduler(Invoker):
                 await start_waiter
 
                 if not cls.close_waiter or cls.close_waiter.done():
-                    # logging.getLogger("tomodachi.scheduler").info(
-                    #     "Scheduled loop for function '{}' never started before service termination".format(
-                    #         func.__name__
-                    #     )
-                    # )
                     logger.warning(
                         "scheduled function loop never started before service termination",
                     )
@@ -429,11 +409,6 @@ class Scheduler(Invoker):
                             next_call_at = cls.next_call_at(current_time, interval, timestamp, timezone)
                             if prev_call_at and prev_call_at == next_call_at:
                                 if int(last_time + 60) < int(actual_time):
-                                    # logging.getLogger("tomodachi.scheduler").warning(
-                                    #     "Scheduled tasks for function '{}' is out of time sync and may not run".format(
-                                    #         func.__name__
-                                    #     )
-                                    # )
                                     logger.warning(
                                         "scheduled function loop has lost time sync and may not run",
                                     )
@@ -471,9 +446,6 @@ class Scheduler(Invoker):
                     if len(tasks) >= 20:
                         if not too_many_tasks and len(tasks) >= threshold:
                             too_many_tasks = True
-                            # logging.getLogger("tomodachi.scheduler").warning(
-                            #     "Too many scheduled tasks ({}) for function '{}'".format(threshold, func.__name__)
-                            # )
                             logger.warning(
                                 "too many scheduled tasks for function in scheduled function loop",
                                 task_count=len(tasks),
@@ -490,9 +462,6 @@ class Scheduler(Invoker):
                         next_call_at = cls.next_call_at(current_time + 10, interval, timestamp, timezone)
                         continue
                     if too_many_tasks and len(tasks) < 15:
-                        # logging.getLogger("tomodachi.scheduler").info(
-                        #     "Tasks within threshold for function '{}' - resumed".format(func.__name__)
-                        # )
                         threshold = 20
                         logger.info(
                             "scheduled function loop resumed as task count is within threshold",
@@ -530,9 +499,6 @@ class Scheduler(Invoker):
                     if task.done():
                         continue
                     task_name = getattr(task, "get_name")() if hasattr(task, "get_name") else func.__name__
-                    # logging.getLogger("tomodachi.scheduler").warning(
-                    #     "Awaiting task '{}' to finish execution".format(task_name)
-                    # )
                     logger.warning(
                         "awaiting task to complete",
                         task_name=task_name,
@@ -547,9 +513,6 @@ class Scheduler(Invoker):
                         if task.done():
                             continue
                         task_name = getattr(task, "get_name")() if hasattr(task, "get_name") else func.__name__
-                        # logging.getLogger("tomodachi.scheduler").warning(
-                        #     "Still awaiting task '{}' to finish execution".format(task_name)
-                        # )
                         logger.warning(
                             "still awaiting task to finish",
                             task_name=task_name,

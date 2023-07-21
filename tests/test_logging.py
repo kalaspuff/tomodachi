@@ -1,8 +1,6 @@
 import os
 from typing import Any
 
-import pytest
-
 from run_test_service_helper import start_service
 
 
@@ -17,9 +15,18 @@ def test_logging_service(capsys: Any, loop: Any) -> None:
 
     loop.run_until_complete(future)
 
-    # logging to file is deprecated and does not work anymore so nothing should be written to log file
-    with pytest.raises(FileNotFoundError):
-        open(log_path)
+    with open(log_path) as f:
+        log_content = str(f.read().strip())
+
+        assert "tomodachi.lifecycle.handler" in log_content
+
+        log_lines = log_content.split("\n")
+
+        assert 3 == len(log_lines)
+
+        assert "_start_service" in log_lines[0]
+        assert "_started_service" in log_lines[1]
+        assert "_stop_service" in log_lines[2]
 
     try:
         os.remove(log_path)

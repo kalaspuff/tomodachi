@@ -398,6 +398,11 @@ def set_default_formatter(formatter: logging.Formatter, /) -> None:
     ...
 
 
+@overload
+def set_default_formatter(_arg: Literal[None] = None, /) -> None:
+    ...
+
+
 def set_default_formatter(
     _arg: Optional[Union[logging.Formatter, Literal["json", "console", "no_color_console", "null"]]] = None,
     /,
@@ -409,6 +414,12 @@ def set_default_formatter(
         raise TypeError("Invalid combination of arguments given to set_default_formatter()")
     if logger_type is not None and formatter is not None:
         raise TypeError("Invalid combination of arguments given to set_default_formatter()")
+
+    global TOMODACHI_LOGGER_TYPE
+
+    if _arg is None and logger_type is None and formatter is None:
+        logger_type = TOMODACHI_LOGGER_TYPE
+
     if _arg is not None:
         if isinstance(_arg, logging.Formatter):
             formatter = _arg
@@ -433,7 +444,9 @@ def set_default_formatter(
         if not formatter:
             raise Exception("Invalid logger type: '{}' (exected 'console', 'json' or 'null')".format(logger_type))
 
-    global TOMODACHI_LOGGER_TYPE
+    if not formatter:
+        raise Exception("Argument formatter missing (expected instance of logging.Formatter)')")
+
     if isinstance(formatter, _StdLoggingFormatter):
         TOMODACHI_LOGGER_TYPE = formatter._logger_type
     else:
@@ -442,8 +455,8 @@ def set_default_formatter(
     DefaultHandler.setFormatter(formatter)
 
 
-set_default_formatter(TOMODACHI_LOGGER_TYPE)
-DefaultFormatter = _defaultFormatter = DefaultHandler.formatter
+set_default_formatter()
+DefaultFormatter = _defaultFormatter = cast(Union[_StdLoggingFormatter, _NullLoggerFormatter], DefaultHandler.formatter)
 
 
 class LoggerContext(dict):
@@ -1057,8 +1070,35 @@ def configure(log_level: Union[int, str] = logging.INFO, force: bool = False) ->
         logging.getLogger().warning("Unable to set log config: {}".format(str(e)))
 
 
-def configure_logging(log_level: Union[int, str] = logging.INFO, force: bool = False) -> None:
-    configure(log_level=log_level, force=force)
+def remove_all_handlers() -> None:
+    for name, logger in logging.Logger.manager.loggerDict.items():
+        if isinstance(logger, logging.PlaceHolder):
+            continue
+
+        if not getattr(logger, "handlers", None) or not logger.handlers or not isinstance(logger.handlers, list):
+            continue
+
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
+            try:
+                handler.acquire()
+                handler.flush()
+                handler.close()
+            except (OSError, ValueError):
+                pass
+            finally:
+                handler.release()
+
+    for handler in logging.root.handlers:
+        logging.root.removeHandler(handler)
+        try:
+            handler.acquire()
+            handler.flush()
+            handler.close()
+        except (OSError, ValueError):
+            pass
+        finally:
+            handler.release()
 
 
 # Set default logger context
@@ -1085,7 +1125,8 @@ __all__ = [
     "_defaultHandler",
     "StderrHandler",
     "configure",
-    "configure_logging",
+    "set_default_formatter",
+    "remove_all_handlers",
     "is_configured",
     "CRITICAL",
     "DEBUG",

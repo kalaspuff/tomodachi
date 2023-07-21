@@ -33,7 +33,6 @@ from tomodachi.helpers.execution_context import unset_service as _unset_service
 from tomodachi.invoker import decorator as decorator
 from tomodachi.logging import Logger as Logger
 from tomodachi.logging import LoggerProtocol as LoggerProtocol
-from tomodachi.logging import configure_logging as configure_logging
 from tomodachi.logging import get_logger as get_logger
 from tomodachi.options import Options as Options
 from tomodachi.options import OptionsInterface as OptionsInterface
