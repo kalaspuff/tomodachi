@@ -123,7 +123,7 @@ class ServiceLauncher(object):
                             "indentation error in file" if type(e) is IndentationError else "syntax error in file",
                             error_location=error_location if error_filename else Ellipsis,
                         )
-                        traceback.print_exception(e, limit=0)
+                        traceback.print_exception(type(e), e, e.__traceback__, limit=0)
                         logging.getLogger("tomodachi.watcher").warning(
                             "restart failed due to error",
                             error_location=error_location if error_filename else Ellipsis,
@@ -153,7 +153,7 @@ class ServiceLauncher(object):
                                 "indentation error in file" if type(e) is IndentationError else "syntax error in file",
                                 error_location=error_location if error_filename else Ellipsis,
                             )
-                            traceback.print_exception(e, limit=0)
+                            traceback.print_exception(type(e), e, e.__traceback__, limit=0)
                             logging.getLogger("tomodachi.watcher").warning(
                                 "restart failed due to error",
                                 error_location=error_location if error_filename else Ellipsis,
@@ -280,7 +280,7 @@ class ServiceLauncher(object):
                     "indentation error in file" if type(e) is IndentationError else "syntax error in file",
                     error_location=error_location if error_filename else Ellipsis,
                 )
-                traceback.print_exception(e, limit=0)
+                traceback.print_exception(type(e), e, e.__traceback__, limit=0)
                 if not cls.restart_services:
                     tomodachi.SERVICE_EXIT_CODE = 1
             except Exception as e:
