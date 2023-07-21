@@ -14,8 +14,9 @@ def pytest_configure(config: pytest.Config) -> None:
         from tomodachi.logging import ConsoleFormatter
 
         plugin = config.pluginmanager.get_plugin("logging-plugin")
-        plugin.caplog_handler.setFormatter(ConsoleFormatter)
-        plugin.report_handler.setFormatter(ConsoleFormatter)
+        if plugin:
+            plugin.caplog_handler.setFormatter(ConsoleFormatter)
+            plugin.report_handler.setFormatter(ConsoleFormatter)
     except Exception as exc:
         import logging
 

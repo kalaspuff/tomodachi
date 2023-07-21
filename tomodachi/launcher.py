@@ -10,7 +10,6 @@ import traceback
 from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
 
 import tomodachi
-import tomodachi.__version__
 import tomodachi.container
 import tomodachi.importer
 import tomodachi.invoker

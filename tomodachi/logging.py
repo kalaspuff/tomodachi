@@ -275,10 +275,10 @@ class _NullLoggerFormatter(logging.Formatter):
             Union[Type[logging.PercentStyle], Type[logging.StrFormatStyle], Type[logging.StringTemplateStyle]],
             logging._STYLES[style][0],
         )
-        try:
-            self.style = style_cls(fmt or "", defaults=defaults)
-        except TypeError:
+        if sys.version_info.major == 3 and sys.version_info.minor < 10:
             self.style = style_cls(fmt or "")
+        else:
+            self.style = style_cls(fmt or "", defaults=defaults)
 
         if validate:
             self.style.validate()

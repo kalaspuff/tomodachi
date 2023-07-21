@@ -8,7 +8,6 @@ from typing import Any, List, Optional, Union
 import tomodachi
 import tomodachi.importer
 from tomodachi import logging
-from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.helpers.build_time import get_time_since_build
 from tomodachi.helpers.execution_context import get_execution_context
 from tomodachi.importer import ServiceImporter
@@ -316,7 +315,7 @@ def render_banner(
     )
 
     output.append(
-        f"{LABEL}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi_version}{TEXT_NORMAL}"
+        f"{LABEL}tomodachi version      {DELIMITER} {TEXT_HIGHLIGHT}{tomodachi.__version__}{TEXT_NORMAL}"
         + (f" ({time_since_tomodachi_build})" if time_since_tomodachi_build else " (local development version)")
         + COLOR_RESET
     )

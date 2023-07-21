@@ -5,7 +5,9 @@ import importlib
 import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
-from tomodachi.__version__ import __build_time__, __version__, __version_info__
+from tomodachi.__version__ import __build_time__
+from tomodachi.__version__ import __version__ as __version__
+from tomodachi.__version__ import __version_info__
 from tomodachi.logging import Logger, LoggerProtocol, get_logger
 from tomodachi.options import Options, OptionsInterface
 
@@ -244,7 +246,6 @@ __all__ = [
     "logging",
     "watcher",
     "run",
-    "_run",
     "_set_service",
     "_unset_service",
     "_clear_services",
@@ -401,7 +402,7 @@ def run(app: Optional[Union[str, List[str], Tuple[str]]] = None, *args: str, **k
         return
     setattr(run, "__tomodachi_called", True)
 
-    run_args = []
+    run_args: List[str] = []
     if not app:
         import inspect  # noqa  # isort:skip
 

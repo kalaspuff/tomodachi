@@ -19,6 +19,7 @@ def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, Non
     @functools.wraps(middleware_func)
     async def wrapped_middleware_func(func: Callable, service: Any, *args: Any, **kwargs: Any) -> Any:
         original_call_depth = CALL_DEPTH_CONTEXTVAR.get()
+        start_time: int = 0
         if not original_call_depth:
             start_time = time.perf_counter_ns()
             service.log("---")

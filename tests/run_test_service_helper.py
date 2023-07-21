@@ -58,7 +58,7 @@ async def _start_service(filename: str, wait: bool = True, loop: Optional[asynci
     async def _force_stop_services() -> None:
         if service and not service.started_waiter:
             service.started_waiter = asyncio.Future()
-        if service and not service.started_waiter.done():
+        if service and service.started_waiter and not service.started_waiter.done():
             service.started_waiter.set_result([])
 
     for signame in ("SIGINT", "SIGTERM"):
@@ -70,7 +70,7 @@ async def _start_service(filename: str, wait: bool = True, loop: Optional[asynci
         service = ServiceContainer(ServiceImporter.import_service_file(filename))
         assert service is not None
 
-        async def _async() -> None:
+        async def _async(service: ServiceContainer) -> None:
             loop = asyncio.get_event_loop()
             try:
                 await service.run_until_complete()
@@ -84,8 +84,8 @@ async def _start_service(filename: str, wait: bool = True, loop: Optional[asynci
                     tomodachi.SERVICE_EXIT_CODE = tomodachi.context("exit_code")
                 raise
 
-        future = asyncio.ensure_future(_async())
-        if service and not service.started_waiter:
+        future = asyncio.ensure_future(_async(service))
+        if not service.started_waiter:
             service.started_waiter = asyncio.Future()
         if wait:
             await asyncio.wait([service.started_waiter])
@@ -106,6 +106,8 @@ async def _start_service(filename: str, wait: bool = True, loop: Optional[asynci
     else:
 
         async def get_services() -> Dict:
+            if not service or not service.started_waiter:
+                return {}
             await asyncio.wait([service.started_waiter])
             return {service_name: instance for service_name, instance, log_level in service.started_waiter.result()}
 

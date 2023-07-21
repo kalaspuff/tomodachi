@@ -2,6 +2,7 @@
 import contextvars
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
+from tomodachi import cli as cli
 from tomodachi import container as container
 from tomodachi import discovery as discovery
 from tomodachi import envelope as envelope
@@ -14,6 +15,7 @@ from tomodachi import options as options
 from tomodachi import transport as transport
 from tomodachi import watcher as watcher
 from tomodachi.__version__ import __build_time__ as __build_time__
+from tomodachi.__version__ import __version__ as __version__
 from tomodachi.__version__ import __version_info__ as __version_info__
 from tomodachi.helpers.aiobotocore_connector import ClientConnector as _AiobotocoreClientConnector
 from tomodachi.helpers.aiobotocore_connector import connector as _aiobotocore_client_connector
@@ -51,6 +53,7 @@ from tomodachi.transport.http import http_static as http_static
 from tomodachi.transport.http import websocket as websocket
 from tomodachi.transport.http import ws as ws
 from tomodachi.transport.schedule import daily as daily
+from tomodachi.transport.schedule import every_second as every_second
 from tomodachi.transport.schedule import heartbeat as heartbeat
 from tomodachi.transport.schedule import hourly as hourly
 from tomodachi.transport.schedule import minutely as minutely
