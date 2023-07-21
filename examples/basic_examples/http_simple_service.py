@@ -39,6 +39,10 @@ class ExampleHttpService(tomodachi.Service):
     async def response_object(self, request: web.Request) -> HttpResponse:
         return HttpResponse(body='{"data": true}', status=200, content_type="application/json")
 
+    @http("POST", r"/post")
+    async def post_request_handler(self, request: web.Request) -> str:
+        return str(await request.text())
+
     @http_static("static/", r"/static/")
     async def static_files(self) -> None:
         # This function is actually never called by accessing the /static/ URL:s.

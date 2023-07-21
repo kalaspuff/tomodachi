@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import functools
 import inspect
@@ -8,7 +10,8 @@ import platform
 import re
 import time
 import uuid
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
+import warnings
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
 import yarl
 from aiohttp import WSMsgType
@@ -42,55 +45,66 @@ class HttpException(Exception):
         self._log_level = kwargs.get("log_level") if kwargs and kwargs.get("log_level") else "INFO"
 
 
+def get_forwarded_remote_ip(request: web.BaseRequest) -> str:
+    try:
+        return cast(str, request._cache["forwarded_remote_ip"])
+    except KeyError:
+        return ""
+
+
 class RequestHandler(web_protocol.RequestHandler):
     __slots__ = (
         *web_protocol.RequestHandler.__slots__,
-        "_server_header",
-        "_access_log",
         "_connection_start_time",
         "_keepalive",
     )
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._server_header = kwargs.pop("server_header", None) if kwargs else None
-        self._access_log = kwargs.pop("access_log", None) if kwargs else None
-
-        self._connection_start_time = time.time()
-
-        super().__init__(*args, access_log=None, **kwargs)  # type: ignore
+    _manager: Server
 
     @staticmethod
-    def get_request_ip(request: Any, context: Optional[Dict] = None) -> Optional[str]:
-        if request._cache.get("request_ip"):
-            return str(request._cache.get("request_ip", ""))
+    def get_request_ip(request: web.Request, *a: Any, **kw: Any) -> str:
+        warnings.warn(
+            "Using the 'RequestHandler.get_request_ip()' function is deprecated. Use the 'tomodachi.get_forwarded_remote_ip()' function instead.",
+            DeprecationWarning,
+        )
 
-        if request.transport:
-            if not context:
-                context = {}
-            http_options: Options.HTTP = HttpTransport.options(context).http
-            real_ip_header = http_options.real_ip_header
-            real_ip_from = http_options.real_ip_from
-            if isinstance(real_ip_from, str):
-                real_ip_from = [real_ip_from]
+        return get_forwarded_remote_ip(request)
 
-            peername = request.transport.get_extra_info("peername")
-            request_ip = None
-            if peername:
-                request_ip, _ = peername
-            if (
-                real_ip_header
-                and real_ip_from
-                and request.headers.get(real_ip_header)
-                and request_ip
-                and len(real_ip_from)
+    def _cache_remote_ip(self, request: web.BaseRequest) -> None:
+        remote_ip: str = request.remote or ""
+
+        if self._manager._real_ip_header and self._manager._real_ip_from:
+            if any(
+                [ipaddress.ip_address(remote_ip) in ipaddress.ip_network(cidr) for cidr in self._manager._real_ip_from]
             ):
-                if any([ipaddress.ip_address(request_ip) in ipaddress.ip_network(cidr) for cidr in real_ip_from]):
-                    request_ip = request.headers.get(real_ip_header).split(",")[0].strip().split(" ")[0].strip()
+                header_value = request.headers.get(self._manager._real_ip_header)
+                if header_value:
+                    remote_ip = header_value.split(",")[0].strip().split(" ")[0].strip()
 
-            request._cache["request_ip"] = request_ip
-            return request_ip
+        request._cache["forwarded_remote_ip"] = remote_ip
+        request._cache["request_ip"] = remote_ip  # deprecated
 
-        return None
+    async def start(self) -> None:
+        self._connection_start_time = time.time()
+        await super().start()
+
+    async def _handle_request(
+        self,
+        request: web.BaseRequest,
+        start_time: float,
+        request_handler: Callable[[web.BaseRequest], Awaitable[web.StreamResponse]],
+    ) -> Tuple[web.StreamResponse, bool]:
+        self._cache_remote_ip(request)
+        result: Tuple[web.StreamResponse, bool] = await super()._handle_request(request, start_time, request_handler)
+        return result
+
+    async def finish_response(self, request: web.BaseRequest, resp: web.StreamResponse, start_time: float) -> bool:
+        result: bool = await super().finish_response(request, resp, start_time)
+        # print("finish_response", self._loop.time() - start_time)
+        # print(
+        #     request.method, request.path, request.query_string, request.content_length, get_forwarded_remote_ip(request)
+        # )
+        return result
 
     def handle_error(
         self, request: Any, status: int = 500, exc: Any = None, message: Optional[str] = None
@@ -101,7 +115,7 @@ class RequestHandler(web_protocol.RequestHandler):
         information. It always closes current connection."""
         if self.transport is None:
             # client has been disconnected during writing.
-            if self._access_log:
+            if self._manager._access_log:
                 request_ip = RequestHandler.get_request_ip(request, None)
                 version_string = None
                 if isinstance(request.version, HttpVersion):
@@ -109,6 +123,7 @@ class RequestHandler(web_protocol.RequestHandler):
 
                 status_code = 499
                 logging.getLogger("tomodachi.http.response").info(
+                    "client disconnected during writing",
                     status_code=status_code,
                     remote_ip=request_ip or "",
                     auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
@@ -116,7 +131,7 @@ class RequestHandler(web_protocol.RequestHandler):
                     request_path=request.path,
                     request_query_string=request.query_string or Ellipsis,
                     http_version=version_string,
-                    request_content_length=request.content_length if request.content_length is not None else Ellipsis,
+                    request_content_length=request.content_length if request.content_length else Ellipsis,
                     user_agent=request.headers.get("User-Agent", ""),
                 )
 
@@ -126,7 +141,7 @@ class RequestHandler(web_protocol.RequestHandler):
         msg = "" if status == 500 or not message else message
 
         headers[hdrs.CONTENT_LENGTH] = str(len(msg))
-        headers[hdrs.SERVER] = self._server_header or ""
+        headers[hdrs.SERVER] = self._manager._server_header
 
         if isinstance(request.version, HttpVersion) and (request.version.major, request.version.minor) in (
             (1, 0),
@@ -146,14 +161,26 @@ class RequestHandler(web_protocol.RequestHandler):
                 peername = request.transport.get_extra_info("peername")
                 if peername:
                     request_ip, _ = peername
-            if self._access_log:
+            if self._manager._access_log:
                 if not status or status >= 500:
                     logging.getLogger("tomodachi.http.response").warning(
                         "error in request handling",
                         status_code=status,
                         remote_ip=request_ip or "",
                         auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
-                        request_content_length=len(msg),
+                        response_content_length=len(msg),
+                        request_content_length=(
+                            request.content_length
+                            if request.content_length
+                            else (
+                                len(request._read_bytes)
+                                if request._read_bytes is not None and len(request._read_bytes)
+                                else Ellipsis
+                            )
+                        ),
+                        request_content_read_length=len(request._read_bytes)
+                        if request._read_bytes is not None and len(request._read_bytes)
+                        else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis),
                     )
                 else:
                     logging.getLogger("tomodachi.http.response").info(
@@ -161,7 +188,19 @@ class RequestHandler(web_protocol.RequestHandler):
                         status_code=status,
                         remote_ip=request_ip or "",
                         auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
-                        request_content_length=len(msg),
+                        response_content_length=len(msg),
+                        request_content_length=(
+                            request.content_length
+                            if request.content_length
+                            else (
+                                len(request._read_bytes)
+                                if request._read_bytes is not None and len(request._read_bytes)
+                                else Ellipsis
+                            )
+                        ),
+                        request_content_read_length=len(request._read_bytes)
+                        if request._read_bytes is not None and len(request._read_bytes)
+                        else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis),
                     )
 
         return resp
@@ -177,18 +216,30 @@ class Server(web_server.Server):
         "request_factory",
         "_server_header",
         "_access_log",
+        "_real_ip_header",
+        "_real_ip_from",
     )
 
+    _loop: asyncio.AbstractEventLoop
+    _kwargs: Dict[str, Any]
+
+    _server_header: str
+    _access_log: Union[bool, str]
+    _real_ip_header: str
+    _real_ip_from: List[str]
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._server_header = kwargs.pop("server_header", None) if kwargs else None
-        self._access_log = kwargs.pop("access_log", None) if kwargs else None
+        self._server_header = cast(str, kwargs.pop("server_header", "") if kwargs else "")
+        self._access_log = cast(Union[bool, str], kwargs.pop("access_log", False) if kwargs else False)
+        self._real_ip_header = cast(str, kwargs.pop("real_ip_header", "") if kwargs else "")
+        self._real_ip_from = cast(List[str], kwargs.pop("real_ip_from", []) if kwargs else [])
+
+        kwargs["access_log"] = None
 
         super().__init__(*args, **kwargs)
 
     def __call__(self) -> RequestHandler:
-        return RequestHandler(
-            self, loop=self._loop, server_header=self._server_header, access_log=self._access_log, **self._kwargs
-        )
+        return RequestHandler(self, loop=self._loop, **self._kwargs)
 
 
 class DynamicResource(web_urldispatcher.DynamicResource):
@@ -773,8 +824,14 @@ class HttpTransport(Invoker):
 
         http_options: Options.HTTP = HttpTransport.options(context).http
 
-        server_header = http_options.server_header
-        access_log = http_options.access_log
+        server_header = http_options.server_header or ""
+        access_log = http_options.access_log or False
+        real_ip_header = http_options.real_ip_header or ""
+        real_ip_from = (
+            [http_options.real_ip_from]
+            if http_options.real_ip_from and isinstance(http_options.real_ip_from, str)
+            else http_options.real_ip_from or []
+        )
 
         logger_handler = None
         if isinstance(access_log, str):
@@ -804,18 +861,31 @@ class HttpTransport(Invoker):
             logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
             async def request_handler_func(
-                request: web.Request, handler: Callable
+                request: web.Request, handler: Callable, request_start_time: int = 0
             ) -> Union[web.Response, web.FileResponse]:
-                response: Union[web.Response, web.FileResponse]
+                response: Optional[Union[web.Response, web.FileResponse]] = None
                 request_ip = RequestHandler.get_request_ip(request, context)
 
-                if not request_ip:
-                    # Transport broken before request handling started, ignore request
-                    response = web.Response(status=499, headers={hdrs.SERVER: server_header or ""})
-                    response._eof_sent = True
-                    response.force_close()
-
-                    return response
+                # try to read body if it exists and can be read
+                premature_eof = False
+                if request.body_exists and request.can_read_body and (request.content_length or request.content):
+                    try:
+                        if (
+                            request._read_bytes is None
+                            and request.content
+                            and request.content.is_eof()
+                            and getattr(request.content, "_size", 0) > 0
+                            and request.content.exception()
+                        ):
+                            request._read_bytes = request.content._read_nowait(-1)
+                        else:
+                            await request.read()
+                    except web.HTTPException as exc:
+                        # internal aiohttp exception raised (for example if entity too large)
+                        response = exc
+                    except Exception:
+                        # failed to read body (for example if connection is closed before the entire body was sent)
+                        premature_eof = True
 
                 if request.headers.get("Authorization"):
                     try:
@@ -823,11 +893,75 @@ class HttpTransport(Invoker):
                     except ValueError:
                         pass
 
-                timer = time.time() if access_log else 0
-                response = web.Response(status=503, headers={})
+                if not request_ip or premature_eof:
+                    # ignore request for broken transport before request handling and before entire body was sent
+                    response = web.Response(status=499, headers={hdrs.SERVER: server_header})
+                    response._eof_sent = True
+                    response.force_close()
+
+                    if access_log:
+                        status_code = response.status if response is not None else 500
+                        ignore_logging = getattr(handler, "ignore_logging", False)
+                        if ignore_logging is True:
+                            pass
+                        elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
+                            pass
+
+                        request_version = (
+                            (request.version.major, request.version.minor)
+                            if isinstance(request.version, HttpVersion)
+                            else (1, 0)
+                        )
+                        version_string = None
+                        if isinstance(request.version, HttpVersion):
+                            version_string = "HTTP/{}.{}".format(request_version[0], request_version[1])
+
+                        msg = (
+                            "ignored http request - connection closed before body was sent"
+                            if premature_eof
+                            else "ignored http request"
+                        )
+                        response_logger.info(
+                            msg,
+                            status_code=499,
+                            remote_ip=request_ip or "",
+                            auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                            request_method=request.method,
+                            request_path=request.path,
+                            request_query_string=request.query_string or Ellipsis,
+                            http_version=version_string,
+                            response_content_length=response.content_length
+                            if response is not None and response.content_length is not None
+                            else Ellipsis,
+                            request_content_length=(
+                                request.content_length
+                                if request.content_length
+                                else (
+                                    len(request._read_bytes)
+                                    if not premature_eof
+                                    and request._read_bytes is not None
+                                    and len(request._read_bytes)
+                                    else Ellipsis
+                                )
+                            ),
+                            request_content_read_length=len(request._read_bytes)
+                            if request._read_bytes is not None and len(request._read_bytes)
+                            else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis),
+                            user_agent=request.headers.get("User-Agent", ""),
+                        )
+
+                    return response
+
+                handler_start_time: int = 0
+                handler_stop_time: int = 0
+
                 try:
-                    response = await handler(request)
+                    if not response:
+                        handler_start_time = time.perf_counter_ns() if access_log else 0
+                        response = await handler(request)
+                        handler_stop_time = time.perf_counter_ns() if access_log else 0
                 except web.HTTPException as e:
+                    handler_stop_time = time.perf_counter_ns() if access_log else 0
                     error_handler = context.get("_http_error_handler", {}).get(e.status, None)
                     if error_handler:
                         try:
@@ -853,6 +987,7 @@ class HttpTransport(Invoker):
                         response = e
                         response.body = str(e).encode("utf-8")
                 except Exception as e:
+                    handler_stop_time = time.perf_counter_ns() if access_log else 0
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     error_handler = context.get("_http_error_handler", {}).get(500, None)
                     if error_handler:
@@ -869,7 +1004,16 @@ class HttpTransport(Invoker):
                         response = web.HTTPInternalServerError()
                         response.body = b""
                 finally:
+                    replaced_status_code = None
+                    replaced_response_content_length = None
                     if not request.transport:
+                        replaced_status_code = response.status if response is not None else 500
+                        replaced_response_content_length = (
+                            response.content_length
+                            if response is not None and response.content_length is not None
+                            else None
+                        )
+
                         response = web.Response(status=499, headers={})
                         response._eof_sent = True
 
@@ -880,7 +1024,9 @@ class HttpTransport(Invoker):
                     )
 
                     if access_log:
-                        request_time = time.time() - timer
+                        total_request_time = ((time.perf_counter_ns() - request_start_time) / 1000000.0) / 1000.0
+                        handler_elapsed_time = ((handler_stop_time - handler_start_time) / 1000000.0) / 1000.0
+
                         version_string = None
                         if isinstance(request.version, HttpVersion):
                             version_string = "HTTP/{}.{}".format(request_version[0], request_version[1])
@@ -895,6 +1041,7 @@ class HttpTransport(Invoker):
                             else:
                                 response_logger.info(
                                     status_code=status_code,
+                                    replaced_status_code=replaced_status_code or Ellipsis,
                                     remote_ip=request_ip,
                                     auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
                                     request_method=request.method,
@@ -904,11 +1051,26 @@ class HttpTransport(Invoker):
                                     response_content_length=response.content_length
                                     if response is not None and response.content_length is not None
                                     else Ellipsis,
-                                    request_content_length=request.content_length
-                                    if request.content_length is not None
-                                    else Ellipsis,
+                                    replaced_response_content_length=replaced_response_content_length or Ellipsis,
+                                    request_content_length=(
+                                        request.content_length
+                                        if request.content_length
+                                        else (
+                                            len(request._read_bytes)
+                                            if request._read_bytes is not None and len(request._read_bytes)
+                                            else Ellipsis
+                                        )
+                                    ),
+                                    request_content_read_length=len(request._read_bytes)
+                                    if request._read_bytes is not None and len(request._read_bytes)
+                                    else (
+                                        (request.content and getattr(request.content, "total_bytes", None)) or Ellipsis
+                                    ),
                                     user_agent=request.headers.get("User-Agent", ""),
-                                    request_time="{0:.5f}s".format(round(request_time, 5)),
+                                    handler_elapsed_time="{0:.5f}s".format(round(handler_elapsed_time, 5))
+                                    if handler_start_time and handler_stop_time
+                                    else Ellipsis,
+                                    request_time="{0:.5f}s".format(round(total_request_time, 5)),
                                 )
                         else:
                             response_logger.info(
@@ -919,11 +1081,11 @@ class HttpTransport(Invoker):
                                 request_query_string=request.query_string or Ellipsis,
                                 websocket_id=request._cache.get("websocket_uuid", ""),
                                 user_agent=request.headers.get("User-Agent", ""),
-                                request_time="{0:.5f}s".format(round(request_time, 5)),
+                                total_request_time="{0:.5f}s".format(round(total_request_time, 5)),
                             )
 
                     if response is not None:
-                        response.headers[hdrs.SERVER] = server_header or ""
+                        response.headers[hdrs.SERVER] = server_header
 
                         if request_version in ((1, 0), (1, 1)) and not request._cache.get("is_websocket"):
                             use_keepalive = False
@@ -968,6 +1130,17 @@ class HttpTransport(Invoker):
                         if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
                             response.force_close()
 
+                    if response is None:
+                        try:
+                            raise Exception("invalid response value")
+                        except Exception as e:
+                            logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+
+                        response = web.HTTPInternalServerError()
+                        response.body = b""
+                        response.headers[hdrs.CONNECTION] = "close"
+                        response.force_close()
+
                     if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
                         raise response
 
@@ -975,9 +1148,14 @@ class HttpTransport(Invoker):
 
             @web.middleware
             async def middleware(request: web.Request, handler: Callable) -> Union[web.Response, web.FileResponse]:
+                request_start_time = time.perf_counter_ns() if access_log else 0
+
                 increase_execution_context_value("http_current_tasks")
                 increase_execution_context_value("http_total_tasks")
-                task = asyncio.ensure_future(request_handler_func(request, handler))
+
+                task = asyncio.ensure_future(
+                    request_handler_func(request, handler, request_start_time=request_start_time)
+                )
                 context["_http_active_requests"] = context.get("_http_active_requests", set())
                 context["_http_active_requests"].add(task)
                 try:
@@ -1194,11 +1372,14 @@ class HttpTransport(Invoker):
                 web_server = Server(
                     app._handle,
                     request_factory=app._make_request,
-                    server_header=server_header or "",
+                    server_header=server_header,
                     access_log=access_log,
+                    real_ip_header=real_ip_header,
+                    real_ip_from=real_ip_from,
                     keepalive_timeout=keepalive_timeout,
                     tcp_keepalive=tcp_keepalive,
                 )
+
                 if reuse_port:
                     if not port:
                         logger.warning(
@@ -1210,8 +1391,10 @@ class HttpTransport(Invoker):
                             "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
                             "different service classes should not use the same port ({})".format(port)
                         )
+
                 if port:
                     HttpTransport.server_port_mapping[web_server] = str(port)
+
                 server_task = loop.create_server(web_server, host, port, reuse_port=reuse_port)
                 server = await server_task
             except OSError as e:

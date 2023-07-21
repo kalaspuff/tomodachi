@@ -369,7 +369,7 @@ def test_access_log(loop: Any) -> None:
                 assert "test_ignore_all" not in content
                 assert '"status_code": 200' not in content
                 assert (
-                    '"status_code": 201, "remote_ip": "127.0.0.1", "request_method": "POST", "request_path": "/test_ignore_one", "http_version": "HTTP/1.1", "response_content_length": 8, "request_content_length": 0, '
+                    '"status_code": 201, "remote_ip": "127.0.0.1", "request_method": "POST", "request_path": "/test_ignore_one", "http_version": "HTTP/1.1", "response_content_length": 8, "user_agent": '
                     in content
                 )
 
@@ -378,7 +378,7 @@ def test_access_log(loop: Any) -> None:
             with open(log_path) as file:
                 content = file.read()
                 assert (
-                    '"status_code": 200, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/test", "http_version": "HTTP/1.1", "response_content_length": 4, '
+                    '"status_code": 200, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/test", "http_version": "HTTP/1.1", "response_content_length": 4, "user_agent": '
                     in content
                 )
                 assert "404" not in content
@@ -388,11 +388,11 @@ def test_access_log(loop: Any) -> None:
             with open(log_path) as file:
                 content = file.read()
                 assert (
-                    '"status_code": 200, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/test", "http_version": "HTTP/1.1", "response_content_length": 4, '
+                    '"status_code": 200, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/test", "http_version": "HTTP/1.1", "response_content_length": 4, "user_agent": '
                     in content
                 )
                 assert (
-                    '"status_code": 404, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/404", "http_version": "HTTP/1.1", "response_content_length": 8, '
+                    '"status_code": 404, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/404", "http_version": "HTTP/1.1", "response_content_length": 8, "user_agent": '
                     in content
                 )
 
@@ -401,7 +401,7 @@ def test_access_log(loop: Any) -> None:
             with open(log_path) as file:
                 content = file.read()
                 assert (
-                    '"status_code": 404, "remote_ip": "127.0.0.1", "request_method": "POST", "request_path": "/zero-post", "http_version": "HTTP/1.1", "response_content_length": 8, "request_content_length": 0, '
+                    '"status_code": 404, "remote_ip": "127.0.0.1", "request_method": "POST", "request_path": "/zero-post", "http_version": "HTTP/1.1", "response_content_length": 8, "user_agent": '
                     in content
                 )
 
@@ -410,7 +410,7 @@ def test_access_log(loop: Any) -> None:
             with open(log_path) as file:
                 content = file.read()
                 assert (
-                    '"status_code": 404, "remote_ip": "127.0.0.1", "request_method": "POST", "request_path": "/post", "http_version": "HTTP/1.1", "response_content_length": 8, "request_content_length": 10, '
+                    '"status_code": 404, "remote_ip": "127.0.0.1", "request_method": "POST", "request_path": "/post", "http_version": "HTTP/1.1", "response_content_length": 8, "request_content_length": 10, "request_content_read_length": 10, "user_agent": '
                     in content
                 )
 

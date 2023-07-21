@@ -44,6 +44,7 @@ from tomodachi.transport.aws_sns_sqs import awssnssqs as awssnssqs
 from tomodachi.transport.aws_sns_sqs import awssnssqs_publish as awssnssqs_publish
 from tomodachi.transport.http import HttpException as HttpException
 from tomodachi.transport.http import Response as _HttpResponse
+from tomodachi.transport.http import get_forwarded_remote_ip as get_forwarded_remote_ip
 from tomodachi.transport.http import get_http_response_status as get_http_response_status
 from tomodachi.transport.http import get_http_response_status_sync as get_http_response_status_sync
 from tomodachi.transport.http import http as http

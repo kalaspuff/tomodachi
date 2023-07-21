@@ -40,6 +40,7 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
     "HttpResponse": ("tomodachi.transport.http", "Response"),
     "get_http_response_status": ("tomodachi.transport.http",),
     "get_http_response_status_sync": ("tomodachi.transport.http",),
+    "get_forwarded_remote_ip": ("tomodachi.transport.http",),
     "http": ("tomodachi.transport.http",),
     "http_error": ("tomodachi.transport.http",),
     "http_static": ("tomodachi.transport.http",),
@@ -277,6 +278,7 @@ __all__ = [
     "HttpException",
     "get_http_response_status",
     "get_http_response_status_sync",
+    "get_forwarded_remote_ip",
     "schedule",
     "heartbeat",
     "every_second",
@@ -335,7 +337,7 @@ class Service(metaclass=TomodachiServiceMeta):
         import warnings  # isort:skip
 
         warnings.warn(
-            "Using the 'service.log' function is deprecated. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.",
+            "Using the 'service.log()' function is deprecated. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.",
             DeprecationWarning,
         )
         __getattr__("_log")(self, *args, **kwargs)
@@ -350,7 +352,7 @@ class Service(metaclass=TomodachiServiceMeta):
         import warnings  # isort:skip
 
         warnings.warn(
-            "Using the 'service.log_setup' function is deprecated and has no effect. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.",
+            "Using the 'service.log_setup()' function is deprecated and has no effect. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.",
             DeprecationWarning,
         )
 
