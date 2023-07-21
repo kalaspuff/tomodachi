@@ -7,6 +7,7 @@ import platform
 from typing import Any
 
 import aiohttp
+import aiohttp.client_exceptions
 import pytest
 from multidict import CIMultiDictProxy
 
@@ -133,7 +134,7 @@ def test_request_http_service(capsys: Any, loop: Any) -> None:
 
         async with aiohttp.ClientSession(loop=loop) as client:
             response = None
-            with pytest.raises(asyncio.TimeoutError):
+            with pytest.raises((asyncio.TimeoutError, aiohttp.client_exceptions.ClientOSError)):
                 response = await asyncio.shield(
                     client.get("http://127.0.0.1:{}/slow-exception".format(port), timeout=0.1)
                 )
@@ -142,7 +143,7 @@ def test_request_http_service(capsys: Any, loop: Any) -> None:
         async with aiohttp.ClientSession(loop=loop) as client:
             assert instance.slow_request is False
             response = None
-            with pytest.raises(asyncio.TimeoutError):
+            with pytest.raises((asyncio.TimeoutError, aiohttp.client_exceptions.ClientOSError)):
                 response = await asyncio.shield(client.get("http://127.0.0.1:{}/slow".format(port), timeout=0.1))
             assert response is None
             assert instance.slow_request is False

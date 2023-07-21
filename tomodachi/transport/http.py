@@ -11,7 +11,7 @@ import re
 import time
 import uuid
 import warnings
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
 import yarl
 from aiohttp import WSMsgType
@@ -92,10 +92,10 @@ class RequestHandler(web_protocol.RequestHandler):
         self,
         request: web.BaseRequest,
         start_time: float,
-        request_handler: Callable[[web.BaseRequest], Awaitable[web.StreamResponse]],
+        *args: Any,
     ) -> Tuple[web.StreamResponse, bool]:
         self._cache_remote_ip(request)
-        result: Tuple[web.StreamResponse, bool] = await super()._handle_request(request, start_time, request_handler)
+        result: Tuple[web.StreamResponse, bool] = await super()._handle_request(request, start_time, *args)
         return result
 
     async def finish_response(self, request: web.BaseRequest, resp: web.StreamResponse, start_time: float) -> bool:
