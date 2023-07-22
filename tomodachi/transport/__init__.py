@@ -1,5 +1,8 @@
 from typing import Any, Dict
 
+from tomodachi._importer import _install_import_finder
+
+_install_import_finder({"tomodachi.transport.awssnssqs": "tomodachi.transport.aws_sns_sqs"})
 __cached_defs: Dict[str, Any] = {}
 
 
@@ -9,16 +12,12 @@ def __getattr__(name: str) -> Any:
 
     import importlib  # noqa  # isort:skip
 
-    name_ = name
-    if name in ("awssnssqs",):
-        name = "aws_sns_sqs"
-
     try:
-        module = importlib.import_module(f".{name}", "tomodachi.transport")
+        module = importlib.import_module(name, "tomodachi.transport")
     except ModuleNotFoundError:
         raise ImportError(f"cannot import name '{name}' from 'tomodachi.transport' ({__file__})") from None
 
-    __cached_defs[name] = __cached_defs[name_] = module  # getattr(module, name)
+    __cached_defs[name] = module
     return __cached_defs[name]
 
 
