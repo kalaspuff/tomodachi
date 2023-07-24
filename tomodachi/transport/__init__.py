@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Dict
+from typing import Any
 
 from tomodachi._importer import _install_import_finder
 

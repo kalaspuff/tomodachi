@@ -4,7 +4,7 @@ import inspect
 import os
 import sys
 from types import ModuleType
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Set, Tuple
 from weakref import finalize
 
 
@@ -12,36 +12,38 @@ class WeakReference:
     pass
 
 
-def _cb_finalize(parent, alias_tail_name, keys, *a, **kw):
-    for k in keys:
-        parent.__dict__.pop(k, None)
+def _finalize_callback(parent: ModuleType, names: List[str]) -> None:
+    for name in names:
+        parent.__dict__.pop(name, None)
 
 
 class ImportLoader(importlib.machinery.SourceFileLoader):
     module_cache: Dict
 
-    def __init__(self, fullname, path):
+    def __init__(self, fullname: str, path: str) -> None:
         super().__init__(fullname, path)
-        self.module_cache = {}
-        self.module_aliases = set()
+        self.module_cache: Dict[str, ModuleType] = {}
+        self.module_aliases: Set[str] = set()
 
-    def create_module(self, spec):
-        if sys.modules.get(spec.name):
-            module = self.module_cache.get(spec.name)
-            if module:
-                return module
+    def create_module(self, spec: importlib.machinery.ModuleSpec) -> Optional[ModuleType]:
+        module: Optional[ModuleType] = self.module_cache.get(spec.name)
+        if module:
+            return module
 
         result = super().create_module(spec)
         return result
 
-    def exec_module(self, module: ModuleType):
+    def exec_module(self, module: ModuleType) -> None:
         name = ""
         try:
-            name = module.__spec__.name
+            if module.__spec__:
+                name = module.__spec__.name
         except Exception:
+            pass
+        if not name:
             name = module.__name__
 
-        result = super().exec_module(module)
+        super().exec_module(module)
 
         if sys.modules.get(name):
             self.module_cache[name] = sys.modules[name]
@@ -53,16 +55,15 @@ class ImportLoader(importlib.machinery.SourceFileLoader):
         if parent_name:
             try:
                 parent = sys.modules[parent_name]
-                tail_names = [alias.rpartition(".")[2] for alias in self.module_aliases]
-                for tail_name in tail_names:
+                names = [alias.rpartition(".")[2] for alias in self.module_aliases]
+                for tail_name in names:
                     if tail_name in parent.__dict__:
                         parent.__dict__.pop(tail_name)
 
                     parent.__dict__[tail_name] = WeakReference()
-                    finalize(parent.__dict__[tail_name], _cb_finalize, parent, tail_name, tail_names)
+                    finalize(parent.__dict__[tail_name], _finalize_callback, parent, names)
             except KeyError:
                 pass
-        return result
 
 
 class ImportFinder(importlib.machinery.FileFinder):
@@ -70,8 +71,8 @@ class ImportFinder(importlib.machinery.FileFinder):
 
     def __init__(self, path: str, module_name_mapping: Dict[str, str]) -> None:
         self.module_name_mapping = module_name_mapping
-        self.reversed_module_name_mapping = {}
-        self.spec_cache = {}
+        self.reversed_module_name_mapping: Dict[str, Set[str]] = {}
+        self.spec_cache: Dict[Tuple[str, float], importlib.machinery.ModuleSpec] = {}
 
         for k, v in module_name_mapping.items():
             self.reversed_module_name_mapping[v] = self.reversed_module_name_mapping.get(v, set()) | set([k])
