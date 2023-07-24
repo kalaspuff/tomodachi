@@ -18,12 +18,13 @@ def _finalize_callback(parent: ModuleType, names: List[str]) -> None:
 
 
 class ImportLoader(importlib.machinery.SourceFileLoader):
-    module_cache: Dict
+    module_cache: Dict[str, ModuleType]
+    module_aliases: Set[str]
 
     def __init__(self, fullname: str, path: str) -> None:
         super().__init__(fullname, path)
-        self.module_cache: Dict[str, ModuleType] = {}
-        self.module_aliases: Set[str] = set()
+        self.module_cache = {}
+        self.module_aliases = set()
 
     def create_module(self, spec: importlib.machinery.ModuleSpec) -> Optional[ModuleType]:
         module: Optional[ModuleType] = self.module_cache.get(spec.name)
@@ -68,11 +69,14 @@ class ImportLoader(importlib.machinery.SourceFileLoader):
 
 class ImportFinder(importlib.machinery.FileFinder):
     _path_mtime: float
+    module_name_mapping: Dict[str, str]
+    reversed_module_name_mapping: Dict[str, Set[str]]
+    spec_cache: Dict[Tuple[str, float], importlib.machinery.ModuleSpec]
 
     def __init__(self, path: str, module_name_mapping: Dict[str, str]) -> None:
         self.module_name_mapping = module_name_mapping
-        self.reversed_module_name_mapping: Dict[str, Set[str]] = {}
-        self.spec_cache: Dict[Tuple[str, float], importlib.machinery.ModuleSpec] = {}
+        self.reversed_module_name_mapping = {}
+        self.spec_cache = {}
 
         for k, v in module_name_mapping.items():
             self.reversed_module_name_mapping[v] = self.reversed_module_name_mapping.get(v, set()) | set([k])
