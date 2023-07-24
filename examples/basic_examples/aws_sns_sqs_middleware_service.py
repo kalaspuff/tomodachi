@@ -7,7 +7,7 @@ from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional, Su
 import tomodachi
 from tomodachi import Options, aws_sns_sqs, aws_sns_sqs_publish
 from tomodachi.envelope import JsonBase
-from tomodachi.transport.awssnssqs import MessageAttributesType
+from tomodachi.transport.aws_sns_sqs import MessageAttributesType
 
 # Call depth for chained middlewares are tracked for demonstration purposes and used in the service' log function.
 CALL_DEPTH_CONTEXTVAR = contextvars.ContextVar("service.middleware.depth", default=0)
