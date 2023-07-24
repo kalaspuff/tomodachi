@@ -129,6 +129,10 @@ class ServiceLauncher(object):
                         )
                         cls.restart_services = False
                         return
+                    except Exception:
+                        logging.getLogger("tomodachi.watcher").warning("restart failed due to error")
+                        cls.restart_services = False
+                        return
 
                 pre_import_current_modules = [m for m in sys.modules.keys()]
                 for file in updated_files:
@@ -155,6 +159,10 @@ class ServiceLauncher(object):
                                 "restart failed due to error",
                                 error_location=error_location if error_filename else Ellipsis,
                             )
+                            cls.restart_services = False
+                            return
+                        except Exception:
+                            logging.getLogger("tomodachi.watcher").warning("restart failed due to error")
                             cls.restart_services = False
                             return
 
