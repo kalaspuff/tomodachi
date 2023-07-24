@@ -1,16 +1,84 @@
+import importlib
 import importlib.machinery
 import inspect
 import os
 import sys
 from types import ModuleType
 from typing import Dict, Optional
+from weakref import finalize
+
+
+class WeakReference:
+    pass
+
+
+def _cb_finalize(parent, alias_tail_name, keys, *a, **kw):
+    for k in keys:
+        parent.__dict__.pop(k, None)
+
+
+class ImportLoader(importlib.machinery.SourceFileLoader):
+    module_cache: Dict
+
+    def __init__(self, fullname, path):
+        super().__init__(fullname, path)
+        self.module_cache = {}
+        self.module_aliases = set()
+
+    def create_module(self, spec):
+        if sys.modules.get(spec.name):
+            module = self.module_cache.get(spec.name)
+            if module:
+                return module
+
+        result = super().create_module(spec)
+        return result
+
+    def exec_module(self, module: ModuleType):
+        name = ""
+        try:
+            name = module.__spec__.name
+        except Exception:
+            name = module.__name__
+
+        result = super().exec_module(module)
+
+        if sys.modules.get(name):
+            self.module_cache[name] = sys.modules[name]
+            for alias in self.module_aliases:
+                if sys.modules.get(alias) is not sys.modules[name]:
+                    sys.modules[alias] = sys.modules[name]
+
+        parent_name = name.rpartition(".")[0]
+        if parent_name:
+            try:
+                parent = sys.modules[parent_name]
+                tail_names = [alias.rpartition(".")[2] for alias in self.module_aliases]
+                for tail_name in tail_names:
+                    if tail_name in parent.__dict__:
+                        parent.__dict__.pop(tail_name)
+
+                    parent.__dict__[tail_name] = WeakReference()
+                    finalize(parent.__dict__[tail_name], _cb_finalize, parent, tail_name, tail_names)
+            except KeyError:
+                pass
+        return result
 
 
 class ImportFinder(importlib.machinery.FileFinder):
+    _path_mtime: float
+
     def __init__(self, path: str, module_name_mapping: Dict[str, str]) -> None:
         self.module_name_mapping = module_name_mapping
+        self.reversed_module_name_mapping = {}
+        self.spec_cache = {}
+
+        for k, v in module_name_mapping.items():
+            self.reversed_module_name_mapping[v] = self.reversed_module_name_mapping.get(v, set()) | set([k])
+
         super().__init__(
             path,
+            (ImportLoader, importlib.machinery.SOURCE_SUFFIXES),
             (importlib.machinery.SourceFileLoader, importlib.machinery.SOURCE_SUFFIXES),
             (importlib.machinery.SourcelessFileLoader, importlib.machinery.BYTECODE_SUFFIXES),
         )
@@ -19,8 +87,34 @@ class ImportFinder(importlib.machinery.FileFinder):
         sys.path_importer_cache[self.path] = self
 
     def find_spec(self, fullname: str, target: Optional[ModuleType] = None) -> Optional[importlib.machinery.ModuleSpec]:
-        fullname = self.module_name_mapping.get(fullname, fullname)
-        return super().find_spec(fullname, target=target)
+        fullname_ = self.module_name_mapping.get(fullname, fullname)
+
+        spec = super().find_spec(fullname_, target=target)
+        cached_spec = None
+
+        if (
+            fullname_ != fullname
+            and sys.modules.get(fullname_, None) is not None
+            and sys.modules.get(fullname, None) is None
+        ):
+            cached_spec = self.spec_cache.get((fullname_, self._path_mtime))
+
+        if cached_spec:
+            return cached_spec
+
+        if not spec:
+            return spec
+
+        self.spec_cache[(fullname_, self._path_mtime)] = spec
+        if isinstance(spec.loader, ImportLoader):
+            spec.loader.module_aliases.add(fullname_)
+
+        for name in self.reversed_module_name_mapping.get(fullname_, []):
+            self.spec_cache[(name, self._path_mtime)] = spec
+            if isinstance(spec.loader, ImportLoader):
+                spec.loader.module_aliases.add(name)
+
+        return spec
 
 
 def _install_import_finder(module_name_mapping: Dict[str, str]) -> None:
