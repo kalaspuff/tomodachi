@@ -1410,7 +1410,14 @@ class HttpTransport(Invoker):
                     port=port,
                     error_message=error_message,
                 )
-                raise HttpException(str(e), log_level=context.get("log_level")) from e
+
+                try:
+                    raise HttpException(str(e), log_level=context.get("log_level")).with_traceback(
+                        e.__traceback__
+                    ) from None
+                except Exception as exc:
+                    exc.__traceback__ = e.__traceback__
+                    raise
 
             if server.sockets:
                 socket_address = server.sockets[0].getsockname()

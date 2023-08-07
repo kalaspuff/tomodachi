@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, Set, Type, cast
 
 import tomodachi
 from tomodachi import CLASS_ATTRIBUTE, logging
+from tomodachi._exception import add_exception_cause
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import set_service, unset_service
 from tomodachi.invoker import FUNCTION_ATTRIBUTE, INVOKER_TASK_START_KEYWORD, START_ATTRIBUTE
@@ -243,13 +244,9 @@ class ServiceContainer(object):
                             getattr(instance, "_start_service"),
                             service_name,
                             logger="tomodachi.lifecycle.handler",
-                            # service_handler="_start_service",
-                            # operation="lifecycle.initialize",
-                            # triggered="start",
                             handler="_start_service",
                             type="tomodachi.event",
                             event_="lifecycle.setup",
-                            # lifecycle="setup",
                         )
                     )
                     services_started.add((service_name, instance, log_level))
@@ -260,7 +257,6 @@ class ServiceContainer(object):
         if services_started:
             try:
                 for name, instance, log_level in services_started:
-                    # self.logger.info('Initializing service "{}" [id: {}]'.format(name, instance.uuid))
                     logging.getLogger("tomodachi.service").info(
                         "initializing service instance", service=name, uuid=instance.uuid
                     )
@@ -279,6 +275,7 @@ class ServiceContainer(object):
                             try:
                                 raise cast(Exception, exception)
                             except Exception as e:
+                                add_exception_cause(e, ("tomodachi.container",))
                                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
                         for name, instance, log_level in services_started:
@@ -308,20 +305,13 @@ class ServiceContainer(object):
                         ]
                     )
                     results = await asyncio.wait([asyncio.ensure_future(func()) for func in invoker_coros if func])
-                    # print(name, future)
-                    # task_results = await asyncio.wait(
-                    #     [
-                    #         asyncio.ensure_future(func())
-                    #         for func in (await asyncio.gather(*invoker_tasks))
-                    #         if print(func.__qualname__ if func else func) or func
-                    #     ]
-                    # )
                     exceptions = [v.exception() for v in [value for value in results if value][0] if v.exception()]
                     if exceptions:
                         for exception in exceptions:
                             try:
                                 raise cast(Exception, exception)
                             except Exception as e:
+                                add_exception_cause(e, ("tomodachi.container",))
                                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
                         for name, instance, log_level in services_started:
@@ -366,15 +356,12 @@ class ServiceContainer(object):
                                     getattr(instance, "_started_service", None),
                                     name,
                                     logger="tomodachi.lifecycle.handler",
-                                    # operation="lifecycle.ready",
-                                    # handler_function="_started_service",
                                     handler="_started_service",
                                     type="tomodachi.event",
                                     event_="lifecycle.initialized",
                                 )
                             )
 
-                        # self.logger.info('Started service "{}" [id: {}]'.format(name, instance.uuid))
                         self.logger.info(
                             "enabled handler functions",
                             state="initialized",
@@ -385,7 +372,7 @@ class ServiceContainer(object):
                         )
 
             except Exception as e:
-                # self.logger.warning("Failed to start service")
+                add_exception_cause(e, ("tomodachi.container", "tomodachi.invoker.base"))
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
                 for name, instance, log_level in services_started:
@@ -408,6 +395,7 @@ class ServiceContainer(object):
                         try:
                             raise cast(Exception, exception)
                         except Exception as e:
+                            add_exception_cause(e, ("tomodachi.container",))
                             logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
                     for name, instance, log_level in services_started:
@@ -455,8 +443,6 @@ class ServiceContainer(object):
                         getattr(instance, "_stopping_service", None),
                         name,
                         logger="tomodachi.lifecycle.handler",
-                        # operation="lifecycle.stop",
-                        # handler_function="_stopping_service",
                         handler="_stopping_service",
                         type="tomodachi.event",
                         event_="lifecycle.interrupt",
@@ -469,18 +455,13 @@ class ServiceContainer(object):
                         getattr(instance, "_stop_service", None),
                         name,
                         logger="tomodachi.lifecycle.handler",
-                        # operation="lifecycle.stop",
-                        # handler_function="_stop_service",
                         handler="_stop_service",
                         type="tomodachi.event",
                         event_="lifecycle.teardown",
-                        # lifecycle="stopping",  # test
                     )
                 )
 
         for name, instance, log_level in services_started:
-            # self.logger.info('Stopping service "{}" [id: {}]'.format(name, instance.uuid))
-            # self.logger.info("lifecycle interrupt notice", state="stopping", service=name)
             logging.getLogger("tomodachi.event").debug("-> lifecycle.interrupt", event_="lifecycle.interrupt")
             self.logger.info(
                 "stopping service", state="stopping", service=name if len(services_started) > 1 else Ellipsis
@@ -492,44 +473,34 @@ class ServiceContainer(object):
             await asyncio.sleep(0.01)
 
         for name, instance, log_level in services_started:
-            # self.logger.info('Stopping service "{}" [id: {}]'.format(name, instance.uuid))
-            # self.logger.info("stopping service", state="stopping", service=name)
             logging.getLogger("tomodachi.event").debug("-> lifecycle.teardown", event_="lifecycle.teardown")
 
         for name, instance in registered_services:
             for registry in getattr(instance, "discovery", []):
                 if getattr(registry, "_deregister_service", None):
-                    await asyncio.create_task(
-                        logging_context_wrapper(
-                            registry._deregister_service,
-                            name,
-                            logger="tomodachi.discovery",
-                            registry=registry.name
-                            if hasattr(registry, "name")
-                            else (
-                                registry.__name__
-                                if hasattr(registry, "__name__")
+                    try:
+                        await asyncio.create_task(
+                            logging_context_wrapper(
+                                registry._deregister_service,
+                                name,
+                                logger="tomodachi.discovery",
+                                registry=registry.name
+                                if hasattr(registry, "name")
                                 else (
-                                    type(registry).__name__
-                                    if hasattr(type(registry), "__name__")
-                                    else str(type(registry))
-                                )
-                            ),
-                            operation="deregister",
-                            # function="{}.{}.{}".format(
-                            #     registry.__module__,
-                            #     registry.__name__
-                            #     if hasattr(registry, "__name__")
-                            #     else (
-                            #         type(registry).__name__
-                            #         if hasattr(type(registry), "__name__")
-                            #         else str(type(registry))
-                            #     ),
-                            #     "_deregister_service",
-                            # ),
-                            # function=registry._deregister_service.__name__,
-                        )(instance)
-                    )
+                                    registry.__name__
+                                    if hasattr(registry, "__name__")
+                                    else (
+                                        type(registry).__name__
+                                        if hasattr(type(registry), "__name__")
+                                        else str(type(registry))
+                                    )
+                                ),
+                                operation="deregister",
+                            )(instance)
+                        )
+                    except Exception as e:
+                        add_exception_cause(e, ("tomodachi.container",))
+                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
         teardown_futures = []
         if teardown_coros and any(teardown_coros):
@@ -543,10 +514,19 @@ class ServiceContainer(object):
                     try:
                         raise cast(Exception, exception)
                     except Exception as e:
+                        add_exception_cause(
+                            e,
+                            (
+                                "tomodachi.container",
+                                "tomodachi.transport.http",
+                                "tomodachi.transport.aws_sns_sqs",
+                                "tomodachi.transport.amqp",
+                                "tomodachi.transport.schedule",
+                            ),
+                        )
                         logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
 
         for name, instance, log_level in services_started:
-            # self.logger.info('Stopped service "{}" [id: {}]'.format(name, instance.uuid))
             self.logger.info(
                 "terminated service", state="terminated", service=name if len(services_started) > 1 else Ellipsis
             )

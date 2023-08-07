@@ -143,7 +143,7 @@ class LinkQuoteStrings:
         self.keys = keys
 
     def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
-        return {k: (f"<{v}>" if k in self.keys else v) for k, v in event_dict.items()}
+        return {k: (f"<{v}>" if k in self.keys and v and not v.startswith("<") else v) for k, v in event_dict.items()}
 
 
 class SquelchDisabledLogger:
@@ -246,20 +246,6 @@ def add_exception_info(logger: WrappedLogger, method_name: str, event_dict: Even
         )
     if "exc_message" not in event_dict:
         event_dict["exc_message"] = str(exception)
-
-    # tb = exception.__traceback__
-    # if tb and tb.tb_next:
-    #     avoid_final_modules = ("asyncio", "asyncio.tasks")
-    #     frames = []
-    #     while tb:
-    #         module_name = tb.tb_frame.f_globals.get("__name__", "")
-    #         frames.append((tb, module_name))
-    #         tb = tb.tb_next
-    #
-    #     for tb_, module_name in reversed(frames):
-    #         tb = tb_
-    #         if module_name not in avoid_final_modules:
-    #             break
 
     tb = exception.__traceback__
     while tb and tb.tb_next:
