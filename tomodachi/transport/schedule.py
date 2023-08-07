@@ -58,10 +58,10 @@ class Scheduler(Invoker):
 
             except (Exception, asyncio.CancelledError) as e:
                 add_exception_cause(e, ("tomodachi.transport.schedule",))
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
             except BaseException as e:
                 add_exception_cause(e, ("tomodachi.transport.schedule",))
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
             finally:
                 decrease_execution_context_value("scheduled_functions_current_tasks")
 
@@ -384,7 +384,7 @@ class Scheduler(Invoker):
                             max_sleep_time = int(ts2 - ts1) // 2
                     max_sleep_time = min(max(max_sleep_time, 10), 300)
             except (Exception, asyncio.CancelledError) as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                 await asyncio.sleep(0.001)
                 await start_waiter
@@ -486,10 +486,10 @@ class Scheduler(Invoker):
                         )
                     tasks.append(task)
                 except (Exception, asyncio.CancelledError) as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     await asyncio.sleep(1)
                 except BaseException as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     await asyncio.sleep(1)
 
             if tasks:

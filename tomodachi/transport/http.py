@@ -303,7 +303,7 @@ class Response(object):
             try:
                 body_value = body.encode(charset.lower())
             except (ValueError, LookupError, UnicodeEncodeError) as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 raise web.HTTPInternalServerError() from e
         elif self._body:
             body_value = self._body.encode() if not isinstance(self._body, bytes) else self._body
@@ -738,7 +738,8 @@ class HttpTransport(Invoker):
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
             except Exception as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                add_exception_cause(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 try:
                     await websocket.close()
                 except Exception:
@@ -780,15 +781,17 @@ class HttpTransport(Invoker):
                             try:
                                 await _receive_func(message.data)
                             except Exception as e:
-                                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                                add_exception_cause(e, ("tomodachi.transport.http",))
+                                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     elif message.type == WSMsgType.ERROR:
                         if not context.get("log_level") or context.get("log_level") in ["DEBUG"]:
                             ws_exception = websocket.exception()
                             if isinstance(ws_exception, (EofStream, RuntimeError)):
                                 pass
                             elif isinstance(ws_exception, Exception):
+                                add_exception_cause(ws_exception, ("tomodachi.transport.http",))
                                 logging.getLogger("exception").exception(
-                                    "Uncaught exception: {}".format(str(ws_exception))
+                                    "uncaught exception: {}".format(str(ws_exception)), exception=ws_exception
                                 )
                             else:
                                 response_logger.warning("websocket exception", websocket_exception=ws_exception)
@@ -801,7 +804,8 @@ class HttpTransport(Invoker):
                     try:
                         await _close_func()
                     except Exception as e:
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                        add_exception_cause(e, ("tomodachi.transport.http",))
+                        logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 try:
                     await websocket.close()
                 except Exception:
@@ -968,16 +972,23 @@ class HttpTransport(Invoker):
                         try:
                             response = await error_handler(request)
                         except Exception as error_handler_exception:
+                            add_exception_cause(
+                                error_handler_exception, ("tomodachi.transport.http", "tomodachi.helpers.middleware")
+                            )
                             logging.getLogger("exception").exception(
-                                "Uncaught exception: {}".format(str(error_handler_exception))
+                                "uncaught exception: {}".format(str(error_handler_exception))
                             )
                             error_handler = context.get("_http_error_handler", {}).get(500, None)
                             if error_handler:
                                 try:
                                     response = await error_handler(request)
                                 except Exception as fallback_error_handler_exception:
+                                    add_exception_cause(
+                                        fallback_error_handler_exception,
+                                        ("tomodachi.transport.http", "tomodachi.helpers.middleware"),
+                                    )
                                     logging.getLogger("exception").exception(
-                                        "Uncaught exception: {}".format(str(fallback_error_handler_exception))
+                                        "uncaught exception: {}".format(str(fallback_error_handler_exception))
                                     )
                                     response = web.HTTPInternalServerError()
                                     response.body = b""
@@ -990,14 +1001,18 @@ class HttpTransport(Invoker):
                 except Exception as e:
                     handler_stop_time = time.perf_counter_ns() if access_log else 0
                     add_exception_cause(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     error_handler = context.get("_http_error_handler", {}).get(500, None)
                     if error_handler:
                         try:
                             response = await error_handler(request)
                         except Exception as fallback_error_handler_exception:
+                            add_exception_cause(
+                                fallback_error_handler_exception,
+                                ("tomodachi.transport.http", "tomodachi.helpers.middleware"),
+                            )
                             logging.getLogger("exception").exception(
-                                "Uncaught exception: {}".format(str(fallback_error_handler_exception))
+                                "uncaught exception: {}".format(str(fallback_error_handler_exception))
                             )
                             response = web.HTTPInternalServerError()
                             response.body = b""
@@ -1136,7 +1151,8 @@ class HttpTransport(Invoker):
                         try:
                             raise Exception("invalid response value")
                         except Exception as e:
-                            logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                            add_exception_cause(e, ("tomodachi.transport.http",))
+                            logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                         response = web.HTTPInternalServerError()
                         response.body = b""
@@ -1191,7 +1207,8 @@ class HttpTransport(Invoker):
                         context["_http_active_requests"].remove(task)
                     except KeyError:
                         pass
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    add_exception_cause(e, ("tomodachi.transport.http",))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     raise
                 except BaseException:
                     decrease_execution_context_value("http_current_tasks")

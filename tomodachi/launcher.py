@@ -288,7 +288,7 @@ class ServiceLauncher(object):
                 if not cls.restart_services:
                     tomodachi.SERVICE_EXIT_CODE = 1
             except Exception as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                 if isinstance(e, ModuleNotFoundError):  # pragma: no cover
                     missing_module_name = str(getattr(e, "name", None) or "")

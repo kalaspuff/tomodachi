@@ -537,7 +537,8 @@ class AWSSNSSQSTransport(Invoker):
                             kwargs["message_timestamp"] = message_timestamp
 
                 except (Exception, asyncio.CancelledError, BaseException) as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    add_exception_cause(e, ("tomodachi.transport.aws_sns_sqs",))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.delete_message(receipt_handle, queue_url, context)
                     elif message is False and message_uuid:
@@ -626,7 +627,7 @@ class AWSSNSSQSTransport(Invoker):
             except (Exception, asyncio.CancelledError, BaseException) as e:
                 # todo: don't log exception in case the error is of a AWSSNSSQSInternalServiceError (et. al) type
                 add_exception_cause(e, ("tomodachi.transport.aws_sns_sqs", "tomodachi.helpers.middleware"))
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(
                     e.__class__,
@@ -1758,7 +1759,7 @@ class AWSSNSSQSTransport(Invoker):
                         if exception:
                             raise exception
                     except Exception as e:
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                        logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     sleep_task: asyncio.Future = asyncio.ensure_future(asyncio.sleep(10))
                     await asyncio.wait([sleep_task, cls.close_waiter], return_when=asyncio.FIRST_COMPLETED)
                     if not sleep_task.done():

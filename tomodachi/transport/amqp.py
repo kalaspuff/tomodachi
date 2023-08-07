@@ -334,7 +334,8 @@ class AmqpTransport(Invoker):
                         ):
                             kwargs["message_uuid"] = message_uuid
                 except (Exception, asyncio.CancelledError, BaseException) as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    add_exception_cause(e, ("tomodachi.transport.amqp",))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.channel.basic_client_ack(delivery_tag)
                     elif message is False and message_uuid:
@@ -399,7 +400,7 @@ class AmqpTransport(Invoker):
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
                 add_exception_cause(e, ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"))
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(
                     e.__class__,

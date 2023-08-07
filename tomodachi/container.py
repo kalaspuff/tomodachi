@@ -114,7 +114,7 @@ class ServiceContainer(object):
                 try:
                     instance = cls()
                 except Exception as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     logging.getLogger("tomodachi.init").error(
                         "failed to initialize instance",
                         module=self.module_name,
@@ -144,7 +144,7 @@ class ServiceContainer(object):
                 try:
                     self.setup_configuration(instance)
                 except Exception as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     logging.getLogger("tomodachi.init").error(
                         "failed to setup config",
                         module=self.module_name,
@@ -181,7 +181,7 @@ class ServiceContainer(object):
                                         op_lvl[k_lvl] = {}
                                     op_lvl = op_lvl.get(k_lvl)
                     except Exception as e:
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                        logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                         logging.getLogger("tomodachi.init").error(
                             "failed to setup options",
                             module=self.module_name,
@@ -276,7 +276,7 @@ class ServiceContainer(object):
                                 raise cast(Exception, exception)
                             except Exception as e:
                                 add_exception_cause(e, ("tomodachi.container",))
-                                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                         for name, instance, log_level in services_started:
                             self.logger.warning("failed to start service", state="aborting", service=name)
@@ -312,7 +312,7 @@ class ServiceContainer(object):
                                 raise cast(Exception, exception)
                             except Exception as e:
                                 add_exception_cause(e, ("tomodachi.container",))
-                                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                         for name, instance, log_level in services_started:
                             self.logger.warning("failed to start service", state="aborting", service=name)
@@ -373,7 +373,7 @@ class ServiceContainer(object):
 
             except Exception as e:
                 add_exception_cause(e, ("tomodachi.container", "tomodachi.invoker.base"))
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                 for name, instance, log_level in services_started:
                     self.logger.warning(
@@ -396,7 +396,7 @@ class ServiceContainer(object):
                             raise cast(Exception, exception)
                         except Exception as e:
                             add_exception_cause(e, ("tomodachi.container",))
-                            logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                            logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                     for name, instance, log_level in services_started:
                         self.logger.warning(
@@ -500,7 +500,7 @@ class ServiceContainer(object):
                         )
                     except Exception as e:
                         add_exception_cause(e, ("tomodachi.container",))
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                        logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
         teardown_futures = []
         if teardown_coros and any(teardown_coros):
@@ -524,7 +524,7 @@ class ServiceContainer(object):
                                 "tomodachi.transport.schedule",
                             ),
                         )
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                        logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
         for name, instance, log_level in services_started:
             self.logger.info(
