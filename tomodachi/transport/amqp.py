@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List, Literal, Match, Optional, Set, Tup
 import aioamqp
 
 from tomodachi import get_contextvar, logging
+from tomodachi._exception import add_exception_cause
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -397,6 +398,7 @@ class AmqpTransport(Invoker):
                     )
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
+                add_exception_cause(e, ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"))
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(

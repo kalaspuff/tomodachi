@@ -24,6 +24,7 @@ from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from tomodachi import get_contextvar, logging
+from tomodachi._exception import add_exception_cause
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -988,6 +989,7 @@ class HttpTransport(Invoker):
                         response.body = str(e).encode("utf-8")
                 except Exception as e:
                     handler_stop_time = time.perf_counter_ns() if access_log else 0
+                    add_exception_cause(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
                     logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     error_handler = context.get("_http_error_handler", {}).get(500, None)
                     if error_handler:

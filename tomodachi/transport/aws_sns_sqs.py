@@ -40,6 +40,7 @@ import botocore.exceptions
 from botocore.parsers import ResponseParserError
 
 from tomodachi import get_contextvar, logging
+from tomodachi._exception import add_exception_cause
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
@@ -624,6 +625,7 @@ class AWSSNSSQSTransport(Invoker):
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
                 # todo: don't log exception in case the error is of a AWSSNSSQSInternalServiceError (et. al) type
+                add_exception_cause(e, ("tomodachi.transport.aws_sns_sqs", "tomodachi.helpers.middleware"))
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(

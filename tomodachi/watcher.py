@@ -136,22 +136,22 @@ class Watcher(object):
                     updated = updated_files.get("updated") or []
                     if removed and not added and not updated:
                         logging.getLogger("tomodachi.watcher").warning(
-                            "removed files", removed_files=[file for file in removed]
+                            "removed files", removed_files=[f"./{file}" for file in removed]
                         )
                     elif added and not removed and not updated:
                         logging.getLogger("tomodachi.watcher").warning(
-                            "added files", added_files=[file for file in added]
+                            "added files", added_files=[f"./{file}" for file in added]
                         )
                     elif updated and not removed and not added:
                         logging.getLogger("tomodachi.watcher").warning(
-                            "updated files", updated_files=[file for file in updated]
+                            "updated files", updated_files=[f"./{file}" for file in updated]
                         )
                     else:
                         logging.getLogger("tomodachi.watcher").warning(
                             "modified files or filepaths",
-                            updated_files=[file for file in updated] if updated else Ellipsis,
-                            added_files=[file for file in added] if added else Ellipsis,
-                            removed_files=[file for file in removed] if removed else Ellipsis,
+                            updated_files=[f"./{file}" for file in updated] if updated else Ellipsis,
+                            added_files=[f"./{file}" for file in added] if added else Ellipsis,
+                            removed_files=[f"./{file}" for file in removed] if removed else Ellipsis,
                         )
 
                     if callback_func:

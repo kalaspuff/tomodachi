@@ -40,6 +40,8 @@ LOGGER_DISABLED_KEY = "_logger_disabled"
 RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
 EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message")
 TOMODACHI_LOGGER_TYPE: Literal["json", "console", "no_color_console", "null"] = "console"
+MAX_STACKTRACE_DEPTH = 50
+CONSOLE_QUOTE_KEYS = ("tb_location", "error_location", "tb_filename", "co_filename", "co_location", "error_filename")
 
 NO_COLOR = any(
     [
@@ -129,6 +131,19 @@ class RemoveDictKey:
         if self.key in event_dict:
             event_dict.pop(self.key)
         return event_dict
+
+
+class LinkQuoteStrings:
+    __slots__ = ("keys",)
+
+    def __init__(
+        self,
+        keys: Iterable[str],
+    ) -> None:
+        self.keys = keys
+
+    def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
+        return {k: (f"<{v}>" if k in self.keys else v) for k, v in event_dict.items()}
 
 
 class SquelchDisabledLogger:
@@ -221,9 +236,8 @@ def add_exception_info(logger: WrappedLogger, method_name: str, event_dict: Even
         if key in event_dict and exception == event_dict.get(key):
             event_dict.pop(key)
 
-    tb = exception.__traceback__
-
     event_dict["exception"] = exception
+
     if "exc_info" not in event_dict:
         event_dict["exc_info"] = exc_info
     if "exc_type" not in event_dict:
@@ -232,17 +246,74 @@ def add_exception_info(logger: WrappedLogger, method_name: str, event_dict: Even
         )
     if "exc_message" not in event_dict:
         event_dict["exc_message"] = str(exception)
+
+    # tb = exception.__traceback__
+    # if tb and tb.tb_next:
+    #     avoid_final_modules = ("asyncio", "asyncio.tasks")
+    #     frames = []
+    #     while tb:
+    #         module_name = tb.tb_frame.f_globals.get("__name__", "")
+    #         frames.append((tb, module_name))
+    #         tb = tb.tb_next
+    #
+    #     for tb_, module_name in reversed(frames):
+    #         tb = tb_
+    #         if module_name not in avoid_final_modules:
+    #             break
+
+    tb = exception.__traceback__
+    while tb and tb.tb_next:
+        tb = tb.tb_next
+
     if "tb_module_name" not in event_dict:
         event_dict["tb_module_name"] = tb.tb_frame.f_globals.get("__name__", "<unknown>") if tb else "<unknown>"
     if "tb_function_name" not in event_dict:
         event_dict["tb_function_name"] = (
             getattr(tb.tb_frame.f_code, "co_qualname", tb.tb_frame.f_code.co_name) if tb else "<unknown>"
         )
-    if "tb_lineno" not in event_dict:
-        event_dict["tb_lineno"] = tb.tb_lineno if tb else -1
-    if "tb_filename" not in event_dict:
-        event_dict["tb_filename"] = tb.tb_frame.f_code.co_filename if tb else "<unknown>"
+    if "tb_location" not in event_dict:
+        co_filename = tb.tb_frame.f_code.co_filename if tb else "<unknown>"
+        if tb:
+            cwd = os.getcwd()
+            if cwd.rstrip("/") and co_filename.startswith(cwd):
+                co_filename = "./" + co_filename[len(cwd) :].lstrip("/")
 
+        event_dict["tb_location"] = f"{co_filename}:{tb.tb_lineno}" if tb else "<unknown>"
+
+    return event_dict
+
+
+def add_stacktrace_info(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
+    exception = event_dict.get("exception")
+
+    if not exception or not isinstance(exception, BaseException):
+        return event_dict
+
+    if "stacktrace" in event_dict:
+        return event_dict
+
+    stacktrace = []
+    cwd = os.getcwd()
+
+    tb = exception.__traceback__
+    while tb:
+        co_filename = tb.tb_frame.f_code.co_filename or "<unknown>"
+        if cwd.rstrip("/") and co_filename.startswith(cwd):
+            co_filename = "./" + co_filename[len(cwd) :].lstrip("/")
+
+        stacktrace.append(
+            {
+                "module_name": tb.tb_frame.f_globals.get("__name__", "<unknown>"),
+                "function_name": getattr(tb.tb_frame.f_code, "co_qualname", tb.tb_frame.f_code.co_name),
+                "location": f"{co_filename}:{tb.tb_lineno}",
+            }
+        )
+        tb = tb.tb_next
+
+    if len(stacktrace) > MAX_STACKTRACE_DEPTH:
+        stacktrace = stacktrace[len(stacktrace) - MAX_STACKTRACE_DEPTH :]
+
+    event_dict["stacktrace"] = stacktrace
     return event_dict
 
 
@@ -861,6 +932,7 @@ console_logger: Logger = structlog.wrap_logger(
         AddMissingDictKey(key="message"),
         remove_ellipsis_values,
         SquelchDisabledLogger(),
+        LinkQuoteStrings(keys=CONSOLE_QUOTE_KEYS),
         ConsoleRenderer(colors=False if NO_COLOR else True, sort_keys=False, event_key="message"),
     ],
     wrapper_class=Logger,
@@ -881,6 +953,7 @@ no_color_console_logger: Logger = structlog.wrap_logger(
         AddMissingDictKey(key="message"),
         remove_ellipsis_values,
         SquelchDisabledLogger(),
+        LinkQuoteStrings(keys=CONSOLE_QUOTE_KEYS),
         ConsoleRenderer(colors=False, sort_keys=False, event_key="message"),
     ],
     wrapper_class=Logger,
@@ -898,6 +971,7 @@ json_logger: Logger = structlog.wrap_logger(
         LogProcessorTimestamp(),
         RenameKeys(pairs=RENAME_KEYS),
         add_exception_info,
+        add_stacktrace_info,
         RemoveDictKey(key="exc_info"),
         remove_ellipsis_values,
         SquelchDisabledLogger(),

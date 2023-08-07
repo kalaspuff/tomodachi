@@ -9,6 +9,7 @@ import pytz
 import tzlocal
 
 from tomodachi import get_contextvar, logging
+from tomodachi._exception import add_exception_cause
 from tomodachi.helpers.crontab import get_next_datetime
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
@@ -56,8 +57,10 @@ class Scheduler(Invoker):
                     await routine
 
             except (Exception, asyncio.CancelledError) as e:
+                add_exception_cause(e, ("tomodachi.transport.schedule",))
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
             except BaseException as e:
+                add_exception_cause(e, ("tomodachi.transport.schedule",))
                 logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
             finally:
                 decrease_execution_context_value("scheduled_functions_current_tasks")

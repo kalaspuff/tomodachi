@@ -113,8 +113,8 @@ class ServiceLauncher(object):
                         ServiceImporter.import_service_file(file)
                     except (SyntaxError, IndentationError) as e:
                         error_filename = getattr(e, "filename", "")
-                        if error_filename.startswith(cwd):
-                            error_filename = error_filename[len(cwd) :].lstrip("/")
+                        if cwd.rstrip("/") and error_filename.startswith(cwd):
+                            error_filename = "./" + error_filename[len(cwd) :].lstrip("/")
                         error_lineno = getattr(e, "lineno", None)
                         error_location = error_filename + (":" + str(error_lineno)) if error_lineno else ""
 
@@ -145,8 +145,8 @@ class ServiceLauncher(object):
                                     ServiceImporter.import_module(file)
                         except (SyntaxError, IndentationError) as e:
                             error_filename = getattr(e, "filename", "")
-                            if error_filename.startswith(cwd):
-                                error_filename = error_filename[len(cwd) :].lstrip("/")
+                            if cwd.rstrip("/") and error_filename.startswith(cwd):
+                                error_filename = "./" + error_filename[len(cwd) :].lstrip("/")
                             error_lineno = getattr(e, "lineno", None)
                             error_location = error_filename + (":" + str(error_lineno)) if error_lineno else ""
 
@@ -325,7 +325,7 @@ class ServiceLauncher(object):
                         loop.remove_signal_handler(getattr(signal, signame))
 
             if cls.restart_services:
-                # Cleanup log handlers
+                # log handler cleanup
                 logging.remove_handlers()
 
             current_modules = [m for m in sys.modules.keys()]
