@@ -4,6 +4,14 @@ from typing import Any
 import tomodachi
 
 
+class TestException(Exception):
+    __test__ = False
+
+
+def exception_func() -> None:
+    raise TestException("test exception")
+
+
 def test_internal_default_logger(capsys: Any) -> None:
     logger = tomodachi.logging.get_logger(logger_type="json")
     assert logger is not None
@@ -38,12 +46,6 @@ def test_internal_default_logger(capsys: Any) -> None:
         "timestamp": json.loads(out).get("timestamp"),
     }
 
-    class TestException(Exception):
-        pass
-
-    def exception_func() -> None:
-        raise TestException("test exception")
-
     try:
         exception_func()
     except TestException:
@@ -59,18 +61,18 @@ def test_internal_default_logger(capsys: Any) -> None:
         "exc_type": "TestException",
         "exc_message": "test exception",
         "tb_module_name": "test_logging_internals",
-        "tb_function_name": "test_internal_default_logger.<locals>.exception_func",
-        "tb_location": "./tests/test_logging_internals.py:45",
+        "tb_function_name": "exception_func",
+        "tb_location": "./tests/test_logging_internals.py:12",
         "stacktrace": [
             {
                 "module_name": "test_logging_internals",
                 "function_name": "test_internal_default_logger",
-                "location": "./tests/test_logging_internals.py:48",
+                "location": "./tests/test_logging_internals.py:50",
             },
             {
                 "module_name": "test_logging_internals",
-                "function_name": "test_internal_default_logger.<locals>.exception_func",
-                "location": "./tests/test_logging_internals.py:45",
+                "function_name": "exception_func",
+                "location": "./tests/test_logging_internals.py:12",
             },
         ],
         "timestamp": json.loads(out).get("timestamp"),
