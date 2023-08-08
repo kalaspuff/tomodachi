@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple, Union
 
 
-def add_exception_cause(
+def limit_exception_traceback(
     exc: BaseException, ignored_modules: Optional[Union[List[str], Tuple[str, ...]]] = None
 ) -> None:
     if not exc or not isinstance(exc, BaseException):
@@ -36,5 +36,5 @@ def add_exception_cause(
             continue
 
         if module_name in ignored_modules:
-            exc.__cause__ = exc.with_traceback(tb.tb_next)
+            exc.with_traceback(tb.tb_next)
             break

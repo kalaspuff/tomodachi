@@ -24,7 +24,7 @@ from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from tomodachi import get_contextvar, logging
-from tomodachi._exception import add_exception_cause
+from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -738,7 +738,7 @@ class HttpTransport(Invoker):
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
             except Exception as e:
-                add_exception_cause(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
+                limit_exception_traceback(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 try:
                     await websocket.close()
@@ -781,7 +781,7 @@ class HttpTransport(Invoker):
                             try:
                                 await _receive_func(message.data)
                             except Exception as e:
-                                add_exception_cause(e, ("tomodachi.transport.http",))
+                                limit_exception_traceback(e, ("tomodachi.transport.http",))
                                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     elif message.type == WSMsgType.ERROR:
                         if not context.get("log_level") or context.get("log_level") in ["DEBUG"]:
@@ -789,7 +789,7 @@ class HttpTransport(Invoker):
                             if isinstance(ws_exception, (EofStream, RuntimeError)):
                                 pass
                             elif isinstance(ws_exception, Exception):
-                                add_exception_cause(ws_exception, ("tomodachi.transport.http",))
+                                limit_exception_traceback(ws_exception, ("tomodachi.transport.http",))
                                 logging.getLogger("exception").exception(
                                     "uncaught exception: {}".format(str(ws_exception)), exception=ws_exception
                                 )
@@ -804,7 +804,7 @@ class HttpTransport(Invoker):
                     try:
                         await _close_func()
                     except Exception as e:
-                        add_exception_cause(e, ("tomodachi.transport.http",))
+                        limit_exception_traceback(e, ("tomodachi.transport.http",))
                         logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 try:
                     await websocket.close()
@@ -972,7 +972,7 @@ class HttpTransport(Invoker):
                         try:
                             response = await error_handler(request)
                         except Exception as error_handler_exception:
-                            add_exception_cause(
+                            limit_exception_traceback(
                                 error_handler_exception, ("tomodachi.transport.http", "tomodachi.helpers.middleware")
                             )
                             logging.getLogger("exception").exception(
@@ -983,7 +983,7 @@ class HttpTransport(Invoker):
                                 try:
                                     response = await error_handler(request)
                                 except Exception as fallback_error_handler_exception:
-                                    add_exception_cause(
+                                    limit_exception_traceback(
                                         fallback_error_handler_exception,
                                         ("tomodachi.transport.http", "tomodachi.helpers.middleware"),
                                     )
@@ -1000,14 +1000,14 @@ class HttpTransport(Invoker):
                         response.body = str(e).encode("utf-8")
                 except Exception as e:
                     handler_stop_time = time.perf_counter_ns() if access_log else 0
-                    add_exception_cause(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
+                    limit_exception_traceback(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
                     logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     error_handler = context.get("_http_error_handler", {}).get(500, None)
                     if error_handler:
                         try:
                             response = await error_handler(request)
                         except Exception as fallback_error_handler_exception:
-                            add_exception_cause(
+                            limit_exception_traceback(
                                 fallback_error_handler_exception,
                                 ("tomodachi.transport.http", "tomodachi.helpers.middleware"),
                             )
@@ -1151,7 +1151,7 @@ class HttpTransport(Invoker):
                         try:
                             raise Exception("invalid response value")
                         except Exception as e:
-                            add_exception_cause(e, ("tomodachi.transport.http",))
+                            limit_exception_traceback(e, ("tomodachi.transport.http",))
                             logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                         response = web.HTTPInternalServerError()
@@ -1207,7 +1207,7 @@ class HttpTransport(Invoker):
                         context["_http_active_requests"].remove(task)
                     except KeyError:
                         pass
-                    add_exception_cause(e, ("tomodachi.transport.http",))
+                    limit_exception_traceback(e, ("tomodachi.transport.http",))
                     logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     raise
                 except BaseException:

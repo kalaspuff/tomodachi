@@ -41,7 +41,7 @@ import botocore.exceptions
 from botocore.parsers import ResponseParserError
 
 from tomodachi import get_contextvar, logging
-from tomodachi._exception import add_exception_cause
+from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
@@ -560,7 +560,7 @@ class AWSSNSSQSTransport(Invoker):
                             kwargs["message_timestamp"] = message_timestamp
 
                 except (Exception, asyncio.CancelledError, BaseException) as e:
-                    add_exception_cause(e, ("tomodachi.transport.aws_sns_sqs",))
+                    limit_exception_traceback(e, ("tomodachi.transport.aws_sns_sqs",))
                     logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.delete_message(receipt_handle, queue_url, context)
@@ -649,7 +649,7 @@ class AWSSNSSQSTransport(Invoker):
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
                 # todo: don't log exception in case the error is of a AWSSNSSQSInternalServiceError (et. al) type
-                add_exception_cause(e, ("tomodachi.transport.aws_sns_sqs", "tomodachi.helpers.middleware"))
+                limit_exception_traceback(e, ("tomodachi.transport.aws_sns_sqs", "tomodachi.helpers.middleware"))
                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(

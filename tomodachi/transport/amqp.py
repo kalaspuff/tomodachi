@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, List, Literal, Match, Optional, Set, Tup
 import aioamqp
 
 from tomodachi import get_contextvar, logging
-from tomodachi._exception import add_exception_cause
+from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -334,7 +334,7 @@ class AmqpTransport(Invoker):
                         ):
                             kwargs["message_uuid"] = message_uuid
                 except (Exception, asyncio.CancelledError, BaseException) as e:
-                    add_exception_cause(e, ("tomodachi.transport.amqp",))
+                    limit_exception_traceback(e, ("tomodachi.transport.amqp",))
                     logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.channel.basic_client_ack(delivery_tag)
@@ -399,7 +399,7 @@ class AmqpTransport(Invoker):
                     )
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
-                add_exception_cause(e, ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"))
+                limit_exception_traceback(e, ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"))
                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(

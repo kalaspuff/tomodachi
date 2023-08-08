@@ -217,7 +217,7 @@ def add_exception_info(logger: WrappedLogger, method_name: str, event_dict: Even
         method_name = "exception"
 
     if exception and isinstance(exception, BaseException):
-        exc_info = (type(exception), exception, exception.__traceback__)
+        pass
     elif (
         not isinstance(exception, BaseException)
         and isinstance(exc_info, (tuple, list))
@@ -236,10 +236,11 @@ def add_exception_info(logger: WrappedLogger, method_name: str, event_dict: Even
         if key in event_dict and exception == event_dict.get(key):
             event_dict.pop(key)
 
-    event_dict["exception"] = exception
+    exc_info = (type(exception), exception, exception.__traceback__)
 
-    if "exc_info" not in event_dict:
-        event_dict["exc_info"] = exc_info
+    event_dict["exception"] = exception
+    event_dict["exc_info"] = exc_info
+
     if "exc_type" not in event_dict:
         event_dict["exc_type"] = (
             type(exception).__name__ if hasattr(type(exception), "__name__") else str(type(exception))

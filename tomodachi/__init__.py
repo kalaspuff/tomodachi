@@ -296,14 +296,23 @@ class TomodachiServiceMeta(type):
         cls: Type[TomodachiServiceMeta], name: str, bases: Tuple[type, ...], attributedict: Dict
     ) -> TomodachiServiceMeta:
         attributedict[CLASS_ATTRIBUTE] = True
+
+        if bases and not attributedict.get("logger") and not any([hasattr(base, "logger") for base in bases]):
+            attributedict["logger"] = cast(
+                Logger,
+                property(
+                    lambda s, *a: getattr(s, "__logger_logger", get_logger(context("service.logger"))),
+                    lambda s, *a: s.__setattr__("__logger_logger", a[0]),
+                    lambda s, *a: s.__setattr__("__logger_logger", None),
+                ),
+            )
+
         result = cast(Type["Service"], super().__new__(cls, name, bases, dict(attributedict)))
 
         if bases and not result.uuid:
             result.uuid = str(uuid_.uuid4())
         if bases and not result.name:
             result.name = "service"
-        if bases and not hasattr(result, "logger"):
-            result.logger = cast(Logger, property(lambda *a: get_logger(context("service.logger"))))
 
         if bases and (not hasattr(result, "options") or not result.options):
             result.options = Options()

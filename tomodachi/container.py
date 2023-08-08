@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Set, Type, cast
 
 import tomodachi
 from tomodachi import CLASS_ATTRIBUTE, logging
-from tomodachi._exception import add_exception_cause
+from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.dict import merge_dicts
 from tomodachi.helpers.execution_context import set_service, unset_service
 from tomodachi.invoker import FUNCTION_ATTRIBUTE, INVOKER_TASK_START_KEYWORD, START_ATTRIBUTE
@@ -275,7 +275,7 @@ class ServiceContainer(object):
                             try:
                                 raise cast(Exception, exception)
                             except Exception as e:
-                                add_exception_cause(e, ("tomodachi.container",))
+                                limit_exception_traceback(e, ("tomodachi.container",))
                                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                         for name, instance, log_level in services_started:
@@ -311,7 +311,7 @@ class ServiceContainer(object):
                             try:
                                 raise cast(Exception, exception)
                             except Exception as e:
-                                add_exception_cause(e, ("tomodachi.container",))
+                                limit_exception_traceback(e, ("tomodachi.container",))
                                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                         for name, instance, log_level in services_started:
@@ -372,7 +372,7 @@ class ServiceContainer(object):
                         )
 
             except Exception as e:
-                add_exception_cause(e, ("tomodachi.container", "tomodachi.invoker.base"))
+                limit_exception_traceback(e, ("tomodachi.container", "tomodachi.invoker.base"))
                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                 for name, instance, log_level in services_started:
@@ -395,7 +395,7 @@ class ServiceContainer(object):
                         try:
                             raise cast(Exception, exception)
                         except Exception as e:
-                            add_exception_cause(e, ("tomodachi.container",))
+                            limit_exception_traceback(e, ("tomodachi.container",))
                             logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                     for name, instance, log_level in services_started:
@@ -499,7 +499,7 @@ class ServiceContainer(object):
                             )(instance)
                         )
                     except Exception as e:
-                        add_exception_cause(e, ("tomodachi.container",))
+                        limit_exception_traceback(e, ("tomodachi.container",))
                         logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
         teardown_futures = []
@@ -514,7 +514,7 @@ class ServiceContainer(object):
                     try:
                         raise cast(Exception, exception)
                     except Exception as e:
-                        add_exception_cause(
+                        limit_exception_traceback(
                             e,
                             (
                                 "tomodachi.container",
