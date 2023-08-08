@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     except (ImportError, ModuleNotFoundError):
         from structlog.types import Context, EventDict, ExcInfo, Processor, WrappedLogger
 
-LOGGER_DISABLED_KEY = "_logger_disabled"
 RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
 EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message")
 TOMODACHI_LOGGER_TYPE: Literal["json", "console", "no_color_console", "null"] = "console"
@@ -144,30 +143,6 @@ class LinkQuoteStrings:
 
     def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
         return {k: (f"<{v}>" if k in self.keys and v and not v.startswith("<") else v) for k, v in event_dict.items()}
-
-
-class SquelchDisabledLogger:
-    def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
-        is_disabled = False
-        name = event_dict.get("logger")
-        if name:
-            ctx = get_context(str(name))
-            if LOGGER_DISABLED_KEY in ctx:
-                is_disabled = bool(ctx.get(LOGGER_DISABLED_KEY))
-                event_dict.pop(LOGGER_DISABLED_KEY, None)
-            else:
-                is_disabled = event_dict.pop(LOGGER_DISABLED_KEY, False)
-        else:
-            event_dict.pop(LOGGER_DISABLED_KEY, None)
-        if is_disabled:
-            _func = getattr(logger, method_name, None)
-
-            def func(self: WrappedLogger, message: str) -> None:
-                setattr(logger, method_name, _func)
-
-            setattr(logger, method_name, func.__get__(logger))
-
-        return event_dict
 
 
 class RenameKeys:
@@ -918,7 +893,6 @@ console_logger: Logger = structlog.wrap_logger(
         add_exception_info,
         AddMissingDictKey(key="message"),
         remove_ellipsis_values,
-        SquelchDisabledLogger(),
         LinkQuoteStrings(keys=CONSOLE_QUOTE_KEYS),
         ConsoleRenderer(colors=False if NO_COLOR else True, sort_keys=False, event_key="message"),
     ],
@@ -939,7 +913,6 @@ no_color_console_logger: Logger = structlog.wrap_logger(
         add_exception_info,
         AddMissingDictKey(key="message"),
         remove_ellipsis_values,
-        SquelchDisabledLogger(),
         LinkQuoteStrings(keys=CONSOLE_QUOTE_KEYS),
         ConsoleRenderer(colors=False, sort_keys=False, event_key="message"),
     ],
@@ -961,7 +934,6 @@ json_logger: Logger = structlog.wrap_logger(
         add_stacktrace_info,
         RemoveDictKey(key="exc_info"),
         remove_ellipsis_values,
-        SquelchDisabledLogger(),
         structlog.processors.JSONRenderer(serializer=serializer_func),
     ],
     wrapper_class=Logger,
@@ -1006,7 +978,7 @@ def get_context(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, st
     elif isinstance(logger, str):
         ctx = _loggers.get().get(logger)
         if not ctx:
-            ctx = LoggerContext(logger=logger, **{LOGGER_DISABLED_KEY: False})
+            ctx = LoggerContext(logger=logger, **{})
         return ctx
     else:
         raise TypeError(f"Unsupported logger type: {type(logger)}")
@@ -1014,26 +986,6 @@ def get_context(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, st
 
 def bind_logger(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, str]) -> None:
     _context.set(get_context(logger))
-
-
-def disable_logger(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, str]) -> None:
-    ctx = get_context(logger)
-    # ctx[LOGGER_DISABLED_KEY] = True
-    get_logger(ctx["logger"]).bind(**{LOGGER_DISABLED_KEY: True})
-
-
-def enable_logger(logger: LoggerContext | dict | structlog.BoundLoggerBase | str) -> None:
-    ctx = get_context(logger)
-    # ctx[LOGGER_DISABLED_KEY] = False
-    get_logger(ctx["logger"]).bind(**{LOGGER_DISABLED_KEY: False})
-
-
-def is_logger_disabled(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, str]) -> bool:
-    return True if get_context(logger).get(LOGGER_DISABLED_KEY) else False
-
-
-def is_logger_enabled(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, str]) -> bool:
-    return not is_logger_disabled(logger)
 
 
 def get_logger(
@@ -1067,7 +1019,7 @@ def get_logger(
         if ctx:
             return cast(Logger, logger.new(**ctx))
 
-        return cast(Logger, logger.new(**LoggerContext(logger=name, **{LOGGER_DISABLED_KEY: False})))
+        return cast(Logger, logger.new(**LoggerContext(logger=name, **{})))
 
     return cast(Logger, logger.new(**_context.get()))
 
@@ -1168,17 +1120,13 @@ def remove_handlers() -> None:
 
 
 # Set default logger context
-_context.set(LoggerContext(logger="default", **{LOGGER_DISABLED_KEY: False}))
+_context.set(LoggerContext(logger="default", **{}))
 
 
 __all__ = [
     "get_logger",
     "getLogger",
     "bind_logger",
-    "disable_logger",
-    "enable_logger",
-    "is_logger_disabled",
-    "is_logger_enabled",
     "Logger",
     "NullFormatter",
     "ConsoleFormatter",
