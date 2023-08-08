@@ -78,7 +78,6 @@ class Service(tomodachi.Service):
     async def multi_http_request_handler(
         self, request: web.Request, value1: str = "", value2: str = ""
     ) -> web.Response:
-        self.logger.info("log in handler", path=request.path, value1=value1, value2=value2)
         self.test_http_handler_called = True
         return web.Response(body=f"{request.path} {value1} {value2}")
 
@@ -96,7 +95,6 @@ class Service(tomodachi.Service):
             raise Exception("event should include sns_message_id and topic")
 
         if event.topic not in self.test_received_from_topics and event.data == self.data_uuid:
-            self.logger.info("log in handler", topic=event.topic, sns_message_id=event.sns_message_id)
             self.test_received_from_topics.add(event.topic)
             self.check_closer()
 
