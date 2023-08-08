@@ -83,12 +83,7 @@ class Service(tomodachi.Service):
 
     @sqs_wrapper("test-wrapped-invoker", queue_name="test-wrapped-invoker-{}".format(data_uuid))
     @sqs_wrapper("test-wrapped-invoker-2", queue_name="test-wrapped-invoker-2-{}".format(data_uuid))
-    async def sqs_handler(
-        self,
-        event: MessageEvent,
-        *args: Any,
-        **kwargs: Any,
-    ) -> None:
+    async def sqs_handler(self, event: MessageEvent, *args: Any, **kwargs: Any) -> None:
         if args or kwargs:
             raise Exception("function should be called without any additional arguments")
         if not event.sns_message_id or not event.topic:
