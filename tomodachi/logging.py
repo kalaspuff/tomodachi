@@ -311,7 +311,7 @@ def remove_ellipsis_values(logger: WrappedLogger, method_name: str, event_dict: 
 def to_logger_args_kwargs(
     logger: WrappedLogger, method_name: str, event_dict: EventDict
 ) -> Tuple[Tuple, Dict[str, Any]]:
-    return ((event_dict.get("event") or "",), {"extra": {"_kw_from_structlog": event_dict}})
+    return ((event_dict.get("event") or "",), {"extra": {"logger.context": event_dict}})
 
 
 class _NullLoggerFormatter(logging.Formatter):
@@ -376,8 +376,8 @@ class _StdLoggingFormatter(logging.Formatter):
         self._logger_type = logger_type
 
     def format(self, record: logging.LogRecord) -> str:
-        if "_kw_from_structlog" in record.__dict__:
-            kw: Dict[str, Any] = record.__dict__["_kw_from_structlog"]
+        if "logger.context" in record.__dict__:
+            kw: Dict[str, Any] = record.__dict__["logger.context"]
         else:
             extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
             kw = {"extra": {k: v for k, v in record.__dict__.items() if k in extra_keys}}
