@@ -382,7 +382,7 @@ def test_access_log(loop: Any) -> None:
                     '"status_code": 200, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/test", "http_version": "HTTP/1.1", "response_content_length": 4, "user_agent": '
                     in content
                 )
-                assert "404" not in content
+                assert '"status_code": 404' not in content
 
         async with aiohttp.ClientSession(loop=loop) as client:
             await client.get("http://127.0.0.1:{}/404".format(port))
