@@ -28,7 +28,7 @@ def test_wrapped_invoker_functions(capsys: Any, loop: Any) -> None:
 
     loop.run_until_complete(_async(loop))
 
-    assert instance.test_received_from_topics == {"test-wrapped-invoker", "test-wrapped-invoker-2"}
-
     instance.stop_service()
     loop.run_until_complete(future)
+
+    assert instance.test_received_from_topics == {"test-wrapped-invoker", "test-wrapped-invoker-2"}
