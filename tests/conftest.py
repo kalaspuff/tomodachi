@@ -11,7 +11,7 @@ os.environ["TOMODACHI_BANNER_NO_COLOR"] = "1"
 @pytest.hookimpl(trylast=True)
 def pytest_configure(config: pytest.Config) -> None:
     try:
-        from tomodachi.logging import ConsoleFormatterxw
+        from tomodachi.logging import ConsoleFormatter
 
         plugin = config.pluginmanager.get_plugin("logging-plugin")
         if plugin:
