@@ -11,7 +11,7 @@ os.environ["TOMODACHI_BANNER_NO_COLOR"] = "1"
 @pytest.hookimpl(trylast=True)
 def pytest_configure(config: pytest.Config) -> None:
     try:
-        from tomodachi.logging import ConsoleFormatter
+        from tomodachi.logging import ConsoleFormatterxw
 
         plugin = config.pluginmanager.get_plugin("logging-plugin")
         if plugin:
@@ -68,3 +68,10 @@ def loop() -> Generator:
         pass
     except RuntimeError:
         pass
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_logger_context() -> None:
+    import tomodachi.logging
+
+    tomodachi.logging.reset_context()

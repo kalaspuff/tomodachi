@@ -1123,10 +1123,16 @@ def remove_handlers() -> None:
 _context.set(LoggerContext(logger="default", **{}))
 
 
+def reset_context() -> None:
+    _loggers.set({})
+    _context.set(LoggerContext(logger="default", **{}))
+
+
 __all__ = [
     "get_logger",
     "getLogger",
     "bind_logger",
+    "reset_context",
     "Logger",
     "NullFormatter",
     "ConsoleFormatter",
