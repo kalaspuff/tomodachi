@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.25.1 (2023-08-11)
+-------------------
+
+- Fix for an issue where a wrapped function is used as a handler function,
+  which would then cause the keyword argument provided transport values to
+  rely on the keyword arguments from the *wrapped function's* signature to be
+  used instead of the keyword arguments from the *wrapper function's* signature.
+
+  The bug was found to be present since the last release, which included major
+  refactoring of the *keyword argument provided transport values* functionality.
+
+
 0.25.0 (2023-06-24)
 -------------------
 
