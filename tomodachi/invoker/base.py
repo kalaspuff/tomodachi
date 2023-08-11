@@ -1,7 +1,6 @@
 import functools
-import inspect
 import types
-from typing import Any, Callable, Dict, Tuple, cast
+from typing import Any, Callable, Dict, Optional, Tuple, cast
 
 from tomodachi.options import Options
 
@@ -17,7 +16,12 @@ class Invoker(object):
     def decorator(cls, cls_func: Callable) -> Callable:
         def _wrapper(*args: Any, **kwargs: Any) -> Callable:
             def wrapper(func: Callable) -> Callable:
-                unwrapped_func = inspect.unwrap(func)
+                fn: Optional[Callable] = func
+                while fn:
+                    unwrapped_func = fn
+                    if getattr(fn, "__wrapped__", None) and not getattr(fn, FUNCTION_ATTRIBUTE, None):
+                        break
+                    fn = getattr(fn, "__wrapped__", None)
 
                 @functools.wraps(unwrapped_func)
                 async def _decorator(obj: Any, *a: Any, **kw: Any) -> Any:
