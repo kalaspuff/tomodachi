@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.25.1 (2023-08-xx)
+0.25.1 (2023-08-11)
 -------------------
 
 - Fix for an issue where a wrapped function is used as a handler function,
