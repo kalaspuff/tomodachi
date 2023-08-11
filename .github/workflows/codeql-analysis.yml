@@ -46,6 +46,7 @@ jobs:
         # By default, queries listed here will override any specified in a config file.
         # Prefix the list here with "+" to use these queries and those in the config file.
         # queries: ./path/to/local/query, your-org/your-repo/queries@main
+        config-file: ./.github/codeql/codeql-config.yml
 
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
@@ -65,20 +66,3 @@ jobs:
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
-      with:
-        upload: false # disable the upload here - we will upload in a different action
-        output: sarif-results
-
-    - name: filter-sarif
-      uses: advanced-security/filter-sarif@v1
-      with:
-        # filter out the service that tests syntax errors
-        patterns: |
-          -tests/services/syntax_error_service.py
-        input: sarif-results/${{ matrix.language }}.sarif
-        output: sarif-results/${{ matrix.language }}.sarif
-
-    - name: Upload SARIF
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: sarif-results/${{ matrix.language }}.sarif
