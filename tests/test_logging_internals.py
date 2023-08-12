@@ -317,8 +317,6 @@ def test_console_formatter(capsys: Any) -> None:
         assert logger.propagate is False
         logger.addHandler(tomodachi.logging.DefaultRootLoggerHandler)
         tomodachi.logging.set_default_formatter(logger_type="no_color_console")
-        # tomodachi.logging.set_default_formatter(formatter=logging_.defaultFormatter)
-        # logging_.defaultFormatter
         assert tomodachi.logging.DefaultRootLoggerHandler.formatter == tomodachi.logging.NoColorConsoleFormatter
 
         logger.info("log msg from tomodachi.logging module", value="test")
