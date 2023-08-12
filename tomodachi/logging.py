@@ -9,6 +9,7 @@ import warnings
 from contextvars import ContextVar
 from io import StringIO
 from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
+from types import ModuleType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -29,6 +30,7 @@ from typing import (
 
 import structlog
 from structlog._log_levels import _LEVEL_TO_NAME, _NAME_TO_LEVEL
+from structlog.exceptions import DropEvent
 
 if TYPE_CHECKING:
     try:
@@ -36,11 +38,12 @@ if TYPE_CHECKING:
     except (ImportError, ModuleNotFoundError):
         from structlog.types import Context, EventDict, ExcInfo, Processor, WrappedLogger
 
+MAX_STACKTRACE_DEPTH = 50
 RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
 EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message")
-TOMODACHI_LOGGER_TYPE: Literal["json", "console", "no_color_console", "null"] = "console"
-MAX_STACKTRACE_DEPTH = 50
 CONSOLE_QUOTE_KEYS = ("tb_location", "error_location", "tb_filename", "co_filename", "co_location", "error_filename")
+TOMODACHI_LOGGER_TYPE: Literal["json", "console", "no_color_console", "custom", "python"] = "console"
+TOMODACHI_CUSTOM_LOGGER: Optional[Union[str, ModuleType, type, object]] = None
 
 NO_COLOR = any(
     [
@@ -289,7 +292,23 @@ def to_logger_args_kwargs(
     return ((event_dict.get("event") or "",), {"extra": {"logger.context": event_dict}})
 
 
-class _NullLoggerFormatter(logging.Formatter):
+def to_custom_logger(
+    logger: WrappedLogger, method_name: str, event_dict: EventDict
+) -> Union[str, Tuple[Tuple, Dict[str, Any]]]:
+    if isinstance(logger, logging.Logger):
+        if event_dict.get("extra", {}).get("_processed"):
+            return str(event_dict["extra"].get("logger.context", {}).get("event", ""))
+        args, kwargs = to_logger_args_kwargs(logger, method_name, event_dict)
+        kwargs["extra"]["_processed"] = True
+        getattr(logger, method_name)(args, kwargs)
+    else:
+        event = event_dict.pop("event", "") or ""
+        getattr(logger, method_name)(event, **event_dict)
+
+    raise DropEvent
+
+
+class _PythonLoggingLoggerFormatter(logging.Formatter):
     style: Union[logging.PercentStyle, logging.StrFormatStyle, logging.StringTemplateStyle]
     fmt: str
 
@@ -338,24 +357,41 @@ class _NullLoggerFormatter(logging.Formatter):
     def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
         return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
 
+    def __repr__(self) -> str:
+        return "PythonLoggingFormatter"
+
 
 class _StdLoggingFormatter(logging.Formatter):
-    _logger_type: Literal["json", "console", "no_color_console", "null"]
+    _logger_type: Literal["json", "console", "no_color_console", "custom", "python"]
 
     def __init__(
         self,
-        logger_type: Literal["json", "console", "no_color_console", "null"] = TOMODACHI_LOGGER_TYPE,
+        logger_type: Literal["json", "console", "no_color_console", "custom", "python"] = TOMODACHI_LOGGER_TYPE,
+        name: str = "",
         *a: Any,
         **kw: Any,
     ) -> None:
         self._logger_type = logger_type
+        self._name = name
 
     def format(self, record: logging.LogRecord) -> str:
         if "logger.context" in record.__dict__:
             kw: Dict[str, Any] = record.__dict__["logger.context"]
         else:
             extra_keys = set(record.__dict__.keys() - STD_LOGGER_FIELDS)
-            kw = {"extra": {k: v for k, v in record.__dict__.items() if k in extra_keys}}
+            if (
+                record.__dict__.get("args")
+                and isinstance(record.__dict__.get("args"), dict)
+                and record.__dict__.get("args", {}).get("extra", {})
+            ):
+                kw = {
+                    "extra": {
+                        **{k: v for k, v in record.__dict__.items() if k in extra_keys},
+                        **record.__dict__.get("args", {}).get("extra", {}),
+                    }
+                }
+            else:
+                kw = {"extra": {k: v for k, v in record.__dict__.items() if k in extra_keys}}
             if record.exc_info and "exception" not in kw:
                 kw["exception"] = record.exc_info[1]
                 kw["exc_info"] = True
@@ -374,17 +410,26 @@ class _StdLoggingFormatter(logging.Formatter):
         if method_name == "error" and kw and kw.get("exc_info") is True:
             method_name = "exception"
 
-        logger = get_logger(record.name, logger_type=self._logger_type)
+        logger = _get_logger(record.name, logger_type=self._logger_type)
 
-        args, _ = logger._process_event(
-            method_name,
-            None,
-            kw,
-        )
-        return cast(str, args[0])
+        try:
+            args, _ = logger._process_event(
+                method_name,
+                None,
+                kw,
+            )
+            return cast(str, args[0])
+        except DropEvent:
+            if record.module == "_base":
+                raise
+            return ""
 
     def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
         return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
+
+    def __repr__(self) -> str:
+        name = self._name or self.__class__.__name__
+        return name
 
 
 class StderrHandler(logging.StreamHandler):
@@ -403,21 +448,23 @@ try:
 except AttributeError:
     pass
 
-NullFormatter = _NullLoggerFormatter(fmt=_default_fmt)
-ConsoleFormatter = _StdLoggingFormatter(logger_type="console")
-NoColorConsoleFormatter = _StdLoggingFormatter(logger_type="no_color_console")
-JSONFormatter = _StdLoggingFormatter(logger_type="json")
+PythonLoggingFormatter = _PythonLoggingLoggerFormatter(fmt=_default_fmt)
+
+ConsoleFormatter = _StdLoggingFormatter(logger_type="console", name="ConsoleFormatter")
+NoColorConsoleFormatter = _StdLoggingFormatter(logger_type="no_color_console", name="NoColorConsoleFormatter")
+JSONFormatter = _StdLoggingFormatter(logger_type="json", name="JSONFormatter")
+CustomLoggerFormatter = _StdLoggingFormatter(logger_type="custom", name="CustomLoggerFormatter")
 
 DefaultHandler = DefaultRootLoggerHandler = _defaultHandler = StderrHandler()
 
 
 @overload
-def set_default_formatter(*, logger_type: Literal["json", "console", "no_color_console", "null"]) -> None:
+def set_default_formatter(*, logger_type: Literal["json", "console", "no_color_console", "custom", "python"]) -> None:
     ...
 
 
 @overload
-def set_default_formatter(logger_type: Literal["json", "console", "no_color_console", "null"], /) -> None:
+def set_default_formatter(logger_type: Literal["json", "console", "no_color_console", "custom", "python"], /) -> None:
     ...
 
 
@@ -437,10 +484,10 @@ def set_default_formatter(_arg: Literal[None] = None, /) -> None:
 
 
 def set_default_formatter(
-    _arg: Optional[Union[logging.Formatter, Literal["json", "console", "no_color_console", "null"]]] = None,
+    _arg: Optional[Union[logging.Formatter, Literal["json", "console", "no_color_console", "custom", "python"]]] = None,
     /,
     *,
-    logger_type: Optional[Literal["json", "console", "no_color_console", "null"]] = None,
+    logger_type: Optional[Literal["json", "console", "no_color_console", "custom", "python"]] = None,
     formatter: Optional[logging.Formatter] = None,
 ) -> None:
     if _arg is not None and (logger_type is not None or formatter is not None):
@@ -469,13 +516,17 @@ def set_default_formatter(
             if logger_type == "console"
             else NoColorConsoleFormatter
             if logger_type == "no_color_console"
-            else NullFormatter
-            if logger_type == "null"
+            else CustomLoggerFormatter
+            if logger_type == "custom"
+            else PythonLoggingFormatter
+            if logger_type == "python"
             else None
         )
 
         if not formatter:
-            raise Exception("Invalid logger type: '{}' (exected 'console', 'json' or 'null')".format(logger_type))
+            raise Exception(
+                "Invalid logger type: '{}' (exected 'console', 'json', 'custom or 'python')".format(logger_type)
+            )
 
     if not formatter:
         raise Exception("Argument formatter missing (expected instance of logging.Formatter)')")
@@ -483,13 +534,25 @@ def set_default_formatter(
     if isinstance(formatter, _StdLoggingFormatter):
         TOMODACHI_LOGGER_TYPE = formatter._logger_type
     else:
-        TOMODACHI_LOGGER_TYPE = "null"
+        TOMODACHI_LOGGER_TYPE = "python"
 
     DefaultHandler.setFormatter(formatter)
 
 
 set_default_formatter()
-DefaultFormatter = _defaultFormatter = cast(Union[_StdLoggingFormatter, _NullLoggerFormatter], DefaultHandler.formatter)
+
+
+def set_custom_logger_factory(
+    logger_factory: Optional[Union[str, ModuleType, type, object]] = TOMODACHI_CUSTOM_LOGGER
+) -> None:
+    if logger_factory is not None and logger_factory:
+        _CustomLogger.get_logger_factory(logger_factory)
+
+    global TOMODACHI_CUSTOM_LOGGER
+    TOMODACHI_CUSTOM_LOGGER = logger_factory
+
+
+set_custom_logger_factory()
 
 
 class LoggerContext(dict):
@@ -577,6 +640,84 @@ class LoggerContext(dict):
         return self.__data
 
 
+class _CustomLogger:
+    _logger_factory_cache: Dict[str, Any] = {}
+
+    @classmethod
+    def get_logger_factory(cls, custom_logger_factory: Optional[Union[str, ModuleType, type, object]]) -> Any:
+        if not custom_logger_factory:
+            raise Exception("Custom logger not set")
+
+        logger_factory: Any
+
+        if isinstance(custom_logger_factory, str):
+            if custom_logger_factory in cls._logger_factory_cache:
+                return cls._logger_factory_cache[custom_logger_factory]
+
+            if "." in custom_logger_factory:
+                module_name, module_attr = custom_logger_factory.rsplit(".", 1)
+                if module_name in sys.modules:
+                    logger_factory = sys.modules[module_name].__dict__.get(module_attr)
+                else:
+                    logger_factory = __import__(
+                        module_name, globals=None, locals=None, fromlist=(module_attr), level=0
+                    ).__dict__.get(module_attr)
+            else:
+                module_name = custom_logger_factory
+                if module_name in sys.modules:
+                    logger_factory = sys.modules[module_name]
+                else:
+                    logger_factory = __import__(module_name, globals=None, locals=None, fromlist=(), level=0)
+
+            if not logger_factory:
+                raise Exception("Invalid path to custom logger")
+        else:
+            logger_factory = custom_logger_factory
+
+        if not any(
+            [
+                (isinstance(logger_factory, ModuleType) and logger_factory.__name__ == "logging"),
+                isinstance(logger_factory, type),
+                hasattr(logger_factory, "new"),
+                hasattr(logger_factory, "bind"),
+                hasattr(logger_factory, "get_logger"),
+            ]
+        ):
+            raise Exception("Invalid custom logger factory")
+
+        if isinstance(custom_logger_factory, str):
+            cls._logger_factory_cache[custom_logger_factory] = logger_factory
+
+        return logger_factory
+
+    @classmethod
+    def get_logger(cls, context: Union[LoggerContext, Context]) -> Any:
+        if not TOMODACHI_CUSTOM_LOGGER:
+            raise Exception("Custom logger not set")
+
+        logger_factory: Any
+
+        if isinstance(TOMODACHI_CUSTOM_LOGGER, str):
+            logger_factory = cls.get_logger_factory(TOMODACHI_CUSTOM_LOGGER or "")
+        else:
+            logger_factory = TOMODACHI_CUSTOM_LOGGER
+
+        if isinstance(logger_factory, ModuleType) and logger_factory.__name__ == "logging":
+            return logger_factory.getLogger(context.get("logger", "default"))
+        elif isinstance(logger_factory, type):
+            return logger_factory(context)
+        elif hasattr(logger_factory, "new"):
+            return logger_factory.new(**context)
+        elif hasattr(logger_factory, "bind"):
+            return logger_factory.bind(**context)
+        elif hasattr(logger_factory, "get_logger"):
+            logger_cls = logger_factory.get_logger()
+            if hasattr(logger_cls, "new"):
+                return logger_cls.new(**context)
+
+        raise Exception("Invalid custom logger factory")
+
+
 class Logger(structlog.stdlib.BoundLogger):
     def __init__(
         self,
@@ -591,6 +732,9 @@ class Logger(structlog.stdlib.BoundLogger):
             and context.get("logger", "default") != "default"
         ):
             logger = logging.getLogger(context.get("logger"))
+
+        if logger is _CustomLogger:
+            logger = _CustomLogger.get_logger(context)
 
         super().__init__(logger, processors, context)
 
@@ -941,27 +1085,25 @@ json_logger: Logger = structlog.wrap_logger(
     cache_logger_on_first_use=False,
 )
 
-forward_logger: Logger = structlog.wrap_logger(
-    logging.getLogger("default"),
-    processors=[to_logger_args_kwargs],
+custom_logger: Logger = structlog.wrap_logger(
+    _CustomLogger,
+    processors=[remove_ellipsis_values, to_custom_logger],
     wrapper_class=Logger,
     context_class=LoggerContext,
     cache_logger_on_first_use=False,
 )
 
-null_logger: Logger = structlog.wrap_logger(
+forward_logger: Logger = structlog.wrap_logger(
     logging.getLogger("default"),
-    processors=[
-        # structlog.processors.add_log_level,
-        # merge_contextvars,
-        # structlog.processors.StackInfoRenderer(),
-        # structlog.dev.set_exc_info,
-        # LogProcessorTimestamp(),
-        # RenameKeys(pairs=RENAME_KEYS),
-        # add_exception_info,
-        # remove_ellipsis_values,
-        to_logger_args_kwargs,
-    ],
+    processors=[remove_ellipsis_values, to_logger_args_kwargs],
+    wrapper_class=Logger,
+    context_class=LoggerContext,
+    cache_logger_on_first_use=False,
+)
+
+python_logger: Logger = structlog.wrap_logger(
+    logging.getLogger("default"),
+    processors=[remove_ellipsis_values, to_logger_args_kwargs],
     wrapper_class=Logger,
     context_class=LoggerContext,
     cache_logger_on_first_use=False,
@@ -988,13 +1130,13 @@ def bind_logger(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, st
     _context.set(get_context(logger))
 
 
-def get_logger(
+def _get_logger(
     name: Optional[str] = None,
     *,
-    logger_type: Literal["json", "console", "no_color_console", "forward", "null"] = "forward",
+    logger_type: Literal["json", "console", "no_color_console", "custom", "forward", "python"] = "forward",
 ) -> Logger:
-    if logger_type == "forward" and TOMODACHI_LOGGER_TYPE == "null":
-        logger_type = "null"
+    if logger_type == "forward" and TOMODACHI_LOGGER_TYPE == "python":
+        logger_type = "python"
 
     logger = (
         json_logger
@@ -1003,15 +1145,17 @@ def get_logger(
         if logger_type == "console"
         else no_color_console_logger
         if logger_type == "no_color_console"
+        else custom_logger
+        if logger_type == "custom"
         else forward_logger
         if logger_type == "forward"
-        else null_logger
-        if logger_type == "null"
+        else python_logger
+        if logger_type == "python"
         else None
     )
     if not logger:
         raise Exception(
-            "Invalid logger type: '{}' (exected 'console', 'json', 'forward' or 'null')".format(logger_type)
+            "Invalid logger type: '{}' (exected 'console', 'json', 'custom', 'forward' or 'python')".format(logger_type)
         )
 
     if name:
@@ -1024,14 +1168,15 @@ def get_logger(
     return cast(Logger, logger.new(**_context.get()))
 
 
-# CamelCase alias for `get_logger`.
-def getLogger(
-    name: Optional[str] = None, *, logger_type: Literal["json", "console", "forward", "null"] = "forward"
+def get_logger(
+    name: Optional[str] = None,
 ) -> Logger:
-    return get_logger(name, logger_type=logger_type)
+    return _get_logger(name=name)
 
 
-is_configured: bool = False
+# CamelCase alias for `get_logger`.
+def getLogger(name: Optional[str] = None) -> Logger:
+    return _get_logger(name=name)
 
 
 def configure(log_level: Union[int, str] = logging.INFO, force: bool = False) -> None:
@@ -1066,8 +1211,8 @@ def configure(log_level: Union[int, str] = logging.INFO, force: bool = False) ->
     except AttributeError:
         pass
 
-    if NullFormatter._fmt != _default_fmt:
-        NullFormatter._fmt = _default_fmt
+    if PythonLoggingFormatter._fmt != _default_fmt:
+        PythonLoggingFormatter._fmt = _default_fmt
 
     try:
         logging.basicConfig(
@@ -1076,9 +1221,6 @@ def configure(log_level: Union[int, str] = logging.INFO, force: bool = False) ->
             handlers=[DefaultRootLoggerHandler],
             force=force,
         )
-
-        global is_configured
-        is_configured = True
     except Exception as e:
         logging.getLogger().warning("Unable to set log config: {}".format(str(e)))
 
@@ -1130,24 +1272,23 @@ def reset_context() -> None:
 
 __all__ = [
     "get_logger",
+    "_get_logger",
     "getLogger",
     "bind_logger",
     "reset_context",
     "Logger",
-    "NullFormatter",
+    "PythonLoggingFormatter",
     "ConsoleFormatter",
     "NoColorConsoleFormatter",
     "JSONFormatter",
-    "DefaultFormatter",
+    "CustomLoggerFormatter",
     "DefaultHandler",
     "DefaultRootLoggerHandler",
-    "_defaultFormatter",
     "_defaultHandler",
     "StderrHandler",
     "configure",
     "set_default_formatter",
     "remove_handlers",
-    "is_configured",
     "CRITICAL",
     "DEBUG",
     "ERROR",
