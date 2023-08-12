@@ -32,12 +32,15 @@ With the provided handler managers, the need for devs to interface with low-leve
 .. image:: docs/assets/tomodachi-run-service.png
     :align: center
 
-* 🦺 Supports graceful termination of consumers, listeners and active tasks to ensure easy deployments and upgrades – battle tested on operation in Kubernetes on Docker.
-* ⏰ Scheduled function execution (cron notation or on time interval) helpful for building watchdog handlers.
-* 💌 Simple envelope building and parsing for both receiving and publishing messages. Execution middleware interface for incoming HTTP requests and received messages.
-* 📚 Logging support from ``structlog`` with template loggers for both "dev console" and JSON output – loggers and handler managers are built to support exception tracing via log handlers, such as provided by for example Sentry.
-* 📡 SQS queues with filter policies for SNS topic subscriptions filtering messages on message attributes. SQS supports DLQ via redrive policy – infra orchestration from service optional.
-* 🌱 Designed to be extendable – any kind of transport layer or event source can be added.
+* ``🦸`` ⋯ Graceful termination of consumers, listeners and tasks to ensure smooth deployments.
+* ``⏰`` ⋯ Scheduled function execution (cron notation / time interval) for building watchdog handlers.
+* ``🍔`` ⋯ Execution middleware interface for incoming HTTP requests and received messages.
+* ``💌`` ⋯ Simple envelope building and parsing for both receiving and publishing messages.
+* ``📚`` ⋯ Logging support via ``structlog`` with template loggers for both "dev console" and JSON output.
+* ``⛑️`` ⋯ Loggers and handler managers built to support exception tracing, from for example Sentry.
+* ``📡`` ⋯ SQS queues with filter policies for SNS topic subscriptions filtering messages on message attributes.
+* ``📦`` ⋯ Supports SQS dead-letter queues via redrive policy – infra orchestration from service optional.
+* ``🌱`` ⋯ Designed to be extendable – most kinds of transport layers or event sources can be added.
 
 ----
 
