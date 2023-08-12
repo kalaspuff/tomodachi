@@ -32,6 +32,8 @@ import structlog
 from structlog._log_levels import _LEVEL_TO_NAME, _NAME_TO_LEVEL
 from structlog.exceptions import DropEvent
 
+from tomodachi.helpers.colors import NO_COLOR
+
 if TYPE_CHECKING:
     try:
         from structlog.typing import Context, EventDict, ExcInfo, Processor, WrappedLogger
@@ -44,18 +46,6 @@ EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message")
 CONSOLE_QUOTE_KEYS = ("tb_location", "error_location", "tb_filename", "co_filename", "co_location", "error_filename")
 TOMODACHI_LOGGER_TYPE: Literal["json", "console", "no_color_console", "custom", "python", "disabled"] = "console"
 TOMODACHI_CUSTOM_LOGGER: Optional[Union[str, ModuleType, type, object]] = None
-
-NO_COLOR = any(
-    [
-        os.environ.get("NO_COLOR", "").lower() in ("1", "true"),
-        os.environ.get("NOCOLOR", "").lower() in ("1", "true"),
-        os.environ.get("TOMODACHI_NO_COLOR", "").lower() in ("1", "true"),
-        os.environ.get("TOMODACHI_NOCOLOR", "").lower() in ("1", "true"),
-        os.environ.get("CLICOLOR", "").lower() in ("0", "false"),
-        os.environ.get("CLI_COLOR", "").lower() in ("0", "false"),
-        os.environ.get("CLICOLOR_FORCE", "").lower() in ("0", "false"),
-    ]
-)
 
 STD_LOGGER_FIELDS = set(
     [

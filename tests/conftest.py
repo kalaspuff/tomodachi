@@ -5,7 +5,7 @@ from typing import Generator
 
 import pytest
 
-os.environ["TOMODACHI_BANNER_NO_COLOR"] = "1"
+os.environ["TOMODACHI_NO_COLOR"] = "1"
 
 
 @pytest.hookimpl(trylast=True)

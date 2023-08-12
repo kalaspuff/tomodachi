@@ -37,7 +37,7 @@ class CLI:
             f"  {OPTION}--loop [auto|asyncio|uvloop]{COLOR_RESET}\n"
             f"      use the specified event loop implementation. {DEFAULT}(default: auto){COLOR_RESET}\n"
             f"  {OPTION}--production{COLOR_RESET}\n"
-            "      disables the file watcher that restarts services on file changes.\n"
+            "      disables service restart on file changes and hides the info banner.\n"
             f"  {OPTION}--log-level [debug|info|warning|error|critical]{COLOR_RESET}\n"
             f"      specify the minimum log level. {DEFAULT}(default: info){COLOR_RESET}\n"
             f"  {OPTION}--logger [console|json|python|disabled]{COLOR_RESET}\n"
@@ -462,11 +462,17 @@ class CLI:
                 ],
             )
         except getopt.GetoptError as e:
-            print("Invalid command or combination of command options")
-            print(f"Error: {str(e)}")
+            from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
+
+            print(f"{COLOR.RED}error:{COLOR_RESET} invalid command or combination of command options.")
+            print(f"{COLOR.RED}error:{COLOR_RESET} {str(e)}.")
+
             print("")
-            print("Use the '--help' option for CLI usage help.")
-            print("$ tomodachi --help")
+            print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}---{COLOR_RESET}")
+            print("")
+
+            print("use the '--help' option for cli usage help.")
+            print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi --help{COLOR_RESET}")
             sys.exit(2)
         for opt, _ in opts:
             if opt in ("-h", "--help"):
@@ -477,37 +483,53 @@ class CLI:
                 self.dependency_versions_command()
 
             if opt in ("-l", "--log-level", "--log", "--logger", "--custom-logger", "--production", "--loop"):
-                print("Invalid command or combination of command options.")
-                print("The command 'run' must be specified before any options.")
+                from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
+
+                print(f"{COLOR.RED}error:{COLOR_RESET} invalid command or combination of command options.")
+                print(f"{COLOR.RED}error:{COLOR_RESET} the command 'run' must be specified before any options.")
+
+                print("")
+                print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}---{COLOR_RESET}")
                 print("")
 
                 if any([a.endswith(".py") for a in argv]):
                     new_args = ["run"] + [a for a in argv if a not in ("run", "start", "go")]
-                    print("Maybe you intended to run something like this?")
-                    print(f"$ tomodachi {' '.join(new_args)}")
+                    print("maybe you intended to run something like this?")
+                    print(
+                        f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi {' '.join(new_args)}{COLOR_RESET}"
+                    )
                     print("")
 
-            print("Use the '--help' option for CLI usage help.")
-            print("$ tomodachi --help")
-            sys.exit(2)
+                print("use the '--help' option for cli usage help.")
+                print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi --help{COLOR_RESET}")
+                sys.exit(2)
 
         if len(args):
             if args[0] in ("run", "start", "go"):
                 self.run_command(args[1:])
 
         if args or opts:
-            print("Invalid command or combination of command options.")
-            print("The command 'run' must be specified before any service files or options.")
+            from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
+
+            print(f"{COLOR.RED}error:{COLOR_RESET} invalid command or combination of command options.")
+            print(
+                f"{COLOR.RED}error:{COLOR_RESET} the command 'run' must be specified before any service files or options."
+            )
+
+            print("")
+            print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}---{COLOR_RESET}")
             print("")
 
             if any([a.endswith(".py") for a in argv]):
                 new_args = ["run"] + [a for a in argv]
-                print("Maybe you intended to run something like this?")
-                print(f"$ tomodachi {' '.join(new_args)}")
+                print("maybe you intended to run something like this?")
+                print(
+                    f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi {' '.join(new_args)}{COLOR_RESET}"
+                )
                 print("")
 
-            print("Use the '--help' option for CLI usage help.")
-            print("$ tomodachi --help")
+            print("use the '--help' option for cli usage help.")
+            print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi --help{COLOR_RESET}")
             sys.exit(2)
 
         self.help_command()
