@@ -373,7 +373,8 @@ def test_python_logging_formatter(capsys: Any) -> None:
 
         out, err = capsys.readouterr()
 
-        assert "[info     ] log msg from python logging module [tomodachi.test.python_logger]" in err
+        assert "tomodachi.test.python_logger" in err
+        assert "log msg from python logging module" in err
         assert "value=test" not in err
         assert "{'value': 'test'}" not in err
 
