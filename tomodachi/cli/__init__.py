@@ -4,7 +4,7 @@ import getopt
 import logging
 import os
 import sys
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Literal, Optional, Tuple, Union, cast
 
 import tomodachi
 from tomodachi.config import parse_config_files
@@ -28,11 +28,13 @@ class CLI:
             "  Command: run\n"
             "  Starts service(s) defined in the .py files specified as <service> argument(s)\n"
             "\n"
-            "  $ tomodachi run <service ...> [-c <config-file ...>] [--production]\n"
+            "  $ tomodachi run <service ...> [--production]\n"
             "  | --loop [auto|asyncio|uvloop]            Event loop implementation [asyncio]\n"
             "  | --production                            Disable restart on file changes\n"
             "  | -c, --config <files>                    Use configuration from JSON files\n"
             "  | -l, --log <level>, --log-level <level>  Specify log level\n"
+            "  | --logger [console|json|python|disabled] Specify the log formatter to use\n"
+            "  | --custom-logger <module|module.logger>  Use a custom logger or log module\n"
             "\n"
             ">> Version: {} ({})\n"
             ">> Full documentation at: https://tomodachi.dev/docs"
@@ -202,6 +204,8 @@ class CLI:
             log_level = logging.INFO
 
             tomodachi.get_contextvar("run.args").set(args[:])
+
+            # --loop (env: TOMODACHI_LOOP)
             env_loop = str(os.getenv("TOMODACHI_LOOP", "")).lower() or None
 
             if env_loop or "--loop" in args:
@@ -211,7 +215,7 @@ class CLI:
                     value = args.pop(index).lower()
 
                     if env_loop and env_loop != value:
-                        print("Invalid argument to --loop, '{}' differs from env TOMODACHI_LOOP".format(value))
+                        print("Invalid value for --loop option: '{}' differs from env TOMODACHI_LOOP".format(value))
                         sys.exit(2)
                 elif env_loop:
                     value = env_loop
@@ -232,13 +236,14 @@ class CLI:
                     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
                     value = "uvloop"
                 else:
-                    print("Invalid argument to --loop, event loop '{}' not recognized".format(value))
+                    print("Invalid value for --loop option: '{}' not recognized".format(value))
                     sys.exit(2)
 
                 tomodachi.get_contextvar("loop.setting").set(value)
             else:
                 tomodachi.get_contextvar("loop.setting").set("auto")
 
+            # --config
             if "-c" in args or "--config" in args:
                 index = args.index("-c") if "-c" in args else args.index("--config")
                 args.pop(index)
@@ -262,6 +267,7 @@ class CLI:
                     print("Invalid config file, invalid JSON format: {}".format(str(e)))
                     sys.exit(2)
 
+            # --production (env: TOMODACHI_PRODUCTION)
             env_production = str(os.getenv("TOMODACHI_PRODUCTION", "")).lower() or None
             if env_production and env_production in ("0", "no", "none", "false"):
                 env_production = None
@@ -291,6 +297,20 @@ class CLI:
 
                 watcher = Watcher(root=root_directories, configuration=configuration)
 
+            # --log-level (env: TOMODACHI_LOG_LEVEL)
+            env_log_level: Optional[Union[str, int]] = str(os.getenv("TOMODACHI_LOG_LEVEL", "")).lower() or None
+            if not env_log_level:
+                env_log_level = None
+
+            if env_log_level is not None:
+                log_level_ = getattr(logging, str(env_log_level).upper(), None) or logging.NOTSET
+                if type(log_level_) is not int or log_level_ == logging.NOTSET:
+                    print(
+                        "Invalid TOMODACHI_LOG_LEVEL environment value (expected 'debug', 'info', 'warning', 'error' or 'critical')"
+                    )
+                    sys.exit(2)
+                env_log_level = log_level_
+
             if "-l" in args or "--log" in args or "--log-level" in args:
                 index = (
                     args.index("-l")
@@ -310,9 +330,94 @@ class CLI:
                             )
                         )
                         sys.exit(2)
-                    log_level = log_level_
 
-            tomodachi.logging.set_default_formatter()
+                    if env_log_level is not None and env_log_level != log_level_:
+                        print(
+                            "Invalid value for --log-level option: '{}' differs from env TOMODACHI_LOG_LEVEL".format(
+                                value
+                            )
+                        )
+                        sys.exit(2)
+
+                    log_level = log_level_
+            elif env_log_level and type(env_log_level) is int:
+                log_level = env_log_level
+
+            # --logger (env: TOMODACHI_LOGGER)
+            env_logger = cast(
+                Optional[Literal["json", "console", "custom", "python", "disabled"]],
+                str(os.getenv("TOMODACHI_LOGGER", "")).lower() or None,
+            )
+            if not env_logger:
+                env_logger = None
+
+            if env_logger or "--logger" in args:
+                if "--logger" in args:
+                    index = args.index("--logger")
+                    args.pop(index)
+                    try:
+                        value = args.pop(index).lower()
+                    except IndexError:
+                        print("Missing value for --logger option")
+                        sys.exit(2)
+
+                    if env_logger and env_logger != value:
+                        print("Invalid value for --logger option: '{}' differs from env TOMODACHI_LOGGER".format(value))
+                        sys.exit(2)
+                else:
+                    value = env_logger or ""
+
+                if value not in ("json", "console", "custom", "python", "disabled"):
+                    print(
+                        "Invalid value for --logger option: '{}' (expected 'json', 'console', 'python' or 'disabled')".format(
+                            value
+                        )
+                    )
+                    sys.exit(2)
+
+                env_logger = cast(Literal["json", "console", "custom", "python", "disabled"], value)
+
+            if not env_logger:
+                env_logger = None
+
+            # --custom-logger (env: TOMODACHI_CUSTOM_LOGGER)
+            env_custom_logger = str(os.getenv("TOMODACHI_CUSTOM_LOGGER", "")).lower() or None
+            if not env_custom_logger:
+                env_custom_logger = None
+
+            if env_custom_logger or "--custom-logger" in args:
+                if "--custom-logger" in args:
+                    index = args.index("--custom-logger")
+                    args.pop(index)
+                    try:
+                        value = args.pop(index)
+                    except IndexError:
+                        print("Missing value for --custom-logger option")
+                        sys.exit(2)
+
+                    if env_custom_logger and env_custom_logger != value:
+                        print(
+                            "Invalid value for --custom-logger option: '{}' differs from env TOMODACHI_CUSTOM_LOGGER".format(
+                                value
+                            )
+                        )
+                        sys.exit(2)
+                else:
+                    value = env_custom_logger or ""
+
+                if env_logger and env_logger != "custom":
+                    print("Invalid combination of --custom-logger and --logger options")
+                    sys.exit(2)
+
+                env_custom_logger = value
+                env_logger = "custom"
+
+            if env_logger and env_logger == "custom" and not env_custom_logger:
+                print("Invalid combination of --custom-logger and --logger options")
+                sys.exit(2)
+
+            tomodachi.logging.set_default_formatter(env_logger)
+            tomodachi.logging.set_custom_logger_factory(env_custom_logger)
             tomodachi.logging.configure(log_level=log_level)
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)

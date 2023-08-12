@@ -42,7 +42,7 @@ MAX_STACKTRACE_DEPTH = 50
 RENAME_KEYS: Sequence[Tuple[str, str]] = (("event", "message"), ("event_", "event"), ("class_", "class"))
 EXCEPTION_KEYS: Sequence[str] = ("exception", "exc", "error", "message")
 CONSOLE_QUOTE_KEYS = ("tb_location", "error_location", "tb_filename", "co_filename", "co_location", "error_filename")
-TOMODACHI_LOGGER_TYPE: Literal["json", "console", "no_color_console", "custom", "python"] = "console"
+TOMODACHI_LOGGER_TYPE: Literal["json", "console", "no_color_console", "custom", "python", "disabled"] = "console"
 TOMODACHI_CUSTOM_LOGGER: Optional[Union[str, ModuleType, type, object]] = None
 
 NO_COLOR = any(
@@ -308,6 +308,10 @@ def to_custom_logger(
     raise DropEvent
 
 
+def disabled_logger_processor(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
+    raise DropEvent
+
+
 class _PythonLoggingLoggerFormatter(logging.Formatter):
     style: Union[logging.PercentStyle, logging.StrFormatStyle, logging.StringTemplateStyle]
     fmt: str
@@ -362,11 +366,13 @@ class _PythonLoggingLoggerFormatter(logging.Formatter):
 
 
 class _StdLoggingFormatter(logging.Formatter):
-    _logger_type: Literal["json", "console", "no_color_console", "custom", "python"]
+    _logger_type: Literal["json", "console", "no_color_console", "custom", "python", "disabled"]
 
     def __init__(
         self,
-        logger_type: Literal["json", "console", "no_color_console", "custom", "python"] = TOMODACHI_LOGGER_TYPE,
+        logger_type: Literal[
+            "json", "console", "no_color_console", "custom", "python", "disabled"
+        ] = TOMODACHI_LOGGER_TYPE,
         name: str = "",
         *a: Any,
         **kw: Any,
@@ -453,18 +459,24 @@ PythonLoggingFormatter = _PythonLoggingLoggerFormatter(fmt=_default_fmt)
 ConsoleFormatter = _StdLoggingFormatter(logger_type="console", name="ConsoleFormatter")
 NoColorConsoleFormatter = _StdLoggingFormatter(logger_type="no_color_console", name="NoColorConsoleFormatter")
 JSONFormatter = _StdLoggingFormatter(logger_type="json", name="JSONFormatter")
+DisabledFormatter = _StdLoggingFormatter(logger_type="disabled", name="DisabledFormatter")
 CustomLoggerFormatter = _StdLoggingFormatter(logger_type="custom", name="CustomLoggerFormatter")
 
 DefaultHandler = DefaultRootLoggerHandler = _defaultHandler = StderrHandler()
 
 
 @overload
-def set_default_formatter(*, logger_type: Literal["json", "console", "no_color_console", "custom", "python"]) -> None:
+def set_default_formatter(
+    *, logger_type: Literal["json", "console", "no_color_console", "custom", "python", "disabled"]
+) -> None:
     ...
 
 
 @overload
-def set_default_formatter(logger_type: Literal["json", "console", "no_color_console", "custom", "python"], /) -> None:
+def set_default_formatter(
+    logger_type: Literal["json", "console", "no_color_console", "custom", "python", "disabled"],
+    /,
+) -> None:
     ...
 
 
@@ -484,10 +496,12 @@ def set_default_formatter(_arg: Literal[None] = None, /) -> None:
 
 
 def set_default_formatter(
-    _arg: Optional[Union[logging.Formatter, Literal["json", "console", "no_color_console", "custom", "python"]]] = None,
+    _arg: Optional[
+        Union[logging.Formatter, Literal["json", "console", "no_color_console", "custom", "python", "disabled"]]
+    ] = None,
     /,
     *,
-    logger_type: Optional[Literal["json", "console", "no_color_console", "custom", "python"]] = None,
+    logger_type: Optional[Literal["json", "console", "no_color_console", "custom", "python", "disabled"]] = None,
     formatter: Optional[logging.Formatter] = None,
 ) -> None:
     if _arg is not None and (logger_type is not None or formatter is not None):
@@ -518,6 +532,8 @@ def set_default_formatter(
             if logger_type == "no_color_console"
             else CustomLoggerFormatter
             if logger_type == "custom"
+            else DisabledFormatter
+            if logger_type == "disabled"
             else PythonLoggingFormatter
             if logger_type == "python"
             else None
@@ -525,7 +541,9 @@ def set_default_formatter(
 
         if not formatter:
             raise Exception(
-                "Invalid logger type: '{}' (exected 'console', 'json', 'custom or 'python')".format(logger_type)
+                "Invalid logger type: '{}' (exected 'console', 'json', 'custom', 'python' or 'disabled')".format(
+                    logger_type
+                )
             )
 
     if not formatter:
@@ -1109,6 +1127,14 @@ python_logger: Logger = structlog.wrap_logger(
     cache_logger_on_first_use=False,
 )
 
+disabled_logger: Logger = structlog.wrap_logger(
+    None,
+    processors=[disabled_logger_processor],
+    wrapper_class=Logger,
+    context_class=LoggerContext,
+    cache_logger_on_first_use=False,
+)
+
 
 def get_context(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, str]) -> Union[LoggerContext, Dict]:
     if isinstance(logger, structlog.BoundLoggerBase):
@@ -1133,7 +1159,7 @@ def bind_logger(logger: Union[LoggerContext, Dict, structlog.BoundLoggerBase, st
 def _get_logger(
     name: Optional[str] = None,
     *,
-    logger_type: Literal["json", "console", "no_color_console", "custom", "forward", "python"] = "forward",
+    logger_type: Literal["json", "console", "no_color_console", "custom", "forward", "python", "disabled"] = "forward",
 ) -> Logger:
     if logger_type == "forward" and TOMODACHI_LOGGER_TYPE == "python":
         logger_type = "python"
@@ -1147,15 +1173,19 @@ def _get_logger(
         if logger_type == "no_color_console"
         else custom_logger
         if logger_type == "custom"
-        else forward_logger
-        if logger_type == "forward"
         else python_logger
         if logger_type == "python"
+        else disabled_logger
+        if logger_type == "disabled"
+        else forward_logger
+        if logger_type == "forward"
         else None
     )
     if not logger:
         raise Exception(
-            "Invalid logger type: '{}' (exected 'console', 'json', 'custom', 'forward' or 'python')".format(logger_type)
+            "Invalid logger type: '{}' (exected 'console', 'json', 'custom', 'forward', 'python' or 'disabled')".format(
+                logger_type
+            )
         )
 
     if name:
@@ -1281,6 +1311,7 @@ __all__ = [
     "ConsoleFormatter",
     "NoColorConsoleFormatter",
     "JSONFormatter",
+    "DisabledFormatter",
     "CustomLoggerFormatter",
     "DefaultHandler",
     "DefaultRootLoggerHandler",
