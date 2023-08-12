@@ -1,8 +1,13 @@
-``tomodachi`` - a lightweight microservices library on Python asyncio
-=====================================================================
-  A Python 3 microservice library / framework using ``asyncio`` (async / await) with
-  HTTP, websockets, RabbitMQ / AMQP and AWS SNS+SQS built-in support for event based
-  messaging and intra-service communication.
+``tomodachi`` ⌁ *a lightweight microservice lib* ⌁ *for Python 3*
+=================================================================
+
+.. raw:: html
+
+    <p align="left">
+        <sup><i>tomodachi</i> [<b>友達</b>] <i>means friends — 🦊🐶🐻🐯🐮🐸🐍 — a suitable name for microservices working together.</i> ✨✨</sup>
+        <br/>
+        <sup><tt>events</tt> <tt>messaging</tt> <tt>api</tt> <tt>pubsub</tt> <tt>sns+sqs</tt> <tt>amqp</tt> <tt>http</tt> <tt>queues</tt> <tt>handlers</tt> <tt>scheduling</tt> <tt>tasks</tt> <tt>microservice</tt> <tt>tomodachi</tt></sup>
+    </p>
 
 .. image:: https://github.com/kalaspuff/tomodachi/workflows/Python%20package/badge.svg
     :target: https://github.com/kalaspuff/tomodachi/actions
@@ -13,14 +18,28 @@
 .. image:: https://img.shields.io/pypi/pyversions/tomodachi.svg
     :target: https://pypi.python.org/pypi/tomodachi
 
-Tomodachi is a tiny framework designed to build fast microservices listening on
-HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
-AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
-use of any type of transport layer available.
+----
 
-*Tomodachi* [**友達**] *means friends – a suitable name for microservices working
-together.* 😻 👬 👭 👫 😻
+``tomodachi`` *is a library designed to make it easy for devs to build microservices using* ``asyncio`` *on Python.*
 
+Includes ready implementations to support handlers built for HTTP requests, websockets, AWS SNS+SQS and RabbitMQ / AMQP for 🚀 event based messaging, 🔗 intra-service communication and 🐶 watchdog handlers. 
+
+* HTTP request handlers (API endpoints) are sent requests via the ``aiohttp`` server library. 🪢
+* Events and message handlers are hooked into a message bus, such as a queue, from for example AWS (Amazon Web Services) SNS+SQS (``aiobotocore``), RabbitMQ / AMQP (``aioamqp``), etc. 📡
+
+With the provided handler managers, the need for devs to interface with low-level libs directly should be lower, making it more of a breeze to focus on building the business logic. 🪄
+
+.. image:: docs/assets/tomodachi-run-service.png
+    :align: center
+
+* 🦺 Supports graceful termination of consumers, listeners and active tasks to ensure easy deployments and upgrades – battle tested on operation in Kubernetes on Docker.
+* ⏰ Scheduled function execution (cron notation or on time interval) helpful for building watchdog handlers.
+* 💌 Simple envelope building and parsing for both receiving and publishing messages. Execution middleware interface for incoming HTTP requests and received messages.
+* 📚 Logging support from ``structlog`` with template loggers for both "dev console" and JSON output – loggers and handler managers are built to support exception tracing via log handlers, such as provided by for example Sentry.
+* 📡 SQS queues with filter policies for SNS topic subscriptions filtering messages on message attributes. SQS supports DLQ via redrive policy – infra orchestration from service optional.
+* 🌱 Designed to be extendable – any kind of transport layer or event source can be added.
+
+----
 
 Project documentation
 ---------------------
@@ -58,26 +77,27 @@ container images.
 
 .. code::
 
-    Usage: tomodachi <command> [options] [arguments]
+    usage:
+      $ tomodachi run [options] <service.py ...>
 
-    Options:
-      -h, --help                                Show this help message and exit
-      -v, --version                             Print tomodachi version
-      --dependency-versions                     Print versions of dependencies
+    description:
+      starts the tomodachi service(s) defined in the files provided as arguments.
 
-    Available commands:
-      ---
-      Command: run
-      Starts service(s) defined in the .py files specified as <service> argument(s)
+    options:
+      --loop [auto|asyncio|uvloop]
+          use the specified event loop implementation. (default: auto)
+      --production
+          disables service restart on file changes and hides the info banner.
+      --log-level [debug|info|warning|error|critical]
+          specify the minimum log level. (default: info)
+      --logger [console|json|python|disabled]
+          specify a log formatter for tomodachi.logging. (default: console)
+      --custom-logger <module.attribute|module>
+          use a custom logger object or custom log module (as import path).
 
-      $ tomodachi run <service ...> [-c <config-file ...>] [--production]
-      | --loop [auto|asyncio|uvloop]            Event loop implementation [asyncio]
-      | --production                            Disable restart on file changes
-      | -c, --config <files>                    Use configuration from JSON files
-      | -l, --log <level>, --log-level <level>  Specify log level
-
-
-.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
+    usage examples:
+      $ tomodachi run --production --logger json --loop uvloop service/app.py
+      $ tomodachi run --log-level warning --custom-logger foobar.logger service.py
 
 ``README``
 ==========
@@ -198,7 +218,11 @@ Run services with:
 
 .. code:: bash
 
-    local ~/code/service$ tomodachi run <path to .py file with service class code>
+    local ~/code/service$ tomodachi run <service.py ...>
+
+.. image:: docs/assets/tomodachi-usage.png
+    :width: 60%
+    :align: left
 
 
 ----
@@ -328,31 +352,13 @@ Run the service 😎
     local ~/code/service$ tomodachi run service.py
 
     # alternatively using the tomodachi.run module
-    local ~/code/tomodachi$ python -m tomodachi.run service.py
+    local ~/code/service$ python -m tomodachi.run service.py
 
 
-*Defaults to output information on stdout.*
+*Defaults to output startup banner on stdout and log output on stderr.*
 
-.. code:: bash
-
-    local ~/code/service$ tomodachi run service.py
-    >
-    > ---
-    > Starting tomodachi services (pid: 1) ...
-    > * service.py
-    >
-    > Current version: tomodachi x.x.xx on Python 3.x.x
-    > Event loop implementation: asyncio
-    > Local time: October 16, 2022 - 13:38:01,201509 UTC
-    > Timestamp in UTC: 2022-10-16T13:38:01.201509Z
-    >
-    > File watcher is active - code changes will automatically restart services
-    > Quit running services with <ctrl+c>
-    >
-    > 2022-10-16 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    > 2022-10-16 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
-    > 2022-10-16 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
-
+.. image:: docs/assets/tomodachi-run-service.png
+    :align: center
 
 *HTTP service acts like a normal web server.*
 
@@ -481,7 +487,7 @@ quite this small, but as a template to get started.
     WORKDIR /app
     COPY service.py .
     ENV PYTHONUNBUFFERED=1
-    CMD ["tomodachi", "run", "service.py", "--production"]
+    CMD ["tomodachi", "run", "service.py"]
 
 **service.py**
 
@@ -544,7 +550,7 @@ Building and running the container, forwarding host's port 31337 to port 80.
     > 3.10-bullseye: Pulling from library/python
     > ...
     >  ---> 3f7f3ab065d4
-    > Step 7/7 : CMD ["tomodachi", "run", "service.py", "--production"]
+    > Step 7/7 : CMD ["tomodachi", "run", "service.py"]
     >  ---> Running in b8dfa9deb243
     > Removing intermediate container b8dfa9deb243
     >  ---> 8f09a3614da3
@@ -554,9 +560,9 @@ Building and running the container, forwarding host's port 31337 to port 80.
 .. code:: bash
 
     local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
-    > 2022-10-16 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    > 2022-10-16 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
-    > 2022-10-16 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+
+.. image:: docs/assets/tomodachi-in-docker.png
+    :align: center
 
 Making requests to the running container.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -580,6 +586,8 @@ Making requests to the running container.
     >   }
     > }
 
+.. code:: bash
+
     local ~$ curl http://127.0.0.1:31337/health -i
     > HTTP/1.1 200 OK
     > Content-Type: application/json; charset=utf-8
@@ -588,6 +596,8 @@ Making requests to the running container.
     > Date: Sun, 16 Oct 2022 13:40:44 GMT
     >
     > {"status": "healthy"}
+
+.. code:: bash
 
     local ~$ curl http://127.0.0.1:31337/no-route -i
     > HTTP/1.1 404 Not Found
@@ -1051,7 +1061,7 @@ A ``tomodachi.Service`` extended service class may specify a class attribute nam
 ``http.real_ip_header``                                    Header to read the value of the client's real IP address from if service operates behind a reverse proxy. Only used if ``http.real_ip_from`` is set and the proxy's IP correlates with the value from ``http.real_ip_from``.                                                                                                                                                                                                                                                        ``"X-Forwarded-For"``
 ``http.real_ip_from``                                      IP address(es) or IP subnet(s) / CIDR. Allows the ``http.real_ip_header`` header value to be used as client's IP address if connecting reverse proxy's IP equals a value in the list or is within a specified subnet. For example ``["127.0.0.1/32", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]`` would permit header to be used if closest reverse proxy is ``"127.0.0.1"`` or within the three common private network IP address ranges.                                    ``[]``
 ``http.content_type``                                      Default content-type header to use if not specified in the response.                                                                                                                                                                                                                                                                                                                                                                                                                ``"text/plain; charset=utf-8"``
-``http.access_log``                                        If set to the default value (boolean) ``True`` the HTTP access log will be output to stdout (logger ``transport.http``). If set to a ``str`` value, the access log will additionally also be stored to file using value as filename.                                                                                                                                                                                                                                                ``True``
+``http.access_log``                                        If set to the default value (boolean) ``True`` the HTTP access log will be output to stdout (logger ``tomodachi.http``). If set to a ``str`` value, the access log will additionally also be stored to file using value as filename.                                                                                                                                                                                                                                                ``True``
 ``http.server_header``                                     ``"Server"`` header value in responses.                                                                                                                                                                                                                                                                                                                                                                                                                                             ``"tomodachi"``
 ---------------------------------------------------------  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
