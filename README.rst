@@ -77,47 +77,64 @@ Project documentation
 Usage
 =====
 
-``tomodachi`` is used to execute service code via command line interface or within container images. It will be automatically installed when the package is installed in the environment.
-
-.. raw:: html
-
-    <img src="docs/assets/tomodachi-usage.png" width="65%" align="right"><br/>
+``tomodachi`` is used to execute service code via command line interface or within container images. It will be installed automatically when the package is installed in the environment.
 
 The CLI endpoint ``tomodachi`` is then used to run services defined as ``tomodachi`` service classes. 
 
-Start a service with its class definition defined in ``./service/app.py`` by running ``tomodachi run service/app.py``. 
+.. raw:: html
 
-Finally stop the service with the keyboard interrupt ``<ctrl+c>``.
+    <img src="docs/assets/tomodachi-usage.png" width="65%" align="right">
+
+Start a service with its class definition defined in ``./service/app.py`` by running ``tomodachi run service/app.py``. Finally stop the service with the keyboard interrupt ``<ctrl+c>``.
+
+The run command has some options available that can be specified with arguments to the CLI. 
+
+Most options can also be set as an environment variable value. 
+
+For example setting environment ``TOMODACHI_LOGGER=json`` will yield the same change to the logger as if running the service using the argument ``--logger json``.
 
 .. raw:: html
 
     <br clear="right"/>
 
-The run command has some CLI options available. Most options can also be set as an environment variable value. For example setting ``TOMODACHI_LOGGER=json`` is the same as using the argument ``--logger json``.
+.. raw:: html
 
-🎚️ These are the available options to the ``tomodachi run`` command
--------------------------------------------------------------------
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--loop [auto|asyncio|uvloop]</tt></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_LOOP=...</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+The value for ``--loop`` can either be set to ``asyncio``, ``uvloop`` or ``auto``. The ``uvloop`` value can only be used if uvloop is installed in the execution environment. Note that the default ``auto`` value will currently end up using the event loop implementation that is preferred by the Python interpreter, which in most cases will be ``asyncio``.
 
 .. raw:: html
 
     <table align="left">
     <thead>
     <tr vertical-align="center">
-    <th align="left" width="90px"><i>env</i></th>
-    <th align="left" width="910px"><tt>TOMODACHI_LOOP=...</tt></small></th>
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--production</tt></th>
     </tr>
     <tr vertical-align="center">
-    <th align="left" width="90px"><i>option</i></th>
-    <th align="left" width="910px"><tt>--loop [auto|asyncio|uvloop]</tt></th>
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_PRODUCTION=1</tt></th>
     </tr>
     </thead>
     </table>
     <br clear="left"/>
 
-The value for ``--loop`` can either be set to ``asyncio``, ``uvloop`` or ``auto``. The ``uvloop`` value can only be used if uvloop is installed in the execution environment.
+Use ``--production`` to disable the file watcher that restarts the service on file changes and to hide the startup info banner. 
 
-The default ``auto`` value will currently end up using the event loop implementation that is preferred by the Python interpreter, which in most cases will be ``asyncio``.
-
+| ⇢ *recommendation* ✨👀
+| ⇢ Highly recommended to enable this option for built docker images and for builds of services that are to be released to any environment. The only time you should run without the ``--production`` option is during development and in local development environment.
 |
 
 .. raw:: html
@@ -125,32 +142,12 @@ The default ``auto`` value will currently end up using the event loop implementa
     <table align="left">
     <thead>
     <tr vertical-align="center">
-    <th align="left" width="90px"><i>env</i></th>
-    <th align="left" width="910px"><tt>TOMODACHI_PRODUCTION=1</tt></small></th>
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--log-level [debug|info|warning|error|critical]</tt></th>
     </tr>
     <tr vertical-align="center">
-    <th align="left" width="90px"><i>option</i></th>
-    <th align="left" width="910px"><tt>--production</tt></th>
-    </tr>
-    </thead>
-    </table>
-    <br clear="left"/>
-
-Use ``--production`` to disable the file watcher that restarts the service on file changes and to hide the startup info banner. This is highly receommended for built docker images and for services released to basically any environment. Only during development do you want to run without the ``--production`` option. 
-
-|
-
-.. raw:: html
-
-    <table align="left">
-    <thead>
-    <tr vertical-align="center">
-    <th align="left" width="90px"><i>env</i></th>
-    <th align="left" width="910px"><tt>TOMODACHI_LOG_LEVEL=...</tt></small></th>
-    </tr>
-    <tr vertical-align="center">
-    <th align="left" width="90px"><i>option</i></th>
-    <th align="left" width="910px"><tt>--log-level [debug|info|warning|error|critical]</tt></th>
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_LOG_LEVEL=...</tt></th>
     </tr>
     </thead>
     </table>
@@ -158,19 +155,17 @@ Use ``--production`` to disable the file watcher that restarts the service on fi
 
 Set the minimum log level for which the loggers will emit logs to their handlers with the ``--log-level`` option. By default the minimum log level is set to ``info`` (which includes ``info``, ``warning``, ``error`` and ``critical``, resulting in only the ``debug`` log records to be filtered out).
 
-|
-
 .. raw:: html
 
     <table align="left">
     <thead>
     <tr vertical-align="center">
-    <th align="left" width="90px"><i>env</i></th>
-    <th align="left" width="910px"><tt>TOMODACHI_LOGGER=...</tt></small></th>
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--logger [console|json|python|disabled]</tt></th>
     </tr>
     <tr vertical-align="center">
-    <th align="left" width="90px"><i>option</i></th>
-    <th align="left" width="910px"><tt>--logger [console|json|python|disabled]</tt></th>
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_LOGGER=...</tt></th>
     </tr>
     </thead>
     </table>
@@ -178,25 +173,25 @@ Set the minimum log level for which the loggers will emit logs to their handlers
 
 Apply the ``--logger`` option to change the log formatter that is used by the library. The default value ``console`` is mostly suited for local development environments as it provides a structured and colorized view of log records. The console colors can be disabled by setting the env value ``NO_COLOR=1``.
 
-For released services / images it's recommended to use the ``json`` option so that you can set up structured log collection via for example Logstash, Fluentd, Fluent Bit, Vector, etc. 
+| ⇢ *recommendation* ✨👀
+| ⇢ For released services / images it's recommended to use the* ``json`` *option so that you can set up structured log collection via for example Logstash, Fluentd, Fluent Bit, Vector, etc.*
+|
 
 If you prefer to disable log output from the library you can use ``disabled`` (and presumably add a log handler with another implementation). 
 
 The ``python`` option isn't recommended, but available if required to use the loggers from Python's built-in ``logging`` module. Note that the built-in ``logging`` module will be used any way. as the library's loggers are both added as handlers to ``logging.root`` and has propagation of records through to ``logging`` as well.
-
-|
 
 .. raw:: html
 
     <table align="left">
     <thead>
     <tr vertical-align="center">
-    <th align="left" width="90px"><i>env</i></th>
-    <th align="left" width="910px"><tt>TOMODACHI_CUSTOM_LOGGER=...</tt></small></th>
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--custom-logger &lt;module.attribute|module&gt;</tt></th>
     </tr>
     <tr vertical-align="center">
-    <th align="left" width="90px"><i>option</i></th>
-    <th align="left" width="910px"><tt>--custom-logger &lt;module.attribute|module&gt;</tt></th>
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_CUSTOM_LOGGER=...</tt></th>
     </tr>
     </thead>
     </table>
