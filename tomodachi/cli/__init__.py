@@ -71,11 +71,10 @@ class CLI:
         AVAILABLE_COMMAND = f"{COLOR_RESET}{COLOR.BLUE}"
         OPTION = f"{COLOR_RESET}{COLOR.GREEN}"
         DEFAULT = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
-        LABEL_OTHER = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.BRIGHT}"
         BOTTOM_TEXT = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}"
         BOTTOM_LABEL = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
 
-        time_since_tomodadchi_build = get_time_since_build() or "local development version"
+        time_since_tomodachi_build = get_time_since_build() or "local development version"
         return (
             f"{LABEL}usage:{COLOR_RESET}\n"
             f"  {SHELL}${COLOR_RESET} {MAIN_USAGE}tomodachi run [options] <service.py ...>{COLOR_RESET}\n"
@@ -94,16 +93,14 @@ class CLI:
             f"      specify a log formatter for tomodachi.logging. {DEFAULT}(default: console){COLOR_RESET}\n"
             f"  {OPTION}--custom-logger <module.attribute|module>{COLOR_RESET}\n"
             "      use a custom logger object or custom log module (as import path).\n"
-            "      this option cannot be combined with --logger.\n"
             "\n"
             f"{LABEL}usage examples:{COLOR_RESET}\n"
             f"  {SHELL}${COLOR_RESET} {AVAILABLE_COMMAND}tomodachi run --production --logger json --loop uvloop service/app.py{COLOR_RESET}\n"
             f"  {SHELL}${COLOR_RESET} {AVAILABLE_COMMAND}tomodachi run --log-level warning --custom-logger foobar.logger service.py{COLOR_RESET}\n"
             "\n"
-            f"{LABEL_OTHER}lib info:{COLOR_RESET}\n"
-            f"  {BOTTOM_LABEL}ver{COLOR_RESET} {BOTTOM_TEXT}{tomodachi.__version__} ({time_since_tomodadchi_build}){COLOR_RESET}\n"
-            f"  {BOTTOM_LABEL}doc{COLOR_RESET} {BOTTOM_TEXT}https://tomodachi.dev/docs{COLOR_RESET}\n"
-            f"  {BOTTOM_LABEL}git{COLOR_RESET} {BOTTOM_TEXT}https://github.com/kalaspuff/tomodachi{COLOR_RESET}\n"
+            f"{BOTTOM_LABEL}ver{COLOR_RESET} {BOTTOM_TEXT}{tomodachi.__version__} ({time_since_tomodachi_build}){COLOR_RESET}\n"
+            # f"{BOTTOM_LABEL}doc{COLOR_RESET} {BOTTOM_TEXT}https://tomodachi.dev/docs{COLOR_RESET}\n"
+            f"{BOTTOM_LABEL}git{COLOR_RESET} {BOTTOM_TEXT}https://github.com/kalaspuff/tomodachi{COLOR_RESET}\n"
         )
 
     def help_command(self) -> None:
