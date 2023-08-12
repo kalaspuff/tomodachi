@@ -14,31 +14,97 @@ from tomodachi.launcher import ServiceLauncher
 
 class CLI:
     def help_command_usage(self) -> str:
+        NO_COLOR = any(
+            [
+                os.environ.get("NO_COLOR", "").lower() in ("1", "true"),
+                os.environ.get("NOCOLOR", "").lower() in ("1", "true"),
+                os.environ.get("TOMODACHI_NO_COLOR", "").lower() in ("1", "true"),
+                os.environ.get("TOMODACHI_NOCOLOR", "").lower() in ("1", "true"),
+                os.environ.get("CLICOLOR", "").lower() in ("0", "false"),
+                os.environ.get("CLI_COLOR", "").lower() in ("0", "false"),
+                os.environ.get("CLICOLOR_FORCE", "").lower() in ("0", "false"),
+            ]
+        )
+
+        class ColorFore:
+            BLACK = ""
+            RED = ""
+            GREEN = ""
+            YELLOW = ""
+            BLUE = ""
+            MAGENTA = ""
+            CYAN = ""
+            WHITE = ""
+            RESET = ""
+
+            LIGHTBLACK_EX = ""
+            LIGHTRED_EX = ""
+            LIGHTGREEN_EX = ""
+            LIGHTYELLOW_EX = ""
+            LIGHTBLUE_EX = ""
+            LIGHTMAGENTA_EX = ""
+            LIGHTCYAN_EX = ""
+            LIGHTWHITE_EX = ""
+
+        class ColorStyle:
+            BRIGHT = ""
+            DIM = ""
+            NORMAL = ""
+            RESET_ALL = ""
+
+        COLOR = ColorFore()
+        COLOR_STYLE = ColorStyle()
+        COLOR_RESET = ""
+        try:
+            import colorama  # noqa  # isort:skip
+
+            if not NO_COLOR:
+                COLOR = colorama.Fore
+                COLOR_STYLE = colorama.Style
+                COLOR_RESET = colorama.Style.RESET_ALL
+        except Exception:
+            pass
+
+        LABEL = f"{COLOR_RESET}{COLOR.YELLOW}{COLOR_STYLE.BRIGHT}"
+        SHELL = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
+        MAIN_USAGE = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.BRIGHT}"
+        AVAILABLE_COMMAND = f"{COLOR_RESET}{COLOR.BLUE}"
+        OPTION = f"{COLOR_RESET}{COLOR.GREEN}"
+        DEFAULT = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
+        LABEL_OTHER = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}{COLOR_STYLE.BRIGHT}{COLOR_STYLE.BRIGHT}"
+        BOTTOM_TEXT = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}"
+        BOTTOM_LABEL = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
+
         time_since_tomodadchi_build = get_time_since_build() or "local development version"
         return (
-            "Usage: tomodachi <command> [options] [arguments]\n"
+            f"{LABEL}usage:{COLOR_RESET}\n"
+            f"  {SHELL}${COLOR_RESET} {MAIN_USAGE}tomodachi run [options] <service.py ...>{COLOR_RESET}\n"
             "\n"
-            "Options:\n"
-            "  -h, --help                                Show this help message and exit\n"
-            "  -v, --version                             Print tomodachi version\n"
-            "  --dependency-versions                     Print versions of dependencies\n"
+            f"{LABEL}description:{COLOR_RESET}\n"
+            f"  starts the tomodachi service(s) defined in the files provided as arguments.\n"
             "\n"
-            "Available commands:\n"
-            "  ---\n"
-            "  Command: run\n"
-            "  Starts service(s) defined in the .py files specified as <service> argument(s)\n"
+            f"{LABEL}options:{COLOR_RESET}\n"
+            f"  {OPTION}--loop [auto|asyncio|uvloop]{COLOR_RESET}\n"
+            f"      use the specified event loop implementation. {DEFAULT}(default: auto){COLOR_RESET}\n"
+            f"  {OPTION}--production{COLOR_RESET}\n"
+            "      disables the file watcher that restarts services on file changes.\n"
+            f"  {OPTION}--log-level [debug|info|warning|error|critical]{COLOR_RESET}\n"
+            f"      specify the minimum log level. {DEFAULT}(default: info){COLOR_RESET}\n"
+            f"  {OPTION}--logger [console|json|python|disabled]{COLOR_RESET}\n"
+            f"      specify a log formatter for tomodachi.logging. {DEFAULT}(default: console){COLOR_RESET}\n"
+            f"  {OPTION}--custom-logger <module.attribute|module>{COLOR_RESET}\n"
+            "      use a custom logger object or custom log module (as import path).\n"
+            "      this option cannot be combined with --logger.\n"
             "\n"
-            "  $ tomodachi run <service ...> [--production]\n"
-            "  | --loop [auto|asyncio|uvloop]            Event loop implementation [asyncio]\n"
-            "  | --production                            Disable restart on file changes\n"
-            "  | -c, --config <files>                    Use configuration from JSON files\n"
-            "  | -l, --log <level>, --log-level <level>  Specify log level\n"
-            "  | --logger [console|json|python|disabled] Specify the log formatter to use\n"
-            "  | --custom-logger <module|module.logger>  Use a custom logger or log module\n"
+            f"{LABEL}usage examples:{COLOR_RESET}\n"
+            f"  {SHELL}${COLOR_RESET} {AVAILABLE_COMMAND}tomodachi run --production --logger json --loop uvloop service/app.py{COLOR_RESET}\n"
+            f"  {SHELL}${COLOR_RESET} {AVAILABLE_COMMAND}tomodachi run --log-level warning --custom-logger foobar.logger service.py{COLOR_RESET}\n"
             "\n"
-            ">> Version: {} ({})\n"
-            ">> Full documentation at: https://tomodachi.dev/docs"
-        ).format(tomodachi.__version__, time_since_tomodadchi_build)
+            f"{LABEL_OTHER}lib info:{COLOR_RESET}\n"
+            f"  {BOTTOM_LABEL}ver{COLOR_RESET} {BOTTOM_TEXT}{tomodachi.__version__} ({time_since_tomodadchi_build}){COLOR_RESET}\n"
+            f"  {BOTTOM_LABEL}doc{COLOR_RESET} {BOTTOM_TEXT}https://tomodachi.dev/docs{COLOR_RESET}\n"
+            f"  {BOTTOM_LABEL}git{COLOR_RESET} {BOTTOM_TEXT}https://github.com/kalaspuff/tomodachi{COLOR_RESET}\n"
+        )
 
     def help_command(self) -> None:
         print(self.help_command_usage())
