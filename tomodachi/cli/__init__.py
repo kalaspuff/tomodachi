@@ -56,7 +56,7 @@ class CLI:
 
     def help_command(self) -> None:
         print(self.help_command_usage())
-        sys.exit(2)
+        sys.exit(0)
 
     def version_command(self) -> None:
         print("tomodachi {}".format(tomodachi.__version__))
