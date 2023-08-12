@@ -14,56 +14,7 @@ from tomodachi.launcher import ServiceLauncher
 
 class CLI:
     def help_command_usage(self) -> str:
-        NO_COLOR = any(
-            [
-                os.environ.get("NO_COLOR", "").lower() in ("1", "true"),
-                os.environ.get("NOCOLOR", "").lower() in ("1", "true"),
-                os.environ.get("TOMODACHI_NO_COLOR", "").lower() in ("1", "true"),
-                os.environ.get("TOMODACHI_NOCOLOR", "").lower() in ("1", "true"),
-                os.environ.get("CLICOLOR", "").lower() in ("0", "false"),
-                os.environ.get("CLI_COLOR", "").lower() in ("0", "false"),
-                os.environ.get("CLICOLOR_FORCE", "").lower() in ("0", "false"),
-            ]
-        )
-
-        class ColorFore:
-            BLACK = ""
-            RED = ""
-            GREEN = ""
-            YELLOW = ""
-            BLUE = ""
-            MAGENTA = ""
-            CYAN = ""
-            WHITE = ""
-            RESET = ""
-
-            LIGHTBLACK_EX = ""
-            LIGHTRED_EX = ""
-            LIGHTGREEN_EX = ""
-            LIGHTYELLOW_EX = ""
-            LIGHTBLUE_EX = ""
-            LIGHTMAGENTA_EX = ""
-            LIGHTCYAN_EX = ""
-            LIGHTWHITE_EX = ""
-
-        class ColorStyle:
-            BRIGHT = ""
-            DIM = ""
-            NORMAL = ""
-            RESET_ALL = ""
-
-        COLOR = ColorFore()
-        COLOR_STYLE = ColorStyle()
-        COLOR_RESET = ""
-        try:
-            import colorama  # noqa  # isort:skip
-
-            if not NO_COLOR:
-                COLOR = colorama.Fore
-                COLOR_STYLE = colorama.Style
-                COLOR_RESET = colorama.Style.RESET_ALL
-        except Exception:
-            pass
+        from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
 
         LABEL = f"{COLOR_RESET}{COLOR.YELLOW}{COLOR_STYLE.BRIGHT}"
         SHELL = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
@@ -256,12 +207,9 @@ class CLI:
             "uvloop": uvloop_version or None,
         }
 
-    def run_command_usage(self) -> str:
-        return "Usage: tomodachi run <service ...> [-c <config-file ...>] [--loop auto|asyncio|uvloop] [--production]"
-
     def run_command(self, args: List[str]) -> None:
         if len(args) == 0:
-            print(self.run_command_usage())
+            print(self.help_command_usage())
         else:
             configuration = None
             log_level = logging.INFO
@@ -496,10 +444,30 @@ class CLI:
 
         try:
             opts, args = getopt.getopt(
-                argv, "hlvV ", ["help", "log", "version", "version", "dependency-versions", "dependencies", "deps"]
+                argv,
+                "hlvV ",
+                [
+                    "help",
+                    "log",
+                    "version",
+                    "version",
+                    "dependency-versions",
+                    "dependencies",
+                    "deps",
+                    "logger",
+                    "log-level",
+                    "custom-logger",
+                    "production",
+                    "loop",
+                ],
             )
-        except getopt.GetoptError:
-            self.help_command()
+        except getopt.GetoptError as e:
+            print("Invalid command or combination of command options")
+            print(f"Error: {str(e)}")
+            print("")
+            print("Use the '--help' option for CLI usage help.")
+            print("$ tomodachi --help")
+            sys.exit(2)
         for opt, _ in opts:
             if opt in ("-h", "--help"):
                 self.help_command()
@@ -507,9 +475,41 @@ class CLI:
                 self.version_command()
             if opt in ("--dependency-versions", "--dependencies", "--deps"):
                 self.dependency_versions_command()
+
+            if opt in ("-l", "--log-level", "--log", "--logger", "--custom-logger", "--production", "--loop"):
+                print("Invalid command or combination of command options.")
+                print("The command 'run' must be specified before any options.")
+                print("")
+
+                if any([a.endswith(".py") for a in argv]):
+                    new_args = ["run"] + [a for a in argv if a not in ("run", "start", "go")]
+                    print("Maybe you intended to run something like this?")
+                    print(f"$ tomodachi {' '.join(new_args)}")
+                    print("")
+
+            print("Use the '--help' option for CLI usage help.")
+            print("$ tomodachi --help")
+            sys.exit(2)
+
         if len(args):
             if args[0] in ("run", "start", "go"):
                 self.run_command(args[1:])
+
+        if args or opts:
+            print("Invalid command or combination of command options.")
+            print("The command 'run' must be specified before any service files or options.")
+            print("")
+
+            if any([a.endswith(".py") for a in argv]):
+                new_args = ["run"] + [a for a in argv]
+                print("Maybe you intended to run something like this?")
+                print(f"$ tomodachi {' '.join(new_args)}")
+                print("")
+
+            print("Use the '--help' option for CLI usage help.")
+            print("$ tomodachi --help")
+            sys.exit(2)
+
         self.help_command()
 
 

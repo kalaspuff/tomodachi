@@ -27,7 +27,7 @@ def test_cli_run_command_method_no_args(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         cli.run_command([])
     out, err = capsys.readouterr()
-    assert (out + err) == cli.run_command_usage() + "\n"
+    assert (out + err) == cli.help_command_usage() + "\n"
 
 
 def test_cli_entrypoint_no_arguments(capsys: Any) -> None:
@@ -71,23 +71,49 @@ def test_cli_entrypoint_print_version(capsys: Any) -> None:
 
 
 def test_cli_entrypoint_invalid_arguments_show_help(capsys: Any) -> None:
-    cli = tomodachi.cli.CLI()
-
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "--invalid"])
 
     out, err = capsys.readouterr()
-    assert (out + err) == cli.help_command_usage() + "\n"
+    assert (
+        (out + err)
+        == "Invalid command or combination of command options\nError: option --invalid not recognized\n\nUse the '--help' option for CLI usage help.\n$ tomodachi --help\n"
+    )
 
 
 def test_cli_entrypoint_invalid_subcommand_show_help(capsys: Any) -> None:
-    cli = tomodachi.cli.CLI()
-
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "invalidsubcommand"])
 
     out, err = capsys.readouterr()
-    assert (out + err) == cli.help_command_usage() + "\n"
+    assert (
+        (out + err)
+        == "Invalid command or combination of command options.\nThe command 'run' must be specified before any service files or options.\n\nUse the '--help' option for CLI usage help.\n$ tomodachi --help\n"
+    )
+
+
+def test_cli_entrypoint_missing_run_command(capsys: Any) -> None:
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(["tomodachi", "tests/services/auto_closing_service_sigterm.py"])
+
+    out, err = capsys.readouterr()
+    assert (
+        (out + err)
+        == "Invalid command or combination of command options.\nThe command 'run' must be specified before any service files or options.\n\nMaybe you intended to run something like this?\n$ tomodachi run tests/services/auto_closing_service_sigterm.py\n\nUse the '--help' option for CLI usage help.\n$ tomodachi --help\n"
+    )
+
+
+def test_cli_entrypoint_wrong_order_options(capsys: Any) -> None:
+    with pytest.raises(SystemExit):
+        tomodachi.cli.cli_entrypoint(
+            ["tomodachi", "--logger", "json", "run", "tests/services/auto_closing_service_sigterm.py"]
+        )
+
+    out, err = capsys.readouterr()
+    assert (
+        (out + err)
+        == "Invalid command or combination of command options.\nThe command 'run' must be specified before any options.\n\nMaybe you intended to run something like this?\n$ tomodachi run --logger json tests/services/auto_closing_service_sigterm.py\n\nUse the '--help' option for CLI usage help.\n$ tomodachi --help\n"
+    )
 
 
 def test_cli_start_service_stopped_with_sigterm(capsys: Any) -> None:

@@ -9,6 +9,7 @@ import tomodachi
 import tomodachi.importer
 from tomodachi import logging
 from tomodachi.helpers.build_time import get_time_since_build
+from tomodachi.helpers.colors import NO_COLOR
 from tomodachi.helpers.execution_context import get_execution_context
 from tomodachi.importer import ServiceImporter
 
@@ -17,61 +18,17 @@ TOMODACHI_ASCII = """
  █  █▄█ █ ▀ █ █▄█ █▄▀ █▀█ █▄▄ █▀█ █  友達
 """.strip()
 
-NO_COLOR = any(
+if NO_COLOR or any(
     [
-        os.environ.get("NO_COLOR", "").lower() in ("1", "true"),
-        os.environ.get("NOCOLOR", "").lower() in ("1", "true"),
-        os.environ.get("TOMODACHI_NO_COLOR", "").lower() in ("1", "true"),
-        os.environ.get("TOMODACHI_NOCOLOR", "").lower() in ("1", "true"),
         os.environ.get("TOMODACHI_BANNER_NO_COLOR", "").lower() in ("1", "true"),
         os.environ.get("TOMODACHI_BANNER_NOCOLOR", "").lower() in ("1", "true"),
-        os.environ.get("CLICOLOR", "").lower() in ("0", "false"),
-        os.environ.get("CLI_COLOR", "").lower() in ("0", "false"),
-        os.environ.get("CLICOLOR_FORCE", "").lower() in ("0", "false"),
     ]
-)
-
-
-class ColorFore:
-    BLACK = ""
-    RED = ""
-    GREEN = ""
-    YELLOW = ""
-    BLUE = ""
-    MAGENTA = ""
-    CYAN = ""
-    WHITE = ""
-    RESET = ""
-
-    LIGHTBLACK_EX = ""
-    LIGHTRED_EX = ""
-    LIGHTGREEN_EX = ""
-    LIGHTYELLOW_EX = ""
-    LIGHTBLUE_EX = ""
-    LIGHTMAGENTA_EX = ""
-    LIGHTCYAN_EX = ""
-    LIGHTWHITE_EX = ""
-
-
-class ColorStyle:
-    BRIGHT = ""
-    DIM = ""
-    NORMAL = ""
-    RESET_ALL = ""
-
-
-COLOR = ColorFore()
-COLOR_STYLE = ColorStyle()
-COLOR_RESET = ""
-try:
-    import colorama  # noqa  # isort:skip
-
-    if not NO_COLOR:
-        COLOR = colorama.Fore
-        COLOR_STYLE = colorama.Style
-        COLOR_RESET = colorama.Style.RESET_ALL
-except Exception:
-    pass
+):
+    from tomodachi.helpers.colors import COLOR_0 as COLOR
+    from tomodachi.helpers.colors import COLOR_RESET_0 as COLOR_RESET
+    from tomodachi.helpers.colors import COLOR_STYLE_0 as COLOR_STYLE
+else:
+    from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
 
 
 def render_banner(
