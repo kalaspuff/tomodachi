@@ -435,7 +435,8 @@ class StderrHandler(logging.StreamHandler):
         return sys.stderr
 
 
-_default_fmt = "%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]"
+DEFAULT_FORMAT = "%(asctime)s [%(levelname)-9s] %(message)-30s [%(name)s]"
+_default_fmt = DEFAULT_FORMAT
 try:
     if len(logging.root.handlers) and logging.root.handlers[0].formatter and logging.root.handlers[0].formatter._fmt:
         _default_fmt = logging.root.handlers[0].formatter._fmt
@@ -1308,6 +1309,7 @@ __all__ = [
     "configure",
     "set_default_formatter",
     "remove_handlers",
+    "DEFAULT_FORMAT",
     "CRITICAL",
     "DEBUG",
     "ERROR",

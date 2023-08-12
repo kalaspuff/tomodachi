@@ -362,7 +362,8 @@ def test_python_logging_formatter(capsys: Any) -> None:
 
         out, err = capsys.readouterr()
 
-        assert "[info     ] log msg from tomodachi.logging module [tomodachi.test.python_logger]" in err
+        assert "tomodachi.test.python_logger" in err
+        assert "log msg from tomodachi.logging module" in err
         assert "value=test" not in err
         assert "{'value': 'test'}" not in err
 
@@ -376,15 +377,47 @@ def test_python_logging_formatter(capsys: Any) -> None:
         assert "value=test" not in err
         assert "{'value': 'test'}" not in err
 
-        tomodachi.logging.set_default_formatter(formatter=logging_.Formatter(fmt=logging_.BASIC_FORMAT))
+        tomodachi.logging.set_default_formatter(formatter=logging_.Formatter(fmt=tomodachi.logging.DEFAULT_FORMAT))
+
+        logger.info("log msg from tomodachi.logging with logging.Formatter DEFAULT_FORMAT", value="test")
+
+        out, err = capsys.readouterr()
+
+        assert (
+            "[info     ] log msg from tomodachi.logging with logging.Formatter DEFAULT_FORMAT [tomodachi.test.python_logger]"
+            in err
+        )
+        assert "value=test" not in err
+        assert "{'value': 'test'}" not in err
 
         logging_.getLogger("tomodachi.test.python_logger").info(
-            "log msg with logging.Formatter", extra={"value": "test"}
+            "log msg with logging.Formatter DEFAULT_FORMAT", extra={"value": "test"}
         )
 
         out, err = capsys.readouterr()
 
-        assert "info:tomodachi.test.python_logger:log msg with logging.Formatter" == err.strip()
+        assert "[info     ] log msg with logging.Formatter DEFAULT_FORMAT [tomodachi.test.python_logger]" in err
+        assert "value=test" not in err
+        assert "{'value': 'test'}" not in err
+
+        tomodachi.logging.set_default_formatter(formatter=logging_.Formatter(fmt=logging_.BASIC_FORMAT))
+
+        logger.info("log msg from tomodachi.logging with logging.Formatter BASIC_FORMAT", value="test")
+
+        out, err = capsys.readouterr()
+
+        assert (
+            "info:tomodachi.test.python_logger:log msg from tomodachi.logging with logging.Formatter BASIC_FORMAT"
+            == err.strip()
+        )
+
+        logging_.getLogger("tomodachi.test.python_logger").info(
+            "log msg with logging.Formatter BASIC_FORMAT", extra={"value": "test"}
+        )
+
+        out, err = capsys.readouterr()
+
+        assert "info:tomodachi.test.python_logger:log msg with logging.Formatter BASIC_FORMAT" == err.strip()
     finally:
         tomodachi.logging.set_default_formatter(logger_type=default_value)
         logger_type = tomodachi.logging.TOMODACHI_LOGGER_TYPE
