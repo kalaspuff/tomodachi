@@ -27,10 +27,12 @@ Includes ready implementations to support handlers built for HTTP requests, webs
 * HTTP request handlers (API endpoints) are sent requests via the ``aiohttp`` server library. 🪢
 * Events and message handlers are hooked into a message bus, such as a queue, from for example AWS (Amazon Web Services) SNS+SQS (``aiobotocore``), RabbitMQ / AMQP (``aioamqp``), etc. 📡
 
-With the provided handler managers, the need for devs to interface with low-level libs directly should be lower, making it more of a breeze to focus on building the business logic. 🪄
+Using the provided handler managers, the need for devs to interface with low-level libs directly should be lower, making it more of a breeze to focus on building the business logic. 🪄
 
 .. image:: docs/assets/tomodachi-run-service.png
     :align: center
+
+``tomodachi`` has a featureset to meet most basic needs, for example…
 
 * ``🦸`` ⋯ Graceful termination of consumers, listeners and tasks to ensure smooth deployments.
 * ``⏰`` ⋯ Scheduled function execution (cron notation / time interval) for building watchdog handlers.
@@ -72,35 +74,141 @@ Project documentation
 .. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
     :target: https://tomodachi.dev/docs/getting-started
 
-
 Usage
------
-``tomodachi`` is used to execute service code via command line interface or within
-container images.
+=====
 
-.. code::
+``tomodachi`` is used to execute service code via command line interface or within container images. It will be automatically installed when the package is installed in the environment.
 
-    usage:
-      $ tomodachi run [options] <service.py ...>
+.. raw:: html
 
-    description:
-      starts the tomodachi service(s) defined in the files provided as arguments.
+    <img src="docs/assets/tomodachi-usage.png" width="65%" align="right"><br/>
 
-    options:
-      --loop [auto|asyncio|uvloop]
-          use the specified event loop implementation. (default: auto)
-      --production
-          disables service restart on file changes and hides the info banner.
-      --log-level [debug|info|warning|error|critical]
-          specify the minimum log level. (default: info)
-      --logger [console|json|python|disabled]
-          specify a log formatter for tomodachi.logging. (default: console)
-      --custom-logger <module.attribute|module>
-          use a custom logger object or custom log module (as import path).
+The CLI endpoint ``tomodachi`` is then used to run services defined as ``tomodachi`` service classes. 
 
-    usage examples:
-      $ tomodachi run --production --logger json --loop uvloop service/app.py
-      $ tomodachi run --log-level warning --custom-logger foobar.logger service.py
+Start a service with its class definition defined in ``./service/app.py`` by running ``tomodachi run service/app.py``. 
+
+Finally stop the service with the keyboard interrupt ``<ctrl+c>``.
+
+.. raw:: html
+
+    <br clear="right"/>
+
+The run command has some CLI options available. Most options can also be set as an environment variable value. For example setting ``TOMODACHI_LOGGER=json`` is the same as using the argument ``--logger json``.
+
+🎚️ These are the available options to the ``tomodachi run`` command
+-------------------------------------------------------------------
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>env</i></th>
+    <th align="left" width="910px"><tt>TOMODACHI_LOOP=...</tt></small></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>option</i></th>
+    <th align="left" width="910px"><tt>--loop [auto|asyncio|uvloop]</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+The value for ``--loop`` can either be set to ``asyncio``, ``uvloop`` or ``auto``. The ``uvloop`` value can only be used if uvloop is installed in the execution environment.
+
+The default ``auto`` value will currently end up using the event loop implementation that is preferred by the Python interpreter, which in most cases will be ``asyncio``.
+
+|
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>env</i></th>
+    <th align="left" width="910px"><tt>TOMODACHI_PRODUCTION=1</tt></small></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>option</i></th>
+    <th align="left" width="910px"><tt>--production</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+Use ``--production`` to disable the file watcher that restarts the service on file changes and to hide the startup info banner. This is highly receommended for built docker images and for services released to basically any environment. Only during development do you want to run without the ``--production`` option. 
+
+|
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>env</i></th>
+    <th align="left" width="910px"><tt>TOMODACHI_LOG_LEVEL=...</tt></small></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>option</i></th>
+    <th align="left" width="910px"><tt>--log-level [debug|info|warning|error|critical]</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+Set the minimum log level for which the loggers will emit logs to their handlers with the ``--log-level`` option. By default the minimum log level is set to ``info`` (which includes ``info``, ``warning``, ``error`` and ``critical``, resulting in only the ``debug`` log records to be filtered out).
+
+|
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>env</i></th>
+    <th align="left" width="910px"><tt>TOMODACHI_LOGGER=...</tt></small></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>option</i></th>
+    <th align="left" width="910px"><tt>--logger [console|json|python|disabled]</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+Apply the ``--logger`` option to change the log formatter that is used by the library. The default value ``console`` is mostly suited for local development environments as it provides a structured and colorized view of log records. The console colors can be disabled by setting the env value ``NO_COLOR=1``.
+
+For released services / images it's recommended to use the ``json`` option so that you can set up structured log collection via for example Logstash, Fluentd, Fluent Bit, Vector, etc. 
+
+If you prefer to disable log output from the library you can use ``disabled`` (and presumably add a log handler with another implementation). 
+
+The ``python`` option isn't recommended, but available if required to use the loggers from Python's built-in ``logging`` module. Note that the built-in ``logging`` module will be used any way. as the library's loggers are both added as handlers to ``logging.root`` and has propagation of records through to ``logging`` as well.
+
+|
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>env</i></th>
+    <th align="left" width="910px"><tt>TOMODACHI_CUSTOM_LOGGER=...</tt></small></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="left" width="90px"><i>option</i></th>
+    <th align="left" width="910px"><tt>--custom-logger &lt;module.attribute|module&gt;</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+If the template loggers from the option above doesnt' cut it or if you already have your own logger (preferably a ``structlog`` logger) and processor chain set up, you can specify a ``--custom-logger`` which will also make ``tomodachi`` use your logger set up. This is suitable also if your app is using a custom logging setup that would differ in output from what the ``tomodachi`` loggers outputs.
+
+If your logger is initialized in for example the module ``yourapp.logging`` and the initialized (``structlog``) logger is aptly named ``logger``, then use ``--custom-logger yourapp.logging.logger`` (or set as an env value ``TOMODACHI_CUSTOM_LOGGER=yourapp.logging.logger``).
+
+The path to the logger attribute in the module you're specifying must implement ``debug``, ``info``, ``warning``, ``error``, ``exception``, ``critical`` and preferably also ``new(context: Dict[str, Any]) -> Logger`` (as that is what primarily will be called to create (or get) a logger). 
+
+Although non-native ``structlog`` loggers can be used as custom loggers, it's highly recommended to specify a path that has been assigned a value from ``structlog.wrap_logger`` or ``structlog.get_logger``.
 
 ``README``
 ==========
@@ -222,11 +330,6 @@ Run services with:
 .. code:: bash
 
     local ~/code/service$ tomodachi run <service.py ...>
-
-.. image:: docs/assets/tomodachi-usage.png
-    :width: 60%
-    :align: left
-
 
 ----
 
