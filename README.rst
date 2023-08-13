@@ -1127,7 +1127,7 @@ To get a logger with another name than the logger set for the current context, u
 
         @tomodachi.aws_sns_sqs("test-topic", queue_name="test-queue")
         async def sqs_handler(self, data: Any, topic: str, sns_message_id: str) -> None:
-            tomodachi.get_logger().info("received message", topic=topic, sns_message_id=sns_message_id)
+            tomodachi.get_logger().info("received msg", topic=topic, sns_message_id=sns_message_id)
 
 The log record will be enriched with the context of the current handler task or request and the output should look something like this if the ``json`` formatter is used (note that the example output below has been prettified – the JSON that is actually used outputs the entire log entry on one single line):
 
@@ -1137,7 +1137,7 @@ The log record will be enriched with the context of the current handler task or 
         "timestamp": "2023-08-13T17:44:09.176295Z",
         "logger": "tomodachi.awssnssqs.handler",
         "level": "info",
-        "message": "received message",
+        "message": "received msg",
         "handler": "sqs_handler",
         "type": "tomodachi.awssnssqs",
         "topic": "test-topic",
@@ -1173,14 +1173,21 @@ Note that when using the standard library logger directly the contextual logger 
             tomodachi.get_logger("service.logger").info("with tomodachi.logging module")
 
             # extra fields from built in logger ends up as "extra" in log records
-            logging.getLogger("service.logger").info("adding extra", extra={"http_request_path": request.path})
+            logging.getLogger("service.logger").info("adding extra", extra={
+                "http_request_path": request.path
+            })
 
             return Response(body="hello world")
 
-A GET request to ``/example`` of this service would result in five log records being emitted. The four from the example above and the last one from the ``tomodachi.transport.http`` module.
+A GET request to ``/example`` of this service would result in five log records being emitted (as shown formatted with the ``json`` formatter). The four from the example above and the last one from the ``tomodachi.transport.http`` module.
 
-.. image:: docs/assets/tomodachi-logger.png
-    :align: center
+.. code:: json
+    
+    {"timestamp": "2023-08-13T19:25:15.923627Z", "logger": "tomodachi.http.handler", "level": "info", "message": "http request", "handler": "http_handler", "type": "tomodachi.http"}
+    {"timestamp": "2023-08-13T19:25:15.923894Z", "logger": "service.logger", "level": "info", "message": "with logging module"}
+    {"timestamp": "2023-08-13T19:25:15.924043Z", "logger": "service.logger", "level": "info", "message": "with tomodachi.logging module"}
+    {"timestamp": "2023-08-13T19:25:15.924172Z", "logger": "service.logger", "level": "info", "message": "adding extra", "extra": {"http_request_path": "/example"}}
+    {"timestamp": "2023-08-13T19:25:15.924507Z", "logger": "tomodachi.http.response", "level": "info", "message": "", "status_code": 200, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/example", "http_version": "HTTP/1.1", "response_content_length": 11, "user_agent": "curl/7.88.1", "handler_elapsed_time": "0.00135s", "request_time": "0.00143s"}
 
 Configuring the logger
 ----------------------
