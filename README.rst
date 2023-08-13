@@ -1436,7 +1436,7 @@ Requirements 👍
 Pull requests and bug reports
 =============================
 
-Please add a pull request with the feature that you deem are missing from the lib or for bug fixes that you encounter.
+This library is open source software. Please add a pull request with the feature that you deem are missing from the lib or for bug fixes that you encounter.
 
 Make sure that the tests and linters are passing. A limited number of tests can be run locally without external services. Use GitHub Actions to run the full test suite and to verify linting and regressions. `Read more in the contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
 
@@ -1449,7 +1449,7 @@ The latest developer version of ``tomodachi`` is always available at GitHub.
 
 * GitHub: https://github.com/kalaspuff/tomodachi
 
-Contributors + Acknowledgements
+Acknowledgements + contributors
 ===============================
 
 🙇 Thank you everyone that has come with ideas, reported issues, built and operated services, helped debug and made contributions to the library code directly or via libraries that build on the base functionality.
@@ -1461,8 +1461,8 @@ Contributors + Acknowledgements
 
 ----
 
-Changelog + Releases
-====================
+Changelog of releases
+=====================
 
 Changes are recorded in the repo as well as together with the GitHub releases.
 
