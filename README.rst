@@ -46,33 +46,42 @@ Using the provided handler managers, the need for devs to interface with low-lev
 
 ----
 
-Project documentation
----------------------
+Quicklinks to the documentation 📖
+=================================
 
-- Getting started / installation: https://tomodachi.dev/docs
+*This documentation README includes information on how to get started with services, what built-in functionality exists in this library, lists of available configuration parameters and a few examples of service code.*
 
-- Example code: https://tomodachi.dev/docs/examples
+Visit `https://tomodachi.dev/ <https://tomodachi.dev/docs>`_ for additional documentation. 📔
 
-- Endpoint built-ins:
+- `Getting started / installation <https://tomodachi.dev/docs>`_
 
-  + HTTP endpoints: https://tomodachi.dev/docs/http
+Handler types / endpoint built-ins. 🛍️
 
-  + AWS SNS+SQS event messaging: https://tomodachi.dev/docs/aws-sns-sqs
+* `HTTP and WebSocket endpoints <https://tomodachi.dev/docs/http>`_
+* `AWS SNS+SQS event messaging <https://tomodachi.dev/docs/aws-sns-sqs>`_
+* `RabbitMQ / AMQP messaging <https://tomodachi.dev/docs/amqp-rabbitmq>`_
+* `Scheduled functions and cron <https://tomodachi.dev/docs/scheduled-functions-cron>`_
 
-  + AMQP messaging (RabbitMQ): https://tomodachi.dev/docs/amqp-rabbitmq
+Service options to tweak handler managers. 🛠️
 
-  + Scheduled functions and cron: https://tomodachi.dev/docs/scheduled-functions-cron
+* `Options and configuration parameters  <https://tomodachi.dev/docs/options>`_
 
-- Options and configuration parameters: https://tomodachi.dev/docs/options
+Use the features you need. 🌮
 
-- Middleware functionality: https://tomodachi.dev/docs/middlewares
+* `Middleware functionality  <https://tomodachi.dev/docs/middlewares>`_
+* `Function signature keywords  <https://tomodachi.dev/docs/function-keywords>`_
+* `Logging and log formatters  <https://tomodachi.dev/docs/using-the-tomodachi-logger>`_
 
-- Function signature keywords: https://tomodachi.dev/docs/function-keywords
+Recommendations and examples. 🧘
 
-- FAQ: https://tomodachi.dev/docs/faq
+* `Good practices for running services in production <https://tomodachi.dev/docs/running-a-service-in-production>`_
+* `Example code and template services <https://tomodachi.dev/docs/examples>`_
 
-.. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
-    :target: https://tomodachi.dev/docs/getting-started
+----
+
+**Please note – this library is a work in progress.** 🐣
+
+Consider ``tomodachi`` as beta software. This library follows an unregular release schedule. There may be breaking changes between `0.x` versions.
 
 Usage
 =====
@@ -204,30 +213,6 @@ If your logger is initialized in for example the module ``yourapp.logging`` and 
 The path to the logger attribute in the module you're specifying must implement ``debug``, ``info``, ``warning``, ``error``, ``exception``, ``critical`` and preferably also ``new(context: Dict[str, Any]) -> Logger`` (as that is what primarily will be called to create (or get) a logger).
 
 Although non-native ``structlog`` loggers can be used as custom loggers, it's highly recommended to specify a path that has been assigned a value from ``structlog.wrap_logger`` or ``structlog.get_logger``.
-
-``README``
-==========
-
-*This documentation README includes a guide of how to get started with services,
-what built-in functionality exists in this library, lists of available configuration
-parameters and a few examples of service code.*
-
-**Use https://tomodachi.dev/docs for extensive project documentation.**
-
-----
-
-Please follow some of the amazing contributors to ``tomodachi`` and add features that you deem are missing and/or fix
-bugs you encounter in the repo. Read more in the `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
-
-.. image:: https://contrib.rocks/image?repo=kalaspuff/tomodachi
-   :target: https://github.com/kalaspuff/tomodachi/graphs/contributors
-
-|
-| **Please note: this library is a work in progress.**
-
-Consider `tomodachi` as beta software. `tomodachi` is still an experimental
-project with an unregular release schedule. The package is not yet available
-as `1.0.0` and there may be breaking changes between `0.x` versions.
 
 ----
 
@@ -1105,8 +1090,8 @@ This class provides a simplistic basic auth implementation validating credential
 
 ----
 
-Using the logger from the ``tomodachi.logging`` module
-======================================================
+Logging and log formatting using the ``tomodachi.logging`` module 📚
+===================================================================
 
 A context aware logger is available from the ``tomodachi.logging`` module that can be fetched with ``tomodachi.logging.get_logger()`` or just ``tomodachi.get_logger()`` for short.
 
@@ -1182,7 +1167,7 @@ Note that when using the standard library logger directly the contextual logger 
 A GET request to ``/example`` of this service would result in five log records being emitted (as shown formatted with the ``json`` formatter). The four from the example above and the last one from the ``tomodachi.transport.http`` module.
 
 .. code:: json
-    
+
     {"timestamp": "2023-08-13T19:25:15.923627Z", "logger": "tomodachi.http.handler", "level": "info", "message": "http request", "handler": "http_handler", "type": "tomodachi.http"}
     {"timestamp": "2023-08-13T19:25:15.923894Z", "logger": "service.logger", "level": "info", "message": "with logging module"}
     {"timestamp": "2023-08-13T19:25:15.924043Z", "logger": "service.logger", "level": "info", "message": "with tomodachi.logging module"}
@@ -1202,7 +1187,7 @@ Read more about how to start the service with another formatter or implementatio
 Additional configuration options 🤩
 ===================================
 
-A ``tomodachi.Service`` extended service class may specify a class attribute named ``options`` (as a ``tomodachi.Options`` object) for additional configuration.
+In the service class an attribute named ``options`` (as a ``tomodachi.Options`` object) can be set for additional configuration.
 
 .. code:: python
 
@@ -1340,16 +1325,67 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
 
 ----
 
-Running a service in production 🤞
----------------------------------
+Good practices for running services in production 🤞
+===================================================
 
-When running a ``tomodachi`` service in a production environment, it's important to ensure that the service is set up correctly to handle the demands and constraints of a live system. Here's an example of how to run a service in production:
+When running a ``tomodachi`` service in a production environment, it's important to ensure that the service is set up correctly to handle the demands and constraints of a live system. Here's some recommendations of options and operating practices to make running the services a breeze.
+
+* Go for a Docker 🐳 environment if possible – preferably orchestrated with for example Kubernetes to handle automated scaling events to meet demand of incoming requests and/or event queues.
+* Make sure that a ``SIGTERM`` signal is passed to the ``python`` process when a pod is scheduled for termination to give it time to gracefully stop listeners, consumers and finish active handler tasks.
+
+  - This should work automatically for services in Docker if the ``CMD`` statement in your ``Dockerfile`` is starting the ``tomodachi`` service directly.
+  - In case shell scripts are used in ``CMD`` you might need to trap signals and forward them to the service process.
+
+* To give services the time to gracefully complete active handler executions and shut down, make sure that the orchestration engine waits at least 30 seconds from sending the ``SIGTERM`` to remove the pod.
+
+  - For extra compatibility in k8s and to get around most kind of edge-cases of intermittent timeouts and problems with ingress connections, set the pod spec ``terminationGracePeriodSeconds`` to ``90`` seconds and use a ``preStop`` lifecycle hook of 20 seconds.
+
+    .. code:: yaml
+
+        spec:
+          terminationGracePeriodSeconds: 90
+          containers:
+            lifecycle:
+              preStop:
+                exec:
+                  command: ["/bin/sh", "-c", "sleep 20"]
+
+* If your service inbound network access to HTTP handlers from users or API clients, then it's usually preferred to put some kind of ingress (nginx, haproxy or other type of load balancer) to proxy connections to the service pods.
+
+  - Let the ingress handle public TLS, http2 / http3, client facing keep-alives and WebSocket protocol upgrades and let the service handler just take care of the business logic.
+  - Use HTTP options such as the ones in this service to have the service rotate keep-alive connections so that ingress connections doesn't stick to the old pods after a scaling event.
+
+    If keep-alive connections from ingresses to services stick for too long, the new replicas added when scaling out won't get their balanced share of the requests and the old pods will continue to receive most of the requests.
+
+    .. code:: python
+
+        import tomodachi
+
+        class Service(tomodachi.Service):
+            name = "service"
+
+            options = tomodachi.Options(
+                http=tomodachi.Options.HTTP(
+                    port=80,
+                    content_type="application/json; charset=utf-8",
+                    real_ip_from=["127.0.0.1/32", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
+                    keepalive_timeout=10,
+                    max_keepalive_time=30,
+                )
+            )
+
+* Use a JSON log formatter such as the one enabled via ``--logger json`` (or env variable ``TOMODACHI_LOGGER=json``) so that the log entries can be picked up by a log collector.
+* Always start the service with the ``--production`` CLI argument (or set the env variable ``TOMODACHI_PRODUCTION=1``) to disable the file watcher that restarts the service on file changes, and to hide the start banner so it doesn't end up in log buffers.
+* Not related to ``tomodachi`` directly, but always remember to collect the log output and monitor your instances or clusters.
+
+Arguments to ``tomodachi run`` when running in production env
+-------------------------------------------------------------
 
 .. code:: bash
 
     tomodachi run service/app.py --loop uvloop --production --log-level warning --logger json
 
-In this example:
+Here's a breakdown of the arguments and why they would be good for these kinds of environments.
 
 * ``--loop uvloop``: This argument sets the event loop implementation to ``uvloop``, which is known to be faster than the default ``asyncio`` loop. This can help improve the performance of your service. However, you should ensure that ``uvloop`` is installed in your environment before using this option.
 * ``--production``: This argument disables the file watcher that restarts the service on file changes and hides the startup info banner. This is important in a production environment where you don't want your service to restart every time a file changes. It also helps to reduce unnecessary output in your logs.
@@ -1393,13 +1429,22 @@ Requirements 👍
 .. _structlog: https://github.com/hynek/structlog
 .. _uvloop: https://github.com/MagicStack/uvloop
 
+----
+
+Acknowledgements and contributions
+==================================
+
+Please follow some of the amazing contributors to ``tomodachi`` and add features that you deem are missing and/or fix
+bugs you encounter in the repo. Read more in the `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
+
+.. image:: https://contrib.rocks/image?repo=kalaspuff/tomodachi
+   :target: https://github.com/kalaspuff/tomodachi/graphs/contributors
 
 ``LICENSE`` 🙋
 ==============
 ``tomodachi`` is offered under the MIT License.
 
 * MIT License: https://github.com/kalaspuff/tomodachi/blob/master/LICENSE
-
 
 ``CHANGELOG`` 🧳
 ================
@@ -1408,7 +1453,6 @@ Changes are recorded in the repo as well as together with the GitHub releases.
 * In repository: https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst
 
 * Release tags: https://github.com/kalaspuff/tomodachi/releases
-
 
 ``GITHUB / SOURCE`` 🦄
 ======================
@@ -1420,13 +1464,15 @@ The latest developer version of ``tomodachi`` is always available at GitHub.
 
 * Latest release: https://github.com/kalaspuff/tomodachi/releases/latest
 
-
 Any questions?
 ==============
+
 What is the best way to run a ``tomodachi`` service?
   Docker containers are great and can be scaled out in Kubernetes, Nomad or other orchestration engines. Some may instead run several services on the same environment, on the same machine if their workloads are smaller or more consistent. Remember to gather your output and monitor your instances or clusters.
 
   For real workloads: Go for a Dockerized environment if possible – async task queues are usually nice and services could scale up and down for keeping up with incoming demand; if you require network access like HTTP from users or API clients directly to the service, then it's usually preferred to put some kind of ingress (nginx, haproxy or other type of load balancer) to proxy requests to the service pods. Let the ingress then handle public TLS, http2 / http3, client facing keep-alives and WebSocket protocol upgrades and let the service instead take care of the business logic.
+
+  See the section on `good practices for running services in production <https://tomodachi.dev/docs/running-a-service-in-production>`_ for more insights.
 
 Are there any more example services?
   There are a few examples in the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples>`_ folder, including using ``tomodachi`` in an `example Docker environment <https://github.com/kalaspuff/tomodachi/tree/master/examples/docker_examples/http_service>`_ with or without docker-compose. There are examples to publish events / messages to an AWS SNS topic and subscribe to an AWS SQS queue. There's also a similar code available of how to work with pub/sub for RabbitMQ via the AMQP transport protocol.
@@ -1444,7 +1490,3 @@ Beta software in production?
 
 Who built this and why?
   My name is **Carl Oscar Aaro** [`@kalaspuff <https://github.com/kalaspuff>`_] and I'm a coder from Sweden. When I started writing the first few lines of this library back in 2016, my intention was just to learn more about Python's ``asyncio``, the event loop, event sourcing and message queues. A lot has happened since – now running services in both production and development clusters, while also using microservices for quick proof of concepts and experimentation. 🎉
-
-
-* https://github.com/kalaspuff
-* https://www.linkedin.com/in/carloscaraaro/
