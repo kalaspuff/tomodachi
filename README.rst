@@ -1144,8 +1144,8 @@ The log record will be enriched with the context of the current handler task or 
         "sns_message_id": "a1eba63e-8772-4b36-b7e0-b2f524f34bff"
     }
 
-Interactions with Python's built-in ``logging`` module:
--------------------------------------------------------
+Interactions with Python's built-in ``logging`` module
+------------------------------------------------------
 
 Note that the log entries are propagated to the standard library logger (as long as it wasn't filtered), in order to allow third party handler hooks to pick up records or act on them. This will make sure that integrations such a Sentry's exception tracing will work out of the box.
 
