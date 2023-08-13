@@ -1105,8 +1105,96 @@ This class provides a simplistic basic auth implementation validating credential
 
 ----
 
+Using the logger from the ``tomodachi.logging`` module
+======================================================
+
+A context aware logger is available from the ``tomodachi.logging`` module that can be fetched with ``tomodachi.logging.get_logger()`` or just ``tomodachi.get_logger()`` for short.
+
+The logger is a initiated using the popular ``structlog`` package (`structlog documentation <https://www.structlog.org/en/stable/bound-loggers.html>`_), and can be used in the same way as the standard library logger, with a few additional features, such as holding a context and logging of additional values.
+
+The logger returned from ``tomodachi.get_logger()`` will hold the context of the current handler task or request for rich contextual log records.
+
+To get a logger with another name than the logger set for the current context, use ``tomodachi.get_logger(name="my-logger")``.
+
+.. code:: python
+
+    from typing import Any
+
+    import tomodachi
+
+    class Service(tomodachi.Service):
+        name = "service"
+
+        @tomodachi.aws_sns_sqs("test-topic", queue_name="test-queue")
+        async def sqs_handler(self, data: Any, topic: str, sns_message_id: str) -> None:
+            tomodachi.get_logger().info("received message", topic=topic, sns_message_id=sns_message_id)
+
+The log record will be enriched with the context of the current handler task or request and the output should look something like this if the ``json`` formatter is used (note that the example output below has been prettified – the JSON that is actually used outputs the entire log entry on one single line):
+
+.. code:: json
+
+    {
+        "timestamp": "2023-08-13T17:44:09.176295Z",
+        "logger": "tomodachi.awssnssqs.handler",
+        "level": "info",
+        "message": "received message",
+        "handler": "sqs_handler",
+        "type": "tomodachi.awssnssqs",
+        "topic": "test-topic",
+        "sns_message_id": "a1eba63e-8772-4b36-b7e0-b2f524f34bff"
+    }
+
+Interactions with Python's built-in ``logging`` module:
+-------------------------------------------------------
+
+Note that the log entries are propagated to the standard library logger (as long as it wasn't filtered), in order to allow third party handler hooks to pick up records or act on them. This will make sure that integrations such a Sentry's exception tracing will work out of the box.
+
+Similarly the ``tomodachi`` logger will also by default receive records from the standard library logger as adds a ``logging.root`` handler, so that the ``tomodachi`` logger can be used as a drop-in replacement for the standard library logger. Because of this third party modules using Python's default ``logging`` module will use the same formatter as ``tomodachi``. Note that if ``logging.basicConfig()`` is called before the ``tomodachi`` logger is initialized, ``tomodachi`` may not be able to add its ``logging.root`` handler.
+
+Note that when using the standard library logger directly the contextual logger won't be selected by default.
+
+.. code:: python
+
+    import logging
+
+    from aiohttp.web import Request, Response
+    import tomodachi
+
+    class Service(tomodachi.Service):
+        name = "service"
+
+        @tomodachi.http("GET", r"/example")
+        async def http_handler(self, request: Request) -> Response:
+            # contextual logger
+            tomodachi.get_logger().info("http request")
+
+            # these two rows result in similar log records
+            logging.getLogger("service.logger").info("with logging module")
+            tomodachi.get_logger("service.logger").info("with tomodachi.logging module")
+
+            # extra fields from built in logger ends up as "extra" in log records
+            logging.getLogger("service.logger").info("adding extra", extra={"http_request_path": request.path})
+
+            return Response(body="hello world")
+
+A GET request to ``/example`` of this service would result in five log records being emitted. The four from the example above and the last one from the ``tomodachi.transport.http`` module.
+
+.. image:: docs/assets/tomodachi-logger.png
+    :align: center
+
+Configuring the logger
+----------------------
+Start the service using the ``--logger json`` arguments (or setting ``TOMODACHI_LOGGER=json`` environment value) to change the log formatter to use the ``json`` log formatter. The default log formatter ``console`` is mostly suited for local development environments as it provides a structured and colorized view of log records.
+
+It's also possible to use your own logger implementation by specifying ``--custom-logger ...`` (or setting ``TOMODACHI_CUSTOM_LOGGER=...`` environment value).
+
+Read more about how to start the service with another formatter or implementation in the `usage section <#usage>`_
+
+----
+
 Additional configuration options 🤩
 ===================================
+
 A ``tomodachi.Service`` extended service class may specify a class attribute named ``options`` (as a ``tomodachi.Options`` object) for additional configuration.
 
 .. code:: python
@@ -1114,7 +1202,6 @@ A ``tomodachi.Service`` extended service class may specify a class attribute nam
     import json
 
     import tomodachi
-
 
     class Service(tomodachi.Service):
         name = "http-example"
@@ -1287,6 +1374,7 @@ Requirements 👍
 * aiohttp_ (``aiohttp`` is the currently supported HTTP server implementation for ``tomodachi``)
 * aiobotocore_ and botocore_ (used for AWS SNS+SQS pub/sub messaging)
 * aioamqp_ (used for RabbitMQ / AMQP pub/sub messaging)
+* structlog_ (used for logging)
 * uvloop_ (optional: alternative event loop implementation)
 
 .. _Python: https://www.python.org
@@ -1295,6 +1383,7 @@ Requirements 👍
 .. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _botocore: https://github.com/boto/botocore
 .. _aioamqp: https://github.com/Polyconseil/aioamqp
+.. _structlog: https://github.com/hynek/structlog
 .. _uvloop: https://github.com/MagicStack/uvloop
 
 
