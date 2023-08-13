@@ -245,6 +245,7 @@ environments.
 
 Building blocks for a service class and microservice entrypoint
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 1. ``import tomodachi`` and create a class that inherits ``tomodachi.Service``,
    it can be called anything… or just ``Service`` to keep it simple.
 2. Add a ``name`` attribute to the class and give it a string value. Having
@@ -338,6 +339,7 @@ some kind of async pub/sub tasks.
 
 Basic HTTP based service 🌟
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Code for a simple service which would service data over HTTP, pretty similar, but with a few more concepts added.
 
 .. code:: python
@@ -372,6 +374,7 @@ Code for a simple service which would service data over HTTP, pretty similar, bu
 
 RabbitMQ or AWS SNS+SQS event based messaging service 🐰
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Example of a service that calls a function when messages are published on an AMQP topic exchange.
 
 .. code:: python
@@ -394,6 +397,7 @@ Example of a service that calls a function when messages are published on an AMQ
 
 AWS SNS+SQS event based messaging service 📡
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Example of a service using AWS SNS+SQS managed pub/sub messaging. AWS SNS and AWS SQS together
 brings managed message queues for microservices, distributed systems, and serverless applications hosted
 on AWS. ``tomodachi`` services can customize their enveloping functionality to both unwrap incoming messages
@@ -422,16 +426,17 @@ scalability in distributed architectures, when for example hosted in Docker on K
 
 Scheduling, inter-communication between services, etc. ⚡️
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 There are other examples available with code of how to use services with self-invoking
 methods called on a specified interval or at specific times / days, as well as additional examples
 for inter-communication pub/sub between different services on both AMQP or AWS SNS+SQS as shown
 above. See more at the `examples folder <https://github.com/kalaspuff/tomodachi/blob/master/examples/>`_.
 
-
 ----
 
 Run the service 😎
 ------------------
+
 .. code:: bash
 
     # cli alias is set up automatically on installation
@@ -462,6 +467,7 @@ Run the service 😎
 
 Getting an instance of a service
 --------------------------------
+
 If the a Service instance is needed outside the Service class itself, it can be acquired with ``tomodachi.get_service``. If multiple Service instances exist within the same event loop, the name of the Service can be used to get the correct one.
 
 .. code:: python
@@ -477,6 +483,7 @@ If the a Service instance is needed outside the Service class itself, it can be 
 
 Stopping the service
 --------------------
+
 Stopping a service can be achieved by either sending a ``SIGINT`` <ctrl+c> or ``SIGTERM`` signal to to the ``tomodachi`` Python process, or by invoking the ``tomodachi.exit()`` function, which will initiate the termination processing flow. The ``tomodachi.exit()`` call can additionally take an optional exit code as an argument, which otherwise will default to use exit code 0.
 
 * ``SIGINT`` signal (equivalent to using <ctrl+c>)
@@ -488,7 +495,6 @@ The process' exit code can also be altered by changing the value of ``tomodachi.
 All above mentioned ways of initiating the termination flow of the service will perform a graceful shutdown of the service which will try to await open HTTP handlers and await currently running tasks using tomodachi's scheduling functionality as well as await tasks processing messages from queues such as AWS SQS or RabbitMQ.
 
 Some tasks may timeout during termination according to used configuration (see options such as ``http.termination_grace_period_seconds``) if they are long running tasks. Additionally container handlers may impose additional timeouts for how long termination are allowed to take. If no ongoing tasks are to be awaited and the service lifecycle can be cleanly terminated the shutdown usually happens within milliseconds.
-
 
 Function hooks for service lifecycle changes
 --------------------------------------------
@@ -707,6 +713,7 @@ should be adviced to hold off and use other tech for those kinds of deployments.
 
 Available built-ins used as endpoints 🚀
 ========================================
+
 As shown, there's different ways to trigger your microservice function in which the most common ones are either directly via HTTP or via event based messaging (for example AMQP or AWS SNS+SQS). Here's a list of the currently available built-ins you may use to decorate your service functions.
 
 HTTP endpoints:
@@ -1224,7 +1231,6 @@ In the service class an attribute named ``options`` (as a ``tomodachi.Options`` 
         async def error_404(self, request):
             return json.dumps({"error": "not-found"})
 
-
 =========================================================  ==================================================================================================================================================================================================================================================================================================================================================================================================================================================================================  ===========================================
 ⁝⁝ **HTTP server parameters** ⁝⁝ ``options["http"][key]``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ``_____________________________``
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -------------------------------------------
@@ -1292,7 +1298,6 @@ In the service class an attribute named ``options`` (as a ``tomodachi.Options`` 
 ``watcher.watched_file_endings``                           Additions to the list of file endings that the watcher should monitor for file changes. Already followed file endings are ``".py"``, ``".pyi"``, ``".json"``, ``".yml"``, ``".html"`` and ``".phtml"``.                                                                                                                                                                                                                                                                             ``[]``
 =========================================================  ==================================================================================================================================================================================================================================================================================================================================================================================================================================================================================  ===========================================
 
-
 Decorated functions using ``@tomodachi.decorator`` 🎄
 -----------------------------------------------------
 Invoker functions can of course be decorated using custom functionality. For ease of use you can then in turn decorate your decorator with the the built-in ``@tomodachi.decorator`` to ease development.
@@ -1321,7 +1326,6 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
         async def create_data(self, request):
             # Do magic here!
             return "OK"
-
 
 ----
 
@@ -1394,8 +1398,6 @@ Here's a breakdown of the arguments and why they would be good for these kinds o
   If your infrastructure supports rapid collection of log entries and you see a clear benefit of including logs of log level ``info``, it would make sense to use ``--log-level info`` instead of filtering on at least ``warning``.
 * ``--logger json``: This argument sets the log formatter to output logs in JSON format. This is useful in a production environment where you might have a log management system that can parse and index JSON logs for easier searching and analysis.
 
-Environment Variables:
-
 You can also set these options using environment variables. This can be useful if you're deploying your service in a containerized environment like Docker or Kubernetes, where you can set environment variables in your service's configuration. Here's how you would set the same options using environment variables:
 
 .. code:: bash
@@ -1431,46 +1433,57 @@ Requirements 👍
 
 ----
 
-Acknowledgements and contributions
-==================================
+Pull requests and bug reports
+=============================
 
-Please follow some of the amazing contributors to ``tomodachi`` and add features that you deem are missing and/or fix
-bugs you encounter in the repo. Read more in the `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
+Please add a pull request with the feature that you deem are missing from the lib or for bug fixes that you encounter.
+
+Make sure that the tests and linters are passing. A limited number of tests can be run locally without external services. Use GitHub Actions to run the full test suite and to verify linting and regressions. `Read more in the contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
+
+GitHub repository
+-----------------
+
+The latest developer version of ``tomodachi`` is always available at GitHub.
+
+* Clone repo: ``git clone git@github.com:kalaspuff/tomodachi.git``
+
+* GitHub: https://github.com/kalaspuff/tomodachi
+
+Contributors + Acknowledgements
+===============================
+
+🙇 Thank you everyone that has come with ideas, reported issues, built and operated services, helped debug and made contributions to the library code directly or via libraries that build on the base functionality.
+
+🙏 Many thanks to the amazing contributors that have helped to make ``tomodachi`` better.
 
 .. image:: https://contrib.rocks/image?repo=kalaspuff/tomodachi
    :target: https://github.com/kalaspuff/tomodachi/graphs/contributors
 
-``LICENSE`` 🙋
-==============
-``tomodachi`` is offered under the MIT License.
+----
 
-* MIT License: https://github.com/kalaspuff/tomodachi/blob/master/LICENSE
+Changelog + Releases
+====================
 
-``CHANGELOG`` 🧳
-================
 Changes are recorded in the repo as well as together with the GitHub releases.
 
 * In repository: https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst
 
 * Release tags: https://github.com/kalaspuff/tomodachi/releases
 
-``GITHUB / SOURCE`` 🦄
-======================
-The latest developer version of ``tomodachi`` is always available at GitHub.
+----
 
-* Clone repo: ``git@github.com:kalaspuff/tomodachi.git``
+LICENSE
+=======
 
-* GitHub: https://github.com/kalaspuff/tomodachi
+``tomodachi`` is offered under the `MIT license <https://github.com/kalaspuff/tomodachi/blob/master/LICENSE>`_.
 
-* Latest release: https://github.com/kalaspuff/tomodachi/releases/latest
+----
 
-Any questions?
-==============
+Additional questions and information
+====================================
 
 What is the best way to run a ``tomodachi`` service?
   Docker containers are great and can be scaled out in Kubernetes, Nomad or other orchestration engines. Some may instead run several services on the same environment, on the same machine if their workloads are smaller or more consistent. Remember to gather your output and monitor your instances or clusters.
-
-  For real workloads: Go for a Dockerized environment if possible – async task queues are usually nice and services could scale up and down for keeping up with incoming demand; if you require network access like HTTP from users or API clients directly to the service, then it's usually preferred to put some kind of ingress (nginx, haproxy or other type of load balancer) to proxy requests to the service pods. Let the ingress then handle public TLS, http2 / http3, client facing keep-alives and WebSocket protocol upgrades and let the service instead take care of the business logic.
 
   See the section on `good practices for running services in production <https://tomodachi.dev/docs/running-a-service-in-production>`_ for more insights.
 
@@ -1481,7 +1494,7 @@ Why should I use this?
   ``tomodachi`` is a perfect place to start when experimenting with your architecture or trying out a concept for a new service. It may not have all the features you desire and it may never do, but I believe it's great for bootstrapping microservices in async Python.
 
 I have some great additions!
-  Sweet! Please send me a PR with your ideas. There's now automatic tests that are running as GitHub actions to verify linting and regressions. Get started at the short `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
+  Sweet! Please open a pull request with your additions. Make sure that the tests and linters are passing. A limited number of tests can be run locally without external services. Use GitHub Actions to run the full test suite and to verify linting and regressions. Get started at the short `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
 
 Beta software in production?
   There are some projects and organizations that already are running services based on ``tomodachi`` in production. The library is provided as is with an unregular release schedule, and as with most software, there will be unfortunate bugs or crashes. Consider this currently as beta software (with an ambition to be stable enough for production). Would be great to hear about other use-cases in the wild!
