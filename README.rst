@@ -29,7 +29,7 @@ Includes ready implementations to support handlers built for HTTP requests, webs
 
 Using the provided handler managers, the need for devs to interface with low-level libs directly should be lower, making it more of a breeze to focus on building the business logic. 🪄
 
-.. image:: docs/assets/tomodachi-run-service.png
+.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/53dfc4d2b3a8f9df16995aa61541afa2412b1074/docs/assets/tomodachi-run-service.png
     :align: center
 
 ``tomodachi`` has a featureset to meet most basic needs, for example…
@@ -92,7 +92,7 @@ The CLI endpoint ``tomodachi`` is then used to run services defined as ``tomodac
 
 .. raw:: html
 
-    <img src="docs/assets/tomodachi-usage.png" width="65%" align="right">
+    <img src="https://raw.githubusercontent.com/kalaspuff/tomodachi/53dfc4d2b3a8f9df16995aa61541afa2412b1074/docs/assets/tomodachi-usage.png" width="65%" align="right">
 
 Start a service with its class definition defined in ``./service/app.py`` by running ``tomodachi run service/app.py``. Finally stop the service with the keyboard interrupt ``<ctrl+c>``.
 
@@ -448,7 +448,7 @@ Run the service 😎
 
 *Defaults to output startup banner on stdout and log output on stderr.*
 
-.. image:: docs/assets/tomodachi-run-service.png
+.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/53dfc4d2b3a8f9df16995aa61541afa2412b1074/docs/assets/tomodachi-run-service.png
     :align: center
 
 *HTTP service acts like a normal web server.*
@@ -653,7 +653,7 @@ Building and running the container, forwarding host's port 31337 to port 80.
 
     local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
 
-.. image:: docs/assets/tomodachi-in-docker.png
+.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/53dfc4d2b3a8f9df16995aa61541afa2412b1074/docs/assets/tomodachi-in-docker.png
     :align: center
 
 Making requests to the running container.
