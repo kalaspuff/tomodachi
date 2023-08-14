@@ -148,6 +148,7 @@ filterwarnings = [
     "ignore:Using the 'service.log\\(\\)' function is deprecated. Use the structlog logger from 'tomodachi.logging.get_logger\\(\\)' instead.:DeprecationWarning:tomodachi",
     "ignore:Using the 'RequestHandler.get_request_ip\\(\\)' function is deprecated. Use the 'tomodachi.get_forwarded_remote_ip\\(\\)' function instead.:DeprecationWarning:tomodachi",
     "ignore:Using the -c \\(--config\\) CLI argument is deprecated. Set and parse service config with environment variables instead.:DeprecationWarning:tomodachi",
+    "ignore:Using the 'discovery' interface is deprecated. Please implement lifecycle hooks for your service instead.:DeprecationWarning:tomodachi",
     "ignore:'cgi' is deprecated and slated for removal in Python 3\\.13:DeprecationWarning:aiohttp",
 ]
 

@@ -327,6 +327,14 @@ class TomodachiServiceMeta(type):
             )
             result.options = Options(**result.options)
 
+        if bases and hasattr(result, "discovery"):
+            import warnings  # isort:skip
+
+            warnings.warn(
+                "Using the 'discovery' interface is deprecated. Please implement lifecycle hooks for your service instead.",
+                DeprecationWarning,
+            )
+
         # Removing the CLASS_ATTRIBUTE for classes that were used as bases for inheritance to other classes
         for base in bases:
             if hasattr(base, CLASS_ATTRIBUTE):
@@ -376,6 +384,13 @@ class Service(metaclass=TomodachiServiceMeta):
                 DeprecationWarning,
             )
             value = Options(**value)
+        if item == "discovery":
+            import warnings  # isort:skip
+
+            warnings.warn(
+                "Using the 'discovery' interface is deprecated. Please implement lifecycle hooks for your service instead.",
+                DeprecationWarning,
+            )
         super().__setattr__(item, value)
 
 
