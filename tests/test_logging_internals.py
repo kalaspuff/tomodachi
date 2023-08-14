@@ -485,16 +485,16 @@ def test_custom_logger(capsys: Any) -> None:
 
 def test_invalid_formatter_values() -> None:
     with pytest.raises(Exception):
-        tomodachi.logging.set_default_formatter(logger_type="invalid")
+        tomodachi.logging.set_default_formatter(logger_type="invalid")  # type: ignore
 
     with pytest.raises(Exception):
-        tomodachi.logging.set_default_formatter(logger_type="console", formatter=tomodachi.logging.ConsoleFormatter)
+        tomodachi.logging.set_default_formatter(logger_type="console", formatter=tomodachi.logging.ConsoleFormatter)  # type: ignore
 
     with pytest.raises(TypeError):
-        tomodachi.logging.set_default_formatter("console", formatter=tomodachi.logging.ConsoleFormatter)
+        tomodachi.logging.set_default_formatter("console", formatter=tomodachi.logging.ConsoleFormatter)  # type: ignore
 
     with pytest.raises(TypeError):
-        tomodachi.logging.set_default_formatter(tomodachi.logging.ConsoleFormatter, logger_type="console")
+        tomodachi.logging.set_default_formatter(tomodachi.logging.ConsoleFormatter, logger_type="console")  # type: ignore
 
 
 def test_valid_formatter_values() -> None:
