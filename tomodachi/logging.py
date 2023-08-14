@@ -563,7 +563,7 @@ def _patch_structlog_callsite_parameter_adder_processor() -> None:
         if "tomodachi.logging" not in self._additional_ignores:
             self._additional_ignores.append("tomodachi.logging")
 
-    structlog.processors.CallsiteParameterAdder.__init__ = __init__
+    setattr(structlog.processors.CallsiteParameterAdder, "__init__", __init__)
 
 
 _patch_structlog_callsite_parameter_adder_processor()
