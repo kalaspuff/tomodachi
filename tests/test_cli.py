@@ -116,6 +116,68 @@ def test_cli_entrypoint_wrong_order_options(capsys: Any) -> None:
     )
 
 
+def test_cli_entrypoint_bad_loop_argument(capsys: Any) -> None:
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
+        tomodachi.cli.cli_entrypoint(["tomodachi", "run", "--loop", "unknown", "unknownapp.py"])
+
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 2
+
+    out, err = capsys.readouterr()
+    assert (out + err) == "Invalid value for --loop option: 'unknown' not recognized\n"
+
+
+def test_cli_entrypoint_bad_log_level_argument(capsys: Any) -> None:
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
+        tomodachi.cli.cli_entrypoint(["tomodachi", "run", "--log-level", "foo", "unknownapp.py"])
+
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 2
+
+    out, err = capsys.readouterr()
+    assert (out + err) == "Invalid log level: 'foo' (expected 'debug', 'info', 'warning', 'error' or 'critical')\n"
+
+
+def test_cli_entrypoint_bad_logger_argument(capsys: Any) -> None:
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
+        tomodachi.cli.cli_entrypoint(["tomodachi", "run", "--logger", "somelogger", "unknownapp.py"])
+
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 2
+
+    out, err = capsys.readouterr()
+    assert (
+        out + err
+    ) == "Invalid value for --logger option: 'somelogger' (expected 'json', 'console', 'python' or 'disabled')\n"
+
+
+def test_cli_entrypoint_bad_logger_argument_missing_value(capsys: Any) -> None:
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
+        tomodachi.cli.cli_entrypoint(["tomodachi", "run", "unknownapp.py", "--logger"])
+
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 2
+
+    out, err = capsys.readouterr()
+    assert (out + err) == "Missing value for --logger option\n"
+
+
+def test_cli_entrypoint_bad_custom_logger_argument(capsys: Any) -> None:
+    with pytest.raises(ModuleNotFoundError):
+        tomodachi.cli.cli_entrypoint(["tomodachi", "run", "--custom-logger", "somelogger", "unknownapp.py"])
+
+
+def test_cli_entrypoint_bad_custom_logger_argument_missing_value(capsys: Any) -> None:
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
+        tomodachi.cli.cli_entrypoint(["tomodachi", "run", "unknownapp.py", "--custom-logger"])
+
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 2
+
+    out, err = capsys.readouterr()
+    assert (out + err) == "Missing value for --custom-logger option\n"
+
+
 def test_cli_start_service_stopped_with_sigterm(capsys: Any) -> None:
     with pytest.raises(SystemExit):
         tomodachi.cli.cli_entrypoint(["tomodachi", "run", "tests/services/auto_closing_service_sigterm.py"])

@@ -330,6 +330,7 @@ class ServiceLauncher(object):
             if cls.restart_services:
                 # log handler cleanup
                 logging.remove_handlers()
+                tomodachi.logging.reset_context()
 
             current_modules = [m for m in sys.modules.keys()]
             for m in current_modules:
@@ -339,7 +340,6 @@ class ServiceLauncher(object):
             importlib.reload(tomodachi.container)
             importlib.reload(tomodachi.invoker)
             importlib.reload(tomodachi.invoker.base)
-            importlib.reload(tomodachi.logging)
             importlib.reload(tomodachi.importer)
 
             restarting = True

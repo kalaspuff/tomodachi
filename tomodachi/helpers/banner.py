@@ -39,10 +39,11 @@ def render_banner(
     event_loop_version: Optional[str] = None,
     cwd: Optional[str] = None,
     watcher_enabled: Optional[bool] = None,
+    use_execution_context: bool = True,
 ) -> None:
     output = []
 
-    context = get_execution_context()
+    context = get_execution_context() if use_execution_context else {}
 
     if process_id is None:
         process_id = context.get("process_id", os.getpid()) or os.getpid()

@@ -36,3 +36,23 @@ from tomodachi.helpers.build_time import get_time_since_build
 )
 def test_build_time_delta_str(timestamp: str, build_time: str, expected_result: str) -> None:
     assert get_time_since_build(timestamp, build_time) == expected_result
+
+
+def test_default_values() -> None:
+    from tomodachi.__version__ import __build_time__ as tomodachi_build_time
+
+    assert get_time_since_build(None, "2025-08-01T00:00:00.000000Z") != ""
+
+    assert get_time_since_build("2026-08-01T00:00:00.000000Z", None) == get_time_since_build(
+        "2026-08-01T00:00:00.000000Z", tomodachi_build_time
+    )
+
+    if not tomodachi_build_time:
+        assert get_time_since_build(None, None) == ""
+    else:
+        assert get_time_since_build(None, None) != ""
+
+
+def test_invalid_build_time() -> None:
+    assert get_time_since_build("2025-09-01", "2025-08-01T00:00:00.000000Z") == ""
+    assert get_time_since_build("2026-08-01T00:00:00.000000Z", "2025-08-01") == ""

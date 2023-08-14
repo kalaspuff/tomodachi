@@ -255,6 +255,13 @@ class CLI:
 
             # --config
             if "-c" in args or "--config" in args:
+                import warnings  # isort:skip
+
+                warnings.warn(
+                    "Using the -c (--config) CLI argument is deprecated. Set and parse service config with environment variables instead.",
+                    DeprecationWarning,
+                )
+
                 index = args.index("-c") if "-c" in args else args.index("--config")
                 args.pop(index)
 

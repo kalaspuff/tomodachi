@@ -49,6 +49,8 @@ def setup_logger() -> None:
 
 @pytest.fixture(scope="module")
 def loop() -> Generator:
+    asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+
     loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
