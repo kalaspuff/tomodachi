@@ -7,6 +7,7 @@ import os
 import sys
 import warnings
 from contextvars import ContextVar
+from functools import wraps
 from io import StringIO
 from logging import CRITICAL, DEBUG, ERROR, FATAL, INFO, NOTSET, WARN, WARNING
 from types import ModuleType
@@ -549,6 +550,25 @@ def set_default_formatter(
 set_default_formatter()
 
 
+def _patch_structlog_callsite_parameter_adder_processor() -> None:
+    # patch structlog to ignore tomodachi.logger when adding callsite information
+    cls_init = structlog.processors.CallsiteParameterAdder.__init__
+
+    if getattr(cls_init, "__wrapped__", None):
+        return
+
+    @wraps(cls_init)
+    def __init__(self: structlog.processors.CallsiteParameterAdder, *a: Any, **kw: Any) -> None:
+        cls_init(self, *a, **kw)
+        if "tomodachi.logging" not in self._additional_ignores:
+            self._additional_ignores.append("tomodachi.logging")
+
+    structlog.processors.CallsiteParameterAdder.__init__ = __init__
+
+
+_patch_structlog_callsite_parameter_adder_processor()
+
+
 def set_custom_logger_factory(
     logger_factory: Optional[Union[str, ModuleType, type, object]] = TOMODACHI_CUSTOM_LOGGER
 ) -> None:
@@ -558,6 +578,12 @@ def set_custom_logger_factory(
             # cannot set custom logger factory to tomodachi.logger itself
             logger_factory = None
             set_default_formatter("console")
+        else:
+            # patch structlog logger to ignore tomodachi.logger when adding callsite information
+            for processor in structlog.get_config().get("processors", []):
+                if isinstance(processor, structlog.processors.CallsiteParameterAdder):
+                    if "tomodachi.logging" not in processor._additional_ignores:
+                        processor._additional_ignores.append("tomodachi.logging")
 
     global TOMODACHI_CUSTOM_LOGGER
     TOMODACHI_CUSTOM_LOGGER = logger_factory
@@ -1316,6 +1342,8 @@ __all__ = [
     "configure",
     "set_default_formatter",
     "remove_handlers",
+    "add_exception_info",
+    "add_stacktrace_info",
     "DEFAULT_FORMAT",
     "CRITICAL",
     "DEBUG",
