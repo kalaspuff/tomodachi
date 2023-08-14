@@ -95,6 +95,9 @@ ENV/
 # Mypy cache
 .mypy_cache
 
+# ruff cache
+.ruff_cache
+
 # credentials
 examples/configs/*credentials.json
 

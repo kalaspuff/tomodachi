@@ -19,6 +19,7 @@ def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, Non
     @functools.wraps(middleware_func)
     async def wrapped_middleware_func(func: Callable, service: Any, *args: Any, **kwargs: Any) -> Any:
         original_call_depth = CALL_DEPTH_CONTEXTVAR.get()
+        start_time: int = 0
         if not original_call_depth:
             start_time = time.perf_counter_ns()
             service.log("---")
@@ -216,7 +217,7 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
         # If the handler doesn't have a catch-all **kwargs value and does not specify these keywords, the values
         # will not be passed to the handler.
 
-        # AWS SNS+SQS handler kwargs:
+        # AWS SNS+SQS handler kwargs
         self.log("value: queue_url (str) = '{}'".format(queue_url))
         self.log("value: receipt_handle (str) = '{}'".format(receipt_handle))
         self.log("value: message_attributes (dict) = {}".format(message_attributes))
@@ -228,7 +229,9 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
         async def publish(data: Any, topic: str, message_attributes: Optional[Dict] = None) -> None:
             if not message_attributes:
                 message_attributes = {}
-            self.log("publish -- sns.publish(data='{}', message_attributes={})".format(data, message_attributes))
+            tomodachi.get_logger().info(
+                "publish -- sns.publish(data='{}', message_attributes={})".format(data, message_attributes)
+            )
             await aws_sns_sqs_publish(
                 self,
                 data,
@@ -243,4 +246,4 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
     def log(self, msg: str) -> None:
         # Adds a prefix to the log message to indicate the middleware depth for demonstration purposes.
         call_depth_str = (("+" * CALL_DEPTH_CONTEXTVAR.get()) + " ") if CALL_DEPTH_CONTEXTVAR.get() > 0 else ""
-        super().log("{}{}".format(call_depth_str, msg))
+        tomodachi.get_logger().info("{}{}".format(call_depth_str, msg))

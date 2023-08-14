@@ -1,19 +1,19 @@
 import asyncio
 import datetime
 import importlib
-import logging
 import os
 import platform
 import signal
 import sys
 import time
+import traceback
 from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
 
 import tomodachi
-import tomodachi.__version__
 import tomodachi.container
 import tomodachi.importer
 import tomodachi.invoker
+from tomodachi import logging
 from tomodachi.container import ServiceContainer
 from tomodachi.helpers.execution_context import clear_execution_context, clear_services, set_execution_context
 from tomodachi.helpers.safe_modules import SAFE_MODULES
@@ -68,14 +68,16 @@ class ServiceLauncher(object):
         def sigintHandler(*args: Any) -> None:
             sys.stdout.write("\b\b\r")
             sys.stdout.flush()
-            logging.getLogger("system").warning("Received <ctrl+c> interrupt [SIGINT]")
+            logging.getLogger("tomodachi.signal").warning(
+                "interrupt signal <ctrl+c>", signal="SIGINT", process_id=os.getpid()
+            )
             cls.restart_services = False
 
         def sigtermHandler(*args: Any) -> None:
-            logging.getLogger("system").warning("Received termination signal [SIGTERM]")
+            logging.getLogger("tomodachi.signal").warning(
+                "received termination signal", signal="SIGTERM", process_id=os.getpid()
+            )
             cls.restart_services = False
-
-        logging.basicConfig(level=logging.DEBUG)
 
         loop: asyncio.AbstractEventLoop
         if sys.version_info.major == 3 and sys.version_info.minor < 10:
@@ -105,17 +107,34 @@ class ServiceLauncher(object):
             async def _watcher_restart(updated_files: Union[List, set]) -> None:
                 cls.restart_services = True
 
+                cwd = os.getcwd()
                 for file in service_files:
                     try:
                         ServiceImporter.import_service_file(file)
                     except (SyntaxError, IndentationError) as e:
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                        logging.getLogger("watcher.restart").warning("Service cannot restart due to errors")
+                        error_filename = getattr(e, "filename", "")
+                        if cwd.rstrip("/") and error_filename.startswith(cwd):
+                            error_filename = "./" + error_filename[len(cwd) :].lstrip("/")
+                        error_lineno = getattr(e, "lineno", None)
+                        error_location = error_filename + (":" + str(error_lineno)) if error_lineno else ""
+
+                        logging.getLogger("tomodachi.watcher").error(
+                            "indentation error in file" if type(e) is IndentationError else "syntax error in file",
+                            error_location=error_location if error_filename else Ellipsis,
+                        )
+                        traceback.print_exception(type(e), e, e.__traceback__, limit=0)
+                        logging.getLogger("tomodachi.watcher").warning(
+                            "restart failed due to error",
+                            error_location=error_location if error_filename else Ellipsis,
+                        )
+                        cls.restart_services = False
+                        return
+                    except Exception:
+                        logging.getLogger("tomodachi.watcher").warning("restart failed due to error")
                         cls.restart_services = False
                         return
 
                 pre_import_current_modules = [m for m in sys.modules.keys()]
-                cwd = os.getcwd()
                 for file in updated_files:
                     if file.lower().endswith(".py"):
                         module_name = file[:-3].replace("/", ".")
@@ -125,12 +144,29 @@ class ServiceLauncher(object):
                                 if m == module_name or (len(m) > len(file) and module_name_full_path.endswith(m)):
                                     ServiceImporter.import_module(file)
                         except (SyntaxError, IndentationError) as e:
-                            logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
-                            logging.getLogger("watcher.restart").warning("Service cannot restart due to errors")
+                            error_filename = getattr(e, "filename", "")
+                            if cwd.rstrip("/") and error_filename.startswith(cwd):
+                                error_filename = "./" + error_filename[len(cwd) :].lstrip("/")
+                            error_lineno = getattr(e, "lineno", None)
+                            error_location = error_filename + (":" + str(error_lineno)) if error_lineno else ""
+
+                            logging.getLogger("tomodachi.watcher").error(
+                                "indentation error in file" if type(e) is IndentationError else "syntax error in file",
+                                error_location=error_location if error_filename else Ellipsis,
+                            )
+                            traceback.print_exception(type(e), e, e.__traceback__, limit=0)
+                            logging.getLogger("tomodachi.watcher").warning(
+                                "restart failed due to error",
+                                error_location=error_location if error_filename else Ellipsis,
+                            )
+                            cls.restart_services = False
+                            return
+                        except Exception:
+                            logging.getLogger("tomodachi.watcher").warning("restart failed due to error")
                             cls.restart_services = False
                             return
 
-                logging.getLogger("watcher.restart").warning("Restarting services")
+                logging.getLogger("tomodachi.watcher").warning("restarting services")
                 cls.stop_services()
 
             watcher_future = loop.run_until_complete(watcher.watch(loop=loop, callback_func=_watcher_restart))
@@ -140,8 +176,15 @@ class ServiceLauncher(object):
 
         restarting = False
         while cls.restart_services:
+            if restarting:
+                log_level = logging.INFO
+                tomodachi.logging.set_default_formatter()
+                tomodachi.logging.configure(log_level=log_level)
+
             init_timestamp = time.time()
-            init_timestamp_str = datetime.datetime.utcfromtimestamp(init_timestamp).isoformat() + "Z"
+            init_timestamp_str = (
+                datetime.datetime.utcfromtimestamp(init_timestamp).isoformat(timespec="microseconds") + "Z"
+            )
 
             process_id = os.getpid()
 
@@ -170,8 +213,17 @@ class ServiceLauncher(object):
                     "process_id": process_id,
                     "init_timestamp": init_timestamp_str,
                     "event_loop": event_loop_alias,
+                    "cwd": os.getcwd(),
+                    "watcher_enabled": True if watcher else False,
                 }
             )
+
+            if event_loop_version:
+                set_execution_context(
+                    {
+                        "event_loop_version": event_loop_version,
+                    }
+                )
 
             if event_loop_alias == "uvloop" and event_loop_version:
                 set_execution_context(
@@ -181,53 +233,11 @@ class ServiceLauncher(object):
                 )
 
             if watcher:
-                tz: Any = None
-                utc_tz: Any = None
+                from tomodachi.helpers.banner import render_banner  # noqa  # isort:skip
 
-                try:
-                    import pytz  # noqa  # isort:skip
-                    import tzlocal  # noqa  # isort:skip
+                render_banner(service_files=service_files)
 
-                    utc_tz = pytz.UTC
-                    try:
-                        tz = tzlocal.get_localzone()
-                        if not tz:
-                            tz = pytz.UTC
-                    except Exception:
-                        tz = pytz.UTC
-                except Exception:
-                    pass
-
-                init_local_datetime = (
-                    datetime.datetime.fromtimestamp(init_timestamp)
-                    if tz and tz is not utc_tz and str(tz) != "UTC"
-                    else datetime.datetime.utcfromtimestamp(init_timestamp)
-                )
-
-                print("---")
-                print("Starting tomodachi services (pid: {}) ...".format(process_id))
-                for file in service_files:
-                    print("* {}".format(file))
-
-                print()
-                print(
-                    "Current version: tomodachi {} on Python {}".format(
-                        tomodachi.__version__, platform.python_version()
-                    )
-                )
-                print(
-                    "Event loop implementation: {}{}".format(
-                        event_loop_alias, " {}".format(event_loop_version) if event_loop_version else ""
-                    )
-                )
-                if tz:
-                    print("Local time: {} {}".format(init_local_datetime.strftime("%B %d, %Y - %H:%M:%S,%f"), str(tz)))
-                print("Timestamp in UTC: {}".format(init_timestamp_str))
-                print()
-                print("File watcher is active - code changes will automatically restart services")
-                print("Quit running services with <ctrl+c>")
-                print()
-
+            tomodachi.get_contextvar("exit_code").set(-1)
             tomodachi.SERVICE_EXIT_CODE = tomodachi.DEFAULT_SERVICE_EXIT_CODE
 
             async def _set_waiters() -> None:
@@ -254,10 +264,31 @@ class ServiceLauncher(object):
                 exception = [v.exception() for v in [value for value in result if value][0] if v.exception()]
                 if exception:
                     raise cast(Exception, exception[0])
+                elif restarting and tomodachi.SERVICE_EXIT_CODE and cls._close_waiter and not cls._close_waiter.done():
+                    cls.restart_services = True
+                    logging.getLogger("tomodachi.watcher").warning("service exited due to errors")
+                    logging.getLogger("tomodachi.watcher").warning("trying again in 1.5 seconds")
+                    loop.run_until_complete(asyncio.sleep(1.5))
+
             except tomodachi.importer.ServicePackageError:
                 pass
+            except (SyntaxError, IndentationError) as e:
+                cwd = os.getcwd()
+                error_filename = getattr(e, "filename", "")
+                if error_filename.startswith(cwd):
+                    error_filename = error_filename[len(cwd) :].lstrip("/")
+                error_lineno = getattr(e, "lineno", None)
+                error_location = error_filename + (":" + str(error_lineno)) if error_lineno else ""
+
+                logging.getLogger("exception").error(
+                    "indentation error in file" if type(e) is IndentationError else "syntax error in file",
+                    error_location=error_location if error_filename else Ellipsis,
+                )
+                traceback.print_exception(type(e), e, e.__traceback__, limit=0)
+                if not cls.restart_services:
+                    tomodachi.SERVICE_EXIT_CODE = 1
             except Exception as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
                 if isinstance(e, ModuleNotFoundError):  # pragma: no cover
                     missing_module_name = str(getattr(e, "name", None) or "")
@@ -281,9 +312,9 @@ class ServiceLauncher(object):
                         print("")
 
                 if restarting:
-                    logging.getLogger("watcher.restart").warning("Service cannot restart due to errors")
-                    logging.getLogger("watcher.restart").warning("Trying again in 1.5 seconds")
-                    loop.run_until_complete(asyncio.wait([asyncio.sleep(1.5)]))
+                    logging.getLogger("tomodachi.watcher").warning("cannot restart due to errors")
+                    logging.getLogger("tomodachi.watcher").warning("trying again in 1.5 seconds")
+                    loop.run_until_complete(asyncio.sleep(1.5))
                     if cls._close_waiter and not cls._close_waiter.done():
                         cls.restart_services = True
                     else:
@@ -292,6 +323,14 @@ class ServiceLauncher(object):
                 else:
                     for signame in ("SIGINT", "SIGTERM"):
                         loop.remove_signal_handler(getattr(signal, signame))
+
+                if not cls.restart_services:
+                    tomodachi.SERVICE_EXIT_CODE = 1
+
+            if cls.restart_services:
+                # log handler cleanup
+                logging.remove_handlers()
+                tomodachi.logging.reset_context()
 
             current_modules = [m for m in sys.modules.keys()]
             for m in current_modules:

@@ -1,5 +1,4 @@
-import os
-import uuid as uuid_
+import uuid
 from typing import Any
 
 from aiohttp import web
@@ -11,16 +10,12 @@ from tomodachi import HttpResponse, Options, http
 @tomodachi.decorator
 async def require_auth_token(instance: Any, request: web.Request) -> Any:
     post_body = await request.read() if request.body_exists else None
-    if not post_body or post_body.decode() != instance.allowed_token:
+    if not post_body or post_body.decode() != instance._allowed_token:
         return HttpResponse(body="Invalid token", status=403)
 
 
 class ExampleHttpAuthService(tomodachi.Service):
-    name = "example-http-auth-service"
-    log_level = "DEBUG"
-    uuid = str(os.environ.get("SERVICE_UUID") or "")
-
-    allowed_token = str(uuid_.uuid4())
+    name = "example-http-service"
 
     # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
     options = Options(
@@ -31,9 +26,11 @@ class ExampleHttpAuthService(tomodachi.Service):
         ),
     )
 
+    _allowed_token: str = str(uuid.uuid4())
+
     @http("GET", r"/get-token/?")
     async def get_token(self, request: web.Request) -> str:
-        return self.allowed_token
+        return self._allowed_token
 
     @http("POST", r"/validate/?")
     @require_auth_token

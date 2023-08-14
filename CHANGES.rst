@@ -1,6 +1,46 @@
 Changes
 =======
 
+0.26.0 (2023-08-xx)
+-------------------
+
+**New and updated**
+
+- Major refactoring of how logging is done, introducing ``tomodachi.get_logger()`` built on ``structlog``. Contextual logger available for all handlers, etc.
+- Provides the option of hooking in ``tomodachi`` to a custom logger the user provides.
+- The HTTP body for requests with a body is read before the handler is called and if the connection was closed prematurely before the body could be read, the request will be ignored.
+- Replaces the banner shown when starting a service without ``--production``. The banner now includes the operating system, architecture, which Python runtime from which virtualenv is used, etc. in order to aid debugging during development for issues caused by environment misconfiguration.
+- Updated the CLI usage output from ``--help``.
+- Added a value ``tomodachi.__build_time__`` which includes the timestamp when the build for the installed release was done. The time that has passed since build time will be included in the start banner.
+- Makes use of ``asyncio`` tasks instead of simply awaiting the coroutines so that the context from contextvars will be propagated correctly and not risk being corrupted by handlers.
+- Added an internal lazy meta importer to ease renaming and deprecations of modules.
+- Added additional lazy loading of submodules.
+- Each argument for ``tomodachi run`` is now accompanied with an environment variable to do the same. For example ``--log-level warning`` can be achieved by setting ``TOMODACHI_LOG_LEVEL=warning``.
+- Updated documentation with additional information.
+
+**Potentially breaking changes**
+
+- The complete refactoring of logging changes how log entries are being emitted, both in the way that the event / message of the log records has changed, but also how a log handler is now also added to the ``logging.root`` logger on service start.
+- Third party log records will if propagation is enabled also be processed in ``tomodachi.logging`` which may cause duplicate log output depending on how the third party logger is configured.
+- Removed the ``log_setup()`` function that previously was added to the service object on class initialization and that was used to setup log output to disk.
+
+**Bug fixes**
+
+- Fixes exception catching of lifecycle handlers (``_start_service``, ``_started_service``, etc.) which previously could stall a service raising an exception while starting, instead of exiting with a non-zero exit code.
+- Bug fix for an issue which could cause the watcher to fail to restart the service after a syntax error was encountered.
+- Adds some missing type hint annotations.
+- Added additional logging of uncaught exceptions that previously may have been silenced.
+- Fixes so that the ``--log-level`` CLI argument value is actually applied to loggers.
+- Fix for a race condition which could freeze a process if a service was manually stopped (interrupted with ctrl+c) before it had called its first lifecycle function (``_start_service``).
+
+**Deprecations**
+
+- Added deprecation warnings for more legacy functionality to give notice that those functions will be removed in a future release.
+- The use of the ``log()`` function added to the service object is deprecated. Use the ``structlog`` logger from ``tomodachi.get_logger()`` instead.
+- Using the ``RequestHandler.get_request_ip`` is deprecated. Instead use the ``tomodachi.get_forwarded_remote_ip()`` function.
+- Deprecated the use of the CLI argument ``-c`` (``--config``) which could be used to set object attributes from a JSON file. A better pattern is to read optional config data from an environment variable.
+
+
 0.25.1 (2023-08-11)
 -------------------
 

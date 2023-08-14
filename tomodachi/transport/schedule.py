@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import inspect
-import logging
 import random
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
@@ -9,6 +8,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 import pytz
 import tzlocal
 
+from tomodachi import get_contextvar, logging
+from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.crontab import get_next_datetime
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
@@ -40,6 +41,11 @@ class Scheduler(Invoker):
         )
 
         async def handler() -> None:
+            logging.bind_logger(
+                logging.getLogger("tomodachi.schedule.handler").bind(handler=func.__name__, type="tomodachi.schedule")
+            )
+            get_contextvar("service.logger").set("tomodachi.schedule.handler")
+
             increase_execution_context_value("scheduled_functions_current_tasks")
             try:
                 kwargs = dict(original_kwargs)
@@ -51,9 +57,11 @@ class Scheduler(Invoker):
                     await routine
 
             except (Exception, asyncio.CancelledError) as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                limit_exception_traceback(e, ("tomodachi.transport.schedule",))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
             except BaseException as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                limit_exception_traceback(e, ("tomodachi.transport.schedule",))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
             finally:
                 decrease_execution_context_value("scheduled_functions_current_tasks")
 
@@ -323,6 +331,9 @@ class Scheduler(Invoker):
         timezone: Optional[str] = None,
         immediately: Optional[bool] = False,
     ) -> None:
+        logger = logging.getLogger("tomodachi.scheduler").bind(handler=func.__name__)
+        logging.bind_logger(logger)
+
         timezone = cls.get_timezone(timezone)
 
         if not cls.close_waiter:
@@ -341,31 +352,28 @@ class Scheduler(Invoker):
                 if not sleep_task.done():
                     sleep_task.cancel()
                 else:
-                    logging.getLogger("transport.schedule").warning(
-                        "Scheduled loop for function '{}' cannot start yet - start waiter not done for 10 seconds".format(
-                            func.__name__
-                        )
+                    logger.warning(
+                        "scheduled function loop cannot start yet - start waiter not done for 10 seconds",
                     )
                     sleep_task = asyncio.ensure_future(asyncio.sleep(110))
                     await asyncio.wait([sleep_task, start_waiter], return_when=asyncio.FIRST_COMPLETED)
                     if not sleep_task.done():
                         sleep_task.cancel()
                     else:
-                        logging.getLogger("transport.schedule").warning(
-                            "Scheduled loop for function '{}' cannot start yet - start waiter not done for 120 seconds".format(
-                                func.__name__
-                            )
+                        logger.warning(
+                            "scheduled function loop cannot start yet - start waiter not done for 120 seconds",
                         )
-                        logging.getLogger("exception").exception("Scheduled loop not started for 120 seconds")
+                        try:
+                            raise Exception("scheduled function loop not started for 120 seconds")
+                        except Exception as e:
+                            logging.getLogger("exception").exception(str(e))
 
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.001)
                 await start_waiter
 
                 if not cls.close_waiter or cls.close_waiter.done():
-                    logging.getLogger("transport.schedule").info(
-                        "Scheduled loop for function '{}' never started before service termination".format(
-                            func.__name__
-                        )
+                    logger.warning(
+                        "scheduled function loop never started before service termination",
                     )
                 else:
                     ts0 = cls.next_call_at(current_time, interval, timestamp, timezone)
@@ -376,16 +384,14 @@ class Scheduler(Invoker):
                             max_sleep_time = int(ts2 - ts1) // 2
                     max_sleep_time = min(max(max_sleep_time, 10), 300)
             except (Exception, asyncio.CancelledError) as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
 
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.001)
                 await start_waiter
 
                 if not cls.close_waiter or cls.close_waiter.done():
-                    logging.getLogger("transport.schedule").info(
-                        "Scheduled loop for function '{}' never started before service termination".format(
-                            func.__name__
-                        )
+                    logger.warning(
+                        "scheduled function loop never started before service termination",
                     )
 
             next_call_at: Optional[int] = None
@@ -406,12 +412,13 @@ class Scheduler(Invoker):
                             next_call_at = cls.next_call_at(current_time, interval, timestamp, timezone)
                             if prev_call_at and prev_call_at == next_call_at:
                                 if int(last_time + 60) < int(actual_time):
-                                    logging.getLogger("transport.schedule").warning(
-                                        "Scheduled tasks for function '{}' is out of time sync and may not run".format(
-                                            func.__name__
-                                        )
+                                    logger.warning(
+                                        "scheduled function loop has lost time sync and may not run",
                                     )
-                                    logging.getLogger("exception").exception("Scheduled task loop out of sync")
+                                    try:
+                                        raise Exception("scheduled function loop has lost time sync and may not run")
+                                    except Exception as e:
+                                        logging.getLogger("exception").exception(str(e))
 
                                 next_call_at = None
                                 await asyncio.sleep(1)
@@ -442,8 +449,10 @@ class Scheduler(Invoker):
                     if len(tasks) >= 20:
                         if not too_many_tasks and len(tasks) >= threshold:
                             too_many_tasks = True
-                            logging.getLogger("transport.schedule").warning(
-                                "Too many scheduled tasks ({}) for function '{}'".format(threshold, func.__name__)
+                            logger.warning(
+                                "too many scheduled tasks for function in scheduled function loop",
+                                task_count=len(tasks),
+                                task_limit=threshold,
                             )
                             threshold = threshold * 2
                         await asyncio.sleep(1)
@@ -456,26 +465,31 @@ class Scheduler(Invoker):
                         next_call_at = cls.next_call_at(current_time + 10, interval, timestamp, timezone)
                         continue
                     if too_many_tasks and len(tasks) < 15:
-                        logging.getLogger("transport.schedule").info(
-                            "Tasks within threshold for function '{}' - resumed".format(func.__name__)
-                        )
                         threshold = 20
+                        logger.info(
+                            "scheduled function loop resumed as task count is within threshold",
+                            task_count=len(tasks),
+                            task_limit=threshold,
+                        )
+
                     too_many_tasks = False
 
                     current_time = time.time()
                     task = asyncio.ensure_future(handler())
                     if hasattr(task, "set_name"):
                         getattr(task, "set_name")(
-                            "{} : {}".format(
-                                func.__name__, datetime.datetime.utcfromtimestamp(current_time).isoformat()
+                            "{}/{}".format(
+                                func.__qualname__,
+                                datetime.datetime.utcfromtimestamp(current_time).isoformat(timespec="microseconds")
+                                + "Z",
                             )
                         )
                     tasks.append(task)
                 except (Exception, asyncio.CancelledError) as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     await asyncio.sleep(1)
                 except BaseException as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     await asyncio.sleep(1)
 
             if tasks:
@@ -488,8 +502,9 @@ class Scheduler(Invoker):
                     if task.done():
                         continue
                     task_name = getattr(task, "get_name")() if hasattr(task, "get_name") else func.__name__
-                    logging.getLogger("transport.schedule").warning(
-                        "Awaiting task '{}' to finish execution".format(task_name)
+                    logger.warning(
+                        "awaiting task to complete",
+                        task_name=task_name,
                     )
 
                 while not task_waiter.done():
@@ -501,14 +516,13 @@ class Scheduler(Invoker):
                         if task.done():
                             continue
                         task_name = getattr(task, "get_name")() if hasattr(task, "get_name") else func.__name__
-                        logging.getLogger("transport.schedule").warning(
-                            "Still awaiting task '{}' to finish execution".format(task_name)
+                        logger.warning(
+                            "still awaiting task to finish",
+                            task_name=task_name,
                         )
 
             if not stop_waiter.done():
                 stop_waiter.set_result(None)
-
-        loop: Any = asyncio.get_event_loop()
 
         stop_method = getattr(obj, "_stop_service", None)
 
@@ -518,10 +532,14 @@ class Scheduler(Invoker):
 
                 if not start_waiter.done():
                     start_waiter.set_result(None)
+
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
             else:
+                if not start_waiter.done():
+                    start_waiter.set_result(None)
+
                 await stop_waiter
                 if stop_method:
                     await stop_method(*args, **kwargs)
@@ -538,7 +556,7 @@ class Scheduler(Invoker):
 
         setattr(obj, "_started_service", started_service)
 
-        loop.create_task(schedule_loop())
+        asyncio.create_task(schedule_loop())
 
     @classmethod
     async def start_scheduler(cls, obj: Any, context: Dict) -> Optional[Callable]:
@@ -567,7 +585,9 @@ class Scheduler(Invoker):
             for interval, timestamp, timezone, immediately, func, handler in context.get(
                 "_schedule_scheduled_functions", []
             ):
-                await cls.start_schedule_loop(obj, context, handler, func, interval, timestamp, timezone, immediately)
+                await asyncio.create_task(
+                    cls.start_schedule_loop(obj, context, handler, func, interval, timestamp, timezone, immediately)
+                )
 
         return _schedule
 

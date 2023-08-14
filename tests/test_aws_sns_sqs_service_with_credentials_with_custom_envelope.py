@@ -12,11 +12,9 @@ from run_test_service_helper import start_service
     not os.environ.get("TOMODACHI_TEST_AWS_ACCESS_KEY_ID") or not os.environ.get("TOMODACHI_TEST_AWS_ACCESS_SECRET"),
     reason="AWS configuration options missing in environment",
 )
-def test_start_aws_sns_sqs_service_with_credentials_with_custom_envelope(
-    monkeypatch: Any, capsys: Any, loop: Any
-) -> None:
+def test_start_aws_sns_sqs_service_with_credentials_with_custom_envelope(capsys: Any, loop: Any) -> None:
     services, future = start_service(
-        "tests/services/aws_sns_sqs_service_with_credentials_with_custom_envelope.py", monkeypatch, loop=loop
+        "tests/services/aws_sns_sqs_service_with_credentials_with_custom_envelope.py", loop=loop
     )
 
     assert services is not None

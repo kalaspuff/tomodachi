@@ -4,41 +4,58 @@ import getopt
 import logging
 import os
 import sys
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Literal, Optional, Tuple, Union, cast
 
 import tomodachi
 from tomodachi.config import parse_config_files
+from tomodachi.helpers.build_time import get_time_since_build
 from tomodachi.launcher import ServiceLauncher
 
 
 class CLI:
     def help_command_usage(self) -> str:
+        from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
+
+        LABEL = f"{COLOR_RESET}{COLOR.YELLOW}{COLOR_STYLE.BRIGHT}"
+        SHELL = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
+        MAIN_USAGE = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.BRIGHT}"
+        AVAILABLE_COMMAND = f"{COLOR_RESET}{COLOR.BLUE}"
+        OPTION = f"{COLOR_RESET}{COLOR.GREEN}"
+        DEFAULT = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
+        BOTTOM_TEXT = f"{COLOR_RESET}{COLOR.LIGHTBLACK_EX}"
+        BOTTOM_LABEL = f"{COLOR_RESET}{COLOR.WHITE}{COLOR_STYLE.DIM}"
+
+        time_since_tomodachi_build = get_time_since_build() or "local development version"
         return (
-            "Usage: tomodachi <command> [options] [arguments]\n"
+            f"{LABEL}usage:{COLOR_RESET}\n"
+            f"  {SHELL}${COLOR_RESET} {MAIN_USAGE}tomodachi run [options] <service.py ...>{COLOR_RESET}\n"
             "\n"
-            "Options:\n"
-            "  -h, --help                                Show this help message and exit\n"
-            "  -v, --version                             Print tomodachi version\n"
-            "  --dependency-versions                     Print versions of dependencies\n"
+            f"{LABEL}description:{COLOR_RESET}\n"
+            f"  starts the tomodachi service(s) defined in the files provided as arguments.\n"
             "\n"
-            "Available commands:\n"
-            "  ---\n"
-            "  Command: run\n"
-            "  Starts service(s) defined in the .py files specified as <service> argument(s)\n"
+            f"{LABEL}options:{COLOR_RESET}\n"
+            f"  {OPTION}--loop [auto|asyncio|uvloop]{COLOR_RESET}\n"
+            f"      use the specified event loop implementation. {DEFAULT}(default: auto){COLOR_RESET}\n"
+            f"  {OPTION}--production{COLOR_RESET}\n"
+            "      disables service restart on file changes and hides the info banner.\n"
+            f"  {OPTION}--log-level [debug|info|warning|error|critical]{COLOR_RESET}\n"
+            f"      specify the minimum log level. {DEFAULT}(default: info){COLOR_RESET}\n"
+            f"  {OPTION}--logger [console|json|python|disabled]{COLOR_RESET}\n"
+            f"      specify a log formatter for tomodachi.logging. {DEFAULT}(default: console){COLOR_RESET}\n"
+            f"  {OPTION}--custom-logger <module.attribute|module>{COLOR_RESET}\n"
+            "      use a custom logger object or custom log module (as import path).\n"
             "\n"
-            "  $ tomodachi run <service ...> [-c <config-file ...>] [--production]\n"
-            "  | --loop [auto|asyncio|uvloop]            Event loop implementation [asyncio]\n"
-            "  | --production                            Disable restart on file changes\n"
-            "  | -c, --config <files>                    Use configuration from JSON files\n"
-            "  | -l, --log <level>, --log-level <level>  Specify log level\n"
+            f"{LABEL}usage examples:{COLOR_RESET}\n"
+            f"  {SHELL}${COLOR_RESET} {AVAILABLE_COMMAND}tomodachi run --production --logger json --loop uvloop service/app.py{COLOR_RESET}\n"
+            f"  {SHELL}${COLOR_RESET} {AVAILABLE_COMMAND}tomodachi run --log-level warning --custom-logger foobar.logger service.py{COLOR_RESET}\n"
             "\n"
-            ">> Version: {}\n"
-            ">> Full documentation at: https://tomodachi.dev/docs"
-        ).format(tomodachi.__version__)
+            f"{BOTTOM_LABEL}ver{COLOR_RESET} {BOTTOM_TEXT}{tomodachi.__version__} ({time_since_tomodachi_build}){COLOR_RESET}\n"
+            f"{BOTTOM_LABEL}git{COLOR_RESET} {BOTTOM_TEXT}https://github.com/kalaspuff/tomodachi{COLOR_RESET}\n"
+        )
 
     def help_command(self) -> None:
         print(self.help_command_usage())
-        sys.exit(2)
+        sys.exit(0)
 
     def version_command(self) -> None:
         print("tomodachi {}".format(tomodachi.__version__))
@@ -189,16 +206,16 @@ class CLI:
             "uvloop": uvloop_version or None,
         }
 
-    def run_command_usage(self) -> str:
-        return "Usage: tomodachi run <service ...> [-c <config-file ...>] [--loop auto|asyncio|uvloop] [--production]"
-
     def run_command(self, args: List[str]) -> None:
         if len(args) == 0:
-            print(self.run_command_usage())
+            print(self.help_command_usage())
         else:
             configuration = None
             log_level = logging.INFO
 
+            tomodachi.get_contextvar("run.args").set(args[:])
+
+            # --loop (env: TOMODACHI_LOOP)
             env_loop = str(os.getenv("TOMODACHI_LOOP", "")).lower() or None
 
             if env_loop or "--loop" in args:
@@ -208,7 +225,7 @@ class CLI:
                     value = args.pop(index).lower()
 
                     if env_loop and env_loop != value:
-                        print("Invalid argument to --loop, '{}' differs from env TOMODACHI_LOOP".format(value))
+                        print("Invalid value for --loop option: '{}' differs from env TOMODACHI_LOOP".format(value))
                         sys.exit(2)
                 elif env_loop:
                     value = env_loop
@@ -216,10 +233,10 @@ class CLI:
                     value = "auto"
 
                 if value in ("auto", "default"):
-                    pass
+                    value = "auto"
                 elif value in ("asyncio", "aio", "async"):
                     asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
-                    pass
+                    value = "asyncio"
                 elif value in ("uvloop", "libuv", "uv"):
                     try:
                         import uvloop  # noqa  # isort:skip
@@ -227,11 +244,24 @@ class CLI:
                         print("The 'uvloop' package needs to be installed to use uvloop event loop")
                         sys.exit(2)
                     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+                    value = "uvloop"
                 else:
-                    print("Invalid argument to --loop, event loop '{}' not recognized".format(value))
+                    print("Invalid value for --loop option: '{}' not recognized".format(value))
                     sys.exit(2)
 
+                tomodachi.get_contextvar("loop.setting").set(value)
+            else:
+                tomodachi.get_contextvar("loop.setting").set("auto")
+
+            # --config
             if "-c" in args or "--config" in args:
+                import warnings  # isort:skip
+
+                warnings.warn(
+                    "Using the -c (--config) CLI argument is deprecated. Set and parse service config with environment variables instead.",
+                    DeprecationWarning,
+                )
+
                 index = args.index("-c") if "-c" in args else args.index("--config")
                 args.pop(index)
 
@@ -254,6 +284,7 @@ class CLI:
                     print("Invalid config file, invalid JSON format: {}".format(str(e)))
                     sys.exit(2)
 
+            # --production (env: TOMODACHI_PRODUCTION)
             env_production = str(os.getenv("TOMODACHI_PRODUCTION", "")).lower() or None
             if env_production and env_production in ("0", "no", "none", "false"):
                 env_production = None
@@ -283,6 +314,20 @@ class CLI:
 
                 watcher = Watcher(root=root_directories, configuration=configuration)
 
+            # --log-level (env: TOMODACHI_LOG_LEVEL)
+            env_log_level: Optional[Union[str, int]] = str(os.getenv("TOMODACHI_LOG_LEVEL", "")).lower() or None
+            if not env_log_level:
+                env_log_level = None
+
+            if env_log_level is not None:
+                log_level_ = getattr(logging, str(env_log_level).upper(), None) or logging.NOTSET
+                if type(log_level_) is not int or log_level_ == logging.NOTSET:
+                    print(
+                        "Invalid TOMODACHI_LOG_LEVEL environment value (expected 'debug', 'info', 'warning', 'error' or 'critical')"
+                    )
+                    sys.exit(2)
+                env_log_level = log_level_
+
             if "-l" in args or "--log" in args or "--log-level" in args:
                 index = (
                     args.index("-l")
@@ -293,12 +338,123 @@ class CLI:
                 )
                 args.pop(index)
                 if len(args) > index:
-                    log_level = getattr(logging, args.pop(index).upper(), None) or log_level
+                    arg_value = args.pop(index)
+                    log_level_ = getattr(logging, arg_value.upper(), None) or logging.NOTSET
+                    if type(log_level_) is not int or log_level_ == logging.NOTSET:
+                        print(
+                            "Invalid log level: '{}' (expected 'debug', 'info', 'warning', 'error' or 'critical')".format(
+                                arg_value
+                            )
+                        )
+                        sys.exit(2)
 
-            logging.basicConfig(format="%(asctime)s (%(name)s): %(message)s", level=log_level)
-            logging.Formatter(fmt="%(asctime)s.%(msecs).03d", datefmt="%Y-%m-%d %H:%M:%S")
+                    if env_log_level is not None and env_log_level != log_level_:
+                        print(
+                            "Invalid value for --log-level option: '{}' differs from env TOMODACHI_LOG_LEVEL".format(
+                                value
+                            )
+                        )
+                        sys.exit(2)
+
+                    log_level = log_level_
+            elif env_log_level and type(env_log_level) is int:
+                log_level = env_log_level
+
+            # --logger (env: TOMODACHI_LOGGER)
+            env_logger = cast(
+                Optional[Literal["json", "console", "custom", "python", "disabled"]],
+                str(os.getenv("TOMODACHI_LOGGER", "")).lower() or None,
+            )
+            if not env_logger:
+                env_logger = None
+
+            if env_logger or "--logger" in args:
+                if "--logger" in args:
+                    index = args.index("--logger")
+                    args.pop(index)
+                    try:
+                        value = args.pop(index).lower()
+                    except IndexError:
+                        print("Missing value for --logger option")
+                        sys.exit(2)
+
+                    if env_logger and env_logger != value:
+                        print("Invalid value for --logger option: '{}' differs from env TOMODACHI_LOGGER".format(value))
+                        sys.exit(2)
+                else:
+                    value = env_logger or ""
+
+                if value not in ("json", "console", "custom", "python", "disabled"):
+                    print(
+                        "Invalid value for --logger option: '{}' (expected 'json', 'console', 'python' or 'disabled')".format(
+                            value
+                        )
+                    )
+                    sys.exit(2)
+
+                env_logger = cast(Literal["json", "console", "custom", "python", "disabled"], value)
+
+            if not env_logger:
+                env_logger = None
+
+            # --custom-logger (env: TOMODACHI_CUSTOM_LOGGER)
+            env_custom_logger = str(os.getenv("TOMODACHI_CUSTOM_LOGGER", "")).lower() or None
+            if not env_custom_logger:
+                env_custom_logger = None
+
+            if env_custom_logger or "--custom-logger" in args:
+                if "--custom-logger" in args:
+                    index = args.index("--custom-logger")
+                    args.pop(index)
+                    try:
+                        value = args.pop(index)
+                    except IndexError:
+                        print("Missing value for --custom-logger option")
+                        sys.exit(2)
+
+                    if env_custom_logger and env_custom_logger != value:
+                        print(
+                            "Invalid value for --custom-logger option: '{}' differs from env TOMODACHI_CUSTOM_LOGGER".format(
+                                value
+                            )
+                        )
+                        sys.exit(2)
+                else:
+                    value = env_custom_logger or ""
+
+                if env_logger and env_logger != "custom":
+                    print("Invalid combination of --custom-logger and --logger options")
+                    sys.exit(2)
+
+                env_custom_logger = value
+                env_logger = "custom"
+
+            if env_logger and env_logger == "custom" and not env_custom_logger:
+                print("Invalid combination of --custom-logger and --logger options")
+                sys.exit(2)
+
+            if not args:
+                from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
+
+                print(f"{COLOR.RED}error:{COLOR_RESET} no service file has been provided as argument.")
+
+                print("")
+                print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}---{COLOR_RESET}")
+                print("")
+
+                print("use the '--help' option for cli usage help.")
+                print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi --help{COLOR_RESET}")
+                sys.exit(2)
+
+            tomodachi.logging.set_default_formatter(env_logger)
+            tomodachi.logging.set_custom_logger_factory(env_custom_logger)
+            tomodachi.logging.configure(log_level=log_level)
 
             ServiceLauncher.run_until_complete(set(args), configuration, watcher)
+
+        # Cleanup log handlers
+        tomodachi.logging.remove_handlers()
+
         sys.exit(tomodachi.SERVICE_EXIT_CODE)
 
     def main(self, argv: List[str]) -> None:
@@ -307,10 +463,36 @@ class CLI:
 
         try:
             opts, args = getopt.getopt(
-                argv, "hlvV ", ["help", "log", "version", "version", "dependency-versions", "dependencies", "deps"]
+                argv,
+                "hlvV ",
+                [
+                    "help",
+                    "log",
+                    "version",
+                    "version",
+                    "dependency-versions",
+                    "dependencies",
+                    "deps",
+                    "logger",
+                    "log-level",
+                    "custom-logger",
+                    "production",
+                    "loop",
+                ],
             )
-        except getopt.GetoptError:
-            self.help_command()
+        except getopt.GetoptError as e:
+            from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
+
+            print(f"{COLOR.RED}error:{COLOR_RESET} invalid command or combination of command options.")
+            print(f"{COLOR.RED}error:{COLOR_RESET} {str(e)}.")
+
+            print("")
+            print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}---{COLOR_RESET}")
+            print("")
+
+            print("use the '--help' option for cli usage help.")
+            print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi --help{COLOR_RESET}")
+            sys.exit(2)
         for opt, _ in opts:
             if opt in ("-h", "--help"):
                 self.help_command()
@@ -318,9 +500,57 @@ class CLI:
                 self.version_command()
             if opt in ("--dependency-versions", "--dependencies", "--deps"):
                 self.dependency_versions_command()
+
+            if opt in ("-l", "--log-level", "--log", "--logger", "--custom-logger", "--production", "--loop"):
+                from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
+
+                print(f"{COLOR.RED}error:{COLOR_RESET} invalid command or combination of command options.")
+                print(f"{COLOR.RED}error:{COLOR_RESET} the command 'run' must be specified before any options.")
+
+                print("")
+                print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}---{COLOR_RESET}")
+                print("")
+
+                if any([a.endswith(".py") for a in argv]):
+                    new_args = ["run"] + [a for a in argv if a not in ("run", "start", "go")]
+                    print("maybe you intended to run something like this?")
+                    print(
+                        f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi {' '.join(new_args)}{COLOR_RESET}"
+                    )
+                    print("")
+
+                print("use the '--help' option for cli usage help.")
+                print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi --help{COLOR_RESET}")
+                sys.exit(2)
+
         if len(args):
             if args[0] in ("run", "start", "go"):
                 self.run_command(args[1:])
+
+        if args or opts:
+            from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
+
+            print(f"{COLOR.RED}error:{COLOR_RESET} invalid command or combination of command options.")
+            print(
+                f"{COLOR.RED}error:{COLOR_RESET} the command 'run' must be specified before any service files or options."
+            )
+
+            print("")
+            print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}---{COLOR_RESET}")
+            print("")
+
+            if any([a.endswith(".py") for a in argv]):
+                new_args = ["run"] + [a for a in argv]
+                print("maybe you intended to run something like this?")
+                print(
+                    f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi {' '.join(new_args)}{COLOR_RESET}"
+                )
+                print("")
+
+            print("use the '--help' option for cli usage help.")
+            print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi --help{COLOR_RESET}")
+            sys.exit(2)
+
         self.help_command()
 
 

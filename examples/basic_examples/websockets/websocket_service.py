@@ -1,5 +1,5 @@
 import os
-import uuid as uuid_
+import uuid
 from typing import Callable, Tuple, Union
 
 from aiohttp import web
@@ -11,9 +11,8 @@ from tomodachi import Options, http, http_error, http_static, websocket
 
 class ExampleWebsocketService(tomodachi.Service):
     name = "example-websocket-service"
-    log_level = "DEBUG"
-    uuid = str(os.environ.get("SERVICE_UUID") or "")
 
+    # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
     options = Options(
         http=Options.HTTP(
             port=4711,
@@ -37,16 +36,16 @@ class ExampleWebsocketService(tomodachi.Service):
     @websocket(r"/websocket/?")
     async def websocket_connection(self, websocket: web.WebSocketResponse) -> Tuple[Callable, Callable]:
         # Called when a websocket client is connected
-        self.log("websocket client connected")
+        tomodachi.get_logger().info("websocket client connected")
 
         async def _receive(data: Union[str, bytes]) -> None:
             # Called when the websocket receives data
-            self.log("websocket data received: {}".format(data))
-            await websocket.send_str("response {}".format(str(uuid_.uuid4())))
+            tomodachi.get_logger().info("websocket data received: {}".format(data))
+            await websocket.send_str("response {}".format(str(uuid.uuid4())))
 
         async def _close() -> None:
             # Called when the websocket is closed by the other end
-            self.log("websocket closed")
+            tomodachi.get_logger().info("websocket closed")
 
         # Receiving function and closure function returned as tuple
         return _receive, _close

@@ -4,8 +4,8 @@ import tomodachi
 from run_test_service_helper import start_service
 
 
-def test_dummy_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_service.py", monkeypatch, loop=loop)
+def test_dummy_service(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_service.py", loop=loop)
 
     assert services is not None
     assert len(services) == 1
@@ -29,8 +29,8 @@ def test_dummy_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     assert instance.stop is True
 
 
-def test_dummy_service_without_py_ending(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/dummy_service", monkeypatch, loop=loop)
+def test_dummy_service_without_py_ending(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/dummy_service", loop=loop)
 
     instance = services.get("test_dummy")
     assert instance is not None

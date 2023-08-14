@@ -13,8 +13,8 @@ from run_test_service_helper import start_service
     reason="SO_REUSEPORT can only be enabled on Linux",
 )
 @pytest.mark.flaky(reruns=10, reruns_delay=5)
-def test_start_2_process_http_reuse_port_request(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    func, future = start_service("tests/services/start_process_service_http_0.py", monkeypatch, wait=False, loop=loop)
+def test_start_2_process_http_reuse_port_request(capsys: Any, loop: Any) -> None:
+    func, future = start_service("tests/services/start_process_service_http_0.py", wait=False, loop=loop)
 
     port = 53250
 

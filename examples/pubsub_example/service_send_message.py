@@ -9,7 +9,7 @@ class ServiceSendMessage(tomodachi.Service):
     name = "example-service-send-message"
     message_envelope = JsonBase
 
-    options = Options(
+    options_ = Options(
         aws_sns_sqs=Options.AWSSNSSQS(
             region_name=None,  # Specify AWS region (example: "eu-west-1")
             aws_access_key_id=None,  # Specify AWS access key (example: "AKIA****************"")
@@ -26,5 +26,5 @@ class ServiceSendMessage(tomodachi.Service):
         data = str(uuid.uuid4())
         topic = "example-pubsub-new-message"
 
-        self.log(f"Publishing message '{data}' on topic '{topic}'")
+        tomodachi.get_logger().info(f"Publishing message '{data}' on topic '{topic}'")
         await aws_sns_sqs_publish(self, data, topic=topic, wait=True)
