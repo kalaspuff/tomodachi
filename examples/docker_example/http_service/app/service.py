@@ -11,6 +11,7 @@ class Service(tomodachi.Service):
             content_type="application/json; charset=utf-8",
         ),
     )
+
     _healthy = True
 
     @tomodachi.http("GET", r"/")

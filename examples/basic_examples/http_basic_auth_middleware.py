@@ -1,5 +1,4 @@
 import base64
-import logging
 from typing import Awaitable, Callable
 
 from aiohttp import web
@@ -24,17 +23,21 @@ class BasicAuthMiddleware:
                 return web.json_response({"status": "auth required", "error": "bad credentials"}, status=401)
 
             return web.json_response({"status": "auth required"}, status=401)
-        except BaseException as exc:
+        except BaseException:
             try:
-                logging.getLogger("exception").exception(exc)
-                raise exc
+                tomodachi.get_logger("exception").exception()
+                raise
             finally:
                 return web.json_response({"status": "internal server error"}, status=500)
 
 
 class ExampleHttpBasicAuthService(tomodachi.Service):
-    name = "example-http-auth-service"
+    name = "example-http-service"
+
+    # Adds a middleware function that is run on every HTTP call. Several middlewares can be chained.
     http_middleware = [BasicAuthMiddleware(username="example", password="example")]
+
+    # Some options can be specified to define credentials, used ports, hostnames, access log, etc.
     options = Options(
         http=Options.HTTP(
             port=4711,
