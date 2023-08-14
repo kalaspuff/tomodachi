@@ -35,15 +35,8 @@ from tomodachi.invoker import Invoker
 from tomodachi.options import Options
 
 
-# Should be implemented as lazy load instead
-class ColoramaCache:
-    _is_colorama_installed: Optional[bool] = None
-    _colorama: Any = None
-
-
 class HttpException(Exception):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._log_level = kwargs.get("log_level") if kwargs and kwargs.get("log_level") else "INFO"
+    pass
 
 
 def get_forwarded_remote_ip(request: web.BaseRequest) -> str:
@@ -1429,9 +1422,7 @@ class HttpTransport(Invoker):
                 )
 
                 try:
-                    raise HttpException(str(e), log_level=context.get("log_level")).with_traceback(
-                        e.__traceback__
-                    ) from None
+                    raise HttpException(str(e)).with_traceback(e.__traceback__) from None
                 except Exception as exc:
                     exc.__traceback__ = e.__traceback__
                     raise
