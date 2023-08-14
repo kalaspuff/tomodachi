@@ -324,6 +324,9 @@ class ServiceLauncher(object):
                     for signame in ("SIGINT", "SIGTERM"):
                         loop.remove_signal_handler(getattr(signal, signame))
 
+                if not cls.restart_services:
+                    tomodachi.SERVICE_EXIT_CODE = 1
+
             if cls.restart_services:
                 # log handler cleanup
                 logging.remove_handlers()
