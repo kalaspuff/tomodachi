@@ -553,7 +553,11 @@ def set_custom_logger_factory(
     logger_factory: Optional[Union[str, ModuleType, type, object]] = TOMODACHI_CUSTOM_LOGGER
 ) -> None:
     if logger_factory is not None and logger_factory:
-        _CustomLogger.get_logger_factory(logger_factory)
+        logger_factory_ = _CustomLogger.get_logger_factory(logger_factory)
+        if logger_factory_ is sys.modules[__name__]:
+            # cannot set custom logger factory to tomodachi.logger itself
+            logger_factory = None
+            set_default_formatter("console")
 
     global TOMODACHI_CUSTOM_LOGGER
     TOMODACHI_CUSTOM_LOGGER = logger_factory
@@ -661,7 +665,10 @@ class _CustomLogger:
             if custom_logger_factory in cls._logger_factory_cache:
                 return cls._logger_factory_cache[custom_logger_factory]
 
-            if "." in custom_logger_factory:
+            if custom_logger_factory in sys.modules:
+                module_name = custom_logger_factory
+                logger_factory = sys.modules[module_name]
+            elif "." in custom_logger_factory:
                 module_name, module_attr = custom_logger_factory.rsplit(".", 1)
                 if module_name in sys.modules:
                     logger_factory = sys.modules[module_name].__dict__.get(module_attr)
