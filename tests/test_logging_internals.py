@@ -3,6 +3,8 @@ import json
 import sys
 from typing import Any, Dict
 
+import pytest
+
 import tomodachi
 
 
@@ -64,17 +66,17 @@ def test_internal_default_logger(capsys: Any) -> None:
         "exc_message": "test exception",
         "tb_module_name": "test_logging_internals",
         "tb_function_name": "exception_func",
-        "tb_location": "./tests/test_logging_internals.py:14",
+        "tb_location": "./tests/test_logging_internals.py:16",
         "stacktrace": [
             {
                 "module_name": "test_logging_internals",
                 "function_name": "test_internal_default_logger",
-                "location": "./tests/test_logging_internals.py:52",
+                "location": "./tests/test_logging_internals.py:54",
             },
             {
                 "module_name": "test_logging_internals",
                 "function_name": "exception_func",
-                "location": "./tests/test_logging_internals.py:14",
+                "location": "./tests/test_logging_internals.py:16",
             },
         ],
         "timestamp": json.loads(out).get("timestamp"),
@@ -477,5 +479,53 @@ def test_custom_logger(capsys: Any) -> None:
     finally:
         tomodachi.logging.set_default_formatter(logger_type=default_value)
         tomodachi.logging.set_custom_logger_factory(default_custom_logger)
+        logger_type = tomodachi.logging.TOMODACHI_LOGGER_TYPE
+        assert logger_type == default_value
+
+
+def test_invalid_formatter_values() -> None:
+    with pytest.raises(Exception):
+        tomodachi.logging.set_default_formatter(logger_type="invalid")
+
+    with pytest.raises(Exception):
+        tomodachi.logging.set_default_formatter(logger_type="console", formatter=tomodachi.logging.ConsoleFormatter)
+
+    with pytest.raises(TypeError):
+        tomodachi.logging.set_default_formatter("console", formatter=tomodachi.logging.ConsoleFormatter)
+
+    with pytest.raises(TypeError):
+        tomodachi.logging.set_default_formatter(tomodachi.logging.ConsoleFormatter, logger_type="console")
+
+
+def test_valid_formatter_values() -> None:
+    default_value = tomodachi.logging.TOMODACHI_LOGGER_TYPE
+
+    try:
+        tomodachi.logging.set_default_formatter("json")
+
+        logger_type = tomodachi.logging.TOMODACHI_LOGGER_TYPE
+        assert logger_type == "json"
+        assert getattr(tomodachi.logging.DefaultHandler.formatter, "_logger_type", None) == "json"
+        assert tomodachi.logging.DefaultHandler.formatter == tomodachi.logging.JSONFormatter
+        assert repr(tomodachi.logging.DefaultHandler.formatter) == "JSONFormatter"
+
+        tomodachi.logging.set_default_formatter(tomodachi.logging.ConsoleFormatter)
+
+        logger_type = tomodachi.logging.TOMODACHI_LOGGER_TYPE
+        assert logger_type == "console"
+        assert getattr(tomodachi.logging.DefaultHandler.formatter, "_logger_type", None) == "console"
+        assert tomodachi.logging.DefaultHandler.formatter == tomodachi.logging.ConsoleFormatter
+        assert repr(tomodachi.logging.DefaultHandler.formatter) == "ConsoleFormatter"
+
+        tomodachi.logging.set_default_formatter(formatter=tomodachi.logging.JSONFormatter)
+
+        logger_type = tomodachi.logging.TOMODACHI_LOGGER_TYPE
+        assert logger_type == "json"
+        assert getattr(tomodachi.logging.DefaultHandler.formatter, "_logger_type", None) == "json"
+        assert tomodachi.logging.DefaultHandler.formatter == tomodachi.logging.JSONFormatter
+        assert repr(tomodachi.logging.DefaultHandler.formatter) == "JSONFormatter"
+
+    finally:
+        tomodachi.logging.set_default_formatter(logger_type=default_value)
         logger_type = tomodachi.logging.TOMODACHI_LOGGER_TYPE
         assert logger_type == default_value

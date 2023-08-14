@@ -34,7 +34,7 @@ from structlog.exceptions import DropEvent
 
 from tomodachi.helpers.colors import NO_COLOR
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     try:
         from structlog.typing import Context, EventDict, ExcInfo, Processor, WrappedLogger
     except (ImportError, ModuleNotFoundError):
