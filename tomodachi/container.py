@@ -547,11 +547,6 @@ class ServiceContainer(object):
                         if "/asyncio/tasks.py" in co_filename and co_name == "wait":
                             continue
 
-                        # self.logger.warning(
-                        #     "** Task '{}' from '{}' has not finished execution or has not been awaited".format(
-                        #         co_name, co_filename
-                        #     )
-                        # )
                         self.logger.warning(
                             "task has not been awaited", task_function_name=co_name, task_filename=co_filename
                         )

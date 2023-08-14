@@ -50,7 +50,6 @@ class CLI:
             f"  {SHELL}${COLOR_RESET} {AVAILABLE_COMMAND}tomodachi run --log-level warning --custom-logger foobar.logger service.py{COLOR_RESET}\n"
             "\n"
             f"{BOTTOM_LABEL}ver{COLOR_RESET} {BOTTOM_TEXT}{tomodachi.__version__} ({time_since_tomodachi_build}){COLOR_RESET}\n"
-            # f"{BOTTOM_LABEL}doc{COLOR_RESET} {BOTTOM_TEXT}https://tomodachi.dev/docs{COLOR_RESET}\n"
             f"{BOTTOM_LABEL}git{COLOR_RESET} {BOTTOM_TEXT}https://github.com/kalaspuff/tomodachi{COLOR_RESET}\n"
         )
 
