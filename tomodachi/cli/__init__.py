@@ -427,6 +427,19 @@ class CLI:
                 print("Invalid combination of --custom-logger and --logger options")
                 sys.exit(2)
 
+            if not args:
+                from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
+
+                print(f"{COLOR.RED}error:{COLOR_RESET} no service file has been provided as argument.")
+
+                print("")
+                print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}---{COLOR_RESET}")
+                print("")
+
+                print("use the '--help' option for cli usage help.")
+                print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi --help{COLOR_RESET}")
+                sys.exit(2)
+
             tomodachi.logging.set_default_formatter(env_logger)
             tomodachi.logging.set_custom_logger_factory(env_custom_logger)
             tomodachi.logging.configure(log_level=log_level)
