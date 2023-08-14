@@ -1084,7 +1084,7 @@ class HttpTransport(Invoker):
                                 )
                         else:
                             response_logger.info(
-                                "websocket [close]: {}".format(request.path),
+                                websocket_state="closed",
                                 remote_ip=request_ip,
                                 auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
                                 request_path=request.path,
