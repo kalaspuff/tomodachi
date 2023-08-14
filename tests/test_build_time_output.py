@@ -27,6 +27,8 @@ from tomodachi.helpers.build_time import get_time_since_build
         ("2023-11-01T00:00:00.000000Z", "2023-08-01T00:00:00.000000Z", "released 3 months ago"),
         ("2024-11-01T00:00:00.000000Z", "2023-08-01T00:00:00.000000Z", "released 15 months ago"),
         ("2025-07-01T00:00:00.000000Z", "2023-08-01T00:00:00.000000Z", "released 23 months ago"),
+        ("2025-07-20T00:00:00.000000Z", "2023-08-01T00:00:00.000000Z", "released 23 months ago"),
+        ("2025-07-21T00:00:00.000000Z", "2023-08-01T00:00:00.000000Z", "released over 2 years ago"),
         ("2025-08-01T00:00:00.000000Z", "2023-08-01T00:00:00.000000Z", "released over 2 years ago"),
         ("2026-07-01T00:00:00.000000Z", "2023-08-01T00:00:00.000000Z", "released over 2 years ago"),
         ("2026-08-01T00:00:00.000000Z", "2023-08-01T00:00:00.000000Z", "released over 3 years ago"),
