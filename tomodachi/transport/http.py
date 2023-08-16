@@ -94,10 +94,6 @@ class RequestHandler(web_protocol.RequestHandler):
 
     async def finish_response(self, request: web.BaseRequest, resp: web.StreamResponse, start_time: float) -> bool:
         result: bool = await super().finish_response(request, resp, start_time)
-        # print("finish_response", self._loop.time() - start_time)
-        # print(
-        #     request.method, request.path, request.query_string, request.content_length, get_forwarded_remote_ip(request)
-        # )
         return result
 
     def handle_error(
@@ -237,11 +233,23 @@ class Server(web_server.Server):
 
 
 class DynamicResource(web_urldispatcher.DynamicResource):
+    def extract_route(self, request: web.Request) -> str:
+        route_fallback_pattern = re.compile("unknown")
+        route_pattern: re.Pattern = request.match_info.route.get_info().get("pattern", route_fallback_pattern)
+        print(request.match_info.route.get_info())
+        print(route_pattern)
+        simplified = re.compile(r"^\^?(.+?)\$?$").match(route_pattern.pattern)
+        print(simplified.group(1))
+        return simplified.group(1) if simplified else route_fallback_pattern.pattern
+
     def __init__(self, pattern: Any, *, name: Optional[str] = None) -> None:
         self._routes: List = []
         self._name = name
         self._pattern = pattern
         self._formatter = ""
+
+        simplified = re.compile(r"^\^?(.+?)\$?$").match(pattern.pattern)
+        self._simplified_pattern = simplified.group(1) if simplified else pattern.pattern
 
 
 class Response(object):
@@ -1026,6 +1034,7 @@ class HttpTransport(Invoker):
 
                         response = web.Response(status=499, headers={})
                         response._eof_sent = True
+                        setattr(response, "_replaced_status_code", replaced_status_code)
 
                     request_version = (
                         (request.version.major, request.version.minor)
@@ -1267,7 +1276,8 @@ class HttpTransport(Invoker):
                     )
                 )
 
-            app: web.Application = web.Application(middlewares=[middleware], client_max_size=client_max_size)
+            middlewares = context.get("_aiohttp_middleware", []) + [middleware]
+            app: web.Application = web.Application(middlewares=middlewares, client_max_size=client_max_size)
             app._set_loop(None)
             for method, pattern, handler, route_context in context.get("_http_routes", []):
                 try:

@@ -6,7 +6,7 @@ import sys
 import types
 import uuid
 from types import ModuleType, TracebackType
-from typing import Any, Dict, Optional, Set, Type, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Type, cast
 
 import tomodachi
 from tomodachi import CLASS_ATTRIBUTE, logging
@@ -204,6 +204,24 @@ class ServiceContainer(object):
                         continue
 
                 set_service(service_name, instance)
+
+                try:
+                    post_init_hooks: List[Callable] = [
+                        getattr(instance, func_name)
+                        for func_name in reversed(dir(instance))
+                        if callable(getattr(instance, func_name))
+                        and func_name.startswith("_")
+                        and func_name.endswith("__post_init_hook")
+                    ]
+                    for post_init_hook in post_init_hooks:
+                        post_init_hook()
+                except Exception as e:
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
+                    logging.getLogger("tomodachi.init").error("failed to run post init hooks", service=service_name)
+
+                    tomodachi.SERVICE_EXIT_CODE = 1
+                    self.stop_service()
+                    break
 
                 log_level = getattr(instance, "log_level", None) or getattr(cls, "log_level", None) or "INFO"
 
@@ -555,6 +573,26 @@ class ServiceContainer(object):
                         pass
             except Exception:
                 pass
+
+        for name, instance, log_level in services_started:
+            try:
+                post_teardown_hooks: List[Callable] = [
+                    getattr(instance, func_name)
+                    for func_name in reversed(dir(instance))
+                    if callable(getattr(instance, func_name))
+                    and func_name.startswith("_")
+                    and func_name.endswith("__post_teardown_hook")
+                ]
+                for post_teardown_hook in post_teardown_hooks:
+                    post_teardown_hook()
+            except Exception as e:
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
+                logging.getLogger("tomodachi.teardown").error(
+                    "failed to run post teardown hooks",
+                    service=name,
+                )
+
+        services_started.clear()
 
     @classmethod
     def assign_service_name(cls, instance: Any) -> str:
