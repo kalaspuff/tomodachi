@@ -126,6 +126,76 @@ class TomodachiInstrumentor(BaseInstrumentor):
         if add_trace_structlog_processor in logger._processors:
             logger._processors.remove(add_trace_structlog_processor)
 
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
+
+    def _instrument_tomodachi_class(self, tracer_provider: TracerProvider) -> None:
+        _InstrumentedTomodachiService._tracer_provider = tracer_provider
+        if self._original_service_cls is not tomodachi.Service:
+            self._original_service_cls = tomodachi.Service
+            setattr(tomodachi, "Service", _InstrumentedTomodachiService)
+
+    def _instrument_services(self, tracer_provider: TracerProvider) -> None:
+        pass
+
+    def _instrument_logging(self, logger_provider: LoggerProvider) -> None:
+        self.instrument_logging(["tomodachi", "exception"], logger_provider=logger_provider)
+
+    def _instrument_structlog_loggers(self) -> None:
+        for logger in (
+            tomodachi.logging.console_logger,
+            tomodachi.logging.no_color_console_logger,
+            tomodachi.logging.json_logger,
+        ):
+            self.instrument_structlog_logger(logger)
+
+    def _instrument(self, **kwargs: Any) -> None:
+        tracer_provider: TracerProvider = self._tracer_provider(kwargs.get("tracer_provider"))
+        logger_provider: LoggerProvider = self._logger_provider(kwargs.get("logger_provider"))
+
+        self._instrument_tomodachi_class(tracer_provider)
+        self._instrument_services(tracer_provider)
+        self._instrument_logging(logger_provider)
+        self._instrument_structlog_loggers()
+
+    def instrument(self, **kwargs: Any) -> None:
+        if not self._is_instrumented_by_opentelemetry or not TomodachiInstrumentor._instrumented_services:
+            self._is_instrumented_by_opentelemetry = False
+            super().instrument(**kwargs)
+
+    def _uninstrument_tomodachi_class(self) -> None:
+        _InstrumentedTomodachiService._tracer_provider = None
+        if self._original_service_cls:
+            setattr(tomodachi, "Service", self._original_service_cls)
+
+    def _uninstrument_services(self) -> None:
+        if TomodachiInstrumentor._instrumented_services is not None:
+            for service in TomodachiInstrumentor._instrumented_services:
+                self.uninstrument_service(service)
+            TomodachiInstrumentor._instrumented_services.clear()
+
+    def _uninstrument_logging(self) -> None:
+        TomodachiInstrumentor.uninstrument_logging(["tomodachi", "exception"])
+
+    def _uninstrument_structlog_loggers(self) -> None:
+        for logger in (
+            tomodachi.logging.console_logger,
+            tomodachi.logging.no_color_console_logger,
+            tomodachi.logging.json_logger,
+        ):
+            TomodachiInstrumentor.uninstrument_structlog_logger(logger)
+
+    def _uninstrument(self, **kwargs: Any) -> None:
+        self._uninstrument_tomodachi_class()
+        self._uninstrument_services()
+        self._uninstrument_logging()
+        self._uninstrument_structlog_loggers()
+
+    def uninstrument(self, **kwargs: Any) -> None:
+        if not self._is_instrumented_by_opentelemetry:
+            self._is_instrumented_by_opentelemetry = True
+        self._uninstrument(**kwargs)
+
     @staticmethod
     def _tracer_provider(tracer_provider: Optional[TracerProvider] = None) -> TracerProvider:
         if not tracer_provider:
@@ -179,65 +249,6 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter()))
 
         return logger_provider
-
-    def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
-
-    def _instrument(self, **kwargs: Any) -> None:
-        # instrument tomodachi.Service
-        tracer_provider: TracerProvider = self._tracer_provider(kwargs.get("tracer_provider"))
-        _InstrumentedTomodachiService._tracer_provider = tracer_provider
-        if self._original_service_cls is not tomodachi.Service:
-            self._original_service_cls = tomodachi.Service
-            setattr(tomodachi, "Service", _InstrumentedTomodachiService)
-
-        # instrument service instances
-        # ...
-
-        # instrument logging
-        logger_provider: Optional[LoggerProvider] = self._logger_provider(kwargs.get("logger_provider"))
-        self.instrument_logging(["tomodachi", "exception"], logger_provider=logger_provider)
-
-        # instrument tomodachi.logging loggers
-        for logger in (
-            tomodachi.logging.console_logger,
-            tomodachi.logging.no_color_console_logger,
-            tomodachi.logging.json_logger,
-        ):
-            self.instrument_structlog_logger(logger)
-
-    def _uninstrument(self, **kwargs: Any) -> None:
-        # uninstrument tomodachi.Service
-        _InstrumentedTomodachiService._tracer_provider = None
-        if self._original_service_cls:
-            setattr(tomodachi, "Service", self._original_service_cls)
-
-        # uninstrument service instances
-        if TomodachiInstrumentor._instrumented_services is not None:
-            for service in TomodachiInstrumentor._instrumented_services:
-                self.uninstrument_service(service)
-            TomodachiInstrumentor._instrumented_services.clear()
-
-        # uninstrument logging
-        TomodachiInstrumentor.uninstrument_logging(["tomodachi", "exception"])
-
-        # uninstrument tomodachi.logging loggers
-        for logger in (
-            tomodachi.logging.console_logger,
-            tomodachi.logging.no_color_console_logger,
-            tomodachi.logging.json_logger,
-        ):
-            TomodachiInstrumentor.uninstrument_structlog_logger(logger)
-
-    def instrument(self, **kwargs: Any) -> None:
-        if not self._is_instrumented_by_opentelemetry or not TomodachiInstrumentor._instrumented_services:
-            self._is_instrumented_by_opentelemetry = False
-            super().instrument(**kwargs)
-
-    def uninstrument(self, **kwargs: Any) -> None:
-        if self._is_instrumented_by_opentelemetry:
-            self._uninstrument(**kwargs)
-            self._is_instrumented_by_opentelemetry = False
 
 
 class _InstrumentedTomodachiService(tomodachi.Service):
