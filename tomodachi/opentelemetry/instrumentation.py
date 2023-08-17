@@ -14,7 +14,7 @@ from opentelemetry.sdk.environment_variables import OTEL_LOG_LEVEL
 from opentelemetry.sdk.resources import OTELResourceDetector, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import NoOpTracerProvider, get_tracer_provider, set_tracer_provider
+from opentelemetry.trace import NoOpTracerProvider, ProxyTracerProvider, get_tracer_provider, set_tracer_provider
 from tomodachi.opentelemetry.logging import OpenTelemetryLoggingHandler, add_trace_structlog_processor
 from tomodachi.opentelemetry.middleware import OpenTelemetryHTTPMiddleware
 from tomodachi.opentelemetry.package import _instruments
@@ -200,12 +200,15 @@ class TomodachiInstrumentor(BaseInstrumentor):
     def _tracer_provider(tracer_provider: Optional[TracerProvider] = None) -> TracerProvider:
         if not tracer_provider:
             tracer_provider = cast(TracerProvider, get_tracer_provider())
-            if isinstance(tracer_provider, NoOpTracerProvider):
+            if isinstance(tracer_provider, (NoOpTracerProvider, ProxyTracerProvider)):
                 resource = Resource.create().merge(OTELResourceDetector().detect())
                 tracer_provider = TracerProvider(resource=resource)
                 set_tracer_provider(tracer_provider)
 
-        if not tracer_provider._active_span_processor._span_processors:
+        if (
+            getattr(tracer_provider, "_active_span_processor", None)
+            and not tracer_provider._active_span_processor._span_processors
+        ):
             exporter_names = _get_exporter_names("traces")
             if not exporter_names:
                 return
@@ -232,7 +235,10 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 logger_provider = LoggerProvider(resource=resource)
                 set_logger_provider(logger_provider)
 
-        if not logger_provider._multi_log_record_processor._log_record_processors:
+        if (
+            getattr(logger_provider, "_multi_log_record_processor", None)
+            and not logger_provider._multi_log_record_processor._log_record_processors
+        ):
             exporter_names = _get_exporter_names("logs")
             if not exporter_names:
                 return

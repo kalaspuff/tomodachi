@@ -31,7 +31,7 @@ build:
 
 .PHONY: install
 install:
-	poetry install --no-interaction -E uvloop -E protobuf -E aiodns
+	poetry install --no-interaction -E uvloop -E protobuf -E aiodns -E opentelemetry
 
 .PHONY: clean
 clean:

@@ -191,6 +191,21 @@ def __getattr__(name: str) -> Any:
                             )
                         )
                         print("")
+                    if module_name == "tomodachi.opentelemetry" and missing_module_name in (
+                        "opentelemetry._logs",
+                        "opentelemetry",
+                    ):
+                        print(
+                            "{}[fatal error] The '{}' package is missing.{}".format(
+                                color, missing_module_name, color_reset
+                            )
+                        )
+                        print(
+                            "{}[fatal error] Install 'tomodachi' with 'opentelemetry' extras to use opentelemetry instrumentation.{}".format(
+                                color, color_reset
+                            )
+                        )
+                        print("")
                 print("Exiting: Service terminating with exit code: 1")
                 sys.exit(1)
             except Exception as e:  # pragma: no cover

@@ -5,6 +5,9 @@ from aiohttp import web
 
 import tomodachi
 from tomodachi import HttpResponse, Options, http, http_error, http_static, websocket
+from tomodachi.opentelemetry import TomodachiInstrumentor
+
+TomodachiInstrumentor().instrument()
 
 
 class ExampleHttpService(tomodachi.Service):

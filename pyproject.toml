@@ -54,11 +54,6 @@ colorama = ">=0.3.9,<0.5.0"
 asahi = ">=0.1,<0.3"
 structlog = ">=21.5.0,<24.0.0"
 
-# otel
-# opentelemetry-api = ">=1.19.0"
-opentelemetry-distro = { version = "==0.40b0", allow-prereleases = true, extras = ["otlp"] }
-opentelemetry-util-http = { version = "==0.40b0", allow-prereleases = true }
-
 # derived from aiobotocore for dependency resolution speed in same cases.
 botocore = ">=1.20.106"
 
@@ -68,6 +63,10 @@ uvloop = { version = ">=0.14.0,<1.0.0", optional = true }
 aiodns = { version = ">=1.2.0", optional = true }
 Brotli = { version = "^1.0.9", optional = true }
 
+# opentelemetry
+opentelemetry-distro = { version = "==0.40b0", allow-prereleases = true, extras = ["otlp"], optional = true }
+opentelemetry-util-http = { version = "==0.40b0", allow-prereleases = true }
+
 # extras management
 asahi-extras = { version = "*", optional = true }
 
@@ -76,7 +75,9 @@ protobuf = ["protobuf"]
 uvloop = ["uvloop"]
 aiodns = ["aiodns"]
 brotli = ["Brotli"]
-instruments = []
+
+opentelemetry = ["opentelemetry-distro", "opentelemetry-util-http"]
+instruments = ["tomodachi"]
 
 aws = ["asahi-extras"]        # ["aiobotocore", "botocore", "aiohttp"]
 amqp = ["asahi-extras"]       # ["aioamqp"]
@@ -107,7 +108,7 @@ types-tzlocal = { version = ">=0.1.1", markers = "sys_platform != \"win32\"" }
 tomodachi = "tomodachi.cli:cli_entrypoint"
 
 [tool.poetry.plugins."opentelemetry_instrumentor"]
-tomodachi = "tomodachi.opentelemetry.instrumentation:TomodachiInstrumentor"
+tomodachi = "tomodachi.opentelemetry:TomodachiInstrumentor"
 
 [build-system]
 requires = ["poetry_core>=1.0.0"]
