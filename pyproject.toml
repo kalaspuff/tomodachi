@@ -107,7 +107,7 @@ types-tzlocal = { version = ">=0.1.1", markers = "sys_platform != \"win32\"" }
 tomodachi = "tomodachi.cli:cli_entrypoint"
 
 [tool.poetry.plugins."opentelemetry_instrumentor"]
-tomodachi = "tomodachi.telemetry.instrumentation:TomodachiInstrumentor"
+tomodachi = "tomodachi.opentelemetry.instrumentation:TomodachiInstrumentor"
 
 [build-system]
 requires = ["poetry_core>=1.0.0"]

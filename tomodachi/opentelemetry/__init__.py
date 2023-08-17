@@ -1,5 +1,5 @@
-from tomodachi.telemetry.instrumentation import TomodachiInstrumentor
-from tomodachi.telemetry.package import _instruments
+from tomodachi.opentelemetry.instrumentation import TomodachiInstrumentor
+from tomodachi.opentelemetry.package import _instruments
 
 """
 Usage
@@ -8,7 +8,7 @@ Usage
 .. code-block:: python
 
     import tomodachi
-    from tomodachi.telemetry import TomodachiInstrumentor
+    from tomodachi.opentelemetry import TomodachiInstrumentor
 
     TomodachiInstrumentor().instrument()
 

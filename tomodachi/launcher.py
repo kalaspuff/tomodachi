@@ -110,7 +110,7 @@ class ServiceLauncher(object):
                 cwd = os.getcwd()
                 for file in service_files:
                     try:
-                        ServiceImporter.import_service_file(file)
+                        ServiceImporter.import_service_file(file, no_exec=True)
                     except (SyntaxError, IndentationError) as e:
                         error_filename = getattr(e, "filename", "")
                         if cwd.rstrip("/") and error_filename.startswith(cwd):
@@ -142,6 +142,9 @@ class ServiceLauncher(object):
                         try:
                             for m in pre_import_current_modules:
                                 if m == module_name or (len(m) > len(file) and module_name_full_path.endswith(m)):
+                                    ServiceImporter.import_module(file, no_exec=True)
+                            for m in pre_import_current_modules:
+                                if m == module_name or (len(m) > len(file) and module_name_full_path.endswith(m)):
                                     ServiceImporter.import_module(file)
                         except (SyntaxError, IndentationError) as e:
                             error_filename = getattr(e, "filename", "")
@@ -165,6 +168,32 @@ class ServiceLauncher(object):
                             logging.getLogger("tomodachi.watcher").warning("restart failed due to error")
                             cls.restart_services = False
                             return
+
+                for file in service_files:
+                    try:
+                        ServiceImporter.import_service_file(file)
+                    except (SyntaxError, IndentationError) as e:
+                        error_filename = getattr(e, "filename", "")
+                        if cwd.rstrip("/") and error_filename.startswith(cwd):
+                            error_filename = "./" + error_filename[len(cwd) :].lstrip("/")
+                        error_lineno = getattr(e, "lineno", None)
+                        error_location = error_filename + (":" + str(error_lineno)) if error_lineno else ""
+
+                        logging.getLogger("tomodachi.watcher").error(
+                            "indentation error in file" if type(e) is IndentationError else "syntax error in file",
+                            error_location=error_location if error_filename else Ellipsis,
+                        )
+                        traceback.print_exception(type(e), e, e.__traceback__, limit=0)
+                        logging.getLogger("tomodachi.watcher").warning(
+                            "restart failed due to error",
+                            error_location=error_location if error_filename else Ellipsis,
+                        )
+                        cls.restart_services = False
+                        return
+                    except Exception:
+                        logging.getLogger("tomodachi.watcher").warning("restart failed due to error")
+                        cls.restart_services = False
+                        return
 
                 logging.getLogger("tomodachi.watcher").warning("restarting services")
                 cls.stop_services()

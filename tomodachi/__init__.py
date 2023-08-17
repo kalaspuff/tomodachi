@@ -68,7 +68,7 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
     "importer": ("tomodachi.importer", None),
     "launcher": ("tomodachi.launcher", None),
     "logging": ("tomodachi.logging", None),
-    "telemetry": ("tomodachi.telemetry", None),
+    "opentelemetry": ("tomodachi.opentelemetry", None),
     "watcher": ("tomodachi.watcher", None),
 }
 __imported_modules: Dict[str, Any] = {}

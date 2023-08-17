@@ -2,48 +2,21 @@ import re
 from typing import Any, Awaitable, Callable, Optional, Tuple, cast
 
 from aiohttp import hdrs, web
+from yarl import URL
+
 from opentelemetry import trace
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.http import remove_url_credentials
-from yarl import URL
-
 from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.transport.http import get_forwarded_remote_ip
 
 
 @web.middleware
 class OpenTelemetryHTTPMiddleware:
-    def __init__(self, tracer_provider: Optional[trace.TracerProvider] = None) -> None:
-        self.tracer = trace.get_tracer("tomodachi.telemetry", tomodachi_version, tracer_provider)
-
-    def extract_status_code(self, response: Any) -> int:
-        if isinstance(response, int):
-            return response
-        if isinstance(response, (str, bytes)):
-            return 200
-        if isinstance(response, (list, tuple)):
-            try:
-                return int(response[0])
-            except (IndexError, ValueError):
-                return 0
-        if isinstance(response, dict):
-            try:
-                return int(response.get("status", 0))
-            except ValueError:
-                return 0
-        if isinstance(response, web.Response):
-            return cast(int, response.status)
-        return 0
-
-    # def extract_route(self, request: web.Request) -> str:
-    #     route_fallback_pattern = re.compile("unknown")
-    #     route_pattern: re.Pattern = request.match_info.route.get_info().get("pattern", route_fallback_pattern)
-    #     print(request.match_info.route.get_info())
-    #     print(route_pattern)
-    #     simplified = re.compile(r"^\^?(.+?)\$?$").match(route_pattern.pattern)
-    #     print(simplified.group(1))
-    #     return simplified.group(1) if simplified else route_fallback_pattern.pattern
+    def __init__(self, service: Any, tracer_provider: Optional[trace.TracerProvider] = None) -> None:
+        self.service = service
+        self.tracer = trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
 
     def get_route(self, request: web.Request) -> Optional[str]:
         route: Optional[str]
@@ -66,6 +39,9 @@ class OpenTelemetryHTTPMiddleware:
         request: web.Request,
         handler: Callable[..., Awaitable[web.Response]],
     ) -> web.Response:
+        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False:
+            return await handler(request)
+
         protocol_version = ".".join(map(str, request.version))
         route: Optional[str] = self.get_route(request)
 
@@ -91,12 +67,6 @@ class OpenTelemetryHTTPMiddleware:
             )
 
         port = int(host.split(":")[1]) if host and ":" in host else 80
-
-        # http_url = str(
-        #     request.url
-        #     if host
-        #     else URL.build(scheme=request.scheme, host=(host_ip or "127.0.0.1"), port=host_port).join(request.rel_url)
-        # )
 
         ctx = TraceContextTextMapPropagator().extract(carrier=request.headers)
         response: Optional[web.Response] = None
