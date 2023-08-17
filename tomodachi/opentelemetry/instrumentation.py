@@ -16,7 +16,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import NoOpTracerProvider, ProxyTracerProvider, get_tracer_provider, set_tracer_provider
 from tomodachi.opentelemetry.logging import OpenTelemetryLoggingHandler, add_trace_structlog_processor
-from tomodachi.opentelemetry.middleware import OpenTelemetryHTTPMiddleware
+from tomodachi.opentelemetry.middleware import OpenTelemetryAioHTTPMiddleware, OpenTelemetryAWSSQSMiddleware
 from tomodachi.opentelemetry.package import _instruments
 
 
@@ -41,7 +41,15 @@ class TomodachiInstrumentor(BaseInstrumentor):
         if aiohttp_middleware is None:
             aiohttp_middleware = []
             setattr(service, "_aiohttp_middleware", aiohttp_middleware)
-        aiohttp_middleware.append(OpenTelemetryHTTPMiddleware(service=service, tracer_provider=tracer_provider))
+        if not [m for m in aiohttp_middleware if isinstance(m, OpenTelemetryAioHTTPMiddleware)]:
+            aiohttp_middleware.append(OpenTelemetryAioHTTPMiddleware(service=service, tracer_provider=tracer_provider))
+
+        message_middleware = getattr(service, "message_middleware", None)
+        if message_middleware is None:
+            message_middleware = []
+            setattr(service, "message_middleware", message_middleware)
+        if not [m for m in message_middleware if isinstance(m, OpenTelemetryAWSSQSMiddleware)]:
+            message_middleware.append(OpenTelemetryAWSSQSMiddleware(service=service, tracer_provider=tracer_provider))
 
         setattr(service, "_is_instrumented_by_opentelemetry", True)
 
@@ -59,8 +67,14 @@ class TomodachiInstrumentor(BaseInstrumentor):
         aiohttp_middleware = getattr(service, "_aiohttp_middleware", None)
         if aiohttp_middleware:
             for middleware in aiohttp_middleware[:]:
-                if isinstance(middleware, OpenTelemetryHTTPMiddleware):
+                if isinstance(middleware, OpenTelemetryAioHTTPMiddleware):
                     aiohttp_middleware.remove(middleware)
+
+        message_middleware = getattr(service, "message_middleware", None)
+        if message_middleware:
+            for middleware in message_middleware[:]:
+                if isinstance(middleware, OpenTelemetryAWSSQSMiddleware):
+                    message_middleware.remove(middleware)
 
         setattr(service, "_is_instrumented_by_opentelemetry", False)
 
