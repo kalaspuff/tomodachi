@@ -1,5 +1,4 @@
 from tomodachi.opentelemetry.instrumentation import TomodachiInstrumentor
-from tomodachi.opentelemetry.package import _instruments
 
 """
 Usage

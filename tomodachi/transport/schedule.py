@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import functools
 import inspect
 import random
 import time
@@ -16,6 +17,7 @@ from tomodachi.helpers.execution_context import (
     increase_execution_context_value,
     set_execution_context,
 )
+from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 
 
@@ -39,22 +41,71 @@ class Scheduler(Invoker):
             if values.defaults
             else {}
         )
+        args_list = values.args[1 : len(values.args) - len(values.defaults or ())]
+        args_set = (set(values.args[1:]) | set(values.kwonlyargs)) - set(["self"])
 
-        async def handler() -> None:
-            logging.bind_logger(
-                logging.getLogger("tomodachi.schedule.handler").bind(handler=func.__name__, type="tomodachi.schedule")
+        async def handler(invocation_time: str) -> None:
+            logger = logging.getLogger("tomodachi.schedule.handler").bind(
+                handler=func.__name__, type="tomodachi.schedule"
             )
             get_contextvar("service.logger").set("tomodachi.schedule.handler")
 
             increase_execution_context_value("scheduled_functions_current_tasks")
             try:
                 kwargs = dict(original_kwargs)
+                arg_matches: Dict[str, Any] = {}
+
+                if "invocation_time" in args_set:
+                    kwargs["invocation_time"] = invocation_time
+                if "interval" in args_set:
+                    kwargs["interval"] = interval
 
                 increase_execution_context_value("scheduled_functions_total_tasks")
 
-                routine = func(*(obj,), **kwargs)
-                if inspect.isawaitable(routine):
-                    await routine
+                middlewares = context.get("_schedule_pre_middleware", [])
+
+                if middlewares:
+
+                    @functools.wraps(func)
+                    async def routine_func(*a: Any, **kw: Any) -> None:
+                        logging.bind_logger(logger)
+                        get_contextvar("service.logger").set("tomodachi.schedule.handler")
+
+                        kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
+                        args_values = [
+                            kw_values.pop(key) if key in kw_values else a[i + 1]
+                            for i, key in enumerate(values.args[1 : len(a) + 1])
+                        ]
+                        if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                            args_values += a[len(args_values) + 1 :]
+
+                        routine = func(*(obj, *args_values), **kw_values)
+                        if inspect.isawaitable(routine):
+                            await routine
+
+                    logging.bind_logger(
+                        logging.getLogger("tomodachi.schedule.middleware").bind(
+                            middleware=Ellipsis, handler=func.__name__, type="tomodachi.schedule"
+                        )
+                    )
+                    await asyncio.create_task(
+                        execute_middlewares(
+                            func, routine_func, middlewares, *(obj,), invocation_time=invocation_time, interval=interval
+                        )
+                    )
+                else:
+                    logging.bind_logger(logger)
+                    get_contextvar("service.logger").set("tomodachi.schedule.handler")
+
+                    a = [arg_matches[k] if k in arg_matches else ()[i] for i, k in enumerate(args_list)]
+                    args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
+
+                    if values.varargs and not values.defaults and len(a) > len(args_values) + 1:
+                        args_values += a[len(args_values) + 1 :]
+
+                    routine = func(obj, *args_values, **kwargs)
+                    if inspect.isawaitable(routine):
+                        await routine
 
             except (Exception, asyncio.CancelledError) as e:
                 limit_exception_traceback(e, ("tomodachi.transport.schedule",))
@@ -475,7 +526,11 @@ class Scheduler(Invoker):
                     too_many_tasks = False
 
                     current_time = time.time()
-                    task = asyncio.ensure_future(handler())
+                    invocation_time = (
+                        datetime.datetime.utcfromtimestamp(int(prev_call_at or current_time)).isoformat() + "Z"
+                    )
+
+                    task = asyncio.ensure_future(handler(invocation_time=invocation_time))
                     if hasattr(task, "set_name"):
                         getattr(task, "set_name")(
                             "{}/{}".format(

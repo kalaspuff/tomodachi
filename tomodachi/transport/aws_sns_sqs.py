@@ -633,7 +633,7 @@ class AWSSNSSQSTransport(Invoker):
                     execute_middlewares(
                         func,
                         routine_func,
-                        context.get("message_middleware", []),
+                        context.get("_awssnssqs_message_pre_middleware", []) + context.get("message_middleware", []),
                         *(obj, message, topic),
                         message=message,
                         message_uuid=message_uuid,

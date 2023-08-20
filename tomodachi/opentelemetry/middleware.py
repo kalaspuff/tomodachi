@@ -1,13 +1,11 @@
 import re
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, cast
 
 from aiohttp import hdrs, web
-from yarl import URL
 
 from opentelemetry import trace
-from opentelemetry.semconv.trace import MessagingOperationValues, SpanAttributes
-from opentelemetry.trace.propagation.tracecontext import Context, TraceContextTextMapPropagator
-from opentelemetry.util.http import remove_url_credentials
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.util.types import AttributeValue
 from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.transport.aws_sns_sqs import MessageAttributesType
 from tomodachi.transport.http import get_forwarded_remote_ip
@@ -61,25 +59,14 @@ class OpenTelemetryAioHTTPMiddleware:
                     server_ip, server_port = cast(Tuple[str, int], sockname)
 
         host = request.headers.get(hdrs.HOST, None)
-        http_url = str(request.url)
-        if not host:
-            http_url = str(
-                URL.build(scheme=request.scheme, host=(server_ip or "127.0.0.1"), port=server_port).join(
-                    request.rel_url
-                )
-            )
-
         port = int(host.split(":")[1]) if host and ":" in host else 80
-
-        ctx = TraceContextTextMapPropagator().extract(carrier=request.headers)
-        response: Optional[web.Response] = None
 
         if route:
             span_name = f"{request.method} {route}"
         else:
             span_name = f"{request.method} {request.path}"
 
-        attributes = {}
+        attributes: Dict[str, AttributeValue] = {}
 
         if request.method:
             attributes["http.request.method"] = request.method
@@ -91,7 +78,8 @@ class OpenTelemetryAioHTTPMiddleware:
             attributes["server.address"] = host.split(":")[0]
             attributes["server.port"] = port
         else:
-            attributes["server.address"] = server_ip
+            if server_ip:
+                attributes["server.address"] = server_ip
             attributes["server.port"] = server_port or port
 
         attributes["url.scheme"] = request.scheme
@@ -116,6 +104,9 @@ class OpenTelemetryAioHTTPMiddleware:
         attributes["server.socket.port"] = server_port or port
         attributes["network.protocol.version"] = protocol_version
 
+        ctx = TraceContextTextMapPropagator().extract(carrier=request.headers)
+        response: Optional[web.Response] = None
+
         with self.tracer.start_as_current_span(
             name=span_name,
             kind=trace.SpanKind.SERVER,
@@ -129,7 +120,12 @@ class OpenTelemetryAioHTTPMiddleware:
                 if exc.status < 100 or exc.status >= 500:
                     raise
             finally:
-                if response is not None:
+                if (
+                    response is not None
+                    and isinstance(getattr(response, "status", None), int)
+                    and response.status >= 100
+                    and response.status <= 599
+                ):
                     span.set_attribute("http.response.status_code", response.status)
                     if response.status == 499:
                         replaced_status_code = getattr(response, "_replaced_status_code", None)
@@ -137,9 +133,8 @@ class OpenTelemetryAioHTTPMiddleware:
                             span.set_attribute("http.response.replaced_status_code", replaced_status_code)
                 else:
                     span.set_attribute("http.response.status_code", 500)
-
-                if response is None or response.status < 100 or response.status >= 500:
                     span.set_status(trace.StatusCode.ERROR)
+                    response = None
 
         if response is None:
             response = web.HTTPInternalServerError()
@@ -162,24 +157,32 @@ class OpenTelemetryAWSSQSMiddleware:
         self,
         handler: Callable[..., Awaitable[web.Response]],
         *,
-        topic: str = "",
-        queue_url: str = "",
-        message_attributes: Optional[MessageAttributesType] = None,
-        sns_message_id: str = "",
+        topic: str,
+        queue_url: str,
+        message_attributes: MessageAttributesType,
+        sns_message_id: str,
+        sqs_message_id: str,
     ) -> None:
         if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False:
             await handler()
             return
 
-        if not topic and not queue_url and message_attributes is None and not sns_message_id:
-            # not originating from aws_sns_sqs transport
-            await handler()
-            return
-
-        if message_attributes is None:
-            message_attributes = {}
-
         queue_name = queue_url.rsplit("/")[-1]
+
+        attributes: Dict[str, AttributeValue] = {
+            "messaging.system": "AmazonSQS",
+            "messaging.operation": "process",
+            "messaging.source.name": queue_name,
+            "messaging.source.kind": "queue",
+            "messaging.message.id": sns_message_id or sqs_message_id,
+        }
+
+        if topic:
+            attributes["messaging.destination.name"] = topic
+            attributes["messaging.destination.kind"] = "topic"
+        else:
+            attributes["messaging.destination.name"] = queue_name
+            attributes["messaging.destination.kind"] = "queue"
 
         ctx = TraceContextTextMapPropagator().extract(carrier=message_attributes)
 
@@ -187,15 +190,81 @@ class OpenTelemetryAWSSQSMiddleware:
             name=f"{topic} process",
             kind=trace.SpanKind.CONSUMER,
             context=ctx,
+            attributes=attributes,
         ) as span:
-            span.set_attribute("messaging.system", "AmazonSQS")
-            span.set_attribute("messaging.operation", "process")
-            span.set_attribute("messaging.destination.name", topic)
-            span.set_attribute("messaging.destination.kind", "topic")
-            span.set_attribute("messaging.source.name", queue_name)
-            span.set_attribute("messaging.source.kind", "queue")
-            span.set_attribute("messaging.message.id", sns_message_id)
-
             await handler()
+            span.set_status(trace.StatusCode.OK)
 
+
+class OpenTelemetryAMQPMiddleware:
+    def __init__(self, service: Any, tracer_provider: Optional[trace.TracerProvider] = None) -> None:
+        self.service = service
+        self.tracer = trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+
+    async def __call__(
+        self,
+        handler: Callable[..., Awaitable[web.Response]],
+        *,
+        routing_key: str,
+        exchange_name: str,
+    ) -> None:
+        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False:
+            await handler()
+            return
+
+        if not exchange_name:
+            exchange_name = "amq.topic"
+
+        attributes: Dict[str, AttributeValue] = {
+            "messaging.system": "rabbitmq",
+            "messaging.operation": "process",
+            "messaging.destination.name": exchange_name,
+            "messaging.rabbitmq.destination.routing_key": routing_key,
+        }
+
+        carrier = {"traceparent": "", "tracestate": ""}
+
+        ctx = TraceContextTextMapPropagator().extract(carrier=carrier)
+
+        with self.tracer.start_as_current_span(
+            name=f"{routing_key} process",
+            kind=trace.SpanKind.CONSUMER,
+            context=ctx,
+            attributes=attributes,
+        ) as span:
+            await handler()
+            span.set_status(trace.StatusCode.OK)
+
+
+class OpenTelemetryScheduleFunctionMiddleware:
+    def __init__(self, service: Any, tracer_provider: Optional[trace.TracerProvider] = None) -> None:
+        self.service = service
+        self.tracer = trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+
+    async def __call__(
+        self,
+        handler: Callable[..., Awaitable[web.Response]],
+        *,
+        invocation_time: str = "",
+        interval: str = "",
+    ) -> None:
+        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False:
+            await handler()
+            return
+
+        attributes: Dict[str, AttributeValue] = {
+            "function.name": handler.__name__,
+            "function.trigger": "timer",
+            "function.time": invocation_time,
+        }
+
+        if interval:
+            attributes["function.interval"] = str(interval)
+
+        with self.tracer.start_as_current_span(
+            name=handler.__name__,
+            kind=trace.SpanKind.INTERNAL,
+            attributes=attributes,
+        ) as span:
+            await handler()
             span.set_status(trace.StatusCode.OK)

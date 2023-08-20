@@ -592,8 +592,6 @@ class ServiceContainer(object):
                     service=name,
                 )
 
-        services_started.clear()
-
     @classmethod
     def assign_service_name(cls, instance: Any) -> str:
         new_service_name = ""

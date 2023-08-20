@@ -1,3 +1,4 @@
+import copy
 import logging
 from os import environ
 from typing import Any, Collection, List, Optional, Set, Type, Union, cast
@@ -6,23 +7,30 @@ import structlog
 
 import tomodachi
 from opentelemetry._logs import NoOpLoggerProvider, get_logger_provider, set_logger_provider
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
 from opentelemetry.sdk._configuration import _get_exporter_names, _import_exporters
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.environment_variables import OTEL_LOG_LEVEL
+from opentelemetry.sdk.resources import SERVICE_NAME as RESOURCE_SERVICE_NAME
 from opentelemetry.sdk.resources import OTELResourceDetector, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import NoOpTracerProvider, ProxyTracerProvider, get_tracer_provider, set_tracer_provider
+from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.opentelemetry.logging import OpenTelemetryLoggingHandler, add_trace_structlog_processor
-from tomodachi.opentelemetry.middleware import OpenTelemetryAioHTTPMiddleware, OpenTelemetryAWSSQSMiddleware
-from tomodachi.opentelemetry.package import _instruments
+from tomodachi.opentelemetry.middleware import (
+    OpenTelemetryAioHTTPMiddleware,
+    OpenTelemetryAMQPMiddleware,
+    OpenTelemetryAWSSQSMiddleware,
+    OpenTelemetryScheduleFunctionMiddleware,
+)
 
 
 class TomodachiInstrumentor(BaseInstrumentor):
     _original_service_cls: Optional[Type[tomodachi.Service]] = None
     _instrumented_services: Optional[Set[tomodachi.Service]] = None
+    _logging_handlers: Optional[List[OpenTelemetryLoggingHandler]] = None
     _is_instrumented_by_opentelemetry: bool = False
 
     @classmethod
@@ -37,19 +45,69 @@ class TomodachiInstrumentor(BaseInstrumentor):
 
         cls._instrumented_services.add(service)
 
-        aiohttp_middleware = getattr(service, "_aiohttp_middleware", None)
-        if aiohttp_middleware is None:
-            aiohttp_middleware = []
-            setattr(service, "_aiohttp_middleware", aiohttp_middleware)
-        if not [m for m in aiohttp_middleware if isinstance(m, OpenTelemetryAioHTTPMiddleware)]:
-            aiohttp_middleware.append(OpenTelemetryAioHTTPMiddleware(service=service, tracer_provider=tracer_provider))
+        # setting resource "service.name" if not set - this is a bit hacky at the moment
+        resource_service_name = tracer_provider.resource._attributes.get(RESOURCE_SERVICE_NAME)
+        service_name = service.name
+        if (
+            not resource_service_name
+            or resource_service_name == "unknown_service"
+            or resource_service_name.startswith("unknown_service:")
+        ) and service_name not in ("service", "app"):
+            resource = tracer_provider.resource.merge(Resource.create({RESOURCE_SERVICE_NAME: service_name}))
+            tracer_provider = copy.copy(tracer_provider)
+            tracer_provider._resource = resource
 
-        message_middleware = getattr(service, "message_middleware", None)
-        if message_middleware is None:
-            message_middleware = []
-            setattr(service, "message_middleware", message_middleware)
-        if not [m for m in message_middleware if isinstance(m, OpenTelemetryAWSSQSMiddleware)]:
-            message_middleware.append(OpenTelemetryAWSSQSMiddleware(service=service, tracer_provider=tracer_provider))
+            for logging_handler in cls._logging_handlers or []:
+                logger_provider = cast(LoggerProvider, logging_handler._logger_provider)
+                resource_service_name_ = logger_provider.resource._attributes.get(RESOURCE_SERVICE_NAME)
+                if not resource_service_name_ or resource_service_name_ == resource_service_name:
+                    resource = logger_provider.resource.merge(Resource.create({RESOURCE_SERVICE_NAME: service_name}))
+                    logger_provider._resource = resource
+                    logging_handler._logger_provider = logger_provider
+                    setattr(logging_handler._logger, "_resource", logger_provider.resource)
+
+        aiohttp_pre_middleware = getattr(service, "_aiohttp_pre_middleware", None)
+        if aiohttp_pre_middleware is None:
+            aiohttp_pre_middleware = []
+            setattr(service, "_aiohttp_pre_middleware", aiohttp_pre_middleware)
+        if not [m for m in aiohttp_pre_middleware if isinstance(m, OpenTelemetryAioHTTPMiddleware)]:
+            aiohttp_pre_middleware.append(
+                OpenTelemetryAioHTTPMiddleware(service=service, tracer_provider=tracer_provider)
+            )
+
+        awssnssqs_message_pre_middleware = getattr(service, "_awssnssqs_message_pre_middleware", None)
+        if awssnssqs_message_pre_middleware is None:
+            awssnssqs_message_pre_middleware = []
+            setattr(service, "_awssnssqs_message_pre_middleware", awssnssqs_message_pre_middleware)
+        if not [m for m in awssnssqs_message_pre_middleware if isinstance(m, OpenTelemetryAWSSQSMiddleware)]:
+            awssnssqs_message_pre_middleware.append(
+                OpenTelemetryAWSSQSMiddleware(service=service, tracer_provider=tracer_provider)
+            )
+
+        amqp_message_pre_middleware = getattr(service, "_amqp_message_pre_middleware", None)
+        if amqp_message_pre_middleware is None:
+            amqp_message_pre_middleware = []
+            setattr(service, "_amqp_message_pre_middleware", amqp_message_pre_middleware)
+        if not [m for m in amqp_message_pre_middleware if isinstance(m, OpenTelemetryAMQPMiddleware)]:
+            amqp_message_pre_middleware.append(
+                OpenTelemetryAMQPMiddleware(service=service, tracer_provider=tracer_provider)
+            )
+
+        schedule_pre_middleware = getattr(service, "_schedule_pre_middleware", None)
+        if schedule_pre_middleware is None:
+            schedule_pre_middleware = []
+            setattr(service, "_schedule_pre_middleware", schedule_pre_middleware)
+        if not [m for m in schedule_pre_middleware if isinstance(m, OpenTelemetryScheduleFunctionMiddleware)]:
+            schedule_pre_middleware.append(
+                OpenTelemetryScheduleFunctionMiddleware(service=service, tracer_provider=tracer_provider)
+            )
+
+        context = getattr(service, "context", None)  # test
+        if context:
+            context["_aiohttp_pre_middleware"] = aiohttp_pre_middleware
+            context["_awssnssqs_message_pre_middleware"] = awssnssqs_message_pre_middleware
+            context["_amqp_message_pre_middleware"] = amqp_message_pre_middleware
+            context["_schedule_pre_middleware"] = schedule_pre_middleware
 
         setattr(service, "_is_instrumented_by_opentelemetry", True)
 
@@ -64,17 +122,29 @@ class TomodachiInstrumentor(BaseInstrumentor):
             except KeyError:
                 pass
 
-        aiohttp_middleware = getattr(service, "_aiohttp_middleware", None)
-        if aiohttp_middleware:
-            for middleware in aiohttp_middleware[:]:
+        aiohttp_pre_middleware = getattr(service, "_aiohttp_pre_middleware", None)
+        if aiohttp_pre_middleware:
+            for middleware in aiohttp_pre_middleware[:]:
                 if isinstance(middleware, OpenTelemetryAioHTTPMiddleware):
-                    aiohttp_middleware.remove(middleware)
+                    aiohttp_pre_middleware.remove(middleware)
 
-        message_middleware = getattr(service, "message_middleware", None)
-        if message_middleware:
-            for middleware in message_middleware[:]:
+        awssnssqs_message_pre_middleware = getattr(service, "_awssnssqs_message_pre_middleware", None)
+        if awssnssqs_message_pre_middleware:
+            for middleware in awssnssqs_message_pre_middleware[:]:
                 if isinstance(middleware, OpenTelemetryAWSSQSMiddleware):
-                    message_middleware.remove(middleware)
+                    awssnssqs_message_pre_middleware.remove(middleware)
+
+        amqp_message_pre_middleware = getattr(service, "_amqp_message_pre_middleware", None)
+        if amqp_message_pre_middleware:
+            for middleware in amqp_message_pre_middleware[:]:
+                if isinstance(middleware, OpenTelemetryAMQPMiddleware):
+                    amqp_message_pre_middleware.remove(middleware)
+
+        schedule_pre_middleware = getattr(service, "_schedule_pre_middleware", None)
+        if schedule_pre_middleware:
+            for middleware in schedule_pre_middleware[:]:
+                if isinstance(middleware, OpenTelemetryScheduleFunctionMiddleware):
+                    schedule_pre_middleware.remove(middleware)
 
         setattr(service, "_is_instrumented_by_opentelemetry", False)
 
@@ -96,12 +166,19 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 if isinstance(handler, OpenTelemetryLoggingHandler):
                     names.remove(name)
 
+        if not names:
+            return
+
         log_level_ = environ.get(OTEL_LOG_LEVEL, log_level) or logging.NOTSET
         if isinstance(log_level_, str) and not log_level_.isdigit():
             log_level = getattr(logging, log_level_.upper(), None) or logging.NOTSET
         elif isinstance(log_level_, str) and log_level_.isdigit():
             log_level = int(log_level_)
         handler = OpenTelemetryLoggingHandler(level=log_level, logger_provider=logger_provider)
+
+        if cls._logging_handlers is None:
+            cls._logging_handlers = []
+        cls._logging_handlers.append(handler)
 
         for name in names:
             logging.getLogger(name).addHandler(handler)
@@ -126,6 +203,9 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 finally:
                     handler.release()
 
+        if cls._logging_handlers:
+            cls._logging_handlers.clear()
+
     @classmethod
     def instrument_structlog_logger(cls, logger: structlog.BoundLoggerBase) -> None:
         if not isinstance(logger._processors, list):
@@ -141,7 +221,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             logger._processors.remove(add_trace_structlog_processor)
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
+        return (f"tomodachi == {tomodachi_version}",)
 
     def _instrument_tomodachi_class(self, tracer_provider: TracerProvider) -> None:
         _InstrumentedTomodachiService._tracer_provider = tracer_provider
@@ -225,7 +305,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
         ):
             exporter_names = _get_exporter_names("traces")
             if not exporter_names:
-                return
+                return tracer_provider
 
             trace_exporters, _, _ = _import_exporters(
                 exporter_names,
@@ -233,7 +313,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 [],
             )
             if not trace_exporters:
-                return
+                return tracer_provider
 
             for _, exporter in trace_exporters.items():
                 tracer_provider._active_span_processor.add_span_processor(BatchSpanProcessor(exporter()))
@@ -255,7 +335,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
         ):
             exporter_names = _get_exporter_names("logs")
             if not exporter_names:
-                return
+                return logger_provider
 
             _, _, log_exporters = _import_exporters(
                 [],
@@ -263,7 +343,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 exporter_names,
             )
             if not log_exporters:
-                return
+                return logger_provider
 
             for _, exporter in log_exporters.items():
                 logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter()))

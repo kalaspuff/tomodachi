@@ -329,6 +329,10 @@ class AmqpTransport(Invoker):
                             not isinstance(message, dict) or "routing_key" not in message
                         ):
                             kwargs["routing_key"] = routing_key
+                        if "exchange_name" in args_set and (
+                            not isinstance(message, dict) or "exchange_name" not in message
+                        ):
+                            kwargs["exchange_name"] = exchange_name
                         if "message_uuid" in args_set and (
                             not isinstance(message, dict) or "message_uuid" not in message
                         ):
@@ -349,6 +353,8 @@ class AmqpTransport(Invoker):
                         kwargs["message"] = message
                     if "routing_key" in args_set:
                         kwargs["routing_key"] = routing_key
+                    if "exchange_name" in args_set:
+                        kwargs["exchange_name"] = exchange_name
                     if "message_uuid" in args_set:
                         kwargs["message_uuid"] = message_uuid
 
@@ -391,11 +397,12 @@ class AmqpTransport(Invoker):
                     execute_middlewares(
                         func,
                         routine_func,
-                        context.get("message_middleware", []),
+                        context.get("_amqp_message_pre_middleware", []) + context.get("message_middleware", []),
                         *(obj, message, routing_key),
                         message=message,
                         message_uuid=message_uuid,
                         routing_key=routing_key,
+                        exchange_name=exchange_name,
                     )
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:

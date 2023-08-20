@@ -233,15 +233,6 @@ class Server(web_server.Server):
 
 
 class DynamicResource(web_urldispatcher.DynamicResource):
-    def extract_route(self, request: web.Request) -> str:
-        route_fallback_pattern = re.compile("unknown")
-        route_pattern: re.Pattern = request.match_info.route.get_info().get("pattern", route_fallback_pattern)
-        print(request.match_info.route.get_info())
-        print(route_pattern)
-        simplified = re.compile(r"^\^?(.+?)\$?$").match(route_pattern.pattern)
-        print(simplified.group(1))
-        return simplified.group(1) if simplified else route_fallback_pattern.pattern
-
     def __init__(self, pattern: Any, *, name: Optional[str] = None) -> None:
         self._routes: List = []
         self._name = name
@@ -1276,7 +1267,7 @@ class HttpTransport(Invoker):
                     )
                 )
 
-            middlewares = context.get("_aiohttp_middleware", []) + [middleware]
+            middlewares = context.get("_aiohttp_pre_middleware", []) + [middleware]
             app: web.Application = web.Application(middlewares=middlewares, client_max_size=client_max_size)
             app._set_loop(None)
             for method, pattern, handler, route_context in context.get("_http_routes", []):
