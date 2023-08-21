@@ -4,11 +4,12 @@ from typing import Any, Callable, Dict, Tuple, Union
 from aiohttp import web
 
 import tomodachi
+from opentelemetry.sdk.trace import TracerProvider
 from tomodachi.discovery.dummy_registry import DummyRegistry
 from tomodachi.opentelemetry import TomodachiInstrumentor
 from tomodachi.transport.http import RequestHandler, Response, http, http_error, http_static, websocket
 
-TomodachiInstrumentor().instrument()
+TomodachiInstrumentor().instrument(tracer_provider=TracerProvider())
 
 
 async def middleware_function(

@@ -1,15 +1,14 @@
 import copy
+import functools
 import logging
 from os import environ
-from typing import Any, Awaitable, Callable, Collection, Dict, List, Optional, Set, Tuple, Type, Union, cast
+from typing import Any, Collection, Dict, List, Optional, Set, Type, Union, cast
 
 import structlog
-from wrapt import wrap_function_wrapper
 
 import tomodachi
 from opentelemetry._logs import NoOpLoggerProvider, get_logger_provider, set_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
-from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.sdk._configuration import _get_exporter_names, _import_exporters
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
@@ -58,26 +57,30 @@ class TomodachiInstrumentor(BaseInstrumentor):
         cls._instrumented_services.add(service)
 
         # setting resource "service.name" if not set - this is a bit hacky at the moment
-        resource_service_name = tracer_provider.resource._attributes.get(RESOURCE_SERVICE_NAME)
-        service_name = service.name
-        if (
-            not resource_service_name
-            or resource_service_name == "unknown_service"
-            or resource_service_name.startswith("unknown_service:")
-        ) and service_name not in ("service", "app"):
-            resource = tracer_provider.resource.merge(Resource.create({RESOURCE_SERVICE_NAME: service_name}))
-            tracer_provider = copy.copy(tracer_provider)
-            tracer_provider._resource = resource
-            setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
+        if getattr(tracer_provider, "resource", None):
+            resource_service_name = tracer_provider.resource._attributes.get(RESOURCE_SERVICE_NAME)
+            service_name = service.name
+            if (
+                not resource_service_name
+                or resource_service_name == "unknown_service"
+                or resource_service_name.startswith("unknown_service:")
+            ) and service_name not in ("service", "app"):
+                resource = tracer_provider.resource.merge(Resource.create({RESOURCE_SERVICE_NAME: service_name}))
+                tracer_provider = copy.copy(tracer_provider)
+                tracer_provider._resource = resource
+                setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
 
-            for logging_handler in cls._logging_handlers or []:
-                logger_provider = cast(LoggerProvider, logging_handler._logger_provider)
-                resource_service_name_ = logger_provider.resource._attributes.get(RESOURCE_SERVICE_NAME)
-                if not resource_service_name_ or resource_service_name_ == resource_service_name:
-                    resource = logger_provider.resource.merge(Resource.create({RESOURCE_SERVICE_NAME: service_name}))
-                    logger_provider._resource = resource
-                    logging_handler._logger_provider = logger_provider
-                    setattr(logging_handler._logger, "_resource", logger_provider.resource)
+                for logging_handler in cls._logging_handlers or []:
+                    logger_provider = cast(LoggerProvider, logging_handler._logger_provider)
+                    if getattr(logger_provider, "resource", None):
+                        resource_service_name_ = logger_provider.resource._attributes.get(RESOURCE_SERVICE_NAME)
+                        if not resource_service_name_ or resource_service_name_ == resource_service_name:
+                            resource = logger_provider.resource.merge(
+                                Resource.create({RESOURCE_SERVICE_NAME: service_name})
+                            )
+                            logger_provider._resource = resource
+                            logging_handler._logger_provider = logger_provider
+                            setattr(logging_handler._logger, "_resource", logger_provider.resource)
 
         tracer = get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
         setattr(service, "_opentelemetry_tracer", tracer)
@@ -118,7 +121,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 OpenTelemetryScheduleFunctionMiddleware(service=service, tracer=tracer, tracer_provider=tracer_provider)
             )
 
-        context = getattr(service, "context", None)  # test
+        context = getattr(service, "context", None)
         if context:
             context["_aiohttp_pre_middleware"] = aiohttp_pre_middleware
             context["_awssnssqs_message_pre_middleware"] = awssnssqs_message_pre_middleware
@@ -247,16 +250,32 @@ class TomodachiInstrumentor(BaseInstrumentor):
             self._original_service_cls = tomodachi.Service
             setattr(tomodachi, "Service", _InstrumentedTomodachiService)
 
+        # this wrapping functionality for the publish methods of aws_sns_sqs and amqp could use some refactoring
+
+        if getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message, "__wrapped__", None):
+            setattr(
+                tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
+                "_publish_message",
+                getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message, "__wrapped__", None),
+            )
+
+        aws_sns_sqs_publish_message = tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message
+
+        @functools.wraps(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message)
         async def _traced_publish_awssnssqs_message(
-            func: Callable[..., Awaitable[str]],
             cls: tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
-            args: Tuple[str, Any, Dict, Dict],
-            kwargs: Dict[str, Any],
+            topic_arn: str,
+            message: Any,
+            message_attributes: Dict,
+            context: Dict,
+            *args: Any,
+            **kwargs: Any,
         ) -> str:
-            topic_arn, message, message_attributes, context = args
             tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
             if not tracer:
-                return await func(*args, **kwargs)
+                return await aws_sns_sqs_publish_message(
+                    topic_arn, message, message_attributes, context, *args, **kwargs
+                )
 
             topic: str = (
                 cls.get_topic_name_without_prefix(cls.decode_topic(cls.get_topic_from_arn(topic_arn)), context)
@@ -277,26 +296,55 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 attributes=attributes,
             ) as span:
                 TraceContextTextMapPropagator().inject(carrier=message_attributes)
-                sns_message_id = await func(*args, **kwargs)
+                sns_message_id = await aws_sns_sqs_publish_message(
+                    topic_arn, message, message_attributes, context, *args, **kwargs
+                )
                 span.set_attribute("messaging.message.id", sns_message_id)
                 span.set_status(StatusCode.OK)
 
             return sns_message_id
 
-        wrap_function_wrapper(
-            "tomodachi.transport.aws_sns_sqs", "AWSSNSSQSTransport._publish_message", _traced_publish_awssnssqs_message
+        setattr(
+            tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
+            "_publish_message",
+            _traced_publish_awssnssqs_message.__get__(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport),
         )
 
+        if getattr(tomodachi.transport.amqp.AmqpTransport._publish_message, "__wrapped__", None):
+            setattr(
+                tomodachi.transport.amqp.AmqpTransport,
+                "_publish_message",
+                getattr(tomodachi.transport.amqp.AmqpTransport._publish_message, "__wrapped__", None),
+            )
+
+        amqp_publish_message = tomodachi.transport.amqp.AmqpTransport._publish_message
+
+        @functools.wraps(tomodachi.transport.amqp.AmqpTransport._publish_message)
         async def _traced_publish_amqp_message(
-            func: Callable[..., Awaitable[str]],
             cls: tomodachi.transport.amqp.AmqpTransport,
-            args: Tuple[str, str, Any, Dict, Optional[str], Any, Dict],
-            kwargs: Dict[str, Any],
+            routing_key: str,
+            exchange_name: str,
+            payload: Any,
+            properties: Dict,
+            routing_key_prefix: Optional[str],
+            service: Any,
+            context: Dict,
+            *args: Any,
+            **kwargs: Any,
         ) -> None:
-            routing_key, exchange_name, payload, properties, routing_key_prefix, service, context = args
             tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
             if not tracer:
-                await func(*args, **kwargs)
+                await amqp_publish_message(
+                    routing_key,
+                    exchange_name,
+                    payload,
+                    properties,
+                    routing_key_prefix,
+                    service,
+                    context,
+                    *args,
+                    **kwargs,
+                )
                 return
 
             if not exchange_name:
@@ -318,11 +366,23 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 attributes=attributes,
             ) as span:
                 TraceContextTextMapPropagator().inject(carrier=properties["headers"])
-                await func(*args, **kwargs)
+                await amqp_publish_message(
+                    routing_key,
+                    exchange_name,
+                    payload,
+                    properties,
+                    routing_key_prefix,
+                    service,
+                    context,
+                    *args,
+                    **kwargs,
+                )
                 span.set_status(StatusCode.OK)
 
-        wrap_function_wrapper(
-            "tomodachi.transport.amqp", "AmqpTransport._publish_message", _traced_publish_amqp_message
+        setattr(
+            tomodachi.transport.amqp.AmqpTransport,
+            "_publish_message",
+            _traced_publish_amqp_message.__get__(tomodachi.transport.amqp.AmqpTransport),
         )
 
     def _instrument_services(self, tracer_provider: TracerProvider) -> None:
@@ -357,9 +417,21 @@ class TomodachiInstrumentor(BaseInstrumentor):
         _InstrumentedTomodachiService._opentelemetry_tracer_provider = None
         if self._original_service_cls:
             setattr(tomodachi, "Service", self._original_service_cls)
+            self._original_service_cls = None
 
-        unwrap(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport, "_publish_message")
-        unwrap(tomodachi.transport.amqp.AmqpTransport, "_publish_message")
+        if getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message, "__wrapped__", None):
+            setattr(
+                tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
+                "_publish_message",
+                getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message, "__wrapped__", None),
+            )
+
+        if getattr(tomodachi.transport.amqp.AmqpTransport._publish_message, "__wrapped__", None):
+            setattr(
+                tomodachi.transport.amqp.AmqpTransport,
+                "_publish_message",
+                getattr(tomodachi.transport.amqp.AmqpTransport._publish_message, "__wrapped__", None),
+            )
 
     def _uninstrument_services(self) -> None:
         if TomodachiInstrumentor._instrumented_services is not None:
