@@ -236,12 +236,15 @@ later is used to run the microservices you build.
     local ~$ tomodachi --version
     > tomodachi x.xx.xx
 
+``tomodachi`` can be installed together with a set of "extras" that will install a set of dependencies that are useful for different purposes. The extras are:
 
-Probably goes without saying – services you build, their dependencies,
-together with runtime utilities like this one, should preferably always be
-installed and run in isolated environments like Docker containers or virtual
-environments.
+* ``opentelemetry``: for OpenTelemetry instrumentation support.
+* ``uvloop``: for the possibility to start services with the ``--loop uvloop`` option.
+* ``protobuf``: for protobuf support in envelope transformation and message serialization.
+* ``aiodns``: to use ``aiodns`` as the DNS resolver for ``aiohttp``.
+* ``brotli``: to use ``brotli`` compression in ``aiohttp``.
 
+Services and their dependencies, together with runtime utilities like ``tomodachi``, should preferably always be installed and run in isolated environments like Docker containers or virtual environments.
 
 Building blocks for a service class and microservice entrypoint
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1188,6 +1191,64 @@ Start the service using the ``--logger json`` arguments (or setting ``TOMODACHI_
 It's also possible to use your own logger implementation by specifying ``--custom-logger ...`` (or setting ``TOMODACHI_CUSTOM_LOGGER=...`` environment value).
 
 Read more about how to start the service with another formatter or implementation in the `usage section <#usage>`_
+
+----
+
+Using OpenTelemetry instrumentation
+===================================
+
+Install ``tomodachi`` using the ``opentelemetry`` extras to enable instrumentation for OpenTelemetry.
+
+.. code:: bash
+
+    local ~$ pip install tomodachi -E opentelemetry
+
+When added as a Poetry dependency the ``opentelemetry`` extras can be enabled by adding ``tomodachi = {extras = ["opentelemetry"]}`` to the ``pyproject.toml`` file, and when added to a ``requiements.txt`` file the ``opentelemetry`` extras can be enabled by adding ``tomodachi[opentelemetry]`` to the file.
+
+Auto instrumentation using ``opentelemetry`` can then be activated by starting services using ``opentelemetry-instrument [otel-options] tomodachi run [options] <service.py ...>``.
+
+.. code:: bash
+
+    # either define the OTEL_* environment variables to specify instrumentation specification
+    local ~$ OTEL_LOGS_EXPORTER=console
+        OTEL_TRACES_EXPORTER=console \
+        OTEL_METRICS_EXPORTER=console \
+        OTEL_SERVICE_NAME=example-service \
+        opentelemetry-instrument tomodachi run service/app.py
+
+    # or use the arguments passed to the opentelemetry-instrument command
+    local ~$ opentelemetry-instrument \
+        --logs_exporter console \
+        --traces_exporter console \
+        --metrics_exporter console \
+        --service_name example-service \
+        tomodachi run service/app.py
+
+Auto instrumentation using ``opentelemetry-instrument`` is the recommended way of instrumenting services, as it will automatically instrument the service with the appropriate exporters and configuration. However, instrumentation can also be enabled by importing the ``TomodachiInstrumentor`` instrumentation class and calling its' ``instrument`` function before defining the service class.
+
+.. code-block:: python
+
+    import tomodachi
+    from tomodachi.opentelemetry import TomodachiInstrumentor
+
+    TomodachiInstrumentor().instrument()
+
+    class Service(tomodachi.Service):
+        name = "example-service"
+
+        @tomodachi.http(GET, r"/example")
+        async def example(self, request):
+            return 200, "hello world"
+
+Starting such a service with the appropriate ``OTEL_*`` environment variables would properly instrument traces, logs and metrics for the service without the need to use the ``opentelemetry-instrument`` CLI.
+
+.. code:: bash
+
+    local ~$ OTEL_LOGS_EXPORTER=console
+        OTEL_TRACES_EXPORTER=console \
+        OTEL_METRICS_EXPORTER=console \
+        OTEL_SERVICE_NAME=example-service \
+        tomodachi run service/app.py
 
 ----
 
