@@ -1251,7 +1251,12 @@ Starting such a service with the appropriate ``OTEL_*`` environment variables wo
         OTEL_SERVICE_NAME=example-service \
         tomodachi run service/app.py
 
-Note that if the ``OTEL_SERVICE_NAME`` environment variable value (or ``--service_name`` argument to ``opentelemetry-instrument``) is not set, the resource' ``service.name`` will instead be set to the ``name`` attribute of the service class. In case the service class uses the default generic names (``service`` or ``app``), the resource' ``service.name`` will instead be set to the default as specified in https://github.com/open-telemetry/semantic-conventions/tree/main/docs/resource#service.
+Service name dynamically set if missing ``OTEL_SERVICE_NAME`` value
+-------------------------------------------------------------------
+
+If the ``OTEL_SERVICE_NAME`` environment variable value (or ``--service_name`` argument to ``opentelemetry-instrument``) is not set, the resource' ``service.name`` will instead be set to the ``name`` attribute of the service class. In case the service class uses the default generic names (``service`` or ``app``), the resource' ``service.name`` will instead be set to the default as specified in https://github.com/open-telemetry/semantic-conventions/tree/main/docs/resource#service.
+
+Note that instrumentation for logging will currently primarily use the ``OTEL_SERVICE_NAME``, and if it's missing then use the name from the *first* instrumented service class.
 
 ----
 
