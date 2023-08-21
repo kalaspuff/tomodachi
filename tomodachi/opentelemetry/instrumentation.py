@@ -352,7 +352,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
 
     def _uninstrument_services(self) -> None:
         if TomodachiInstrumentor._instrumented_services is not None:
-            for service in TomodachiInstrumentor._instrumented_services:
+            for service in [s for s in TomodachiInstrumentor._instrumented_services]:
                 self.uninstrument_service(service)
             TomodachiInstrumentor._instrumented_services.clear()
 
