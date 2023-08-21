@@ -13,9 +13,14 @@ from tomodachi.transport.http import get_forwarded_remote_ip
 
 @web.middleware
 class OpenTelemetryAioHTTPMiddleware:
-    def __init__(self, service: Any, tracer_provider: Optional[trace.TracerProvider] = None) -> None:
+    def __init__(
+        self,
+        service: Any,
+        tracer: Optional[trace.Tracer] = None,
+        tracer_provider: Optional[trace.TracerProvider] = None,
+    ) -> None:
         self.service = service
-        self.tracer = trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+        self.tracer = tracer or trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
 
     def get_route(self, request: web.Request) -> Optional[str]:
         route: Optional[str]
@@ -149,9 +154,14 @@ class OpenTelemetryAioHTTPMiddleware:
 
 
 class OpenTelemetryAWSSQSMiddleware:
-    def __init__(self, service: Any, tracer_provider: Optional[trace.TracerProvider] = None) -> None:
+    def __init__(
+        self,
+        service: Any,
+        tracer: Optional[trace.Tracer] = None,
+        tracer_provider: Optional[trace.TracerProvider] = None,
+    ) -> None:
         self.service = service
-        self.tracer = trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+        self.tracer = tracer or trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
 
     async def __call__(
         self,
@@ -197,9 +207,14 @@ class OpenTelemetryAWSSQSMiddleware:
 
 
 class OpenTelemetryAMQPMiddleware:
-    def __init__(self, service: Any, tracer_provider: Optional[trace.TracerProvider] = None) -> None:
+    def __init__(
+        self,
+        service: Any,
+        tracer: Optional[trace.Tracer] = None,
+        tracer_provider: Optional[trace.TracerProvider] = None,
+    ) -> None:
         self.service = service
-        self.tracer = trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+        self.tracer = tracer or trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
 
     async def __call__(
         self,
@@ -237,9 +252,14 @@ class OpenTelemetryAMQPMiddleware:
 
 
 class OpenTelemetryScheduleFunctionMiddleware:
-    def __init__(self, service: Any, tracer_provider: Optional[trace.TracerProvider] = None) -> None:
+    def __init__(
+        self,
+        service: Any,
+        tracer: Optional[trace.Tracer] = None,
+        tracer_provider: Optional[trace.TracerProvider] = None,
+    ) -> None:
         self.service = service
-        self.tracer = trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+        self.tracer = tracer or trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
 
     async def __call__(
         self,

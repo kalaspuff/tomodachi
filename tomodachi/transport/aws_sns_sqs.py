@@ -266,7 +266,7 @@ class AWSSNSSQSTransport(Invoker):
 
         async def _publish_message() -> str:
             logging.getLogger("tomodachi.awssnssqs").bind(topic=topic)
-            return await cls.publish_message(
+            return await cls._publish_message(
                 topic_arn,
                 payload,
                 cast(Dict, message_attributes),
@@ -952,6 +952,22 @@ class AWSSNSSQSTransport(Invoker):
         message: Any,
         message_attributes: Dict,
         context: Dict,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+    ) -> str:
+        return await cls._publish_message(
+            topic_arn, message, message_attributes, context, group_id=group_id, deduplication_id=deduplication_id
+        )
+
+    @classmethod
+    async def _publish_message(
+        cls,
+        /,
+        topic_arn: str,
+        message: Any,
+        message_attributes: Dict,
+        context: Dict,
+        *,
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
     ) -> str:

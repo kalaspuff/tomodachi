@@ -1,22 +1,34 @@
 import copy
 import logging
 from os import environ
-from typing import Any, Collection, List, Optional, Set, Type, Union, cast
+from typing import Any, Awaitable, Callable, Collection, Dict, List, Optional, Set, Tuple, Type, Union, cast
 
 import structlog
+from wrapt import wrap_function_wrapper
 
 import tomodachi
 from opentelemetry._logs import NoOpLoggerProvider, get_logger_provider, set_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.sdk._configuration import _get_exporter_names, _import_exporters
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.environment_variables import OTEL_LOG_LEVEL
 from opentelemetry.sdk.resources import SERVICE_NAME as RESOURCE_SERVICE_NAME
 from opentelemetry.sdk.resources import OTELResourceDetector, Resource
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import Tracer, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import NoOpTracerProvider, ProxyTracerProvider, get_tracer_provider, set_tracer_provider
+from opentelemetry.trace import (
+    NoOpTracerProvider,
+    ProxyTracerProvider,
+    SpanKind,
+    StatusCode,
+    get_tracer,
+    get_tracer_provider,
+    set_tracer_provider,
+)
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.util.types import AttributeValue
 from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.opentelemetry.logging import OpenTelemetryLoggingHandler, add_trace_structlog_processor
 from tomodachi.opentelemetry.middleware import (
@@ -56,6 +68,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             resource = tracer_provider.resource.merge(Resource.create({RESOURCE_SERVICE_NAME: service_name}))
             tracer_provider = copy.copy(tracer_provider)
             tracer_provider._resource = resource
+            setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
 
             for logging_handler in cls._logging_handlers or []:
                 logger_provider = cast(LoggerProvider, logging_handler._logger_provider)
@@ -66,41 +79,36 @@ class TomodachiInstrumentor(BaseInstrumentor):
                     logging_handler._logger_provider = logger_provider
                     setattr(logging_handler._logger, "_resource", logger_provider.resource)
 
+        tracer = get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+        setattr(service, "_opentelemetry_tracer", tracer)
+
         aiohttp_pre_middleware = getattr(service, "_aiohttp_pre_middleware", None)
         if aiohttp_pre_middleware is None:
             aiohttp_pre_middleware = []
             setattr(service, "_aiohttp_pre_middleware", aiohttp_pre_middleware)
         if not [m for m in aiohttp_pre_middleware if isinstance(m, OpenTelemetryAioHTTPMiddleware)]:
-            aiohttp_pre_middleware.append(
-                OpenTelemetryAioHTTPMiddleware(service=service, tracer_provider=tracer_provider)
-            )
+            aiohttp_pre_middleware.append(OpenTelemetryAioHTTPMiddleware(service=service, tracer=tracer))
 
         awssnssqs_message_pre_middleware = getattr(service, "_awssnssqs_message_pre_middleware", None)
         if awssnssqs_message_pre_middleware is None:
             awssnssqs_message_pre_middleware = []
             setattr(service, "_awssnssqs_message_pre_middleware", awssnssqs_message_pre_middleware)
         if not [m for m in awssnssqs_message_pre_middleware if isinstance(m, OpenTelemetryAWSSQSMiddleware)]:
-            awssnssqs_message_pre_middleware.append(
-                OpenTelemetryAWSSQSMiddleware(service=service, tracer_provider=tracer_provider)
-            )
+            awssnssqs_message_pre_middleware.append(OpenTelemetryAWSSQSMiddleware(service=service, tracer=tracer))
 
         amqp_message_pre_middleware = getattr(service, "_amqp_message_pre_middleware", None)
         if amqp_message_pre_middleware is None:
             amqp_message_pre_middleware = []
             setattr(service, "_amqp_message_pre_middleware", amqp_message_pre_middleware)
         if not [m for m in amqp_message_pre_middleware if isinstance(m, OpenTelemetryAMQPMiddleware)]:
-            amqp_message_pre_middleware.append(
-                OpenTelemetryAMQPMiddleware(service=service, tracer_provider=tracer_provider)
-            )
+            amqp_message_pre_middleware.append(OpenTelemetryAMQPMiddleware(service=service, tracer=tracer))
 
         schedule_pre_middleware = getattr(service, "_schedule_pre_middleware", None)
         if schedule_pre_middleware is None:
             schedule_pre_middleware = []
             setattr(service, "_schedule_pre_middleware", schedule_pre_middleware)
         if not [m for m in schedule_pre_middleware if isinstance(m, OpenTelemetryScheduleFunctionMiddleware)]:
-            schedule_pre_middleware.append(
-                OpenTelemetryScheduleFunctionMiddleware(service=service, tracer_provider=tracer_provider)
-            )
+            schedule_pre_middleware.append(OpenTelemetryScheduleFunctionMiddleware(service=service, tracer=tracer))
 
         context = getattr(service, "context", None)  # test
         if context:
@@ -146,6 +154,8 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 if isinstance(middleware, OpenTelemetryScheduleFunctionMiddleware):
                     schedule_pre_middleware.remove(middleware)
 
+        setattr(service, "_opentelemetry_tracer_provider", None)
+        setattr(service, "_opentelemetry_tracer", None)
         setattr(service, "_is_instrumented_by_opentelemetry", False)
 
     @classmethod
@@ -223,11 +233,50 @@ class TomodachiInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return (f"tomodachi == {tomodachi_version}",)
 
-    def _instrument_tomodachi_class(self, tracer_provider: TracerProvider) -> None:
-        _InstrumentedTomodachiService._tracer_provider = tracer_provider
+    def _instrument_tomodachi(self, tracer_provider: TracerProvider) -> None:
+        _InstrumentedTomodachiService._opentelemetry_tracer_provider = tracer_provider
         if self._original_service_cls is not tomodachi.Service:
             self._original_service_cls = tomodachi.Service
             setattr(tomodachi, "Service", _InstrumentedTomodachiService)
+
+        async def _traced_publish_message(
+            func: Callable[..., Awaitable[str]],
+            cls: tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
+            args: Tuple[str, Any, Dict, Dict],
+            kwargs: Dict[str, Any],
+        ) -> str:
+            topic_arn, message, message_attributes, context = args
+
+            topic: str = (
+                cls.get_topic_name_without_prefix(cls.decode_topic(cls.get_topic_from_arn(topic_arn)), context)
+                if topic_arn
+                else ""
+            )
+
+            attributes: Dict[str, AttributeValue] = {
+                "messaging.system": "AmazonSQS",
+                "messaging.operation": "publish",
+                "messaging.destination.name": topic,
+                "messaging.destination.kind": "topic",
+            }
+
+            tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
+
+            with tracer.start_as_current_span(
+                f"{topic} publish",
+                kind=SpanKind.PRODUCER,
+                attributes=attributes,
+            ) as span:
+                TraceContextTextMapPropagator().inject(carrier=message_attributes)
+                sns_message_id = await func(*args, **kwargs)
+                span.set_attribute("messaging.message.id", sns_message_id)
+                span.set_status(StatusCode.OK)
+
+            return sns_message_id
+
+        wrap_function_wrapper(
+            "tomodachi.transport.aws_sns_sqs", "AWSSNSSQSTransport._publish_message", _traced_publish_message
+        )
 
     def _instrument_services(self, tracer_provider: TracerProvider) -> None:
         pass
@@ -247,7 +296,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
         tracer_provider: TracerProvider = self._tracer_provider(kwargs.get("tracer_provider"))
         logger_provider: LoggerProvider = self._logger_provider(kwargs.get("logger_provider"))
 
-        self._instrument_tomodachi_class(tracer_provider)
+        self._instrument_tomodachi(tracer_provider)
         self._instrument_services(tracer_provider)
         self._instrument_logging(logger_provider)
         self._instrument_structlog_loggers()
@@ -257,10 +306,12 @@ class TomodachiInstrumentor(BaseInstrumentor):
             self._is_instrumented_by_opentelemetry = False
             super().instrument(**kwargs)
 
-    def _uninstrument_tomodachi_class(self) -> None:
-        _InstrumentedTomodachiService._tracer_provider = None
+    def _uninstrument_tomodachi(self) -> None:
+        _InstrumentedTomodachiService._opentelemetry_tracer_provider = None
         if self._original_service_cls:
             setattr(tomodachi, "Service", self._original_service_cls)
+
+        unwrap(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport, "_publish_message")
 
     def _uninstrument_services(self) -> None:
         if TomodachiInstrumentor._instrumented_services is not None:
@@ -280,7 +331,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             TomodachiInstrumentor.uninstrument_structlog_logger(logger)
 
     def _uninstrument(self, **kwargs: Any) -> None:
-        self._uninstrument_tomodachi_class()
+        self._uninstrument_tomodachi()
         self._uninstrument_services()
         self._uninstrument_logging()
         self._uninstrument_structlog_loggers()
@@ -354,10 +405,11 @@ class TomodachiInstrumentor(BaseInstrumentor):
 class _InstrumentedTomodachiService(tomodachi.Service):
     _tomodachi_class_is_service_class: bool = False
     _is_instrumented_by_opentelemetry: bool = False
-    _tracer_provider: Optional[TracerProvider] = None
+    _opentelemetry_tracer_provider: Optional[TracerProvider] = None
+    _opentelemetry_tracer: Optional[Tracer] = None
 
     def __post_init_hook(self) -> None:
-        TomodachiInstrumentor.instrument_service(self, tracer_provider=self._tracer_provider)
+        TomodachiInstrumentor.instrument_service(self, tracer_provider=self._opentelemetry_tracer_provider)
 
     def __post_teardown_hook(self) -> None:
         TomodachiInstrumentor.uninstrument_service(self)
