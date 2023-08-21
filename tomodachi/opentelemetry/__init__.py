@@ -22,5 +22,4 @@ Usage
 
 __all__ = [
     "TomodachiInstrumentor",
-    "_instruments",
 ]
