@@ -239,7 +239,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             self._original_service_cls = tomodachi.Service
             setattr(tomodachi, "Service", _InstrumentedTomodachiService)
 
-        async def _traced_publish_message(
+        async def _traced_publish_awssnssqs_message(
             func: Callable[..., Awaitable[str]],
             cls: tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
             args: Tuple[str, Any, Dict, Dict],
@@ -275,7 +275,43 @@ class TomodachiInstrumentor(BaseInstrumentor):
             return sns_message_id
 
         wrap_function_wrapper(
-            "tomodachi.transport.aws_sns_sqs", "AWSSNSSQSTransport._publish_message", _traced_publish_message
+            "tomodachi.transport.aws_sns_sqs", "AWSSNSSQSTransport._publish_message", _traced_publish_awssnssqs_message
+        )
+
+        async def _traced_publish_amqp_message(
+            func: Callable[..., Awaitable[str]],
+            cls: tomodachi.transport.amqp.AmqpTransport,
+            args: Tuple[str, str, Any, Dict, Optional[str], Any, Dict],
+            kwargs: Dict[str, Any],
+        ) -> None:
+            routing_key, exchange_name, payload, properties, routing_key_prefix, service, context = args
+
+            if not exchange_name:
+                exchange_name = "amq.topic"
+
+            attributes: Dict[str, AttributeValue] = {
+                "messaging.system": "rabbitmq",
+                "messaging.operation": "publish",
+                "messaging.destination.name": exchange_name,
+                "messaging.rabbitmq.destination.routing_key": routing_key,
+            }
+
+            tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
+
+            if "headers" not in properties:
+                properties["headers"] = {}
+
+            with tracer.start_as_current_span(
+                f"{routing_key} publish",
+                kind=SpanKind.PRODUCER,
+                attributes=attributes,
+            ) as span:
+                TraceContextTextMapPropagator().inject(carrier=properties["headers"])
+                await func(*args, **kwargs)
+                span.set_status(StatusCode.OK)
+
+        wrap_function_wrapper(
+            "tomodachi.transport.amqp", "AmqpTransport._publish_message", _traced_publish_amqp_message
         )
 
     def _instrument_services(self, tracer_provider: TracerProvider) -> None:
@@ -312,6 +348,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             setattr(tomodachi, "Service", self._original_service_cls)
 
         unwrap(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport, "_publish_message")
+        unwrap(tomodachi.transport.amqp.AmqpTransport, "_publish_message")
 
     def _uninstrument_services(self) -> None:
         if TomodachiInstrumentor._instrumented_services is not None:

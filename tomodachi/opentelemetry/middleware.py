@@ -222,6 +222,7 @@ class OpenTelemetryAMQPMiddleware:
         *,
         routing_key: str,
         exchange_name: str,
+        properties: Any,
     ) -> None:
         if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False:
             await handler()
@@ -237,9 +238,10 @@ class OpenTelemetryAMQPMiddleware:
             "messaging.rabbitmq.destination.routing_key": routing_key,
         }
 
-        carrier = {"traceparent": "", "tracestate": ""}
-
-        ctx = TraceContextTextMapPropagator().extract(carrier=carrier)
+        headers = getattr(properties, "headers", {})
+        if not isinstance(headers, dict):
+            headers = {}
+        ctx = TraceContextTextMapPropagator().extract(carrier=headers)
 
         with self.tracer.start_as_current_span(
             name=f"{routing_key} process",
