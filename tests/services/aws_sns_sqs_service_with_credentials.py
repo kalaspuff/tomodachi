@@ -7,10 +7,7 @@ from typing import Any, Dict, List, Set
 import tomodachi
 from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
 from tomodachi.envelope.json_base import JsonBase
-from tomodachi.opentelemetry import TomodachiInstrumentor
 from tomodachi.transport.aws_sns_sqs import AWSSNSSQSInternalServiceError, aws_sns_sqs, aws_sns_sqs_publish
-
-TomodachiInstrumentor().instrument()
 
 data_uuid = str(uuid_.uuid4())
 

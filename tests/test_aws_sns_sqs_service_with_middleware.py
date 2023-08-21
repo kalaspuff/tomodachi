@@ -34,7 +34,12 @@ def test_start_aws_sns_sqs_service_with_middleware(capsys: Any, loop: Any) -> No
         assert len(instance.test_queue_url) > 1
         assert len(instance.test_receipt_handle) > 1
         assert instance.test_approximate_receive_count >= 1
-        assert instance.test_message_attributes == {"attr_1": "value_1", "attr_2": "value_2", "initial_a_value": 5}
+        assert {k: v for k, v in instance.test_message_attributes.items() if k not in ("traceparent",)} == {
+            "attr_1": "value_1",
+            "attr_2": "value_2",
+            "initial_a_value": 5,
+        }
+        assert instance.test_message_attributes["traceparent"].startswith("00-")
         assert instance.test_middleware_values == {
             "kwarg_abc": 4711,
             "kwarg_xyz": 4712,

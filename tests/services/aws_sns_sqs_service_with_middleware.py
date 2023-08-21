@@ -8,7 +8,10 @@ from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional
 import tomodachi
 from tomodachi import Options
 from tomodachi.envelope import JsonBase
+from tomodachi.opentelemetry import TomodachiInstrumentor
 from tomodachi.transport.aws_sns_sqs import MessageAttributesType, aws_sns_sqs, aws_sns_sqs_publish
+
+TomodachiInstrumentor().instrument()
 
 
 def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, None, None]]) -> Callable[..., Awaitable]:
