@@ -43,7 +43,7 @@ class OpenTelemetryAioHTTPMiddleware:
         request: web.Request,
         handler: Callable[..., Awaitable[web.Response]],
     ) -> web.Response:
-        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False:
+        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False or not self.tracer:
             return await handler(request)
 
         protocol_version = ".".join(map(str, request.version))
@@ -173,7 +173,7 @@ class OpenTelemetryAWSSQSMiddleware:
         sns_message_id: str,
         sqs_message_id: str,
     ) -> None:
-        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False:
+        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False or not self.tracer:
             await handler()
             return
 
@@ -224,7 +224,7 @@ class OpenTelemetryAMQPMiddleware:
         exchange_name: str,
         properties: Any,
     ) -> None:
-        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False:
+        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False or not self.tracer:
             await handler()
             return
 
@@ -270,7 +270,7 @@ class OpenTelemetryScheduleFunctionMiddleware:
         invocation_time: str = "",
         interval: str = "",
     ) -> None:
-        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False:
+        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False or not self.tracer:
             await handler()
             return
 

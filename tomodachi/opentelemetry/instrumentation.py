@@ -87,28 +87,36 @@ class TomodachiInstrumentor(BaseInstrumentor):
             aiohttp_pre_middleware = []
             setattr(service, "_aiohttp_pre_middleware", aiohttp_pre_middleware)
         if not [m for m in aiohttp_pre_middleware if isinstance(m, OpenTelemetryAioHTTPMiddleware)]:
-            aiohttp_pre_middleware.append(OpenTelemetryAioHTTPMiddleware(service=service, tracer=tracer))
+            aiohttp_pre_middleware.append(
+                OpenTelemetryAioHTTPMiddleware(service=service, tracer=tracer, tracer_provider=tracer_provider)
+            )
 
         awssnssqs_message_pre_middleware = getattr(service, "_awssnssqs_message_pre_middleware", None)
         if awssnssqs_message_pre_middleware is None:
             awssnssqs_message_pre_middleware = []
             setattr(service, "_awssnssqs_message_pre_middleware", awssnssqs_message_pre_middleware)
         if not [m for m in awssnssqs_message_pre_middleware if isinstance(m, OpenTelemetryAWSSQSMiddleware)]:
-            awssnssqs_message_pre_middleware.append(OpenTelemetryAWSSQSMiddleware(service=service, tracer=tracer))
+            awssnssqs_message_pre_middleware.append(
+                OpenTelemetryAWSSQSMiddleware(service=service, tracer=tracer, tracer_provider=tracer_provider)
+            )
 
         amqp_message_pre_middleware = getattr(service, "_amqp_message_pre_middleware", None)
         if amqp_message_pre_middleware is None:
             amqp_message_pre_middleware = []
             setattr(service, "_amqp_message_pre_middleware", amqp_message_pre_middleware)
         if not [m for m in amqp_message_pre_middleware if isinstance(m, OpenTelemetryAMQPMiddleware)]:
-            amqp_message_pre_middleware.append(OpenTelemetryAMQPMiddleware(service=service, tracer=tracer))
+            amqp_message_pre_middleware.append(
+                OpenTelemetryAMQPMiddleware(service=service, tracer=tracer, tracer_provider=tracer_provider)
+            )
 
         schedule_pre_middleware = getattr(service, "_schedule_pre_middleware", None)
         if schedule_pre_middleware is None:
             schedule_pre_middleware = []
             setattr(service, "_schedule_pre_middleware", schedule_pre_middleware)
         if not [m for m in schedule_pre_middleware if isinstance(m, OpenTelemetryScheduleFunctionMiddleware)]:
-            schedule_pre_middleware.append(OpenTelemetryScheduleFunctionMiddleware(service=service, tracer=tracer))
+            schedule_pre_middleware.append(
+                OpenTelemetryScheduleFunctionMiddleware(service=service, tracer=tracer, tracer_provider=tracer_provider)
+            )
 
         context = getattr(service, "context", None)  # test
         if context:
@@ -246,6 +254,9 @@ class TomodachiInstrumentor(BaseInstrumentor):
             kwargs: Dict[str, Any],
         ) -> str:
             topic_arn, message, message_attributes, context = args
+            tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
+            if not tracer:
+                return await func(*args, **kwargs)
 
             topic: str = (
                 cls.get_topic_name_without_prefix(cls.decode_topic(cls.get_topic_from_arn(topic_arn)), context)
@@ -259,8 +270,6 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 "messaging.destination.name": topic,
                 "messaging.destination.kind": "topic",
             }
-
-            tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
 
             with tracer.start_as_current_span(
                 f"{topic} publish",
@@ -285,6 +294,10 @@ class TomodachiInstrumentor(BaseInstrumentor):
             kwargs: Dict[str, Any],
         ) -> None:
             routing_key, exchange_name, payload, properties, routing_key_prefix, service, context = args
+            tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
+            if not tracer:
+                await func(*args, **kwargs)
+                return
 
             if not exchange_name:
                 exchange_name = "amq.topic"
@@ -295,8 +308,6 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 "messaging.destination.name": exchange_name,
                 "messaging.rabbitmq.destination.routing_key": routing_key,
             }
-
-            tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
 
             if "headers" not in properties:
                 properties["headers"] = {}
