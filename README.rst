@@ -1206,6 +1206,9 @@ Install ``tomodachi`` using the ``opentelemetry`` extras to enable instrumentati
 
 When added as a Poetry dependency the ``opentelemetry`` extras can be enabled by adding ``tomodachi = {extras = ["opentelemetry"]}`` to the ``pyproject.toml`` file, and when added to a ``requiements.txt`` file the ``opentelemetry`` extras can be enabled by adding ``tomodachi[opentelemetry]`` to the file.
 
+Auto instrumentation using ``opentelemetry-instrument``
+-------------------------------------------------------
+
 Auto instrumentation using ``opentelemetry`` can then be activated by starting services using ``opentelemetry-instrument [otel-options] tomodachi run [options] <service.py ...>``.
 
 .. code:: bash
