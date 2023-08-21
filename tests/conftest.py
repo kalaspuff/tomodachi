@@ -77,3 +77,11 @@ def reset_logger_context() -> None:
     import tomodachi.logging
 
     tomodachi.logging.reset_context()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def uninstrument_opentelemetry() -> None:
+    from tomodachi.opentelemetry import TomodachiInstrumentor
+
+    instrumentor = TomodachiInstrumentor()
+    instrumentor.uninstrument()

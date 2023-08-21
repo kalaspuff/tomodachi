@@ -53,7 +53,6 @@ class OpenTelemetryService(tomodachi.Service):
         asyncio.ensure_future(_async())
 
     async def _stop_service(self) -> None:
-        instrumentor.uninstrument()
         tracer_provider.shutdown()
         logger_provider.shutdown()
 
