@@ -91,7 +91,7 @@ flake8 = { version = ">=3.8.4", markers = "sys_platform != \"win32\"" }
 flake8-black = { version = ">=0.2.0", markers = "sys_platform != \"win32\"" }
 flake8-isort = { version = ">=4.0.0", markers = "sys_platform != \"win32\"" }
 flake8-pyproject = { version = ">=1.1.0", markers = "sys_platform != \"win32\"" }
-isort = { version = ">=5.6.0", markers = "sys_platform != \"win32\"" }
+isort = { version = ">=5.6.0", markers = "sys_platform != \"win32\"", extras = ["plugins"] }
 pytest = { version = ">=6.1.0", markers = "sys_platform != \"win32\"" }
 pytest-cov = { version = ">=2.10.0", markers = "sys_platform != \"win32\"" }
 pytest-rerunfailures = { version = ">=10.2", markers = "sys_platform != \"win32\"" }
