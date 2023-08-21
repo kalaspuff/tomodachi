@@ -161,6 +161,8 @@ filterwarnings = [
     "ignore:Using the -c \\(--config\\) CLI argument is deprecated. Set and parse service config with environment variables instead.:DeprecationWarning:tomodachi",
     "ignore:Using the 'discovery' interface is deprecated. Please implement lifecycle hooks for your service instead.:DeprecationWarning:tomodachi",
     "ignore:'cgi' is deprecated and slated for removal in Python 3\\.13:DeprecationWarning:aiohttp",
+    "ignore:pkg_resources is deprecated as an API. See .*:DeprecationWarning:opentelemetry.instrumentation",
+    "ignore:Deprecated call to `pkg_resources.declare_namespace.*:DeprecationWarning:pkg_resources",
 ]
 
 [tool.coverage.run]

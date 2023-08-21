@@ -5,7 +5,10 @@ from aiohttp import web
 
 import tomodachi
 from tomodachi.discovery.dummy_registry import DummyRegistry
+from tomodachi.opentelemetry import TomodachiInstrumentor
 from tomodachi.transport.http import RequestHandler, Response, http, http_error, http_static, websocket
+
+TomodachiInstrumentor().instrument()
 
 
 async def middleware_function(
