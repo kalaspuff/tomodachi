@@ -77,6 +77,9 @@ class CLI:
         botocore_version = ""
         protobuf_version = ""
         uvloop_version = ""
+        opentelemetry_sdk_version = ""
+        opentelemetry_distro_version = ""
+        opentelemetry_instrumentation_version = ""
 
         try:
             import aioamqp  # noqa  # isort:skip
@@ -174,6 +177,24 @@ class CLI:
         except Exception:  # pragma: no cover
             pass
 
+        try:
+            # Optional
+            import opentelemetry.instrumentation.version  # noqa  # isort:skip
+            import opentelemetry.sdk.version  # noqa  # isort:skip
+            import opentelemetry.distro.version  # noqa  # isort:skip
+
+            opentelemetry_instrumentation_version = opentelemetry.instrumentation.version.__version__
+            opentelemetry_sdk_version = opentelemetry.sdk.version.__version__
+            opentelemetry_distro_version = opentelemetry.distro.version.__version__
+            if output_versions:
+                print("opentelemetry-instrumentation/{}".format(opentelemetry_instrumentation_version))
+                print("opentelemetry-sdk/{}".format(opentelemetry_sdk_version))
+                print("opentelemetry-distro/{}".format(opentelemetry_distro_version))
+        except ModuleNotFoundError:  # pragma: no cover
+            pass
+        except Exception:  # pragma: no cover
+            pass
+
         if not errors:
             try:
                 import tomodachi.helpers.logging  # noqa  # isort:skip
@@ -204,6 +225,9 @@ class CLI:
             "botocore": botocore_version or None,
             "protobuf": protobuf_version or None,
             "uvloop": uvloop_version or None,
+            "opentelemetry-instrumentation": opentelemetry_instrumentation_version or None,
+            "opentelemetry-sdk": opentelemetry_sdk_version or None,
+            "opentelemetry-distro": opentelemetry_distro_version or None,
         }
 
     def run_command(self, args: List[str]) -> None:
