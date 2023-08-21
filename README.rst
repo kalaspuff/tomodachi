@@ -71,6 +71,7 @@ Use the features you need. 🌮
 * `Middleware functionality  <https://tomodachi.dev/docs/middlewares>`_
 * `Function signature keywords  <https://tomodachi.dev/docs/function-keywords>`_
 * `Logging and log formatters  <https://tomodachi.dev/docs/using-the-tomodachi-logger>`_
+* `OpenTelemetry instrumentation  <https://tomodachi.dev/docs/opentelemetry>`_
 
 Recommendations and examples. 🧘
 
