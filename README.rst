@@ -1225,6 +1225,9 @@ Auto instrumentation using ``opentelemetry`` can then be activated by starting s
         --service_name example-service \
         tomodachi run service/app.py
 
+Manual instrumentation
+----------------------
+
 Auto instrumentation using ``opentelemetry-instrument`` is the recommended way of instrumenting services, as it will automatically instrument the service with the appropriate exporters and configuration. However, instrumentation can also be enabled by importing the ``TomodachiInstrumentor`` instrumentation class and calling its' ``instrument`` function before defining the service class.
 
 .. code-block:: python
