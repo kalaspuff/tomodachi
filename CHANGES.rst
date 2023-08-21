@@ -8,6 +8,7 @@ Changes
 
 - Major refactoring of how logging is done, introducing ``tomodachi.get_logger()`` built on ``structlog``. Contextual logger available for all handlers, etc.
 - Provides the option of hooking in ``tomodachi`` to a custom logger the user provides.
+- Adds instrumentation for ``opentelemetry`` that can be enabled if ``tomodachi`` is installed using the ``opentelemetry`` extras. Auto instrumentation using ``opentelemetry`` can then be activated by starting services using ``opentelemetry-instrument tomodachi run [options] <service.py ...>``.
 - The HTTP body for requests with a body is read before the handler is called and if the connection was closed prematurely before the body could be read, the request will be ignored.
 - Replaces the banner shown when starting a service without ``--production``. The banner now includes the operating system, architecture, which Python runtime from which virtualenv is used, etc. in order to aid debugging during development for issues caused by environment misconfiguration.
 - Updated the CLI usage output from ``--help``.
