@@ -36,8 +36,12 @@ def test_opentelemetry_service(capsys: Any, loop: Any) -> None:
 
     out, err = capsys.readouterr()
     assert '"service.name": "test_opentelemetry"' in err
-    assert '"function.name": "every_second",' in err
+    assert '"code.function": "every_second",' in err
     assert '"kind": "SpanKind.INTERNAL",' in err
     assert '"body": "started service successfully",' in err
     assert '"trace_id": "0x00000000000000000000000000000000",' in err
     assert '"telemetry.sdk.language": "python",' in err
+    assert '"name": "function.active_tasks",' in err
+    assert '"name": "function.duration",' in err
+    assert '"description": "Measures the duration of running the scheduled handler function.",' in err
+    assert '"explicit_bounds": [' in err
