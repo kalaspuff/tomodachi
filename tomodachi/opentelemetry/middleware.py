@@ -180,6 +180,8 @@ class OpenTelemetryAioHTTPMiddleware:
                     and response.status <= 599
                 ):
                     span.set_attribute("http.response.status_code", response.status)
+                    if response.status >= 500:
+                        span.set_status(trace.StatusCode.ERROR)
                     if response.status == 499:
                         replaced_status_code = getattr(response, "_replaced_status_code", None)
                         if replaced_status_code:
