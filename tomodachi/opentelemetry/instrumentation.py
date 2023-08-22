@@ -9,10 +9,16 @@ import structlog
 import tomodachi
 from opentelemetry._logs import NoOpLoggerProvider, get_logger_provider, set_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
+from opentelemetry.metrics import NoOpMeterProvider, get_meter, get_meter_provider, set_meter_provider
+from opentelemetry.metrics._internal import _ProxyMeterProvider
 from opentelemetry.sdk._configuration import _get_exporter_names, _import_exporters
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.environment_variables import OTEL_LOG_LEVEL
+from opentelemetry.sdk.metrics import Meter, MeterProvider
+from opentelemetry.sdk.metrics._internal.aggregation import ExplicitBucketHistogramAggregation
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.metrics.view import View
 from opentelemetry.sdk.resources import SERVICE_NAME as RESOURCE_SERVICE_NAME
 from opentelemetry.sdk.resources import OTELResourceDetector, Resource
 from opentelemetry.sdk.trace import Tracer, TracerProvider
@@ -27,6 +33,7 @@ from opentelemetry.trace import (
     set_tracer_provider,
 )
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.util.http import ExcludeList, get_excluded_urls, parse_excluded_urls
 from opentelemetry.util.types import AttributeValue
 from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.opentelemetry.logging import OpenTelemetryLoggingHandler, add_trace_structlog_processor
@@ -45,11 +52,30 @@ class TomodachiInstrumentor(BaseInstrumentor):
     _is_instrumented_by_opentelemetry: bool = False
 
     @classmethod
-    def instrument_service(cls, service: tomodachi.Service, tracer_provider: Optional[TracerProvider] = None) -> None:
+    def instrument_service(
+        cls,
+        service: tomodachi.Service,
+        tracer_provider: Optional[TracerProvider] = None,
+        meter_provider: Optional[MeterProvider] = None,
+        excluded_urls: Optional[str] = None,
+    ) -> None:
         if isinstance(service, type):
             raise Exception("instrument_service must be called with an instance of tomodachi.Service")
 
         tracer_provider = cls._tracer_provider(tracer_provider)
+        meter_provider = cls._meter_provider(meter_provider)
+
+        if excluded_urls is None:
+            _excluded_urls = ExcludeList(
+                list(
+                    set(
+                        [url for url in get_excluded_urls("TOMODACHI")._excluded_urls]
+                        + [url for url in get_excluded_urls("AIOHTTP")._excluded_urls]
+                    )
+                )
+            )
+        else:
+            _excluded_urls = parse_excluded_urls(excluded_urls)
 
         if cls._instrumented_services is None:
             cls._instrumented_services = set()
@@ -82,8 +108,20 @@ class TomodachiInstrumentor(BaseInstrumentor):
                             logging_handler._logger_provider = logger_provider
                             setattr(logging_handler._logger, "_resource", logger_provider.resource)
 
+                if getattr(meter_provider._sdk_config, "resource", None):
+                    resource_service_name_ = meter_provider._sdk_config.resource._attributes.get(RESOURCE_SERVICE_NAME)
+                    service_name = service.name
+                    if not resource_service_name_ or resource_service_name_ == resource_service_name:
+                        resource = meter_provider._sdk_config.resource.merge(
+                            Resource.create({RESOURCE_SERVICE_NAME: service_name})
+                        )
+                        meter_provider._sdk_config.resource = resource
+
         tracer = get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
         setattr(service, "_opentelemetry_tracer", tracer)
+
+        meter = get_meter("tomodachi.opentelemetry", tomodachi_version, meter_provider)
+        setattr(service, "_opentelemetry_meter", meter)
 
         aiohttp_pre_middleware = getattr(service, "_aiohttp_pre_middleware", None)
         if aiohttp_pre_middleware is None:
@@ -91,7 +129,9 @@ class TomodachiInstrumentor(BaseInstrumentor):
             setattr(service, "_aiohttp_pre_middleware", aiohttp_pre_middleware)
         if not [m for m in aiohttp_pre_middleware if isinstance(m, OpenTelemetryAioHTTPMiddleware)]:
             aiohttp_pre_middleware.append(
-                OpenTelemetryAioHTTPMiddleware(service=service, tracer=tracer, tracer_provider=tracer_provider)
+                OpenTelemetryAioHTTPMiddleware(
+                    service=service, tracer=tracer, meter=meter, excluded_urls=_excluded_urls
+                )
             )
 
         awssnssqs_message_pre_middleware = getattr(service, "_awssnssqs_message_pre_middleware", None)
@@ -100,7 +140,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             setattr(service, "_awssnssqs_message_pre_middleware", awssnssqs_message_pre_middleware)
         if not [m for m in awssnssqs_message_pre_middleware if isinstance(m, OpenTelemetryAWSSQSMiddleware)]:
             awssnssqs_message_pre_middleware.append(
-                OpenTelemetryAWSSQSMiddleware(service=service, tracer=tracer, tracer_provider=tracer_provider)
+                OpenTelemetryAWSSQSMiddleware(service=service, tracer=tracer, meter=meter)
             )
 
         amqp_message_pre_middleware = getattr(service, "_amqp_message_pre_middleware", None)
@@ -108,9 +148,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             amqp_message_pre_middleware = []
             setattr(service, "_amqp_message_pre_middleware", amqp_message_pre_middleware)
         if not [m for m in amqp_message_pre_middleware if isinstance(m, OpenTelemetryAMQPMiddleware)]:
-            amqp_message_pre_middleware.append(
-                OpenTelemetryAMQPMiddleware(service=service, tracer=tracer, tracer_provider=tracer_provider)
-            )
+            amqp_message_pre_middleware.append(OpenTelemetryAMQPMiddleware(service=service, tracer=tracer, meter=meter))
 
         schedule_pre_middleware = getattr(service, "_schedule_pre_middleware", None)
         if schedule_pre_middleware is None:
@@ -118,7 +156,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             setattr(service, "_schedule_pre_middleware", schedule_pre_middleware)
         if not [m for m in schedule_pre_middleware if isinstance(m, OpenTelemetryScheduleFunctionMiddleware)]:
             schedule_pre_middleware.append(
-                OpenTelemetryScheduleFunctionMiddleware(service=service, tracer=tracer, tracer_provider=tracer_provider)
+                OpenTelemetryScheduleFunctionMiddleware(service=service, tracer=tracer, meter=meter)
             )
 
         context = getattr(service, "context", None)
@@ -167,6 +205,8 @@ class TomodachiInstrumentor(BaseInstrumentor):
 
         setattr(service, "_opentelemetry_tracer_provider", None)
         setattr(service, "_opentelemetry_tracer", None)
+        setattr(service, "_opentelemetry_meter_provider", None)
+        setattr(service, "_opentelemetry_meter", None)
         setattr(service, "_is_instrumented_by_opentelemetry", False)
 
     @classmethod
@@ -244,8 +284,13 @@ class TomodachiInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return (f"tomodachi == {tomodachi_version}",)
 
-    def _instrument_tomodachi(self, tracer_provider: TracerProvider) -> None:
+    def _instrument_tomodachi(
+        self, tracer_provider: TracerProvider, meter_provider: MeterProvider, excluded_urls: Optional[str]
+    ) -> None:
         _InstrumentedTomodachiService._opentelemetry_tracer_provider = tracer_provider
+        _InstrumentedTomodachiService._opentelemetry_meter_provider = meter_provider
+        _InstrumentedTomodachiService._opentelemetry_excluded_urls = excluded_urls
+
         if self._original_service_cls is not tomodachi.Service:
             self._original_service_cls = tomodachi.Service
             setattr(tomodachi, "Service", _InstrumentedTomodachiService)
@@ -385,9 +430,6 @@ class TomodachiInstrumentor(BaseInstrumentor):
             _traced_publish_amqp_message.__get__(tomodachi.transport.amqp.AmqpTransport),
         )
 
-    def _instrument_services(self, tracer_provider: TracerProvider) -> None:
-        pass
-
     def _instrument_logging(self, logger_provider: LoggerProvider) -> None:
         self.instrument_logging(["tomodachi", "exception"], logger_provider=logger_provider)
 
@@ -401,10 +443,11 @@ class TomodachiInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: Any) -> None:
         tracer_provider: TracerProvider = self._tracer_provider(kwargs.get("tracer_provider"))
+        meter_provider: MeterProvider = self._meter_provider(kwargs.get("meter_provider"))
         logger_provider: LoggerProvider = self._logger_provider(kwargs.get("logger_provider"))
+        excluded_urls = kwargs.get("excluded_urls")
 
-        self._instrument_tomodachi(tracer_provider)
-        self._instrument_services(tracer_provider)
+        self._instrument_tomodachi(tracer_provider, meter_provider, excluded_urls)
         self._instrument_logging(logger_provider)
         self._instrument_structlog_loggers()
 
@@ -415,6 +458,8 @@ class TomodachiInstrumentor(BaseInstrumentor):
 
     def _uninstrument_tomodachi(self) -> None:
         _InstrumentedTomodachiService._opentelemetry_tracer_provider = None
+        _InstrumentedTomodachiService._opentelemetry_meter_provider = None
+        _InstrumentedTomodachiService._opentelemetry_excluded_urls = None
         if self._original_service_cls:
             setattr(tomodachi, "Service", self._original_service_cls)
             self._original_service_cls = None
@@ -492,6 +537,75 @@ class TomodachiInstrumentor(BaseInstrumentor):
         return tracer_provider
 
     @staticmethod
+    def _meter_provider(
+        meter_provider: Optional[MeterProvider] = None, resource: Optional[Resource] = None
+    ) -> MeterProvider:
+        _set_meter_provider: bool = False
+        if not meter_provider:
+            meter_provider = cast(MeterProvider, get_meter_provider())
+            if isinstance(meter_provider, (NoOpMeterProvider, _ProxyMeterProvider)):
+                resource = Resource.create().merge(OTELResourceDetector().detect())
+                meter_provider = MeterProvider(resource=resource)
+                _set_meter_provider = True
+
+        if not [v for v in meter_provider._sdk_config.views if v._meter_name == "tomodachi.opentelemetry"]:
+            duration_histogram_aggregation = ExplicitBucketHistogramAggregation(
+                boundaries=(0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10)
+            )
+            views = (
+                View(
+                    instrument_name="http.server.duration",
+                    aggregation=duration_histogram_aggregation,
+                    meter_name="tomodachi.opentelemetry",
+                ),
+                View(
+                    instrument_name="messaging.amazonsqs.duration",
+                    aggregation=duration_histogram_aggregation,
+                    meter_name="tomodachi.opentelemetry",
+                ),
+                View(
+                    instrument_name="messaging.rabbitmq.duration",
+                    aggregation=duration_histogram_aggregation,
+                    meter_name="tomodachi.opentelemetry",
+                ),
+                View(
+                    instrument_name="function.duration",
+                    aggregation=duration_histogram_aggregation,
+                    meter_name="tomodachi.opentelemetry",
+                ),
+            )
+            meter_provider._sdk_config.views = (*meter_provider._sdk_config.views, *views)
+
+        if hasattr(meter_provider, "_all_metric_readers") and not meter_provider._all_metric_readers:
+            exporter_names = _get_exporter_names("metrics")
+            if not exporter_names:
+                return meter_provider
+
+            _, metric_exporters, _ = _import_exporters(
+                [],
+                exporter_names,
+                [],
+            )
+            if not metric_exporters:
+                return meter_provider
+
+            metric_readers = []
+            for _, exporter in metric_exporters.items():
+                metric_reader = PeriodicExportingMetricReader(exporter())
+                metric_readers.append(metric_reader)
+
+            meter_provider = MeterProvider(
+                metric_readers=metric_readers,
+                resource=meter_provider._sdk_config.resource,
+                views=meter_provider._sdk_config.views,
+            )
+
+        if _set_meter_provider:
+            set_meter_provider(meter_provider)
+
+        return meter_provider
+
+    @staticmethod
     def _logger_provider(logger_provider: Optional[LoggerProvider] = None) -> LoggerProvider:
         if not logger_provider:
             logger_provider = cast(LoggerProvider, get_logger_provider())
@@ -527,9 +641,17 @@ class _InstrumentedTomodachiService(tomodachi.Service):
     _is_instrumented_by_opentelemetry: bool = False
     _opentelemetry_tracer_provider: Optional[TracerProvider] = None
     _opentelemetry_tracer: Optional[Tracer] = None
+    _opentelemetry_meter_provider: Optional[MeterProvider] = None
+    _opentelemetry_meter: Optional[Meter] = None
+    _opentelemetry_excluded_urls: Optional[str] = None
 
     def __post_init_hook(self) -> None:
-        TomodachiInstrumentor.instrument_service(self, tracer_provider=self._opentelemetry_tracer_provider)
+        TomodachiInstrumentor.instrument_service(
+            self,
+            tracer_provider=self._opentelemetry_tracer_provider,
+            meter_provider=self._opentelemetry_meter_provider,
+            excluded_urls=self._opentelemetry_excluded_urls,
+        )
 
     def __post_teardown_hook(self) -> None:
         TomodachiInstrumentor.uninstrument_service(self)

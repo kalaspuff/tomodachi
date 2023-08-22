@@ -3,10 +3,11 @@ from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, cast
 
 from aiohttp import hdrs, web
 
-from opentelemetry import trace
+from opentelemetry import metrics, trace
+from opentelemetry.sdk.trace import Span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.util.http import ExcludeList
 from opentelemetry.util.types import AttributeValue
-from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.transport.aws_sns_sqs import MessageAttributesType
 from tomodachi.transport.http import get_forwarded_remote_ip
 
@@ -17,10 +18,33 @@ class OpenTelemetryAioHTTPMiddleware:
         self,
         service: Any,
         tracer: Optional[trace.Tracer] = None,
-        tracer_provider: Optional[trace.TracerProvider] = None,
+        meter: Optional[metrics.Meter] = None,
+        excluded_urls: Optional[ExcludeList] = None,
     ) -> None:
         self.service = service
-        self.tracer = tracer or trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+        self.tracer = tracer
+        self.meter = meter
+        self.excluded_urls = excluded_urls
+
+        self.duration_histogram: Optional[metrics.Histogram] = (
+            meter.create_histogram(
+                "http.server.duration",
+                "s",
+                "Measures the duration of inbound HTTP requests.",
+            )
+            if meter
+            else None
+        )
+
+        self.active_requests_counter: Optional[metrics.UpDownCounter] = (
+            meter.create_up_down_counter(
+                "http.server.active_requests",
+                "{request}",
+                "Measures the number of concurrent HTTP requests that are currently in-flight.",
+            )
+            if meter
+            else None
+        )
 
     def get_route(self, request: web.Request) -> Optional[str]:
         route: Optional[str]
@@ -43,7 +67,13 @@ class OpenTelemetryAioHTTPMiddleware:
         request: web.Request,
         handler: Callable[..., Awaitable[web.Response]],
     ) -> web.Response:
-        if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False or not self.tracer:
+        exclude_instrumentation: bool = any(
+            [
+                getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False,
+                self.excluded_urls and self.excluded_urls.url_disabled(request.path),
+            ]
+        )
+        if exclude_instrumentation or not self.tracer:
             return await handler(request)
 
         protocol_version = ".".join(map(str, request.version))
@@ -83,8 +113,7 @@ class OpenTelemetryAioHTTPMiddleware:
             attributes["server.address"] = host.split(":")[0]
             attributes["server.port"] = port
         else:
-            if server_ip:
-                attributes["server.address"] = server_ip
+            attributes["server.address"] = server_ip or "127.0.0.1"
             attributes["server.port"] = server_port or port
 
         attributes["url.scheme"] = request.scheme
@@ -112,13 +141,32 @@ class OpenTelemetryAioHTTPMiddleware:
         ctx = TraceContextTextMapPropagator().extract(carrier=request.headers)
         response: Optional[web.Response] = None
 
-        with self.tracer.start_as_current_span(
-            name=span_name,
-            kind=trace.SpanKind.SERVER,
-            context=ctx,
-            attributes=attributes,
-        ) as span:
+        span = cast(
+            Span,
+            self.tracer.start_span(
+                name=span_name,
+                kind=trace.SpanKind.SERVER,
+                context=ctx,
+                attributes=attributes,
+            ),
+        )
+        with trace.use_span(span, end_on_exit=False):
             try:
+                if self.active_requests_counter and span.attributes:
+                    self.active_requests_counter.add(
+                        1,
+                        {
+                            k: span.attributes[k]
+                            for k in (
+                                "http.request.method",
+                                "server.address",
+                                "server.port",
+                                "url.scheme",
+                            )
+                            if k in span.attributes
+                        },
+                    )
+
                 response = await handler(request)
             except web.HTTPException as exc:
                 response = exc
@@ -141,6 +189,44 @@ class OpenTelemetryAioHTTPMiddleware:
                     span.set_status(trace.StatusCode.ERROR)
                     response = None
 
+                span.end()
+
+                if self.duration_histogram and span.start_time and span.end_time and span.attributes:
+                    duration_ns = span.end_time - span.start_time
+                    duration = duration_ns / 1e9
+                    self.duration_histogram.record(
+                        duration,
+                        {
+                            k: span.attributes[k]
+                            for k in (
+                                "http.route",
+                                "http.request.method",
+                                "http.response.status_code",
+                                "network.protocol.name",
+                                "network.protocol.version",
+                                "server.address",
+                                "server.port",
+                                "url.scheme",
+                            )
+                            if k in span.attributes
+                        },
+                    )
+
+                if self.active_requests_counter and span.attributes:
+                    self.active_requests_counter.add(
+                        -1,
+                        {
+                            k: span.attributes[k]
+                            for k in (
+                                "http.request.method",
+                                "server.address",
+                                "server.port",
+                                "url.scheme",
+                            )
+                            if k in span.attributes
+                        },
+                    )
+
         if response is None:
             response = web.HTTPInternalServerError()
             response.body = b""
@@ -158,10 +244,31 @@ class OpenTelemetryAWSSQSMiddleware:
         self,
         service: Any,
         tracer: Optional[trace.Tracer] = None,
-        tracer_provider: Optional[trace.TracerProvider] = None,
+        meter: Optional[metrics.Meter] = None,
     ) -> None:
         self.service = service
-        self.tracer = tracer or trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+        self.tracer = tracer
+        self.meter = meter
+
+        self.duration_histogram: Optional[metrics.Histogram] = (
+            meter.create_histogram(
+                "messaging.amazonsqs.duration",
+                "s",
+                "Measures the duration of processing a message by the handler function.",
+            )
+            if meter
+            else None
+        )
+
+        self.active_tasks_counter: Optional[metrics.UpDownCounter] = (
+            meter.create_up_down_counter(
+                "messaging.amazonsqs.active_tasks",
+                "{message}",
+                "Measures the number of concurrent SQS messages that are currently being processed.",
+            )
+            if meter
+            else None
+        )
 
     async def __call__(
         self,
@@ -194,16 +301,82 @@ class OpenTelemetryAWSSQSMiddleware:
             attributes["messaging.destination.name"] = queue_name
             attributes["messaging.destination.kind"] = "queue"
 
+        attributes["code.function"] = handler.__name__
+
         ctx = TraceContextTextMapPropagator().extract(carrier=message_attributes)
 
-        with self.tracer.start_as_current_span(
-            name=f"{topic} process",
-            kind=trace.SpanKind.CONSUMER,
-            context=ctx,
-            attributes=attributes,
-        ) as span:
-            await handler()
-            span.set_status(trace.StatusCode.OK)
+        span = cast(
+            Span,
+            self.tracer.start_span(
+                name=f"{topic} process",
+                kind=trace.SpanKind.CONSUMER,
+                context=ctx,
+                attributes=attributes,
+            ),
+        )
+        with trace.use_span(span, end_on_exit=False):
+            try:
+                if self.active_tasks_counter and span.attributes:
+                    self.active_tasks_counter.add(
+                        1,
+                        {
+                            k: span.attributes[k]
+                            for k in (
+                                "messaging.source.name",
+                                "messaging.source.kind",
+                                "messaging.destination.name",
+                                "messaging.destination.kind",
+                                "code.function",
+                            )
+                            if k in span.attributes
+                        },
+                    )
+
+                await handler()
+                span.set_status(trace.StatusCode.OK)
+            except Exception as exc:
+                span.set_status(trace.StatusCode.ERROR)
+                span.record_exception(exc, escaped=True)
+                raise
+            finally:
+                span.end()
+
+                if self.duration_histogram and span.start_time and span.end_time and span.attributes:
+                    duration_ns = span.end_time - span.start_time
+                    duration = duration_ns / 1e9
+                    self.duration_histogram.record(
+                        duration,
+                        {
+                            **{
+                                k: span.attributes[k]
+                                for k in (
+                                    "messaging.source.name",
+                                    "messaging.source.kind",
+                                    "messaging.destination.name",
+                                    "messaging.destination.kind",
+                                    "code.function",
+                                )
+                                if k in span.attributes
+                            },
+                            "function.success": span.status.is_ok,
+                        },
+                    )
+
+                if self.active_tasks_counter and span.attributes:
+                    self.active_tasks_counter.add(
+                        -1,
+                        {
+                            k: span.attributes[k]
+                            for k in (
+                                "messaging.source.name",
+                                "messaging.source.kind",
+                                "messaging.destination.name",
+                                "messaging.destination.kind",
+                                "code.function",
+                            )
+                            if k in span.attributes
+                        },
+                    )
 
 
 class OpenTelemetryAMQPMiddleware:
@@ -211,10 +384,31 @@ class OpenTelemetryAMQPMiddleware:
         self,
         service: Any,
         tracer: Optional[trace.Tracer] = None,
-        tracer_provider: Optional[trace.TracerProvider] = None,
+        meter: Optional[metrics.Meter] = None,
     ) -> None:
         self.service = service
-        self.tracer = tracer or trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+        self.tracer = tracer
+        self.meter = meter
+
+        self.duration_histogram: Optional[metrics.Histogram] = (
+            meter.create_histogram(
+                "messaging.rabbitmq.duration",
+                "s",
+                "Measures the duration of processing a message by the handler function.",
+            )
+            if meter
+            else None
+        )
+
+        self.active_tasks_counter: Optional[metrics.UpDownCounter] = (
+            meter.create_up_down_counter(
+                "messaging.rabbitmq.active_tasks",
+                "{message}",
+                "Measures the number of concurrent AMQP messages that are currently being processed.",
+            )
+            if meter
+            else None
+        )
 
     async def __call__(
         self,
@@ -238,19 +432,79 @@ class OpenTelemetryAMQPMiddleware:
             "messaging.rabbitmq.destination.routing_key": routing_key,
         }
 
+        attributes["code.function"] = handler.__name__
+
         headers = getattr(properties, "headers", {})
         if not isinstance(headers, dict):
             headers = {}
         ctx = TraceContextTextMapPropagator().extract(carrier=headers)
 
-        with self.tracer.start_as_current_span(
-            name=f"{routing_key} process",
-            kind=trace.SpanKind.CONSUMER,
-            context=ctx,
-            attributes=attributes,
-        ) as span:
-            await handler()
-            span.set_status(trace.StatusCode.OK)
+        span = cast(
+            Span,
+            self.tracer.start_span(
+                name=f"{routing_key} process",
+                kind=trace.SpanKind.CONSUMER,
+                context=ctx,
+                attributes=attributes,
+            ),
+        )
+        with trace.use_span(span, end_on_exit=False):
+            try:
+                if self.active_tasks_counter and span.attributes:
+                    self.active_tasks_counter.add(
+                        1,
+                        {
+                            k: span.attributes[k]
+                            for k in (
+                                "messaging.destination.name",
+                                "messaging.rabbitmq.destination.routing_key",
+                                "code.function",
+                            )
+                            if k in span.attributes
+                        },
+                    )
+
+                await handler()
+                span.set_status(trace.StatusCode.OK)
+            except Exception as exc:
+                span.set_status(trace.StatusCode.ERROR)
+                span.record_exception(exc, escaped=True)
+                raise
+            finally:
+                span.end()
+
+                if self.duration_histogram and span.start_time and span.end_time and span.attributes:
+                    duration_ns = span.end_time - span.start_time
+                    duration = duration_ns / 1e9
+                    self.duration_histogram.record(
+                        duration,
+                        {
+                            **{
+                                k: span.attributes[k]
+                                for k in (
+                                    "messaging.destination.name",
+                                    "messaging.rabbitmq.destination.routing_key",
+                                    "code.function",
+                                )
+                                if k in span.attributes
+                            },
+                            "function.success": span.status.is_ok,
+                        },
+                    )
+
+                if self.active_tasks_counter and span.attributes:
+                    self.active_tasks_counter.add(
+                        -1,
+                        {
+                            k: span.attributes[k]
+                            for k in (
+                                "messaging.destination.name",
+                                "messaging.rabbitmq.destination.routing_key",
+                                "code.function",
+                            )
+                            if k in span.attributes
+                        },
+                    )
 
 
 class OpenTelemetryScheduleFunctionMiddleware:
@@ -258,10 +512,31 @@ class OpenTelemetryScheduleFunctionMiddleware:
         self,
         service: Any,
         tracer: Optional[trace.Tracer] = None,
-        tracer_provider: Optional[trace.TracerProvider] = None,
+        meter: Optional[metrics.Meter] = None,
     ) -> None:
         self.service = service
-        self.tracer = tracer or trace.get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
+        self.tracer = tracer
+        self.meter = meter
+
+        self.duration_histogram: Optional[metrics.Histogram] = (
+            meter.create_histogram(
+                "function.duration",
+                "s",
+                "Measures the duration of running the scheduled handler function.",
+            )
+            if meter
+            else None
+        )
+
+        self.active_tasks_counter: Optional[metrics.UpDownCounter] = (
+            meter.create_up_down_counter(
+                "function.active_tasks",
+                "{task}",
+                "Measures the number of concurrent invocations of the scheduled handler that is currently running.",
+            )
+            if meter
+            else None
+        )
 
     async def __call__(
         self,
@@ -275,7 +550,7 @@ class OpenTelemetryScheduleFunctionMiddleware:
             return
 
         attributes: Dict[str, AttributeValue] = {
-            "function.name": handler.__name__,
+            "code.function": handler.__name__,
             "function.trigger": "timer",
             "function.time": invocation_time,
         }
@@ -283,10 +558,44 @@ class OpenTelemetryScheduleFunctionMiddleware:
         if interval:
             attributes["function.interval"] = str(interval)
 
-        with self.tracer.start_as_current_span(
-            name=handler.__name__,
-            kind=trace.SpanKind.INTERNAL,
-            attributes=attributes,
-        ) as span:
-            await handler()
-            span.set_status(trace.StatusCode.OK)
+        span = cast(
+            Span,
+            self.tracer.start_span(
+                name=handler.__name__,
+                kind=trace.SpanKind.INTERNAL,
+                attributes=attributes,
+            ),
+        )
+        with trace.use_span(span, end_on_exit=False):
+            try:
+                if self.active_tasks_counter and span.attributes:
+                    self.active_tasks_counter.add(
+                        1,
+                        {k: span.attributes[k] for k in ("code.function",) if k in span.attributes},
+                    )
+
+                await handler()
+                span.set_status(trace.StatusCode.OK)
+            except Exception as exc:
+                span.set_status(trace.StatusCode.ERROR)
+                span.record_exception(exc, escaped=True)
+                raise
+            finally:
+                span.end()
+
+                if self.duration_histogram and span.start_time and span.end_time and span.attributes:
+                    duration_ns = span.end_time - span.start_time
+                    duration = duration_ns / 1e9
+                    self.duration_histogram.record(
+                        duration,
+                        {
+                            **{k: span.attributes[k] for k in ("code.function",) if k in span.attributes},
+                            "function.success": span.status.is_ok,
+                        },
+                    )
+
+                if self.active_tasks_counter and span.attributes:
+                    self.active_tasks_counter.add(
+                        -1,
+                        {k: span.attributes[k] for k in ("code.function",) if k in span.attributes},
+                    )
