@@ -28,7 +28,9 @@ def add_trace_structlog_processor(logger: WrappedLogger, method_name: str, event
     if ctx.trace_id is not None:
         event_dict["trace_id"] = hex(ctx.trace_id)
 
-    event_dict["trace_flags"] = ctx.trace_flags
+    parent = getattr(span, "parent", None)
+    if parent and parent.span_id is not None:
+        event_dict["parent_span_id"] = hex(parent.span_id)
 
     return event_dict
 
