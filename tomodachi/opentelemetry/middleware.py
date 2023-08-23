@@ -107,7 +107,7 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
             route = None
 
         if not route:
-            pattern = request.match_info.route.get_info().get("pattern", None)
+            pattern = request.match_info.route.get_info().get("pattern")
             if not pattern:
                 return None
             simplified = re.compile(r"^\^?(.+?)\$?$").match(pattern.pattern)
@@ -115,20 +115,7 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
 
         return route
 
-    async def __call__(
-        self,
-        request: web.Request,
-        handler: Callable[..., Awaitable[web.Response]],
-    ) -> web.Response:
-        exclude_instrumentation: bool = any(
-            [
-                getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False,
-                self.excluded_urls and self.excluded_urls.url_disabled(request.path),
-            ]
-        )
-        if exclude_instrumentation or not self.tracer:
-            return await handler(request)
-
+    def get_attributes(self, request: web.Request) -> Dict[str, AttributeValue]:
         protocol_version = ".".join(map(str, request.version))
         route: Optional[str] = self.get_route(request)
 
@@ -146,13 +133,8 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
                 if sockname:
                     server_ip, server_port = cast(Tuple[str, int], sockname)
 
-        host = request.headers.get(hdrs.HOST, None)
+        host = request.headers.get(hdrs.HOST)
         port = int(host.split(":")[1]) if host and ":" in host else 80
-
-        if route:
-            span_name = f"{request.method} {route}"
-        else:
-            span_name = f"{request.method} {request.path}"
 
         attributes: Dict[str, AttributeValue] = {}
 
@@ -162,12 +144,8 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
         if route:
             attributes["http.route"] = route
 
-        if host is not None:
-            attributes["server.address"] = host.split(":")[0]
-            attributes["server.port"] = port
-        else:
-            attributes["server.address"] = server_ip or "127.0.0.1"
-            attributes["server.port"] = server_port or port
+        attributes["server.address"] = host.split(":")[0] if host is not None else (server_ip or "127.0.0.1")
+        attributes["server.port"] = port if host is not None else (server_port or port)
 
         attributes["url.scheme"] = request.scheme
         attributes["url.path"] = request.path
@@ -175,7 +153,7 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
         if request.query_string:
             attributes["url.query"] = request.query_string
 
-        user_agent = request.headers.get(hdrs.USER_AGENT, None)
+        user_agent = request.headers.get(hdrs.USER_AGENT)
         if user_agent:
             attributes["user_agent.original"] = user_agent
 
@@ -191,13 +169,31 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
         attributes["server.socket.port"] = server_port or port
         attributes["network.protocol.version"] = protocol_version
 
+        return attributes
+
+    async def __call__(
+        self,
+        request: web.Request,
+        handler: Callable[..., Awaitable[web.Response]],
+    ) -> web.Response:
+        exclude_instrumentation: bool = any(
+            [
+                getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False,
+                self.excluded_urls and self.excluded_urls.url_disabled(request.path),
+            ]
+        )
+        if exclude_instrumentation or not self.tracer:
+            return await handler(request)
+
+        attributes = self.get_attributes(request)
+        route = cast(Optional[str], attributes.get("http.route"))
         ctx = TraceContextTextMapPropagator().extract(carrier=request.headers)
         response: Optional[web.Response] = None
 
         span = cast(
             Span,
             self.tracer.start_span(
-                name=span_name,
+                name=f"{request.method} {route}" if route else request.method,
                 kind=trace.SpanKind.SERVER,
                 context=ctx,
                 attributes=attributes,
@@ -224,7 +220,16 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
                     if response.status == 499:
                         replaced_status_code = getattr(response, "_replaced_status_code", None)
                         if replaced_status_code:
-                            span.set_attribute("http.response.replaced_status_code", replaced_status_code)
+                            span.set_status(
+                                trace.StatusCode.ERROR,
+                                "Client closed the connection while the server was still processing the request.",
+                            )
+                            span.set_attribute("http.response.status_code", replaced_status_code)
+                        else:
+                            span.set_status(
+                                trace.StatusCode.ERROR,
+                                "Client closed the connection before the server could start processing the request.",
+                            )
                 else:
                     span.set_attribute("http.response.status_code", 500)
                     span.set_status(trace.StatusCode.ERROR)
@@ -274,7 +279,7 @@ class OpenTelemetryAWSSQSMiddleware(OpenTelemetryTomodachiMiddleware):
 
     async def __call__(
         self,
-        handler: Callable[..., Awaitable[web.Response]],
+        handler: Callable[..., Awaitable[None]],
         *,
         topic: str,
         queue_url: str,
@@ -349,7 +354,7 @@ class OpenTelemetryAMQPMiddleware(OpenTelemetryTomodachiMiddleware):
 
     async def __call__(
         self,
-        handler: Callable[..., Awaitable[web.Response]],
+        handler: Callable[..., Awaitable[None]],
         *,
         routing_key: str,
         exchange_name: str,
@@ -415,7 +420,7 @@ class OpenTelemetryScheduleFunctionMiddleware(OpenTelemetryTomodachiMiddleware):
 
     async def __call__(
         self,
-        handler: Callable[..., Awaitable[web.Response]],
+        handler: Callable[..., Awaitable[None]],
         *,
         invocation_time: str = "",
         interval: str = "",
