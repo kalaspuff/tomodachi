@@ -1026,6 +1026,8 @@ class HttpTransport(Invoker):
                         response = web.Response(status=499, headers={})
                         response._eof_sent = True
                         setattr(response, "_replaced_status_code", replaced_status_code)
+                        if replaced_response_content_length is not None:
+                            setattr(response, "_replaced_response_content_length", replaced_response_content_length)
 
                     request_version = (
                         (request.version.major, request.version.minor)
