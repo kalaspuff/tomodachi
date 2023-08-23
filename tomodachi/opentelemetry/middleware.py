@@ -1,9 +1,12 @@
 import re
-from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, cast
+from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, Type, TypeVar, cast
 
 from aiohttp import hdrs, web
 
 from opentelemetry import metrics, trace
+from opentelemetry.metrics._internal.instrument import Instrument
+from opentelemetry.sdk.metrics import Meter
+from opentelemetry.sdk.metrics._internal.instrument import _Histogram, _UpDownCounter
 from opentelemetry.sdk.trace import Span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.http import ExcludeList
@@ -11,8 +14,14 @@ from opentelemetry.util.types import AttributeValue
 from tomodachi.transport.aws_sns_sqs import MessageAttributesType
 from tomodachi.transport.http import get_forwarded_remote_ip
 
+IT = TypeVar("IT", bound=Instrument)
+
 
 class OpenTelemetryTomodachiMiddleware:
+    service: Any
+    tracer: Optional[trace.Tracer]
+    meter: Optional[metrics.Meter]
+
     duration_instrument_args: Tuple[str, str, str]
     duration_instrument_attributes: Tuple[str, ...]
     active_tasks_instrument_args: Tuple[str, str, str]
@@ -29,8 +38,29 @@ class OpenTelemetryTomodachiMiddleware:
         self.meter = meter
 
         if meter:
-            self._duration_histogram = meter.create_histogram(*self.duration_instrument_args)
-            self._active_tasks_counter = meter.create_up_down_counter(*self.active_tasks_instrument_args)
+            self._duration_histogram = self._get_instrument(_Histogram, *self.duration_instrument_args)
+            self._active_tasks_counter = self._get_instrument(_UpDownCounter, *self.active_tasks_instrument_args)
+
+    def _get_instrument(self, type_: Type[IT], name: str, unit: str, description: str) -> Optional[IT]:
+        meter = cast(Meter, self.meter)
+        (is_registered, instrument_id) = meter._is_instrument_registered(name, type_, unit, description)
+
+        if not is_registered:
+            with meter._instrument_ids_lock:
+                try:
+                    meter._instrument_ids.remove(instrument_id)
+                except KeyError:
+                    pass
+
+            if type_ is _Histogram:
+                return cast(IT, meter.create_histogram(name, unit, description))
+            elif type_ is _UpDownCounter:
+                return cast(IT, meter.create_up_down_counter(name, unit, description))
+            else:
+                raise Exception("Unsupported instrument type")
+
+        with meter._instrument_id_instrument_lock:
+            return cast(IT, meter._instrument_id_instrument[instrument_id])
 
     def increase_active_tasks(
         self, span: Span, extra_attributes: Optional[Dict[str, AttributeValue]] = None, *, value: int = 1
