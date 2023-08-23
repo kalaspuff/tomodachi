@@ -111,6 +111,18 @@ tomodachi = "tomodachi.cli:cli_entrypoint"
 [tool.poetry.plugins."opentelemetry_instrumentor"]
 tomodachi = "tomodachi.opentelemetry:TomodachiInstrumentor"
 
+[tool.poetry.plugins."opentelemetry_meter_provider"]
+tomodachi_prometheus = "tomodachi.opentelemetry.prometheus_provider:PrometheusMeterProvider"
+
+[tool.poetry.plugins."opentelemetry_distro"]
+tomodachi = "tomodachi.opentelemetry.distro:OpenTelemetryDistro"
+
+[tool.poetry.plugins."opentelemetry_configurator"]
+tomodachi = "tomodachi.opentelemetry.distro:OpenTelemetryConfigurator"
+
+[tool.poetry.plugins."opentelemetry_environment_variables"]
+tomodachi = "tomodachi.opentelemetry.environment_variables"
+
 [build-system]
 requires = ["poetry_core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

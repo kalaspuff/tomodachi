@@ -8,6 +8,7 @@ import structlog
 
 import tomodachi
 from opentelemetry._logs import NoOpLoggerProvider, get_logger_provider, set_logger_provider
+from opentelemetry.environment_variables import OTEL_PYTHON_METER_PROVIDER
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
 from opentelemetry.metrics import NoOpMeterProvider, get_meter, get_meter_provider, set_meter_provider
 from opentelemetry.metrics._internal import _ProxyMeterProvider
@@ -34,6 +35,8 @@ from opentelemetry.trace import (
     set_tracer_provider,
 )
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.util._importlib_metadata import entry_points
+from opentelemetry.util._providers import _load_provider
 from opentelemetry.util.http import ExcludeList, get_excluded_urls, parse_excluded_urls
 from opentelemetry.util.types import AttributeValue
 from tomodachi.__version__ import __version__ as tomodachi_version
@@ -548,6 +551,19 @@ class TomodachiInstrumentor(BaseInstrumentor):
         _set_meter_provider: bool = False
         if not meter_provider:
             meter_provider = cast(MeterProvider, get_meter_provider())
+            meter_provider_value = environ.get("OTEL_PYTHON_METER_PROVIDER", environ.get("OTEL_METER_PROVIDER", ""))
+            if meter_provider_value:
+                environ[OTEL_PYTHON_METER_PROVIDER] = meter_provider_value
+                meter_provider_entry_points = entry_points(
+                    group="opentelemetry_meter_provider",
+                    name=meter_provider_value,
+                )
+                if meter_provider_entry_points:
+                    try:
+                        meter_provider = _load_provider(OTEL_PYTHON_METER_PROVIDER, "meter_provider")
+                    except Exception:
+                        pass
+
             if isinstance(meter_provider, (NoOpMeterProvider, _ProxyMeterProvider)):
                 resource = Resource.create().merge(OTELResourceDetector().detect())
                 meter_provider = MeterProvider(resource=resource)
