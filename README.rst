@@ -1233,7 +1233,7 @@ Manual instrumentation
 
 Auto instrumentation using ``opentelemetry-instrument`` is the recommended way of instrumenting services, as it will automatically instrument the service with the appropriate exporters and configuration. However, instrumentation can also be enabled by importing the ``TomodachiInstrumentor`` instrumentation class and calling its' ``instrument`` function before defining the service class.
 
-.. code-block:: python
+.. code:: python
 
     import tomodachi
     from tomodachi.opentelemetry import TomodachiInstrumentor
@@ -1263,6 +1263,27 @@ Service name dynamically set if missing ``OTEL_SERVICE_NAME`` value
 If the ``OTEL_SERVICE_NAME`` environment variable value (or ``--service_name`` argument to ``opentelemetry-instrument``) is not set, the resource' ``service.name`` will instead be set to the ``name`` attribute of the service class. In case the service class uses the default generic names (``service`` or ``app``), the resource' ``service.name`` will instead be set to the default as specified in https://github.com/open-telemetry/semantic-conventions/tree/main/docs/resource#service.
 
 Note that instrumentation for logging will currently primarily use the ``OTEL_SERVICE_NAME``, and if it's missing then use the name from the *first* instrumented service class.
+
+Exclude lists
+-------------
+
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_TOMODACHI_EXCLUDED_URLS`` (or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the URLs.
+
+Regexes from the ``OTEL_PYTHON_AIOHTTP_EXCLUDED_URLS`` environment variable will also be excluded.
+
+For example,
+
+.. code:: bash
+
+    export OTEL_PYTHON_TOMODACHI_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
+You can also pass comma delimited regexes directly to the ``instrument`` method:
+
+.. code:: python
+
+    TomodachiInstrumentor().instrument(excluded_urls="client/.*/info,healthcheck")
 
 ----
 
