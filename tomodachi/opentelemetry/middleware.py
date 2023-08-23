@@ -12,8 +12,83 @@ from tomodachi.transport.aws_sns_sqs import MessageAttributesType
 from tomodachi.transport.http import get_forwarded_remote_ip
 
 
+class OpenTelemetryTomodachiMiddleware:
+    duration_instrument_args: Tuple[str, str, str]
+    duration_instrument_attributes: Tuple[str, ...]
+    active_tasks_instrument_args: Tuple[str, str, str]
+    active_tasks_instrument_attributes: Tuple[str, ...]
+
+    _duration_histogram: Optional[metrics.Histogram] = None
+    _active_tasks_counter: Optional[metrics.UpDownCounter] = None
+
+    def __init__(
+        self, service: Any, tracer: Optional[trace.Tracer] = None, meter: Optional[metrics.Meter] = None, **kwargs: Any
+    ) -> None:
+        self.service = service
+        self.tracer = tracer
+        self.meter = meter
+
+        if meter:
+            self._duration_histogram = meter.create_histogram(*self.duration_instrument_args)
+            self._active_tasks_counter = meter.create_up_down_counter(*self.active_tasks_instrument_args)
+
+    def increase_active_tasks(
+        self, span: Span, extra_attributes: Optional[Dict[str, AttributeValue]] = None, *, value: int = 1
+    ) -> None:
+        if self._active_tasks_counter and span.attributes:
+            attributes = span.attributes
+            attributes_ = {k: attributes[k] for k in self.active_tasks_instrument_attributes if k in attributes}
+            if extra_attributes:
+                attributes_.update(extra_attributes)
+            self._active_tasks_counter.add(value, attributes_)
+
+    def decrease_active_tasks(
+        self, span: Span, extra_attributes: Optional[Dict[str, AttributeValue]] = None, *, value: int = -1
+    ) -> None:
+        self.increase_active_tasks(span, extra_attributes, value=value)
+
+    def record_duration(self, span: Span, extra_attributes: Optional[Dict[str, AttributeValue]] = None) -> None:
+        if self._duration_histogram and span.start_time and span.end_time and span.attributes:
+            attributes = span.attributes
+            attributes_ = {k: attributes[k] for k in self.duration_instrument_attributes if k in attributes}
+            if extra_attributes:
+                attributes_.update(extra_attributes)
+
+            duration_ns = span.end_time - span.start_time
+            duration = duration_ns / 1e9
+
+            self._duration_histogram.record(duration, attributes_)
+
+
 @web.middleware
-class OpenTelemetryAioHTTPMiddleware:
+class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
+    duration_instrument_args = (
+        "http.server.duration",
+        "s",
+        "Measures the duration of inbound HTTP requests.",
+    )
+    duration_instrument_attributes = (
+        "http.route",
+        "http.request.method",
+        "http.response.status_code",
+        "network.protocol.name",
+        "network.protocol.version",
+        "server.address",
+        "server.port",
+        "url.scheme",
+    )
+    active_tasks_instrument_args = (
+        "http.server.active_requests",
+        "{request}",
+        "Measures the number of concurrent HTTP requests that are currently in-flight.",
+    )
+    active_tasks_instrument_attributes = (
+        "http.request.method",
+        "server.address",
+        "server.port",
+        "url.scheme",
+    )
+
     def __init__(
         self,
         service: Any,
@@ -21,30 +96,8 @@ class OpenTelemetryAioHTTPMiddleware:
         meter: Optional[metrics.Meter] = None,
         excluded_urls: Optional[ExcludeList] = None,
     ) -> None:
-        self.service = service
-        self.tracer = tracer
-        self.meter = meter
+        super().__init__(service, tracer, meter)
         self.excluded_urls = excluded_urls
-
-        self.duration_histogram: Optional[metrics.Histogram] = (
-            meter.create_histogram(
-                "http.server.duration",
-                "s",
-                "Measures the duration of inbound HTTP requests.",
-            )
-            if meter
-            else None
-        )
-
-        self.active_requests_counter: Optional[metrics.UpDownCounter] = (
-            meter.create_up_down_counter(
-                "http.server.active_requests",
-                "{request}",
-                "Measures the number of concurrent HTTP requests that are currently in-flight.",
-            )
-            if meter
-            else None
-        )
 
     def get_route(self, request: web.Request) -> Optional[str]:
         route: Optional[str]
@@ -152,21 +205,7 @@ class OpenTelemetryAioHTTPMiddleware:
         )
         with trace.use_span(span, end_on_exit=False):
             try:
-                if self.active_requests_counter and span.attributes:
-                    self.active_requests_counter.add(
-                        1,
-                        {
-                            k: span.attributes[k]
-                            for k in (
-                                "http.request.method",
-                                "server.address",
-                                "server.port",
-                                "url.scheme",
-                            )
-                            if k in span.attributes
-                        },
-                    )
-
+                self.increase_active_tasks(span)
                 response = await handler(request)
             except web.HTTPException as exc:
                 response = exc
@@ -192,42 +231,8 @@ class OpenTelemetryAioHTTPMiddleware:
                     response = None
 
                 span.end()
-
-                if self.duration_histogram and span.start_time and span.end_time and span.attributes:
-                    duration_ns = span.end_time - span.start_time
-                    duration = duration_ns / 1e9
-                    self.duration_histogram.record(
-                        duration,
-                        {
-                            k: span.attributes[k]
-                            for k in (
-                                "http.route",
-                                "http.request.method",
-                                "http.response.status_code",
-                                "network.protocol.name",
-                                "network.protocol.version",
-                                "server.address",
-                                "server.port",
-                                "url.scheme",
-                            )
-                            if k in span.attributes
-                        },
-                    )
-
-                if self.active_requests_counter and span.attributes:
-                    self.active_requests_counter.add(
-                        -1,
-                        {
-                            k: span.attributes[k]
-                            for k in (
-                                "http.request.method",
-                                "server.address",
-                                "server.port",
-                                "url.scheme",
-                            )
-                            if k in span.attributes
-                        },
-                    )
+                self.record_duration(span)
+                self.decrease_active_tasks(span)
 
         if response is None:
             response = web.HTTPInternalServerError()
@@ -241,36 +246,31 @@ class OpenTelemetryAioHTTPMiddleware:
         return response
 
 
-class OpenTelemetryAWSSQSMiddleware:
-    def __init__(
-        self,
-        service: Any,
-        tracer: Optional[trace.Tracer] = None,
-        meter: Optional[metrics.Meter] = None,
-    ) -> None:
-        self.service = service
-        self.tracer = tracer
-        self.meter = meter
-
-        self.duration_histogram: Optional[metrics.Histogram] = (
-            meter.create_histogram(
-                "messaging.amazonsqs.duration",
-                "s",
-                "Measures the duration of processing a message by the handler function.",
-            )
-            if meter
-            else None
-        )
-
-        self.active_tasks_counter: Optional[metrics.UpDownCounter] = (
-            meter.create_up_down_counter(
-                "messaging.amazonsqs.active_tasks",
-                "{message}",
-                "Measures the number of concurrent SQS messages that are currently being processed.",
-            )
-            if meter
-            else None
-        )
+class OpenTelemetryAWSSQSMiddleware(OpenTelemetryTomodachiMiddleware):
+    duration_instrument_args = (
+        "messaging.amazonsqs.duration",
+        "s",
+        "Measures the duration of processing a message by the handler function.",
+    )
+    duration_instrument_attributes = (
+        "messaging.source.name",
+        "messaging.source.kind",
+        "messaging.destination.name",
+        "messaging.destination.kind",
+        "code.function",
+    )
+    active_tasks_instrument_args = (
+        "messaging.amazonsqs.active_tasks",
+        "{message}",
+        "Measures the number of concurrent SQS messages that are currently being processed.",
+    )
+    active_tasks_instrument_attributes = (
+        "messaging.source.name",
+        "messaging.source.kind",
+        "messaging.destination.name",
+        "messaging.destination.kind",
+        "code.function",
+    )
 
     async def __call__(
         self,
@@ -294,16 +294,10 @@ class OpenTelemetryAWSSQSMiddleware:
             "messaging.source.name": queue_name,
             "messaging.source.kind": "queue",
             "messaging.message.id": sns_message_id or sqs_message_id,
+            "messaging.destination.name": topic if topic else queue_name,
+            "messaging.destination.kind": "topic" if topic else "queue",
+            "code.function": handler.__name__,
         }
-
-        if topic:
-            attributes["messaging.destination.name"] = topic
-            attributes["messaging.destination.kind"] = "topic"
-        else:
-            attributes["messaging.destination.name"] = queue_name
-            attributes["messaging.destination.kind"] = "queue"
-
-        attributes["code.function"] = handler.__name__
 
         ctx = TraceContextTextMapPropagator().extract(carrier=message_attributes)
 
@@ -318,22 +312,7 @@ class OpenTelemetryAWSSQSMiddleware:
         )
         with trace.use_span(span, end_on_exit=False):
             try:
-                if self.active_tasks_counter and span.attributes:
-                    self.active_tasks_counter.add(
-                        1,
-                        {
-                            k: span.attributes[k]
-                            for k in (
-                                "messaging.source.name",
-                                "messaging.source.kind",
-                                "messaging.destination.name",
-                                "messaging.destination.kind",
-                                "code.function",
-                            )
-                            if k in span.attributes
-                        },
-                    )
-
+                self.increase_active_tasks(span)
                 await handler()
                 span.set_status(trace.StatusCode.OK)
             except Exception as exc:
@@ -342,75 +321,31 @@ class OpenTelemetryAWSSQSMiddleware:
                 raise
             finally:
                 span.end()
-
-                if self.duration_histogram and span.start_time and span.end_time and span.attributes:
-                    duration_ns = span.end_time - span.start_time
-                    duration = duration_ns / 1e9
-                    self.duration_histogram.record(
-                        duration,
-                        {
-                            **{
-                                k: span.attributes[k]
-                                for k in (
-                                    "messaging.source.name",
-                                    "messaging.source.kind",
-                                    "messaging.destination.name",
-                                    "messaging.destination.kind",
-                                    "code.function",
-                                )
-                                if k in span.attributes
-                            },
-                            "function.success": span.status.is_ok,
-                        },
-                    )
-
-                if self.active_tasks_counter and span.attributes:
-                    self.active_tasks_counter.add(
-                        -1,
-                        {
-                            k: span.attributes[k]
-                            for k in (
-                                "messaging.source.name",
-                                "messaging.source.kind",
-                                "messaging.destination.name",
-                                "messaging.destination.kind",
-                                "code.function",
-                            )
-                            if k in span.attributes
-                        },
-                    )
+                self.record_duration(span, {"function.success": span.status.is_ok})
+                self.decrease_active_tasks(span)
 
 
-class OpenTelemetryAMQPMiddleware:
-    def __init__(
-        self,
-        service: Any,
-        tracer: Optional[trace.Tracer] = None,
-        meter: Optional[metrics.Meter] = None,
-    ) -> None:
-        self.service = service
-        self.tracer = tracer
-        self.meter = meter
-
-        self.duration_histogram: Optional[metrics.Histogram] = (
-            meter.create_histogram(
-                "messaging.rabbitmq.duration",
-                "s",
-                "Measures the duration of processing a message by the handler function.",
-            )
-            if meter
-            else None
-        )
-
-        self.active_tasks_counter: Optional[metrics.UpDownCounter] = (
-            meter.create_up_down_counter(
-                "messaging.rabbitmq.active_tasks",
-                "{message}",
-                "Measures the number of concurrent AMQP messages that are currently being processed.",
-            )
-            if meter
-            else None
-        )
+class OpenTelemetryAMQPMiddleware(OpenTelemetryTomodachiMiddleware):
+    duration_instrument_args = (
+        "messaging.rabbitmq.duration",
+        "s",
+        "Measures the duration of processing a message by the handler function.",
+    )
+    duration_instrument_attributes = (
+        "messaging.destination.name",
+        "messaging.rabbitmq.destination.routing_key",
+        "code.function",
+    )
+    active_tasks_instrument_args = (
+        "messaging.rabbitmq.active_tasks",
+        "{message}",
+        "Measures the number of concurrent AMQP messages that are currently being processed.",
+    )
+    active_tasks_instrument_attributes = (
+        "messaging.destination.name",
+        "messaging.rabbitmq.destination.routing_key",
+        "code.function",
+    )
 
     async def __call__(
         self,
@@ -432,9 +367,8 @@ class OpenTelemetryAMQPMiddleware:
             "messaging.operation": "process",
             "messaging.destination.name": exchange_name,
             "messaging.rabbitmq.destination.routing_key": routing_key,
+            "code.function": handler.__name__,
         }
-
-        attributes["code.function"] = handler.__name__
 
         headers = getattr(properties, "headers", {})
         if not isinstance(headers, dict):
@@ -452,20 +386,7 @@ class OpenTelemetryAMQPMiddleware:
         )
         with trace.use_span(span, end_on_exit=False):
             try:
-                if self.active_tasks_counter and span.attributes:
-                    self.active_tasks_counter.add(
-                        1,
-                        {
-                            k: span.attributes[k]
-                            for k in (
-                                "messaging.destination.name",
-                                "messaging.rabbitmq.destination.routing_key",
-                                "code.function",
-                            )
-                            if k in span.attributes
-                        },
-                    )
-
+                self.increase_active_tasks(span)
                 await handler()
                 span.set_status(trace.StatusCode.OK)
             except Exception as exc:
@@ -474,71 +395,23 @@ class OpenTelemetryAMQPMiddleware:
                 raise
             finally:
                 span.end()
-
-                if self.duration_histogram and span.start_time and span.end_time and span.attributes:
-                    duration_ns = span.end_time - span.start_time
-                    duration = duration_ns / 1e9
-                    self.duration_histogram.record(
-                        duration,
-                        {
-                            **{
-                                k: span.attributes[k]
-                                for k in (
-                                    "messaging.destination.name",
-                                    "messaging.rabbitmq.destination.routing_key",
-                                    "code.function",
-                                )
-                                if k in span.attributes
-                            },
-                            "function.success": span.status.is_ok,
-                        },
-                    )
-
-                if self.active_tasks_counter and span.attributes:
-                    self.active_tasks_counter.add(
-                        -1,
-                        {
-                            k: span.attributes[k]
-                            for k in (
-                                "messaging.destination.name",
-                                "messaging.rabbitmq.destination.routing_key",
-                                "code.function",
-                            )
-                            if k in span.attributes
-                        },
-                    )
+                self.record_duration(span, {"function.success": span.status.is_ok})
+                self.decrease_active_tasks(span)
 
 
-class OpenTelemetryScheduleFunctionMiddleware:
-    def __init__(
-        self,
-        service: Any,
-        tracer: Optional[trace.Tracer] = None,
-        meter: Optional[metrics.Meter] = None,
-    ) -> None:
-        self.service = service
-        self.tracer = tracer
-        self.meter = meter
-
-        self.duration_histogram: Optional[metrics.Histogram] = (
-            meter.create_histogram(
-                "function.duration",
-                "s",
-                "Measures the duration of running the scheduled handler function.",
-            )
-            if meter
-            else None
-        )
-
-        self.active_tasks_counter: Optional[metrics.UpDownCounter] = (
-            meter.create_up_down_counter(
-                "function.active_tasks",
-                "{task}",
-                "Measures the number of concurrent invocations of the scheduled handler that is currently running.",
-            )
-            if meter
-            else None
-        )
+class OpenTelemetryScheduleFunctionMiddleware(OpenTelemetryTomodachiMiddleware):
+    duration_instrument_args = (
+        "function.duration",
+        "s",
+        "Measures the duration of running the scheduled handler function.",
+    )
+    duration_instrument_attributes = ("code.function",)
+    active_tasks_instrument_args = (
+        "function.active_tasks",
+        "{task}",
+        "Measures the number of concurrent invocations of the scheduled handler that is currently running.",
+    )
+    active_tasks_instrument_attributes = ("code.function",)
 
     async def __call__(
         self,
@@ -570,12 +443,7 @@ class OpenTelemetryScheduleFunctionMiddleware:
         )
         with trace.use_span(span, end_on_exit=False):
             try:
-                if self.active_tasks_counter and span.attributes:
-                    self.active_tasks_counter.add(
-                        1,
-                        {k: span.attributes[k] for k in ("code.function",) if k in span.attributes},
-                    )
-
+                self.increase_active_tasks(span)
                 await handler()
                 span.set_status(trace.StatusCode.OK)
             except Exception as exc:
@@ -584,20 +452,5 @@ class OpenTelemetryScheduleFunctionMiddleware:
                 raise
             finally:
                 span.end()
-
-                if self.duration_histogram and span.start_time and span.end_time and span.attributes:
-                    duration_ns = span.end_time - span.start_time
-                    duration = duration_ns / 1e9
-                    self.duration_histogram.record(
-                        duration,
-                        {
-                            **{k: span.attributes[k] for k in ("code.function",) if k in span.attributes},
-                            "function.success": span.status.is_ok,
-                        },
-                    )
-
-                if self.active_tasks_counter and span.attributes:
-                    self.active_tasks_counter.add(
-                        -1,
-                        {k: span.attributes[k] for k in ("code.function",) if k in span.attributes},
-                    )
+                self.record_duration(span, {"function.success": span.status.is_ok})
+                self.decrease_active_tasks(span)
