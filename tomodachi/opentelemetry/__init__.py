@@ -27,7 +27,7 @@ To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHO
 (or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
 URLs.
 
-Also values from the ``OTEL_PYTHON_AIOHTTP_EXCLUDED_URLS`` environment variable will be excluded.
+Regexes from the ``OTEL_PYTHON_AIOHTTP_EXCLUDED_URLS`` environment variable will also be excluded.
 
 For example,
 
