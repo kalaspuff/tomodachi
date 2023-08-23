@@ -108,7 +108,7 @@ class Scheduler(Invoker):
                         await routine
 
             except (Exception, asyncio.CancelledError) as e:
-                limit_exception_traceback(e, ("tomodachi.transport.schedule",))
+                limit_exception_traceback(e, ("tomodachi.transport.schedule", "tomodachi.helpers.middleware"))
                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
             except BaseException as e:
                 limit_exception_traceback(e, ("tomodachi.transport.schedule",))

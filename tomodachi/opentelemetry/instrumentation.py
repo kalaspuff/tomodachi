@@ -24,6 +24,7 @@ from opentelemetry.sdk.resources import OTELResourceDetector, Resource
 from opentelemetry.sdk.trace import Tracer, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import (
+    NoOpTracer,
     NoOpTracerProvider,
     ProxyTracerProvider,
     SpanKind,
@@ -118,9 +119,13 @@ class TomodachiInstrumentor(BaseInstrumentor):
                         meter_provider._sdk_config.resource = resource
 
         tracer = get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
-        setattr(service, "_opentelemetry_tracer", tracer)
-
         meter = get_meter("tomodachi.opentelemetry", tomodachi_version, meter_provider)
+
+        if meter and not tracer:
+            # collect metrics even if tracing is disabled
+            tracer = NoOpTracer()
+
+        setattr(service, "_opentelemetry_tracer", tracer)
         setattr(service, "_opentelemetry_meter", meter)
 
         aiohttp_pre_middleware = getattr(service, "_aiohttp_pre_middleware", None)
@@ -316,7 +321,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             *args: Any,
             **kwargs: Any,
         ) -> str:
-            tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
+            tracer = cast(Tracer, context.get("_opentelemetry_tracer")) or None
             if not tracer:
                 return await aws_sns_sqs_publish_message(
                     topic_arn, message, message_attributes, context, *args, **kwargs
@@ -377,7 +382,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             *args: Any,
             **kwargs: Any,
         ) -> None:
-            tracer = cast(Tracer, context.get("_opentelemetry_tracer"))
+            tracer = cast(Tracer, context.get("_opentelemetry_tracer")) or None
             if not tracer:
                 await amqp_publish_message(
                     routing_key,

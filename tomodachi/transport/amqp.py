@@ -432,7 +432,10 @@ class AmqpTransport(Invoker):
                     )
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
-                limit_exception_traceback(e, ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"))
+                limit_exception_traceback(
+                    e,
+                    ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"),
+                )
                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(

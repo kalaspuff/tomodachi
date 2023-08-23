@@ -1,4 +1,5 @@
 import re
+from time import time_ns
 from traceback import format_exception
 from typing import Any, Awaitable, Callable, Dict, Mapping, NamedTuple, Optional, Tuple, Type, TypeVar, cast
 
@@ -12,6 +13,7 @@ from opentelemetry.sdk.trace import Span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.http import ExcludeList
 from opentelemetry.util.types import AttributeValue
+from tomodachi._exception import limit_exception_traceback
 from tomodachi.logging import get_logger
 from tomodachi.transport.aws_sns_sqs import MessageAttributesType
 from tomodachi.transport.http import get_forwarded_remote_ip
@@ -257,6 +259,8 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
         if exclude_instrumentation or not self.tracer:
             return await handler(request)
 
+        start_time = time_ns()
+
         attributes = self.get_attributes(request)
         route = cast(Optional[str], attributes.get("http.route"))
         ctx = TraceContextTextMapPropagator().extract(carrier=request.headers)
@@ -269,24 +273,26 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
                 kind=trace.SpanKind.SERVER,
                 context=ctx,
                 attributes=attributes,
+                start_time=start_time,
             ),
         )
         with trace.use_span(span, end_on_exit=False):
             try:
-                self.increase_active_tasks(span.attributes)
+                self.increase_active_tasks(attributes)
                 response = await handler(request)
             except web.HTTPException as exc:
                 response = exc
                 if exc.status < 100 or exc.status >= 500:
                     raise
             finally:
+                response_status_code: int
                 if (
                     response is not None
                     and isinstance(getattr(response, "status", None), int)
                     and response.status >= 100
                     and response.status <= 599
                 ):
-                    span.set_attribute("http.response.status_code", response.status)
+                    response_status_code = response.status
                     if response.status >= 500:
                         span.set_status(trace.StatusCode.ERROR)
                     if response.status == 499:
@@ -296,7 +302,7 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
                                 trace.StatusCode.ERROR,
                                 "Client closed the connection while the server was still processing the request.",
                             )
-                            span.set_attribute("http.response.status_code", replaced_status_code)
+                            response_status_code = replaced_status_code
                         else:
                             span.set_status(
                                 trace.StatusCode.ERROR,
@@ -315,13 +321,18 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
                                 },
                             )
                 else:
-                    span.set_attribute("http.response.status_code", 500)
+                    response_status_code = 500
                     span.set_status(trace.StatusCode.ERROR)
                     response = None
 
+                span.set_attribute("http.response.status_code", response_status_code)
+
                 span.end()
-                self.record_duration(span.start_time, span.end_time, span.attributes)
-                self.decrease_active_tasks(span.attributes)
+                end_time = span.end_time if span.is_recording() else time_ns()
+                self.record_duration(
+                    start_time, end_time, attributes, {"http.response.status_code": response_status_code}
+                )
+                self.decrease_active_tasks(attributes)
 
         if response is None:
             response = web.HTTPInternalServerError()
@@ -374,6 +385,8 @@ class OpenTelemetryAWSSQSMiddleware(OpenTelemetryTomodachiMiddleware):
         if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False or not self.tracer:
             return await handler()
 
+        start_time = time_ns()
+
         queue_name = queue_url.rsplit("/")[-1]
         attributes: Dict[str, AttributeValue] = {
             "messaging.system": "AmazonSQS",
@@ -395,23 +408,26 @@ class OpenTelemetryAWSSQSMiddleware(OpenTelemetryTomodachiMiddleware):
                 kind=trace.SpanKind.CONSUMER,
                 context=ctx,
                 attributes=attributes,
+                start_time=start_time,
             ),
         )
         with trace.use_span(span, end_on_exit=False):
+            function_success: bool = True
             try:
-                self.increase_active_tasks(span.attributes)
+                self.increase_active_tasks(attributes)
                 await handler()
                 span.set_status(trace.StatusCode.OK)
             except Exception as exc:
+                function_success = False
                 span.set_status(trace.StatusCode.ERROR)
+                limit_exception_traceback(exc, ("tomodachi.transport.aws_sns_sqs", "tomodachi.helpers.middleware"))
                 span.record_exception(exc, escaped=True)
                 raise
             finally:
                 span.end()
-                self.record_duration(
-                    span.start_time, span.end_time, span.attributes, {"function.success": span.status.is_ok}
-                )
-                self.decrease_active_tasks(span.attributes)
+                end_time = span.end_time if span.is_recording() else time_ns()
+                self.record_duration(start_time, end_time, attributes, {"function.success": function_success})
+                self.decrease_active_tasks(attributes)
 
 
 class OpenTelemetryAMQPMiddleware(OpenTelemetryTomodachiMiddleware):
@@ -447,6 +463,8 @@ class OpenTelemetryAMQPMiddleware(OpenTelemetryTomodachiMiddleware):
         if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False or not self.tracer:
             return await handler()
 
+        start_time = time_ns()
+
         if not exchange_name:
             exchange_name = "amq.topic"
 
@@ -470,23 +488,26 @@ class OpenTelemetryAMQPMiddleware(OpenTelemetryTomodachiMiddleware):
                 kind=trace.SpanKind.CONSUMER,
                 context=ctx,
                 attributes=attributes,
+                start_time=start_time,
             ),
         )
         with trace.use_span(span, end_on_exit=False):
+            function_success: bool = True
             try:
-                self.increase_active_tasks(span.attributes)
+                self.increase_active_tasks(attributes)
                 await handler()
                 span.set_status(trace.StatusCode.OK)
             except Exception as exc:
+                function_success = False
                 span.set_status(trace.StatusCode.ERROR)
+                limit_exception_traceback(exc, ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"))
                 span.record_exception(exc, escaped=True)
                 raise
             finally:
                 span.end()
-                self.record_duration(
-                    span.start_time, span.end_time, span.attributes, {"function.success": span.status.is_ok}
-                )
-                self.decrease_active_tasks(span.attributes)
+                end_time = span.end_time if span.is_recording() else time_ns()
+                self.record_duration(start_time, end_time, attributes, {"function.success": function_success})
+                self.decrease_active_tasks(attributes)
 
 
 class OpenTelemetryScheduleFunctionMiddleware(OpenTelemetryTomodachiMiddleware):
@@ -510,6 +531,8 @@ class OpenTelemetryScheduleFunctionMiddleware(OpenTelemetryTomodachiMiddleware):
         if getattr(self.service, "_is_instrumented_by_opentelemetry", False) is False or not self.tracer:
             return await handler()
 
+        start_time = time_ns()
+
         attributes: Dict[str, AttributeValue] = {
             "code.function": handler.__name__,
             "function.trigger": "timer",
@@ -525,20 +548,23 @@ class OpenTelemetryScheduleFunctionMiddleware(OpenTelemetryTomodachiMiddleware):
                 name=handler.__name__,
                 kind=trace.SpanKind.INTERNAL,
                 attributes=attributes,
+                start_time=start_time,
             ),
         )
         with trace.use_span(span, end_on_exit=False):
+            function_success: bool = True
             try:
-                self.increase_active_tasks(span.attributes)
+                self.increase_active_tasks(attributes)
                 await handler()
                 span.set_status(trace.StatusCode.OK)
             except Exception as exc:
+                function_success = False
                 span.set_status(trace.StatusCode.ERROR)
+                limit_exception_traceback(exc, ("tomodachi.transport.schedule", "tomodachi.helpers.middleware"))
                 span.record_exception(exc, escaped=True)
                 raise
             finally:
                 span.end()
-                self.record_duration(
-                    span.start_time, span.end_time, span.attributes, {"function.success": span.status.is_ok}
-                )
-                self.decrease_active_tasks(span.attributes)
+                end_time = span.end_time if span.is_recording() else time_ns()
+                self.record_duration(start_time, end_time, attributes, {"function.success": function_success})
+                self.decrease_active_tasks(attributes)
