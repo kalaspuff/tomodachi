@@ -53,7 +53,6 @@ aiohttp = ">=3.7.0,<3.9.0"
 colorama = ">=0.3.9,<0.5.0"
 asahi = ">=0.1,<0.3"
 structlog = ">=21.5.0,<24.0.0"
-wrapt = ">=1.10.10,<2.0.0"
 
 # derived from aiobotocore for dependency resolution speed in same cases.
 botocore = ">=1.20.106"
@@ -65,8 +64,11 @@ aiodns = { version = ">=1.2.0", optional = true }
 Brotli = { version = "^1.0.9", optional = true }
 
 # opentelemetry
-opentelemetry-distro = { version = "==0.40b0", allow-prereleases = true, extras = ["otlp"], optional = true }
-opentelemetry-util-http = { version = "==0.40b0", allow-prereleases = true }
+opentelemetry-instrumentation = { version = "==0.40b0", allow-prereleases = true, optional = true }
+opentelemetry-api = { version = ">=1.19.0,<1.20.0", optional = true }
+opentelemetry-sdk = { version = ">=1.19.0,<1.20.0", optional = true }
+opentelemetry-exporter-otlp = { version = ">=1.19.0,<1.20", optional = true }
+opentelemetry-util-http = { version = "==0.40b0", allow-prereleases = true, optional = true }
 
 # extras management
 asahi-extras = { version = "*", optional = true }
@@ -77,7 +79,7 @@ uvloop = ["uvloop"]
 aiodns = ["aiodns"]
 brotli = ["Brotli"]
 
-opentelemetry = ["opentelemetry-distro", "opentelemetry-util-http"]
+opentelemetry = ["opentelemetry-instrumentation", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otlp", "opentelemetry-util-http"]
 instruments = ["tomodachi"]
 
 aws = ["asahi-extras"]        # ["aiobotocore", "botocore", "aiohttp"]
@@ -112,7 +114,10 @@ tomodachi = "tomodachi.cli:cli_entrypoint"
 tomodachi = "tomodachi.opentelemetry:TomodachiInstrumentor"
 
 [tool.poetry.plugins."opentelemetry_meter_provider"]
-tomodachi_prometheus = "tomodachi.opentelemetry.prometheus_provider:PrometheusMeterProvider"
+tomodachi_prometheus = "tomodachi.opentelemetry.prometheus:TomodachiPrometheusMeterProvider"
+
+[tool.poetry.plugins."opentelemetry_metric_reader"]
+tomodachi_prometheus = "tomodachi.opentelemetry.prometheus:TomodachiPrometheusMetricReader"
 
 [tool.poetry.plugins."opentelemetry_distro"]
 tomodachi = "tomodachi.opentelemetry.distro:OpenTelemetryDistro"

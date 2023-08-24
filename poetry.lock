@@ -1251,26 +1251,6 @@ deprecated = ">=1.2.6"
 importlib-metadata = ">=6.0,<7.0"
 
 [[package]]
-name = "opentelemetry-distro"
-version = "0.40b0"
-description = "OpenTelemetry Python Distro"
-optional = true
-python-versions = ">=3.7"
-files = [
-    {file = "opentelemetry_distro-0.40b0-py3-none-any.whl", hash = "sha256:2fd0f1615d9122ff008feecffa27f213364929fc67632bb2feb7eef734434323"},
-    {file = "opentelemetry_distro-0.40b0.tar.gz", hash = "sha256:1502c90219080ab29ae39e310bd9bf025c1265b1da06aac0c9ea44f93aa5f0ff"},
-]
-
-[package.dependencies]
-opentelemetry-api = ">=1.12,<2.0"
-opentelemetry-exporter-otlp = {version = "1.19.0", optional = true, markers = "extra == \"otlp\""}
-opentelemetry-instrumentation = "0.40b0"
-opentelemetry-sdk = ">=1.13,<2.0"
-
-[package.extras]
-otlp = ["opentelemetry-exporter-otlp (==1.19.0)"]
-
-[[package]]
 name = "opentelemetry-exporter-otlp"
 version = "1.19.0"
 description = "OpenTelemetry Collector Exporters"
@@ -1408,7 +1388,7 @@ files = [
 name = "opentelemetry-util-http"
 version = "0.40b0"
 description = "Web util for OpenTelemetry"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "opentelemetry_util_http-0.40b0-py3-none-any.whl", hash = "sha256:7e071110b724a24d70de7441aeb4541bf8495ba5f5c33927e6b806d597379d0f"},
@@ -2109,7 +2089,7 @@ brotli = ["Brotli"]
 color = ["asahi-extras"]
 http = ["asahi-extras"]
 instruments = []
-opentelemetry = ["opentelemetry-distro", "opentelemetry-util-http"]
+opentelemetry = ["opentelemetry-api", "opentelemetry-exporter-otlp", "opentelemetry-instrumentation", "opentelemetry-sdk", "opentelemetry-util-http"]
 protobuf = ["protobuf"]
 scheduler = ["asahi-extras"]
 uvloop = ["uvloop"]
@@ -2117,4 +2097,4 @@ uvloop = ["uvloop"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "c4cd5b87de0b0faa82b1c1afd3966d6e016ef540904b079d2b119a20cf96684d"
+content-hash = "a729de1a880d865b35c1e6249b64eb46402aae0ff8f101dd31b478433b694d7b"

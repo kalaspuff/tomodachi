@@ -7,6 +7,7 @@ from typing import Any, Collection, Dict, List, Optional, Set, Type, Union, cast
 import structlog
 
 import tomodachi
+from opentelemetry import metrics, trace
 from opentelemetry._logs import NoOpLoggerProvider, get_logger_provider, set_logger_provider
 from opentelemetry.environment_variables import OTEL_PYTHON_METER_PROVIDER
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
@@ -40,6 +41,16 @@ from opentelemetry.util._providers import _load_provider
 from opentelemetry.util.http import ExcludeList, get_excluded_urls, parse_excluded_urls
 from opentelemetry.util.types import AttributeValue
 from tomodachi.__version__ import __version__ as tomodachi_version
+from tomodachi.opentelemetry.distro import (
+    _add_meter_provider_views,
+    _create_logger_provider,
+    _create_meter_provider,
+    _create_resource,
+    _create_tracer_provider,
+    _get_logger_provider,
+    _get_meter_provider,
+    _get_tracer_provider,
+)
 from tomodachi.opentelemetry.logging import OpenTelemetryLoggingHandler, add_trace_structlog_processor
 from tomodachi.opentelemetry.middleware import (
     OpenTelemetryAioHTTPMiddleware,
@@ -517,6 +528,10 @@ class TomodachiInstrumentor(BaseInstrumentor):
     @staticmethod
     def _tracer_provider(tracer_provider: Optional[TracerProvider] = None) -> TracerProvider:
         if not tracer_provider:
+            tracer_provider = _get_tracer_provider() or _create_tracer_provider()
+        return tracer_provider
+
+        if not tracer_provider:
             tracer_provider = cast(TracerProvider, get_tracer_provider())
             if isinstance(tracer_provider, (NoOpTracerProvider, ProxyTracerProvider)):
                 resource = Resource.create().merge(OTELResourceDetector().detect())
@@ -548,54 +563,20 @@ class TomodachiInstrumentor(BaseInstrumentor):
     def _meter_provider(
         meter_provider: Optional[MeterProvider] = None, resource: Optional[Resource] = None
     ) -> MeterProvider:
+        if not meter_provider:
+            meter_provider = _get_meter_provider() or _create_meter_provider()
+        _add_meter_provider_views(meter_provider)
+        return meter_provider
+
         _set_meter_provider: bool = False
         if not meter_provider:
             meter_provider = cast(MeterProvider, get_meter_provider())
-            meter_provider_value = environ.get("OTEL_PYTHON_METER_PROVIDER", environ.get("OTEL_METER_PROVIDER", ""))
-            if meter_provider_value:
-                environ[OTEL_PYTHON_METER_PROVIDER] = meter_provider_value
-                meter_provider_entry_points = entry_points(
-                    group="opentelemetry_meter_provider",
-                    name=meter_provider_value,
-                )
-                if meter_provider_entry_points:
-                    try:
-                        meter_provider = _load_provider(OTEL_PYTHON_METER_PROVIDER, "meter_provider")
-                    except Exception:
-                        pass
-
             if isinstance(meter_provider, (NoOpMeterProvider, _ProxyMeterProvider)):
                 resource = Resource.create().merge(OTELResourceDetector().detect())
                 meter_provider = MeterProvider(resource=resource)
                 _set_meter_provider = True
 
-        if not [v for v in meter_provider._sdk_config.views if v._meter_name == "tomodachi.opentelemetry"]:
-            duration_histogram_aggregation = ExplicitBucketHistogramAggregation(
-                boundaries=(0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10)
-            )
-            views = (
-                View(
-                    instrument_name="http.server.duration",
-                    aggregation=duration_histogram_aggregation,
-                    meter_name="tomodachi.opentelemetry",
-                ),
-                View(
-                    instrument_name="messaging.amazonsqs.duration",
-                    aggregation=duration_histogram_aggregation,
-                    meter_name="tomodachi.opentelemetry",
-                ),
-                View(
-                    instrument_name="messaging.rabbitmq.duration",
-                    aggregation=duration_histogram_aggregation,
-                    meter_name="tomodachi.opentelemetry",
-                ),
-                View(
-                    instrument_name="function.duration",
-                    aggregation=duration_histogram_aggregation,
-                    meter_name="tomodachi.opentelemetry",
-                ),
-            )
-            meter_provider._sdk_config.views = (*meter_provider._sdk_config.views, *views)
+        _add_meter_provider_views(meter_provider)
 
         if hasattr(meter_provider, "_all_metric_readers") and not meter_provider._all_metric_readers:
             exporter_names = _get_exporter_names("metrics")
@@ -628,6 +609,10 @@ class TomodachiInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def _logger_provider(logger_provider: Optional[LoggerProvider] = None) -> LoggerProvider:
+        if not logger_provider:
+            logger_provider = _get_logger_provider() or _create_logger_provider()
+        return logger_provider
+
         if not logger_provider:
             logger_provider = cast(LoggerProvider, get_logger_provider())
             if isinstance(logger_provider, NoOpLoggerProvider):
