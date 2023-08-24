@@ -15,6 +15,7 @@ from opentelemetry.environment_variables import (
     OTEL_TRACES_EXPORTER,
 )
 from opentelemetry.instrumentation.distro import BaseDistro  # type: ignore
+from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_CONFIGURATOR
 from opentelemetry.metrics import _internal as metrics_internal
 from opentelemetry.metrics import set_meter_provider
 from opentelemetry.sdk._configuration import (
@@ -352,6 +353,7 @@ class OpenTelemetryDistro(BaseDistro):
 
         logging.getLogger("opentelemetry.instrumentation.auto_instrumentation._load").setLevel(logging.ERROR)
 
+        os.environ.setdefault(OTEL_PYTHON_CONFIGURATOR, "tomodachi")
         os.environ.setdefault(OTEL_TRACES_EXPORTER, "none")
         os.environ.setdefault(OTEL_METRICS_EXPORTER, "none")
         os.environ.setdefault(OTEL_LOGS_EXPORTER, "none")

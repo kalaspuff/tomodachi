@@ -104,7 +104,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
         if self._prometheus_server_started:
             return
 
-        from prometheus_client import start_http_server
+        import prometheus_client
 
         addr = str(
             os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS)
@@ -123,7 +123,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
 
         # start prometheus client
         try:
-            start_http_server(port=port, addr=addr, registry=self._prometheus_registry)
+            prometheus_client.start_http_server(port=port, addr=addr, registry=self._prometheus_registry)
         except OSError as e:
             error_message = re.sub(".*: ", "", e.strerror)
             logging.get_logger("tomodachi.opentelemetry").warning(
