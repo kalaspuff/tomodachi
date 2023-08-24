@@ -1328,6 +1328,22 @@ requests = ">=2.7,<3.0"
 test = ["responses (==0.22.0)"]
 
 [[package]]
+name = "opentelemetry-exporter-prometheus"
+version = "1.12.0rc1"
+description = "Prometheus Metric Exporter for OpenTelemetry"
+optional = true
+python-versions = ">=3.6"
+files = [
+    {file = "opentelemetry-exporter-prometheus-1.12.0rc1.tar.gz", hash = "sha256:f10c6c243d69d5b63f755885b36a4ce8ef2cdf3e737c4e6bf00f32e87668f0a9"},
+    {file = "opentelemetry_exporter_prometheus-1.12.0rc1-py3-none-any.whl", hash = "sha256:1f0c8f93d62e1575313966ceb8abf11e9a46e1839fda9ee4269b06d40494280f"},
+]
+
+[package.dependencies]
+opentelemetry-api = ">=1.10.0"
+opentelemetry-sdk = ">=1.10.0"
+prometheus-client = ">=0.5.0,<1.0.0"
+
+[[package]]
 name = "opentelemetry-instrumentation"
 version = "0.40b0"
 description = "Instrumentation Tools & Auto Instrumentation for OpenTelemetry Python"
@@ -1461,6 +1477,20 @@ files = [
 [package.extras]
 dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
+
+[[package]]
+name = "prometheus-client"
+version = "0.17.1"
+description = "Python client for the Prometheus monitoring system."
+optional = true
+python-versions = ">=3.6"
+files = [
+    {file = "prometheus_client-0.17.1-py3-none-any.whl", hash = "sha256:e537f37160f6807b8202a6fc4764cdd19bac5480ddd3e0d463c3002b34462101"},
+    {file = "prometheus_client-0.17.1.tar.gz", hash = "sha256:21e674f39831ae3f8acde238afd9a27a37d0d2fb5a28ea094f0ce25d2cbf2091"},
+]
+
+[package.extras]
+twisted = ["twisted"]
 
 [[package]]
 name = "protobuf"
@@ -2090,6 +2120,7 @@ color = ["asahi-extras"]
 http = ["asahi-extras"]
 instruments = []
 opentelemetry = ["opentelemetry-api", "opentelemetry-exporter-otlp", "opentelemetry-instrumentation", "opentelemetry-sdk", "opentelemetry-util-http"]
+opentelemetry-exporter-prometheus = ["opentelemetry-exporter-prometheus"]
 protobuf = ["protobuf"]
 scheduler = ["asahi-extras"]
 uvloop = ["uvloop"]
@@ -2097,4 +2128,4 @@ uvloop = ["uvloop"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "a729de1a880d865b35c1e6249b64eb46402aae0ff8f101dd31b478433b694d7b"
+content-hash = "cbe4fd4795255b64ae91683e56b7f7e3b9403735450adf983f56296133a598ab"

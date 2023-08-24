@@ -69,6 +69,7 @@ opentelemetry-api = { version = ">=1.19.0,<1.20.0", optional = true }
 opentelemetry-sdk = { version = ">=1.19.0,<1.20.0", optional = true }
 opentelemetry-exporter-otlp = { version = ">=1.19.0,<1.20", optional = true }
 opentelemetry-util-http = { version = "==0.40b0", allow-prereleases = true, optional = true }
+opentelemetry-exporter-prometheus = { version = "==1.12.0rc1", allow-prereleases = true, optional = true }
 
 # extras management
 asahi-extras = { version = "*", optional = true }
@@ -80,6 +81,7 @@ aiodns = ["aiodns"]
 brotli = ["Brotli"]
 
 opentelemetry = ["opentelemetry-instrumentation", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otlp", "opentelemetry-util-http"]
+opentelemetry-exporter-prometheus = ["opentelemetry-exporter-prometheus", "opentelemetry-instrumentation", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otlp", "opentelemetry-util-http"]
 instruments = ["tomodachi"]
 
 aws = ["asahi-extras"]        # ["aiobotocore", "botocore", "aiohttp"]
@@ -143,6 +145,7 @@ profile = "black"
 line_length = 120
 src_paths = ["tomodachi", "tests", "examples"]
 known_first_party = ["tomodachi", "run_test_service_helper", "proto_build"]
+known_third_party = ["opentelemetry"]
 skip = [".mypy_cache", ".pytest_cache", "__pycache__", "tomodachi.egg-info", ".eggs", "syntax_error_service.py", ".git", ".venv", ".vscode", "build", "dist", "tmp"]
 
 [tool.mypy]

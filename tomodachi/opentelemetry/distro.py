@@ -1,7 +1,7 @@
 import logging
 import os
 from os import environ
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, cast
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Type, cast
 
 from opentelemetry import trace
 from opentelemetry._logs import _internal as logs_internal
@@ -104,17 +104,12 @@ def _get_tracer_provider() -> Optional[TracerProvider]:
         group="opentelemetry_tracer_provider",
         name=env_value,
     ):
-        return None
+        raise Exception(f"tracer provider '{env_value}' not found")
 
     environ[OTEL_PYTHON_TRACER_PROVIDER] = env_value
-    try:
-        tracer_provider = cast(TracerProvider, _load_provider(OTEL_PYTHON_TRACER_PROVIDER, "tracer_provider"))
-        set_tracer_provider(tracer_provider)
-        return tracer_provider
-    except Exception:
-        pass
-
-    return None
+    tracer_provider = cast(TracerProvider, _load_provider(OTEL_PYTHON_TRACER_PROVIDER, "tracer_provider"))
+    set_tracer_provider(tracer_provider)
+    return tracer_provider
 
 
 def _get_meter_provider() -> Optional[MeterProvider]:
@@ -131,17 +126,12 @@ def _get_meter_provider() -> Optional[MeterProvider]:
         group="opentelemetry_meter_provider",
         name=env_value,
     ):
-        return None
+        raise Exception(f"meter provider '{env_value}' not found")
 
     environ[OTEL_PYTHON_METER_PROVIDER] = env_value
-    try:
-        meter_provider = cast(MeterProvider, _load_provider(OTEL_PYTHON_METER_PROVIDER, "meter_provider"))
-        set_meter_provider(meter_provider)
-        return meter_provider
-    except Exception:
-        pass
-
-    return None
+    meter_provider = cast(MeterProvider, _load_provider(OTEL_PYTHON_METER_PROVIDER, "meter_provider"))
+    set_meter_provider(meter_provider)
+    return meter_provider
 
 
 def _get_logger_provider() -> Optional[LoggerProvider]:
@@ -158,17 +148,12 @@ def _get_logger_provider() -> Optional[LoggerProvider]:
         group="opentelemetry_logger_provider",
         name=env_value,
     ):
-        return None
+        raise Exception(f"logger provider '{env_value}' not found")
 
     environ[OTEL_PYTHON_LOGGER_PROVIDER] = env_value
-    try:
-        logger_provider = cast(LoggerProvider, _load_provider(OTEL_PYTHON_LOGGER_PROVIDER, "logger_provider"))
-        set_logger_provider(logger_provider)
-        return logger_provider
-    except Exception:
-        pass
-
-    return None
+    logger_provider = cast(LoggerProvider, _load_provider(OTEL_PYTHON_LOGGER_PROVIDER, "logger_provider"))
+    set_logger_provider(logger_provider)
+    return logger_provider
 
 
 def _create_tracer_provider(resource: Optional[Resource] = None) -> TracerProvider:
@@ -331,13 +316,25 @@ def _initialize_components(auto_instrumentation_version: Optional[str] = None) -
     tracer_provider = _get_tracer_provider() or _create_tracer_provider(resource)  # noqa
     meter_provider = _get_meter_provider() or _create_meter_provider(resource)  # noqa
     logger_provider = _get_logger_provider() or _create_logger_provider(resource)  # noqa
-
     _add_meter_provider_views(meter_provider)
 
 
 class OpenTelemetryConfigurator(_BaseConfigurator):
     def _configure(self, **kwargs: Any) -> None:
-        _initialize_components(str(kwargs.get("auto_instrumentation_version") or ""))
+        try:
+            _initialize_components(str(kwargs.get("auto_instrumentation_version") or ""))
+        except Exception as e:
+
+            def wrapper(exc: Exception) -> Callable:
+                def __post_init_hook(*_: Any) -> None:
+                    raise exc
+
+                return __post_init_hook
+
+            import tomodachi
+
+            setattr(tomodachi.Service, "__post_init_hook", wrapper(e))
+            raise
 
 
 class OpenTelemetryDistro(BaseDistro):

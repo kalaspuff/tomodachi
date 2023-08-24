@@ -5,10 +5,8 @@ from os import environ
 from typing import Any, Collection, Dict, List, Optional, Set, Type, Union, cast
 
 import structlog
-
-import tomodachi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
-from opentelemetry.metrics import get_meter
+from opentelemetry.metrics import NoOpMeter, get_meter
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk.environment_variables import OTEL_LOG_LEVEL
 from opentelemetry.sdk.metrics import Meter, MeterProvider
@@ -19,6 +17,8 @@ from opentelemetry.trace import NoOpTracer, SpanKind, StatusCode, get_tracer
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.http import ExcludeList, get_excluded_urls, parse_excluded_urls
 from opentelemetry.util.types import AttributeValue
+
+import tomodachi
 from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.opentelemetry.distro import (
     _add_meter_provider_views,
@@ -76,49 +76,41 @@ class TomodachiInstrumentor(BaseInstrumentor):
         cls._instrumented_services.add(service)
 
         # setting resource "service.name" if not set - this is a bit hacky at the moment
-        if getattr(tracer_provider, "resource", None):
-            resource_service_name = tracer_provider.resource._attributes.get(RESOURCE_SERVICE_NAME)
-            service_name = service.name
-            if (
-                not resource_service_name
-                or resource_service_name == "unknown_service"
-                or resource_service_name.startswith("unknown_service:")
-            ) and service_name not in ("service", "app"):
-                resource = tracer_provider.resource.merge(Resource.create({RESOURCE_SERVICE_NAME: service_name}))
-                tracer_provider = copy.copy(tracer_provider)
-                tracer_provider._resource = resource
-                setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
+        if service.name not in ("service", "app"):
+            if getattr(tracer_provider, "resource", None):
+                attr_value = tracer_provider.resource._attributes.get(RESOURCE_SERVICE_NAME) or ""
+                if attr_value[0:16] in ("", "unknown_service", "unknown_service:"):
+                    resource = tracer_provider.resource.merge(Resource.create({RESOURCE_SERVICE_NAME: service.name}))
+                    tracer_provider = copy.copy(tracer_provider)
+                    tracer_provider._resource = resource
+                    setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
 
-                for logging_handler in cls._logging_handlers or []:
-                    logger_provider = cast(LoggerProvider, logging_handler._logger_provider)
+            if cls._logging_handlers:
+                for handler in cls._logging_handlers:
+                    logger_provider = cast(LoggerProvider, handler._logger_provider)
                     if getattr(logger_provider, "resource", None):
-                        resource_service_name_ = logger_provider.resource._attributes.get(RESOURCE_SERVICE_NAME)
-                        if not resource_service_name_ or resource_service_name_ == resource_service_name:
+                        attr_value = logger_provider.resource._attributes.get(RESOURCE_SERVICE_NAME) or ""
+                        if attr_value[0:16] in ("", "unknown_service", "unknown_service:"):
                             resource = logger_provider.resource.merge(
-                                Resource.create({RESOURCE_SERVICE_NAME: service_name})
+                                Resource.create({RESOURCE_SERVICE_NAME: service.name})
                             )
                             logger_provider._resource = resource
-                            logging_handler._logger_provider = logger_provider
-                            setattr(logging_handler._logger, "_resource", logger_provider.resource)
+                            setattr(handler._logger, "_resource", logger_provider.resource)
 
-                if getattr(meter_provider._sdk_config, "resource", None):
-                    resource_service_name_ = meter_provider._sdk_config.resource._attributes.get(RESOURCE_SERVICE_NAME)
-                    service_name = service.name
-                    if not resource_service_name_ or resource_service_name_ == resource_service_name:
-                        resource = meter_provider._sdk_config.resource.merge(
-                            Resource.create({RESOURCE_SERVICE_NAME: service_name})
-                        )
-                        meter_provider._sdk_config.resource = resource
+            if getattr(meter_provider._sdk_config, "resource", None):
+                attr_value = meter_provider._sdk_config.resource._attributes.get("RESOURCE_SERVICE_NAME") or ""
+                if attr_value[0:16] in ("", "unknown_service", "unknown_service:"):
+                    resource = meter_provider._sdk_config.resource.merge(
+                        Resource.create({RESOURCE_SERVICE_NAME: service.name})
+                    )
+                    meter_provider._sdk_config.resource = resource
 
         tracer = get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
         meter = get_meter("tomodachi.opentelemetry", tomodachi_version, meter_provider)
 
-        if meter and not tracer:
+        if meter and not isinstance(meter, NoOpMeter) and not tracer:
             # collect metrics even if tracing is disabled
             tracer = NoOpTracer()
-
-        setattr(service, "_opentelemetry_tracer", tracer)
-        setattr(service, "_opentelemetry_meter", meter)
 
         aiohttp_pre_middleware = getattr(service, "_aiohttp_pre_middleware", None)
         if aiohttp_pre_middleware is None:
@@ -164,6 +156,8 @@ class TomodachiInstrumentor(BaseInstrumentor):
             context["_schedule_pre_middleware"] = schedule_pre_middleware
 
         setattr(service, "_is_instrumented_by_opentelemetry", True)
+        setattr(service, "_opentelemetry_tracer", tracer)
+        setattr(service, "_opentelemetry_meter", meter)
 
     @classmethod
     def uninstrument_service(cls, service: tomodachi.Service) -> None:

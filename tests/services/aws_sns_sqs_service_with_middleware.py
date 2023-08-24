@@ -5,8 +5,9 @@ import uuid as uuid_
 from contextlib import contextmanager
 from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional
 
-import tomodachi
 from opentelemetry.sdk.trace import TracerProvider
+
+import tomodachi
 from tomodachi import Options
 from tomodachi.envelope import JsonBase
 from tomodachi.opentelemetry import TomodachiInstrumentor

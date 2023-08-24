@@ -961,7 +961,6 @@ class HttpTransport(Invoker):
                         handler_stop_time = time.perf_counter_ns() if access_log else 0
                 except web.HTTPException as e:
                     handler_stop_time = time.perf_counter_ns() if access_log else 0
-                    caught_exceptions.append(e)
                     error_handler = context.get("_http_error_handler", {}).get(e.status, None)
                     if error_handler:
                         try:
@@ -1427,7 +1426,7 @@ class HttpTransport(Invoker):
                 error_message = re.sub(".*: ", "", e.strerror)
                 logger.warning(
                     "unable to bind service [http] to http://{}:{}/".format(
-                        "127.0.0.1" if host == "0.0.0.0" else host, port
+                        "localhost" if host in ("0.0.0.0", "127.0.0.1") else host, port
                     ),
                     host=host,
                     port=port,
@@ -1571,7 +1570,7 @@ class HttpTransport(Invoker):
                     if getattr(registry, "add_http_endpoint", None):
                         await registry.add_http_endpoint(obj, host, port, method, pattern)
 
-            listen_url = "http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
+            listen_url = "http://{}:{}/".format("localhost" if host in ("0.0.0.0", "127.0.0.1") else host, port)
             logger.info("accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port)
 
             if logger_handler:

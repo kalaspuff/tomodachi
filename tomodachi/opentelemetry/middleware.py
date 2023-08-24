@@ -4,7 +4,6 @@ from traceback import format_exception
 from typing import Any, Awaitable, Callable, Dict, Mapping, NamedTuple, Optional, Tuple, Type, TypeVar, cast
 
 from aiohttp import hdrs, web
-
 from opentelemetry import metrics, trace
 from opentelemetry.metrics._internal.instrument import Instrument
 from opentelemetry.sdk.metrics import Meter
@@ -13,6 +12,7 @@ from opentelemetry.sdk.trace import Span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.http import ExcludeList
 from opentelemetry.util.types import AttributeValue
+
 from tomodachi._exception import limit_exception_traceback
 from tomodachi.logging import get_logger
 from tomodachi.transport.aws_sns_sqs import MessageAttributesType

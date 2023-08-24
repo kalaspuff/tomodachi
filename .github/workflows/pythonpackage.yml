@@ -45,7 +45,7 @@ jobs:
           echo "$HOME/.poetry/bin" >> $GITHUB_PATH
       - name: Install dependencies
         run: |
-          poetry install --no-interaction -E uvloop -E protobuf -E aiodns -E opentelemetry
+          poetry install --no-interaction -E uvloop -E protobuf -E aiodns -E opentelemetry -E opentelemetry-exporter-prometheus
           poetry show --tree
       - name: Test poetry build step
         run: poetry build

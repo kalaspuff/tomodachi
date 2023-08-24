@@ -244,6 +244,7 @@ later is used to run the microservices you build.
 * ``protobuf``: for protobuf support in envelope transformation and message serialization.
 * ``aiodns``: to use ``aiodns`` as the DNS resolver for ``aiohttp``.
 * ``brotli``: to use ``brotli`` compression in ``aiohttp``.
+* ``opentelemetry-exporter-prometheus``: to use the experimental OTEL meter provider for Prometheus.
 
 Services and their dependencies, together with runtime utilities like ``tomodachi``, should preferably always be installed and run in isolated environments like Docker containers or virtual environments.
 
@@ -1284,6 +1285,16 @@ You can also pass comma delimited regexes directly to the ``instrument`` method:
 .. code:: python
 
     TomodachiInstrumentor().instrument(excluded_urls="client/.*/info,healthcheck")
+
+Prometheus meter provider (experimental)
+----------------------------------------
+
+The ``tomodachi.opentelemetry`` module also provides a Prometheus meter provider that can be used to export metrics to Prometheus. Run ``opentelemetry-instrument`` with the ``--meter_provider tomodachi_prometheus`` argument (or set ``OTEL_PYTHON_METER_PROVIDER=tomodachi_prometheus`` environment value) to enable the Prometheus meter provider.
+
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS`` specifies the host address the Prometheus export server should listen on. (default: ``"localhost"``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT`` specifies the port the Prometheus export server should listen on. (default: ``9464``)
+
+The ``tomodachi_prometheus`` meter provider requires that the ``opentelemetry-exporter-prometheus`` package is installed. Use ``tomodachi`` extras ``opentelemetry-exporter-prometheus`` to automatically include a compatible version of the exporter.
 
 ----
 

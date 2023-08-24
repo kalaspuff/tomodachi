@@ -1,15 +1,17 @@
 import os
-from typing import Any, cast
-
-from prometheus_client.registry import Collector, CollectorRegistry
+import re
+from typing import Any, Optional, cast
 
 from opentelemetry.exporter.prometheus import _CustomCollector
-from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics import Meter, MeterProvider
 from opentelemetry.sdk.metrics.export import Metric, MetricReader, MetricsData, ResourceMetrics, ScopeMetrics
+from prometheus_client.registry import Collector, CollectorRegistry
+
+from tomodachi import logging
 from tomodachi.opentelemetry.distro import _create_resource
 from tomodachi.opentelemetry.environment_variables import (
-    OTEL_PYTHON_PROMETHEUS_METRICS_EXPORT_ADDRESS,
-    OTEL_PYTHON_PROMETHEUS_METRICS_EXPORT_PORT,
+    OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS,
+    OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT,
 )
 
 UNIT_TRANSFORM_MAP = {
@@ -38,7 +40,7 @@ REGISTRY_ = CollectorRegistry(auto_describe=True)
 
 
 class TomodachiPrometheusMetricReader(MetricReader):
-    def __init__(self, prefix: str = "tomodachi") -> None:
+    def __init__(self, prefix: str = "tomodachi", registry: CollectorRegistry = REGISTRY_) -> None:
         super().__init__()
         self._collector = _CustomCollector(prefix)
         REGISTRY_.register(cast(Collector, self._collector))
@@ -90,26 +92,70 @@ class TomodachiPrometheusMetricReader(MetricReader):
 
 
 class TomodachiPrometheusMeterProvider(MeterProvider):
-    def __init__(self) -> None:
+    def __init__(self, prefix: str = "tomodachi", registry: CollectorRegistry = REGISTRY_) -> None:
+        self._prometheus_server_started = False
+        self._prometheus_registry = registry
+
+        resource = _create_resource()
+        reader = TomodachiPrometheusMetricReader(prefix, registry)
+        super().__init__(metric_readers=[reader], resource=resource)
+
+    def _start_prometheus_http_server(self) -> None:
+        if self._prometheus_server_started:
+            return
+
         from prometheus_client import start_http_server
 
         addr = str(
-            os.environ.get(OTEL_PYTHON_PROMETHEUS_METRICS_EXPORT_ADDRESS)
-            or os.environ.get("PROMETHEUS_METRICS_EXPORT_ADDRESS")
-            or "0.0.0.0"
+            os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS)
+            or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS")
+            or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_HOST")
+            or os.environ.get("OTEL_EXPORTER_PROMETHEUS_HOST")
+            or "localhost"
         )
         port = int(
-            os.environ.get(OTEL_PYTHON_PROMETHEUS_METRICS_EXPORT_PORT)
-            or os.environ.get("PROMETHEUS_METRICS_EXPORT_PORT")
-            or 8000
+            os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT)
+            or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT")
+            or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_HOST")
+            or os.environ.get("OTEL_EXPORTER_PROMETHEUS_PORT")
+            or 9464
         )
 
-        resource = _create_resource()
-
         # start prometheus client
-        start_http_server(port=port, addr=addr, registry=REGISTRY_)
+        try:
+            start_http_server(port=port, addr=addr, registry=self._prometheus_registry)
+        except OSError as e:
+            error_message = re.sub(".*: ", "", e.strerror)
+            logging.get_logger("tomodachi.opentelemetry").warning(
+                "unable to bind prometheus http server [http] to http://{}:{}/ in otel metric provider".format(
+                    "localhost" if addr in ("0.0.0.0", "127.0.0.1") else addr, port
+                ),
+                host=addr,
+                port=port,
+                error_message=error_message,
+                opentelemetry_metric_provider="tomodachi_prometheus",
+            )
 
-        # exporter to export metrics to prometheus
-        reader = TomodachiPrometheusMetricReader()
+            try:
+                raise Exception(str(e)).with_traceback(e.__traceback__) from None
+            except Exception as exc:
+                exc.__traceback__ = e.__traceback__
+                raise
 
-        super().__init__(metric_readers=[reader], resource=resource)
+        listen_url = "http://{}:{}/".format("localhost" if addr in ("0.0.0.0", "127.0.0.1") else addr, port)
+        logging.get_logger("tomodachi.opentelemetry").info(
+            "prometheus http server started",
+            listen_url=listen_url,
+            listen_host=addr,
+            listen_port=port,
+        )
+        self._prometheus_server_started = True
+
+    def get_meter(
+        self,
+        name: str,
+        version: Optional[str] = None,
+        schema_url: Optional[str] = None,
+    ) -> Meter:
+        self._start_prometheus_http_server()
+        return super().get_meter(name, version=version, schema_url=schema_url)

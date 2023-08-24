@@ -1,7 +1,6 @@
 import asyncio
 import sys
 
-import tomodachi
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, ConsoleLogExporter
 from opentelemetry.sdk.metrics import MeterProvider
@@ -10,6 +9,8 @@ from opentelemetry.sdk.resources import OTELResourceDetector, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
+
+import tomodachi
 from tomodachi.opentelemetry import TomodachiInstrumentor
 from tomodachi.transport.schedule import heartbeat, schedule
 

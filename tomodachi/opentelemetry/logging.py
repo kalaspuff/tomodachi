@@ -4,9 +4,10 @@ import logging
 from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 from opentelemetry import trace
-from opentelemetry._logs import get_logger, get_logger_provider
+from opentelemetry._logs import get_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.util.types import Attributes
+
 from tomodachi.__version__ import __version__ as tomodachi_version
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -38,8 +39,8 @@ def add_trace_structlog_processor(logger: WrappedLogger, method_name: str, event
 class OpenTelemetryLoggingHandler(LoggingHandler):
     def __init__(self, level: int = logging.NOTSET, logger_provider: Optional[LoggerProvider] = None) -> None:
         super().__init__(level=level)
-        self._logger_provider = logger_provider or get_logger_provider()
-        self._logger = get_logger("tomodachi.opentelemetry", tomodachi_version, logger_provider=self._logger_provider)
+        self._logger_provider = cast(LoggerProvider, logger_provider or get_logger_provider())
+        self._logger = self._logger_provider.get_logger("tomodachi.opentelemetry", tomodachi_version)
 
     @staticmethod
     def _get_attributes(record: logging.LogRecord) -> Attributes:
