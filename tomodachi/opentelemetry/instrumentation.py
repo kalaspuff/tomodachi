@@ -7,37 +7,16 @@ from typing import Any, Collection, Dict, List, Optional, Set, Type, Union, cast
 import structlog
 
 import tomodachi
-from opentelemetry import metrics, trace
-from opentelemetry._logs import NoOpLoggerProvider, get_logger_provider, set_logger_provider
-from opentelemetry.environment_variables import OTEL_PYTHON_METER_PROVIDER
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
-from opentelemetry.metrics import NoOpMeterProvider, get_meter, get_meter_provider, set_meter_provider
-from opentelemetry.metrics._internal import _ProxyMeterProvider
-from opentelemetry.sdk._configuration import _get_exporter_names, _import_exporters
+from opentelemetry.metrics import get_meter
 from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.environment_variables import OTEL_LOG_LEVEL
 from opentelemetry.sdk.metrics import Meter, MeterProvider
-from opentelemetry.sdk.metrics._internal.aggregation import ExplicitBucketHistogramAggregation
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-from opentelemetry.sdk.metrics.view import View
 from opentelemetry.sdk.resources import SERVICE_NAME as RESOURCE_SERVICE_NAME
-from opentelemetry.sdk.resources import OTELResourceDetector, Resource
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import Tracer, TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import (
-    NoOpTracer,
-    NoOpTracerProvider,
-    ProxyTracerProvider,
-    SpanKind,
-    StatusCode,
-    get_tracer,
-    get_tracer_provider,
-    set_tracer_provider,
-)
+from opentelemetry.trace import NoOpTracer, SpanKind, StatusCode, get_tracer
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from opentelemetry.util._importlib_metadata import entry_points
-from opentelemetry.util._providers import _load_provider
 from opentelemetry.util.http import ExcludeList, get_excluded_urls, parse_excluded_urls
 from opentelemetry.util.types import AttributeValue
 from tomodachi.__version__ import __version__ as tomodachi_version
@@ -45,7 +24,6 @@ from tomodachi.opentelemetry.distro import (
     _add_meter_provider_views,
     _create_logger_provider,
     _create_meter_provider,
-    _create_resource,
     _create_tracer_provider,
     _get_logger_provider,
     _get_meter_provider,
@@ -531,34 +509,6 @@ class TomodachiInstrumentor(BaseInstrumentor):
             tracer_provider = _get_tracer_provider() or _create_tracer_provider()
         return tracer_provider
 
-        if not tracer_provider:
-            tracer_provider = cast(TracerProvider, get_tracer_provider())
-            if isinstance(tracer_provider, (NoOpTracerProvider, ProxyTracerProvider)):
-                resource = Resource.create().merge(OTELResourceDetector().detect())
-                tracer_provider = TracerProvider(resource=resource)
-                set_tracer_provider(tracer_provider)
-
-        if (
-            getattr(tracer_provider, "_active_span_processor", None)
-            and not tracer_provider._active_span_processor._span_processors
-        ):
-            exporter_names = _get_exporter_names("traces")
-            if not exporter_names:
-                return tracer_provider
-
-            trace_exporters, _, _ = _import_exporters(
-                exporter_names,
-                [],
-                [],
-            )
-            if not trace_exporters:
-                return tracer_provider
-
-            for _, exporter in trace_exporters.items():
-                tracer_provider._active_span_processor.add_span_processor(BatchSpanProcessor(exporter()))
-
-        return tracer_provider
-
     @staticmethod
     def _meter_provider(
         meter_provider: Optional[MeterProvider] = None, resource: Optional[Resource] = None
@@ -568,77 +518,10 @@ class TomodachiInstrumentor(BaseInstrumentor):
         _add_meter_provider_views(meter_provider)
         return meter_provider
 
-        _set_meter_provider: bool = False
-        if not meter_provider:
-            meter_provider = cast(MeterProvider, get_meter_provider())
-            if isinstance(meter_provider, (NoOpMeterProvider, _ProxyMeterProvider)):
-                resource = Resource.create().merge(OTELResourceDetector().detect())
-                meter_provider = MeterProvider(resource=resource)
-                _set_meter_provider = True
-
-        _add_meter_provider_views(meter_provider)
-
-        if hasattr(meter_provider, "_all_metric_readers") and not meter_provider._all_metric_readers:
-            exporter_names = _get_exporter_names("metrics")
-            if not exporter_names:
-                return meter_provider
-
-            _, metric_exporters, _ = _import_exporters(
-                [],
-                exporter_names,
-                [],
-            )
-            if not metric_exporters:
-                return meter_provider
-
-            metric_readers = []
-            for _, exporter in metric_exporters.items():
-                metric_reader = PeriodicExportingMetricReader(exporter())
-                metric_readers.append(metric_reader)
-
-            meter_provider = MeterProvider(
-                metric_readers=metric_readers,
-                resource=meter_provider._sdk_config.resource,
-                views=meter_provider._sdk_config.views,
-            )
-
-        if _set_meter_provider:
-            set_meter_provider(meter_provider)
-
-        return meter_provider
-
     @staticmethod
     def _logger_provider(logger_provider: Optional[LoggerProvider] = None) -> LoggerProvider:
         if not logger_provider:
             logger_provider = _get_logger_provider() or _create_logger_provider()
-        return logger_provider
-
-        if not logger_provider:
-            logger_provider = cast(LoggerProvider, get_logger_provider())
-            if isinstance(logger_provider, NoOpLoggerProvider):
-                resource = Resource.create().merge(OTELResourceDetector().detect())
-                logger_provider = LoggerProvider(resource=resource)
-                set_logger_provider(logger_provider)
-
-        if (
-            getattr(logger_provider, "_multi_log_record_processor", None)
-            and not logger_provider._multi_log_record_processor._log_record_processors
-        ):
-            exporter_names = _get_exporter_names("logs")
-            if not exporter_names:
-                return logger_provider
-
-            _, _, log_exporters = _import_exporters(
-                [],
-                [],
-                exporter_names,
-            )
-            if not log_exporters:
-                return logger_provider
-
-            for _, exporter in log_exporters.items():
-                logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter()))
-
         return logger_provider
 
 

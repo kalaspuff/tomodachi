@@ -14,7 +14,7 @@ from opentelemetry.environment_variables import (
     OTEL_PYTHON_TRACER_PROVIDER,
     OTEL_TRACES_EXPORTER,
 )
-from opentelemetry.instrumentation.distro import BaseDistro
+from opentelemetry.instrumentation.distro import BaseDistro  # type: ignore
 from opentelemetry.metrics import _internal as metrics_internal
 from opentelemetry.metrics import set_meter_provider
 from opentelemetry.sdk._configuration import (
@@ -43,11 +43,11 @@ from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import set_tracer_provider
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util._providers import _load_provider
-from opentelemetry.util.types import Attributes, AttributeValue
+from opentelemetry.util.types import AttributeValue
 
 
 def _get_trace_exporters() -> Dict[str, Type[SpanExporter]]:
-    return cast(
+    return cast(  # type: ignore
         Dict[str, Type[SpanExporter]],
         _import_exporters(
             _get_exporter_names("traces"),
@@ -58,7 +58,7 @@ def _get_trace_exporters() -> Dict[str, Type[SpanExporter]]:
 
 
 def _get_metric_exporters() -> Dict[str, Type[MetricExporter]]:
-    return cast(
+    return cast(  # type: ignore
         Dict[str, Type[MetricExporter]],
         _import_exporters(
             [],
@@ -69,7 +69,7 @@ def _get_metric_exporters() -> Dict[str, Type[MetricExporter]]:
 
 
 def _get_log_exporters() -> Dict[str, Type[LogExporter]]:
-    return cast(
+    return cast(  # type: ignore
         Dict[str, Type[LogExporter]],
         _import_exporters(
             [],
@@ -322,27 +322,27 @@ def _add_meter_provider_views(meter_provider: MeterProvider) -> None:
 
 
 def _initialize_components(auto_instrumentation_version: Optional[str] = None) -> None:
-    resource_attributes: Attributes = {}
+    resource_attributes: Dict[str, AttributeValue] = {}
     if auto_instrumentation_version:
         resource_attributes[ResourceAttributes.TELEMETRY_AUTO_VERSION] = auto_instrumentation_version
 
     resource = _create_resource(resource_attributes)
 
-    tracer_provider = _get_tracer_provider() or _create_tracer_provider(resource)
-    meter_provider = _get_meter_provider() or _create_meter_provider(resource)
-    logger_provider = _get_logger_provider() or _create_logger_provider(resource)
+    tracer_provider = _get_tracer_provider() or _create_tracer_provider(resource)  # noqa
+    meter_provider = _get_meter_provider() or _create_meter_provider(resource)  # noqa
+    logger_provider = _get_logger_provider() or _create_logger_provider(resource)  # noqa
 
     _add_meter_provider_views(meter_provider)
 
 
 class OpenTelemetryConfigurator(_BaseConfigurator):
-    def _configure(self, **kwargs):
+    def _configure(self, **kwargs: Any) -> None:
         _initialize_components(str(kwargs.get("auto_instrumentation_version") or ""))
 
 
 class OpenTelemetryDistro(BaseDistro):
     def _set_entry_keys_precedence(self) -> None:
-        from pkg_resources import working_set
+        from pkg_resources import working_set  # type: ignore
 
         for item in working_set.entries:
             entry_keys = working_set.entry_keys[item]

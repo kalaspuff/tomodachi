@@ -65,7 +65,7 @@ class TomodachiPrometheusMetricReader(MetricReader):
         timeout_millis: float = 10_000,
         **kwargs: Any,
     ) -> None:
-        if metrics_data is None:
+        if metrics_data is None or not metrics_data.resource_metrics:
             return
 
         metrics_data_ = MetricsData(
