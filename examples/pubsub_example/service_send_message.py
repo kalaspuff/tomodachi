@@ -9,7 +9,7 @@ class ServiceSendMessage(tomodachi.Service):
     name = "example-service-send-message"
     message_envelope = JsonBase
 
-    options_ = Options(
+    options = Options(
         aws_sns_sqs=Options.AWSSNSSQS(
             region_name=None,  # Specify AWS region (example: "eu-west-1")
             aws_access_key_id=None,  # Specify AWS access key (example: "AKIA****************"")
