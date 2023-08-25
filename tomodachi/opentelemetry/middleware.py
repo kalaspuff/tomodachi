@@ -15,7 +15,7 @@ from opentelemetry.util.types import AttributeValue
 
 from tomodachi._exception import limit_exception_traceback
 from tomodachi.logging import get_logger
-from tomodachi.transport.aws_sns_sqs import MessageAttributesType
+from tomodachi.transport.aws_sns_sqs import AWSSNSSQSTransport, MessageAttributesType
 from tomodachi.transport.http import get_forwarded_remote_ip
 
 IT = TypeVar("IT", bound=Instrument)
@@ -30,6 +30,7 @@ class InstrumentOptions(NamedTuple):
 
 class OpenTelemetryTomodachiMiddleware:
     service: Any
+    service_context: Dict
     tracer: Optional[trace.Tracer]
     meter: Optional[metrics.Meter]
 
@@ -43,6 +44,7 @@ class OpenTelemetryTomodachiMiddleware:
         self, service: Any, tracer: Optional[trace.Tracer] = None, meter: Optional[metrics.Meter] = None, **kwargs: Any
     ) -> None:
         self.service = service
+        self.service_context = getattr(service, "context", {})
         self.tracer = tracer
         self.meter = meter
 
@@ -387,7 +389,10 @@ class OpenTelemetryAWSSQSMiddleware(OpenTelemetryTomodachiMiddleware):
 
         start_time = time_ns()
 
-        queue_name = queue_url.rsplit("/")[-1]
+        queue_name: str = AWSSNSSQSTransport.get_queue_name_without_prefix(
+            AWSSNSSQSTransport.get_queue_name_from_queue_url(queue_url), self.service_context
+        )
+
         attributes: Dict[str, AttributeValue] = {
             "messaging.system": "AmazonSQS",
             "messaging.operation": "process",

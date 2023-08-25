@@ -364,6 +364,19 @@ class AWSSNSSQSTransport(Invoker):
         return queue_name
 
     @classmethod
+    def get_queue_name_without_prefix(cls, queue_name: str, context: Dict) -> str:
+        queue_name_prefix: Optional[str] = cls.options(context).aws_sns_sqs.queue_name_prefix
+        if queue_name_prefix:
+            if queue_name.startswith(queue_name_prefix):
+                prefix_length = len(queue_name_prefix)
+                return queue_name[prefix_length:]
+        return queue_name
+
+    @classmethod
+    def get_queue_name_from_queue_url(cls, queue_url: str) -> str:
+        return queue_url.rsplit("/", 1)[-1]
+
+    @classmethod
     def validate_queue_name(cls, queue_name: str) -> None:
         if len(queue_name) > 80:
             raise Exception("Queue name ({}) is too long.".format(queue_name))
