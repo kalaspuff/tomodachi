@@ -10,6 +10,7 @@ from opentelemetry.metrics import NoOpMeter, get_meter
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk.environment_variables import OTEL_LOG_LEVEL
 from opentelemetry.sdk.metrics import Meter, MeterProvider
+from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID as RESOURCE_SERVICE_INSTANCE_ID
 from opentelemetry.sdk.resources import SERVICE_NAME as RESOURCE_SERVICE_NAME
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import Tracer, TracerProvider
@@ -76,34 +77,50 @@ class TomodachiInstrumentor(BaseInstrumentor):
         cls._instrumented_services.add(service)
 
         # setting resource "service.name" if not set - this is a bit hacky at the moment
-        if service.name not in ("service", "app"):
-            if getattr(tracer_provider, "resource", None):
+        if getattr(tracer_provider, "resource", None):
+            additional_resource_attributes = {}
+            if service.name not in ("service", "app"):
                 attr_value = tracer_provider.resource._attributes.get(RESOURCE_SERVICE_NAME) or ""
                 if attr_value[0:16] in ("", "unknown_service", "unknown_service:"):
-                    resource = tracer_provider.resource.merge(Resource.create({RESOURCE_SERVICE_NAME: service.name}))
-                    tracer_provider = copy.copy(tracer_provider)
-                    tracer_provider._resource = resource
-                    setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
+                    additional_resource_attributes[RESOURCE_SERVICE_NAME] = service.name
+                attr_value = tracer_provider.resource._attributes.get(RESOURCE_SERVICE_INSTANCE_ID) or ""
+                if not attr_value:
+                    additional_resource_attributes[RESOURCE_SERVICE_INSTANCE_ID] = service.uuid
+            if additional_resource_attributes:
+                resource = tracer_provider.resource.merge(Resource.create(additional_resource_attributes))
+                tracer_provider = copy.copy(tracer_provider)
+                tracer_provider._resource = resource
+                setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
 
-            if cls._logging_handlers:
-                for handler in cls._logging_handlers:
-                    logger_provider = cast(LoggerProvider, handler._logger_provider)
-                    if getattr(logger_provider, "resource", None):
+        if cls._logging_handlers:
+            for handler in cls._logging_handlers:
+                logger_provider = cast(LoggerProvider, handler._logger_provider)
+                if getattr(logger_provider, "resource", None):
+                    additional_resource_attributes = {}
+                    if service.name not in ("service", "app"):
                         attr_value = logger_provider.resource._attributes.get(RESOURCE_SERVICE_NAME) or ""
                         if attr_value[0:16] in ("", "unknown_service", "unknown_service:"):
-                            resource = logger_provider.resource.merge(
-                                Resource.create({RESOURCE_SERVICE_NAME: service.name})
-                            )
-                            logger_provider._resource = resource
-                            setattr(handler._logger, "_resource", logger_provider.resource)
+                            additional_resource_attributes[RESOURCE_SERVICE_NAME] = service.name
+                    attr_value = logger_provider.resource._attributes.get(RESOURCE_SERVICE_INSTANCE_ID) or ""
+                    if not attr_value:
+                        additional_resource_attributes[RESOURCE_SERVICE_INSTANCE_ID] = service.uuid
+                    if additional_resource_attributes:
+                        resource = logger_provider.resource.merge(Resource.create(additional_resource_attributes))
+                        logger_provider._resource = resource
+                        setattr(handler._logger, "_resource", logger_provider.resource)
 
-            if getattr(meter_provider._sdk_config, "resource", None):
+        if getattr(meter_provider._sdk_config, "resource", None):
+            additional_resource_attributes = {}
+            if service.name not in ("service", "app"):
                 attr_value = meter_provider._sdk_config.resource._attributes.get("RESOURCE_SERVICE_NAME") or ""
                 if attr_value[0:16] in ("", "unknown_service", "unknown_service:"):
-                    resource = meter_provider._sdk_config.resource.merge(
-                        Resource.create({RESOURCE_SERVICE_NAME: service.name})
-                    )
-                    meter_provider._sdk_config.resource = resource
+                    attr_value = logger_provider.resource._attributes.get(RESOURCE_SERVICE_NAME) or ""
+            attr_value = meter_provider._sdk_config.resource._attributes.get(RESOURCE_SERVICE_INSTANCE_ID) or ""
+            if not attr_value:
+                additional_resource_attributes[RESOURCE_SERVICE_INSTANCE_ID] = service.uuid
+            if additional_resource_attributes:
+                resource = meter_provider._sdk_config.resource.merge(Resource.create(additional_resource_attributes))
+                meter_provider._sdk_config.resource = resource
 
         tracer = get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
         meter = get_meter("tomodachi.opentelemetry", tomodachi_version, meter_provider)

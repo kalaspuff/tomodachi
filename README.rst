@@ -1263,7 +1263,7 @@ Service name dynamically set if missing ``OTEL_SERVICE_NAME`` value
 
 If the ``OTEL_SERVICE_NAME`` environment variable value (or ``--service_name`` argument to ``opentelemetry-instrument``) is not set, the resource' ``service.name`` will instead be set to the ``name`` attribute of the service class. In case the service class uses the default generic names (``service`` or ``app``), the resource' ``service.name`` will instead be set to the default as specified in https://github.com/open-telemetry/semantic-conventions/tree/main/docs/resource#service.
 
-Note that instrumentation for logging will currently primarily use the ``OTEL_SERVICE_NAME``, and if it's missing then use the name from the *first* instrumented service class.
+Note for use cases where multiple service classes are started in the same Python process. Instrumentation for logging and metrics will currently primarily use the ``OTEL_SERVICE_NAME``, and if it's missing then use the name from the *first* instrumented service class. The same goes for the ``service.instance.id`` resource attribute, which will be set to the first instrumented service class' ``uuid`` value (which in most cases is automatically assigned on service start).
 
 Exclude lists
 -------------
