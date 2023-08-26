@@ -88,7 +88,9 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 if not attr_value:
                     additional_resource_attributes[RESOURCE_SERVICE_INSTANCE_ID] = service.uuid
             if additional_resource_attributes:
-                resource = tracer_provider.resource.merge(Resource.create(additional_resource_attributes))
+                resource = tracer_provider.resource.merge(
+                    Resource.create({**tracer_provider.resource._attributes, **additional_resource_attributes})
+                )
                 tracer_provider = copy.copy(tracer_provider)
                 tracer_provider._resource = resource
                 setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
@@ -103,7 +105,11 @@ class TomodachiInstrumentor(BaseInstrumentor):
             if not attr_value:
                 additional_resource_attributes[RESOURCE_SERVICE_INSTANCE_ID] = service.uuid
             if additional_resource_attributes:
-                resource = meter_provider._sdk_config.resource.merge(Resource.create(additional_resource_attributes))
+                resource = meter_provider._sdk_config.resource.merge(
+                    Resource.create(
+                        {**meter_provider._sdk_config.resource._attributes, **additional_resource_attributes}
+                    )
+                )
                 meter_provider._sdk_config.resource = resource
 
         if cls._logging_handlers:
@@ -119,7 +125,9 @@ class TomodachiInstrumentor(BaseInstrumentor):
                     if not attr_value:
                         additional_resource_attributes[RESOURCE_SERVICE_INSTANCE_ID] = service.uuid
                     if additional_resource_attributes:
-                        resource = logger_provider.resource.merge(Resource.create(additional_resource_attributes))
+                        resource = logger_provider.resource.merge(
+                            Resource.create({**logger_provider.resource._attributes, **additional_resource_attributes})
+                        )
                         logger_provider._resource = resource
                         setattr(handler._logger, "_resource", logger_provider.resource)
 
