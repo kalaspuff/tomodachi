@@ -374,7 +374,7 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     def get_queue_name_from_queue_url(cls, queue_url: str) -> str:
-        return queue_url.rsplit("/", 1)[-1]
+        return queue_url.rsplit("/")[-1]
 
     @classmethod
     def validate_queue_name(cls, queue_name: str) -> None:

@@ -1293,6 +1293,8 @@ The ``tomodachi.opentelemetry`` module also provides a Prometheus meter provider
 
 * ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS`` specifies the host address the Prometheus export server should listen on. (default: ``"localhost"``)
 * ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT`` specifies the port the Prometheus export server should listen on. (default: ``9464``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO`` specifies whether to include scope information as ``otel_scope_info`` value. (default: ``false``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_TARGET_INFO`` specifies whether to include resource attributes as ``target_info`` value. (default: ``true``)
 
 The ``tomodachi_prometheus`` meter provider requires that the ``opentelemetry-exporter-prometheus`` package is installed. Use ``tomodachi`` extras ``opentelemetry-exporter-prometheus`` to automatically include a compatible version of the exporter.
 
