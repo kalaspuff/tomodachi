@@ -32,7 +32,7 @@ Changes
 - Bug fix for an issue which could cause the watcher to fail to restart the service after a syntax error was encountered.
 - Adds some missing type hint annotations.
 - Added additional logging of uncaught exceptions that previously may have been silenced.
-- Fixes so that the ``--log-level`` CLI argument value is actually applied to loggers.
+- Fixed that the ``--log-level`` CLI argument value is actually applied to loggers.
 - Fix for a race condition which could freeze a process if a service was manually stopped (interrupted with ctrl+c) before it had called its first lifecycle function (``_start_service``).
 
 **Deprecations**
