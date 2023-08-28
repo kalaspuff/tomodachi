@@ -38,6 +38,15 @@ from tomodachi.opentelemetry.middleware import (
     OpenTelemetryScheduleFunctionMiddleware,
 )
 
+INSTRUMENTATION_CLASS_ATTRIBUTES = {
+    "_opentelemetry_tracer_provider",
+    "_opentelemetry_meter_provider",
+    "_opentelemetry_excluded_urls",
+    "_is_instrumented_by_opentelemetry",
+    "_InstrumentedTomodachiService__post_init_hook",
+    "_InstrumentedTomodachiService__post_teardown_hook",
+}
+
 
 class TomodachiInstrumentor(BaseInstrumentor):
     _instrumented_services: Optional[Set[tomodachi.Service]] = None
@@ -310,31 +319,17 @@ class TomodachiInstrumentor(BaseInstrumentor):
     def _instrument_tomodachi(
         self, tracer_provider: TracerProvider, meter_provider: MeterProvider, excluded_urls: Optional[str]
     ) -> None:
-        from tomodachi import TOMODACHI_CLASSES  # isort:skip
-
-        class_attributes = {
-            "_opentelemetry_tracer_provider": tracer_provider,
-            "_opentelemetry_meter_provider": meter_provider,
-            "_opentelemetry_excluded_urls": excluded_urls,
-            "_is_instrumented_by_opentelemetry": False,
-            "_InstrumentedTomodachiService__post_init_hook": getattr(
-                _InstrumentedTomodachiService, "_InstrumentedTomodachiService__post_init_hook", None
-            ),
-            "_InstrumentedTomodachiService__post_teardown_hook": getattr(
-                _InstrumentedTomodachiService, "_InstrumentedTomodachiService__post_teardown_hook", None
-            ),
-        }
-
         _InstrumentedTomodachiService._opentelemetry_tracer_provider = tracer_provider
         _InstrumentedTomodachiService._opentelemetry_meter_provider = meter_provider
         _InstrumentedTomodachiService._opentelemetry_excluded_urls = excluded_urls
 
+        from tomodachi import TOMODACHI_CLASSES  # isort:skip
+
         for cls in TOMODACHI_CLASSES:
             if cls is _InstrumentedTomodachiService:
                 continue
-            for attr, value in class_attributes.items():
-                if getattr(cls, attr, None) is None:
-                    setattr(cls, attr, value)
+            for attr in INSTRUMENTATION_CLASS_ATTRIBUTES:
+                setattr(cls, attr, getattr(_InstrumentedTomodachiService, attr, None))
 
         # this wrapping functionality for the publish methods of aws_sns_sqs and amqp could use some refactoring
 
@@ -505,27 +500,18 @@ class TomodachiInstrumentor(BaseInstrumentor):
             super().instrument(**kwargs)
 
     def _uninstrument_tomodachi(self) -> None:
-        from tomodachi import TOMODACHI_CLASSES  # isort:skip
-
-        class_attributes = {
-            "_opentelemetry_tracer_provider": None,
-            "_opentelemetry_meter_provider": None,
-            "_opentelemetry_excluded_urls": None,
-            "_is_instrumented_by_opentelemetry": False,
-            "_InstrumentedTomodachiService__post_init_hook": None,
-            "_InstrumentedTomodachiService__post_teardown_hook": None,
-        }
-
         _InstrumentedTomodachiService._opentelemetry_tracer_provider = None
         _InstrumentedTomodachiService._opentelemetry_meter_provider = None
         _InstrumentedTomodachiService._opentelemetry_excluded_urls = None
 
+        from tomodachi import TOMODACHI_CLASSES  # isort:skip
+
         for cls in TOMODACHI_CLASSES:
             if cls is _InstrumentedTomodachiService:
                 continue
-            for attr, value in class_attributes.items():
+            for attr in INSTRUMENTATION_CLASS_ATTRIBUTES:
                 if hasattr(cls, attr):
-                    setattr(cls, attr, value)
+                    delattr(cls, attr)
 
         if getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message, "__wrapped__", None):
             setattr(
