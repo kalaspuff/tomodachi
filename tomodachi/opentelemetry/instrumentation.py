@@ -299,7 +299,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             logger._processors.remove(add_trace_structlog_processor)
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        return (f"tomodachi == {tomodachi_version}",)
+        return ("tomodachi",)
 
     def _instrument_tomodachi(
         self, tracer_provider: TracerProvider, meter_provider: MeterProvider, excluded_urls: Optional[str]
