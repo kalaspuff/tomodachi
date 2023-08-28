@@ -1,13 +1,13 @@
 import os
+import sys
 
-from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_CONFIGURATOR as _OTEL_PYTHON_CONFIGURATOR
-from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_DISTRO as _OTEL_PYTHON_DISTRO
+if sys.argv and sys.argv[0].rsplit(os.sep, 1)[-1] == "opentelemetry-instrument":
+    # this is a hacky way of setting the default distro and configurator used during auto instrumentation.
+    # see ".../site-packages/opentelemetry/instrumentation/auto_instrumentation/__init__.py"
+    for key in ("OTEL_PYTHON_DISTRO", "OTEL_PYTHON_CONFIGURATOR"):
+        if not os.environ.get(key):
+            os.environ.setdefault(key, "tomodachi")
 
-if os.environ.get(_OTEL_PYTHON_DISTRO) is None:
-    os.environ.setdefault(_OTEL_PYTHON_DISTRO, "tomodachi")
-
-if os.environ.get(_OTEL_PYTHON_CONFIGURATOR) is None:
-    os.environ.setdefault(_OTEL_PYTHON_CONFIGURATOR, "tomodachi")
 
 OTEL_PYTHON_TOMODACHI_EXCLUDED_URLS = "OTEL_PYTHON_TOMODACHI_EXCLUDED_URLS"
 """
