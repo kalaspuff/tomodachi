@@ -117,7 +117,7 @@ def __getattr__(name: str) -> Any:
                         )
                     )
                     print("")
-                    logging.exception("")
+                    logging.getLogger("exception").exception("")
                     print("")
 
                 logging.getLogger("exception").warning("Unable to initialize dependencies")
@@ -192,8 +192,13 @@ def __getattr__(name: str) -> Any:
                         )
                         print("")
                     if module_name == "tomodachi.opentelemetry" and missing_module_name in (
-                        "opentelemetry._logs",
                         "opentelemetry",
+                        "opentelemetry.instrumentation",
+                        "opentelemetry.sdk",
+                        "opentelemetry.metrics",
+                        "opentelemetry.sdk._logs",
+                        "opentelemetry._logs",
+                        "opentelemetry.util.http",
                     ):
                         print(
                             "{}[fatal error] The '{}' package is missing.{}".format(
@@ -215,7 +220,7 @@ def __getattr__(name: str) -> Any:
                     "Fatal dependency failure: '{}:{}' failed to load (error: \"{}\")".format(module_name, name, str(e))
                 )
                 print("")
-                logging.exception("")
+                logging.getLogger("exception").exception("")
                 print("")
 
                 logging.getLogger("exception").warning("Unable to initialize dependencies")
@@ -262,6 +267,7 @@ __all__ = [
     "importer",
     "launcher",
     "logging",
+    "opentelemetry",
     "watcher",
     "run",
     "_set_service",

@@ -11,6 +11,7 @@ from tomodachi import importer as importer
 from tomodachi import invoker as invoker
 from tomodachi import launcher as launcher
 from tomodachi import logging as logging
+from tomodachi import opentelemetry as opentelemetry
 from tomodachi import options as options
 from tomodachi import transport as transport
 from tomodachi import watcher as watcher
