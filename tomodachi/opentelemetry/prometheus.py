@@ -288,7 +288,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
             or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT")
             or os.environ.get("OTEL_PYTHON_TOMODACHI_PROMETHEUS_PORT")
             or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_PORT")
-            or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_HOST")
+            or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_PORT")
             or os.environ.get("OTEL_EXPORTER_PROMETHEUS_PORT")
             or 9464
         )
@@ -335,7 +335,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
 
         listen_url = "http://{}:{}/".format("localhost" if addr in ("0.0.0.0", "127.0.0.1") else addr, port)
         logging.get_logger("tomodachi.opentelemetry").info(
-            "prometheus http server started",
+            "prometheus client started",
             listen_url=listen_url,
             listen_host=addr,
             listen_port=port,
