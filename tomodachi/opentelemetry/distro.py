@@ -1,7 +1,7 @@
 import logging
 import os
 from os import environ
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Type, cast
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Type, cast
 
 from opentelemetry import trace
 from opentelemetry._logs import _internal as logs_internal
@@ -16,6 +16,7 @@ from opentelemetry.environment_variables import (
 )
 from opentelemetry.instrumentation.distro import BaseDistro  # type: ignore
 from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_CONFIGURATOR
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
 from opentelemetry.metrics import _internal as metrics_internal
 from opentelemetry.metrics import set_meter_provider
 from opentelemetry.sdk._configuration import (
@@ -45,6 +46,7 @@ from opentelemetry.trace import set_tracer_provider
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util._providers import _load_provider
 from opentelemetry.util.types import AttributeValue
+from pkg_resources import EntryPoint
 
 
 def _get_trace_exporters() -> Dict[str, Type[SpanExporter]]:
@@ -321,9 +323,18 @@ def _initialize_components(auto_instrumentation_version: Optional[str] = None) -
 
 
 class OpenTelemetryConfigurator(_BaseConfigurator):
+    _is_configured: bool = False
+
+    def reset(self) -> None:
+        self._is_configured = False
+
     def _configure(self, **kwargs: Any) -> None:
+        if self._is_configured:
+            return
+
         try:
             _initialize_components(str(kwargs.get("auto_instrumentation_version") or ""))
+            self._is_configured = True
         except Exception as e:
 
             def wrapper(exc: Exception) -> Callable:
@@ -332,23 +343,35 @@ class OpenTelemetryConfigurator(_BaseConfigurator):
 
                 return __post_init_hook
 
-            import tomodachi
+            from tomodachi import TOMODACHI_CLASSES
 
-            setattr(tomodachi.Service, "__post_init_hook", wrapper(e))
+            for cls in TOMODACHI_CLASSES:
+                cls.__post_init_hook = wrapper(e)
+
             raise
 
 
 class OpenTelemetryDistro(BaseDistro):
+    _is_configured: bool = False
+    _instrumentors: Set[Type[BaseInstrumentor]] = set()
+
+    def reset(self) -> None:
+        self._is_configured = False
+        self._instrumentors = set()
+
     def _set_entry_keys_precedence(self) -> None:
-        from pkg_resources import working_set  # type: ignore
+        from pkg_resources import working_set
 
         for item in working_set.entries:
-            entry_keys = working_set.entry_keys[item]
+            entry_keys = getattr(working_set, "entry_keys", {}).get(item, [])
             if "tomodachi" in entry_keys:
                 entry_keys.remove("tomodachi")
                 entry_keys.insert(0, "tomodachi")
 
     def _configure(self, **kwargs: Any) -> None:
+        if self._is_configured:
+            return
+
         self._set_entry_keys_precedence()
 
         logging.getLogger("opentelemetry.instrumentation.auto_instrumentation._load").setLevel(logging.ERROR)
@@ -357,3 +380,14 @@ class OpenTelemetryDistro(BaseDistro):
         os.environ.setdefault(OTEL_TRACES_EXPORTER, "none")
         os.environ.setdefault(OTEL_METRICS_EXPORTER, "none")
         os.environ.setdefault(OTEL_LOGS_EXPORTER, "none")
+
+        self._is_configured = True
+
+    def load_instrumentor(self, entry_point: EntryPoint, **kwargs: Any) -> None:
+        instrumentor: Type[BaseInstrumentor] = entry_point.load()
+
+        if instrumentor in self._instrumentors:
+            return
+
+        instrumentor().instrument(**kwargs)
+        self._instrumentors.add(instrumentor)
