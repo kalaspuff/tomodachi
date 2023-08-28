@@ -426,7 +426,11 @@ class OpenTelemetryAWSSQSMiddleware(OpenTelemetryTomodachiMiddleware):
                 function_success = False
                 span.set_status(trace.StatusCode.ERROR)
                 limit_exception_traceback(exc, ("tomodachi.transport.aws_sns_sqs", "tomodachi.helpers.middleware"))
-                span.record_exception(exc, escaped=True)
+                span.record_exception(
+                    exc,
+                    {"exception.stacktrace": "".join(format_exception(type(exc), exc, exc.__traceback__))},
+                    escaped=True,
+                )
                 raise
             finally:
                 span.end()
@@ -506,7 +510,11 @@ class OpenTelemetryAMQPMiddleware(OpenTelemetryTomodachiMiddleware):
                 function_success = False
                 span.set_status(trace.StatusCode.ERROR)
                 limit_exception_traceback(exc, ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"))
-                span.record_exception(exc, escaped=True)
+                span.record_exception(
+                    exc,
+                    {"exception.stacktrace": "".join(format_exception(type(exc), exc, exc.__traceback__))},
+                    escaped=True,
+                )
                 raise
             finally:
                 span.end()
@@ -566,7 +574,11 @@ class OpenTelemetryScheduleFunctionMiddleware(OpenTelemetryTomodachiMiddleware):
                 function_success = False
                 span.set_status(trace.StatusCode.ERROR)
                 limit_exception_traceback(exc, ("tomodachi.transport.schedule", "tomodachi.helpers.middleware"))
-                span.record_exception(exc, escaped=True)
+                span.record_exception(
+                    exc,
+                    {"exception.stacktrace": "".join(format_exception(type(exc), exc, exc.__traceback__))},
+                    escaped=True,
+                )
                 raise
             finally:
                 span.end()
