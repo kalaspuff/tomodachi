@@ -179,6 +179,8 @@ class TomodachiInstrumentor(BaseInstrumentor):
             context["_awssnssqs_message_pre_middleware"] = awssnssqs_message_pre_middleware
             context["_amqp_message_pre_middleware"] = amqp_message_pre_middleware
             context["_schedule_pre_middleware"] = schedule_pre_middleware
+            context["_opentelemetry_tracer"] = tracer
+            context["_opentelemetry_meter"] = meter
 
         setattr(service, "_is_instrumented_by_opentelemetry", True)
         setattr(service, "_opentelemetry_tracer", tracer)
@@ -224,6 +226,11 @@ class TomodachiInstrumentor(BaseInstrumentor):
         setattr(service, "_opentelemetry_meter_provider", None)
         setattr(service, "_opentelemetry_meter", None)
         setattr(service, "_is_instrumented_by_opentelemetry", False)
+
+        context = getattr(service, "context", None)
+        if context:
+            context["_opentelemetry_tracer"] = None
+            context["_opentelemetry_meter"] = None
 
     @classmethod
     def instrument_logging(
@@ -348,12 +355,16 @@ class TomodachiInstrumentor(BaseInstrumentor):
             message_attributes: Dict,
             context: Dict,
             *args: Any,
+            service: Any = None,
             **kwargs: Any,
         ) -> str:
-            tracer = cast(Tracer, context.get("_opentelemetry_tracer")) or None
+            tracer = (
+                cast(Tracer, getattr(service, "_opentelemetry_tracer", None) or context.get("_opentelemetry_tracer"))
+                or None
+            )
             if not tracer:
                 return await aws_sns_sqs_publish_message(
-                    topic_arn, message, message_attributes, context, *args, **kwargs
+                    topic_arn, message, message_attributes, context, *args, service=service, **kwargs
                 )
 
             topic: str = (
@@ -411,7 +422,10 @@ class TomodachiInstrumentor(BaseInstrumentor):
             *args: Any,
             **kwargs: Any,
         ) -> None:
-            tracer = cast(Tracer, context.get("_opentelemetry_tracer")) or None
+            tracer = (
+                cast(Tracer, getattr(service, "_opentelemetry_tracer", None) or context.get("_opentelemetry_tracer"))
+                or None
+            )
             if not tracer:
                 await amqp_publish_message(
                     routing_key,

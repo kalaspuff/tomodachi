@@ -273,6 +273,7 @@ class AWSSNSSQSTransport(Invoker):
                 service.context,
                 group_id=group_id,
                 deduplication_id=deduplication_id,
+                service=service,
             )
 
         if wait:
@@ -967,9 +968,16 @@ class AWSSNSSQSTransport(Invoker):
         context: Dict,
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
+        service: Any = None,
     ) -> str:
         return await cls._publish_message(
-            topic_arn, message, message_attributes, context, group_id=group_id, deduplication_id=deduplication_id
+            topic_arn,
+            message,
+            message_attributes,
+            context,
+            group_id=group_id,
+            deduplication_id=deduplication_id,
+            service=service,
         )
 
     @classmethod
@@ -983,6 +991,7 @@ class AWSSNSSQSTransport(Invoker):
         *,
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
+        service: Any = None,
     ) -> str:
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
