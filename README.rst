@@ -215,6 +215,26 @@ The path to the logger attribute in the module you're specifying must implement 
 
 Although non-native ``structlog`` loggers can be used as custom loggers, it's highly recommended to specify a path that has been assigned a value from ``structlog.wrap_logger`` or ``structlog.get_logger``.
 
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--opentelemetry-instrument</tt></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_OPENTELEMETRY_INSTRUMENT=1</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+Use ``--opentelemetry-instrument`` to enable OpenTelemetry auto instrumentation of the service and libraries for which the environment has installed instrumentors.
+
+If ``tomodachi`` is installed in the environment, using the argument ``--opentelemetry-instrument`` (or setting the ``TOMODACHI_OPENTELEMETRY_INSTRUMENT=1`` env variable value) is mostly equivalent to starting the service using the ``opentelemetry-instrument`` CLI – OTEL distros, configurators and instrumentors will be loaded automatically and ``OTEL_*`` environment values will be processed in the same way.
+
 ----
 
 Getting started 🏃
@@ -239,11 +259,11 @@ later is used to run the microservices you build.
 
 ``tomodachi`` can be installed together with a set of "extras" that will install a set of dependencies that are useful for different purposes. The extras are:
 
-* ``opentelemetry``: for OpenTelemetry instrumentation support.
 * ``uvloop``: for the possibility to start services with the ``--loop uvloop`` option.
 * ``protobuf``: for protobuf support in envelope transformation and message serialization.
 * ``aiodns``: to use ``aiodns`` as the DNS resolver for ``aiohttp``.
 * ``brotli``: to use ``brotli`` compression in ``aiohttp``.
+* ``opentelemetry``: for OpenTelemetry instrumentation support.
 * ``opentelemetry-exporter-prometheus``: to use the experimental OTEL meter provider for Prometheus.
 
 Services and their dependencies, together with runtime utilities like ``tomodachi``, should preferably always be installed and run in isolated environments like Docker containers or virtual environments.
@@ -1207,10 +1227,36 @@ Install ``tomodachi`` using the ``opentelemetry`` extras to enable instrumentati
 
 When added as a Poetry dependency the ``opentelemetry`` extras can be enabled by adding ``tomodachi = {extras = ["opentelemetry"]}`` to the ``pyproject.toml`` file, and when added to a ``requiements.txt`` file the ``opentelemetry`` extras can be enabled by adding ``tomodachi[opentelemetry]`` to the file.
 
-Auto instrumentation using ``opentelemetry-instrument``
--------------------------------------------------------
+Auto instrumentation: ``tomodachi --opentelemetry-instrument``
+--------------------------------------------------------------
 
-Auto instrumentation using ``opentelemetry`` can then be activated by starting services using ``opentelemetry-instrument [otel-options] tomodachi run [options] <service.py ...>``.
+Passing the ``--opentelemetry-instrument`` argument to ``tomodachi run`` will automatically instrument the service with the appropriate exporters and configuration according to the set ``OTEL_*`` environment variables.
+
+If ``tomodachi`` is installed in the environment, using ``tomodachi --opentelemetry-instrument service.py`` is mostly equivalent to running ``opentelemetry-instrument tomodachi run service.py`` and will load distros, configurators and instrumentors automatically in the same way as the ``opentelemetry-instrument`` CLI would do.
+
+.. code:: bash
+
+    local ~$ OTEL_LOGS_EXPORTER=console
+        OTEL_TRACES_EXPORTER=console \
+        OTEL_METRICS_EXPORTER=console \
+        OTEL_SERVICE_NAME=example-service \
+        tomodachi --opentelemetry-instrument run service/app.py
+
+The environment variable ``TOMODACHI_OPENTELEMETRY_INSTRUMENT`` if set will also enable auto instrumentation in the same way.
+
+.. code:: bash
+
+    local ~$ OTEL_LOGS_EXPORTER=console
+        OTEL_TRACES_EXPORTER=console \
+        OTEL_METRICS_EXPORTER=console \
+        OTEL_SERVICE_NAME=example-service \
+        TOMODACHI_OPENTELEMETRY_INSTRUMENT=1 \
+        tomodachi run service/app.py
+
+Auto instrumentation using the ``opentelemetry-instrument`` CLI
+---------------------------------------------------------------
+
+Auto instrumentation using the ``opentelemetry-instrument`` CLI can be achieved by starting services using ``opentelemetry-instrument [otel-options] tomodachi run [options] <service.py ...>``.
 
 .. code:: bash
 
@@ -1232,7 +1278,9 @@ Auto instrumentation using ``opentelemetry`` can then be activated by starting s
 Manual instrumentation
 ----------------------
 
-Auto instrumentation using ``opentelemetry-instrument`` is the recommended way of instrumenting services, as it will automatically instrument the service with the appropriate exporters and configuration. However, instrumentation can also be enabled by importing the ``TomodachiInstrumentor`` instrumentation class and calling its' ``instrument`` function before defining the service class.
+Auto instrumentation using either ``tomodachi --opentelemetry-instrument``, setting the ``TOMODACHI_OPENTELEMETRY_INSTRUMENT=1`` env value or using the ``opentelemetry-instrument`` CLI are the recommended ways of instrumenting services, as they will automatically instrument the service (and libs with instrumentors installed) with the appropriate exporters and configuration.
+
+However, instrumentation can also be enabled by importing the ``TomodachiInstrumentor`` instrumentation class and calling its' ``instrument`` function.
 
 .. code:: python
 
