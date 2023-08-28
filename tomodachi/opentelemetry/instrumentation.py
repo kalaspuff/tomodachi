@@ -579,12 +579,14 @@ class TomodachiInstrumentor(BaseInstrumentor):
 
 class _InstrumentedTomodachiService(tomodachi.Service):
     _tomodachi_class_is_service_class: bool = False
+
     _is_instrumented_by_opentelemetry: bool = False
     _opentelemetry_tracer_provider: Optional[TracerProvider] = None
-    _opentelemetry_tracer: Optional[Tracer] = None
     _opentelemetry_meter_provider: Optional[MeterProvider] = None
-    _opentelemetry_meter: Optional[Meter] = None
     _opentelemetry_excluded_urls: Optional[str] = None
+
+    _opentelemetry_tracer: Optional[Tracer] = None
+    _opentelemetry_meter: Optional[Meter] = None
 
     def __post_init_hook(self) -> None:
         TomodachiInstrumentor.instrument_service(
