@@ -239,6 +239,7 @@ __author__: str = "Carl Oscar Aaro"
 __email__: str = "hello@carloscar.com"
 
 CLASS_ATTRIBUTE: str = "_tomodachi_class_is_service_class"
+TOMODACHI_CLASSES: List[Type] = []
 
 __all__ = [
     "service",
@@ -356,6 +357,8 @@ class TomodachiServiceMeta(type):
         for base in bases:
             if hasattr(base, CLASS_ATTRIBUTE):
                 delattr(base, CLASS_ATTRIBUTE)
+
+        TOMODACHI_CLASSES.append(result)
 
         return cast(TomodachiServiceMeta, result)
 
