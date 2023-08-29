@@ -329,12 +329,12 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
 
                 span.set_attribute("http.response.status_code", response_status_code)
 
-                span.end()
-                end_time = span.end_time if span.is_recording() else time_ns()
+                self.decrease_active_tasks(attributes)
+                end_time = span.end_time if span.is_recording() and span.end_time else time_ns()
                 self.record_duration(
                     start_time, end_time, attributes, {"http.response.status_code": response_status_code}
                 )
-                self.decrease_active_tasks(attributes)
+                span.end(end_time=end_time)
 
         if response is None:
             response = web.HTTPInternalServerError()
@@ -433,10 +433,10 @@ class OpenTelemetryAWSSQSMiddleware(OpenTelemetryTomodachiMiddleware):
                 )
                 raise
             finally:
-                span.end()
-                end_time = span.end_time if span.is_recording() else time_ns()
-                self.record_duration(start_time, end_time, attributes, {"function.success": function_success})
                 self.decrease_active_tasks(attributes)
+                end_time = span.end_time if span.is_recording() and span.end_time else time_ns()
+                self.record_duration(start_time, end_time, attributes, {"function.success": function_success})
+                span.end(end_time=end_time)
 
 
 class OpenTelemetryAMQPMiddleware(OpenTelemetryTomodachiMiddleware):
@@ -517,10 +517,10 @@ class OpenTelemetryAMQPMiddleware(OpenTelemetryTomodachiMiddleware):
                 )
                 raise
             finally:
-                span.end()
-                end_time = span.end_time if span.is_recording() else time_ns()
-                self.record_duration(start_time, end_time, attributes, {"function.success": function_success})
                 self.decrease_active_tasks(attributes)
+                end_time = span.end_time if span.is_recording() and span.end_time else time_ns()
+                self.record_duration(start_time, end_time, attributes, {"function.success": function_success})
+                span.end(end_time=end_time)
 
 
 class OpenTelemetryScheduleFunctionMiddleware(OpenTelemetryTomodachiMiddleware):
@@ -581,7 +581,7 @@ class OpenTelemetryScheduleFunctionMiddleware(OpenTelemetryTomodachiMiddleware):
                 )
                 raise
             finally:
-                span.end()
-                end_time = span.end_time if span.is_recording() else time_ns()
-                self.record_duration(start_time, end_time, attributes, {"function.success": function_success})
                 self.decrease_active_tasks(attributes)
+                end_time = span.end_time if span.is_recording() and span.end_time else time_ns()
+                self.record_duration(start_time, end_time, attributes, {"function.success": function_success})
+                span.end(end_time=end_time)
