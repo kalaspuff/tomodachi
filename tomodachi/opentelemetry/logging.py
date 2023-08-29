@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from traceback import format_exception
 from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 from opentelemetry import trace
@@ -45,6 +46,10 @@ class OpenTelemetryLoggingHandler(LoggingHandler):
     @staticmethod
     def _get_attributes(record: logging.LogRecord) -> Attributes:
         attributes = cast(Dict[str, Any], LoggingHandler._get_attributes(record))
+        if record.exc_info:
+            _, exc, tb = record.exc_info
+            if exc is not None and exc.__traceback__ and exc.__traceback__ != tb:
+                attributes["exception.stacktrace"] = "".join(format_exception(type(exc), exc, exc.__traceback__))
         logger_context: Dict[str, Any] = attributes.pop("logger.context", None)
         if not logger_context:
             return attributes
