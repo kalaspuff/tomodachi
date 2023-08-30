@@ -1,7 +1,7 @@
 import logging
 import os
 from os import environ
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Type, cast
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Type, Union, cast
 
 from opentelemetry import trace
 from opentelemetry._logs import _internal as logs_internal
@@ -17,6 +17,7 @@ from opentelemetry.environment_variables import (
 from opentelemetry.instrumentation.distro import BaseDistro  # type: ignore
 from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_CONFIGURATOR
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
+from opentelemetry.metrics import Instrument
 from opentelemetry.metrics import _internal as metrics_internal
 from opentelemetry.metrics import set_meter_provider
 from opentelemetry.sdk._configuration import (
@@ -33,7 +34,13 @@ from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs._internal import LogRecordProcessor
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, LogExporter
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics._internal.aggregation import ExplicitBucketHistogramAggregation
+from opentelemetry.sdk.metrics._internal.aggregation import (
+    Aggregation,
+    DefaultAggregation,
+    ExplicitBucketHistogramAggregation,
+    _Aggregation,
+)
+from opentelemetry.sdk.metrics._internal.instrument import Histogram
 from opentelemetry.sdk.metrics.export import MetricExporter, MetricReader, PeriodicExportingMetricReader
 from opentelemetry.sdk.metrics.view import View
 from opentelemetry.sdk.resources import OTELResourceDetector, Resource
@@ -45,8 +52,10 @@ from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import set_tracer_provider
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util._providers import _load_provider
-from opentelemetry.util.types import AttributeValue
+from opentelemetry.util.types import Attributes, AttributeValue
 from pkg_resources import EntryPoint
+
+from tomodachi.opentelemetry.exemplars import ExemplarAggregation, ExemplarReservoir
 
 
 def _get_trace_exporters() -> Dict[str, Type[SpanExporter]]:
@@ -279,34 +288,53 @@ def _create_resource(attributes: Optional[Dict[str, AttributeValue]] = None) -> 
     return Resource.create(attributes).merge(OTELResourceDetector().detect())
 
 
+class DynamicAggregation(Aggregation):
+    _duration_aggregation = ExplicitBucketHistogramAggregation(
+        boundaries=(0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10)
+    )
+    _default_aggregation = DefaultAggregation()
+
+    def _resolve_aggregation(
+        self, instrument: Instrument
+    ) -> Union[ExplicitBucketHistogramAggregation, DefaultAggregation]:
+        if (
+            isinstance(instrument, Histogram)
+            and instrument.instrumentation_scope.name == "tomodachi.opentelemetry"
+            and instrument.name
+            in (
+                "function.duration",
+                "http.server.duration",
+                "messaging.amazonsqs.duration",
+                "messaging.rabbitmq.duration",
+            )
+            and instrument.unit == "s"
+        ):
+            return self._duration_aggregation
+        return self._default_aggregation
+
+    def _create_aggregation(
+        self,
+        instrument: Instrument,
+        attributes: Attributes,
+        start_time_unix_nano: int,
+    ) -> _Aggregation:
+        aggregation_factory = self._resolve_aggregation(instrument)
+        aggregation = aggregation_factory._create_aggregation(instrument, attributes, start_time_unix_nano)
+        ExemplarReservoir(instrument=instrument, aggregation=aggregation)
+        return aggregation
+
+
 def _add_meter_provider_views(meter_provider: MeterProvider) -> None:
     if not [v for v in meter_provider._sdk_config.views if v._meter_name == "tomodachi.opentelemetry"]:
-        aggregation = ExplicitBucketHistogramAggregation(
-            boundaries=(0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10)
-        )
-        views = (
+        meter_provider._sdk_config.views = (
+            *meter_provider._sdk_config.views,
+            View(instrument_name="*", aggregation=DynamicAggregation()),
             View(
-                instrument_name="http.server.duration",
-                aggregation=aggregation,
-                meter_name="tomodachi.opentelemetry",
-            ),
-            View(
-                instrument_name="messaging.amazonsqs.duration",
-                aggregation=aggregation,
-                meter_name="tomodachi.opentelemetry",
-            ),
-            View(
-                instrument_name="messaging.rabbitmq.duration",
-                aggregation=aggregation,
-                meter_name="tomodachi.opentelemetry",
-            ),
-            View(
-                instrument_name="function.duration",
-                aggregation=aggregation,
+                instrument_name="*",
+                aggregation=ExemplarAggregation(),
                 meter_name="tomodachi.opentelemetry",
             ),
         )
-        meter_provider._sdk_config.views = (*meter_provider._sdk_config.views, *views)
 
 
 def _initialize_components(auto_instrumentation_version: Optional[str] = None) -> None:

@@ -1,11 +1,13 @@
 import os
 import re
+from collections import deque
 from json import dumps
 from re import IGNORECASE, UNICODE, compile
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, List, Optional, Type, cast
 
 from opentelemetry.exporter.prometheus import _CustomCollector as _PrometheusCustomCollector
 from opentelemetry.sdk.metrics import Meter, MeterProvider
+from opentelemetry.sdk.metrics._internal.point import DataT, HistogramDataPoint, NumberDataPoint
 from opentelemetry.sdk.metrics.export import Metric, MetricReader, MetricsData, ResourceMetrics, ScopeMetrics
 from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID as RESOURCE_SERVICE_INSTANCE_ID
 from opentelemetry.sdk.resources import SERVICE_NAME as RESOURCE_SERVICE_NAME
@@ -15,6 +17,7 @@ from opentelemetry.util.types import AttributeValue
 from prometheus_client import Info
 from prometheus_client.core import Metric as PrometheusMetric
 from prometheus_client.registry import Collector, CollectorRegistry
+from prometheus_client.samples import Exemplar as PrometheusExemplar
 
 from tomodachi import logging
 from tomodachi.opentelemetry.distro import _create_resource
@@ -24,6 +27,7 @@ from tomodachi.opentelemetry.environment_variables import (
     OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS,
     OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT,
 )
+from tomodachi.opentelemetry.exemplars import Exemplar, ExemplarReservoir
 
 UNIT_TRANSFORM_MAP = {
     "s": "seconds",
@@ -130,13 +134,19 @@ class _CustomCollector(_PrometheusCustomCollector):
     def __init__(self, prefix: str = "", registry: CollectorRegistry = REGISTRY_) -> None:
         super().__init__(prefix)
         self._registry = registry
+        self._exemplars_data: deque[List[Optional[Exemplar]]] = deque()
+
+    def add_exemplars_data(self, exemplars_data: List[Optional[Exemplar]]) -> None:
+        self._exemplars_data.append(exemplars_data)
 
     def _translate_to_prometheus(
         self,
         metrics_data: MetricsData,
         metric_family_id_metric_family: Dict[str, PrometheusMetric],
     ) -> None:
+        metric_family_id_metric_family.clear()
         super()._translate_to_prometheus(metrics_data, metric_family_id_metric_family)
+        exemplars = self._exemplars_data.popleft()
         if metric_family_id_metric_family:
             target_info: Dict[str, str] = self._registry.get_target_info() or {}
             add_metric_labels = {k: v for k, v in target_info.items() if k in ("job", "instance")}
@@ -147,6 +157,19 @@ class _CustomCollector(_PrometheusCustomCollector):
                 for metric_family in metric_family_id_metric_family.values():
                     for sample in metric_family.samples:
                         sample.labels.update(add_metric_labels)
+
+            for metric_family in metric_family_id_metric_family.values():
+                if metric_family.__class__.__name__ in ("HistogramMetricFamily", "CounterMetricFamily"):
+                    for idx, sample in enumerate(metric_family.samples[:]):
+                        exemplar = exemplars.pop(0) if exemplars else None
+                        if exemplar:
+                            metric_family.samples[idx] = sample._replace(
+                                exemplar=PrometheusExemplar(
+                                    {"trace_id": exemplar.trace_id, "span_id": exemplar.span_id},
+                                    exemplar.value,
+                                    exemplar.time_unix_nano / 1e9,
+                                )
+                            )
 
 
 class TomodachiPrometheusMetricReader(MetricReader):
@@ -208,25 +231,79 @@ class TomodachiPrometheusMetricReader(MetricReader):
         if metrics_data is None or not metrics_data.resource_metrics:
             return
 
-        metrics_data_ = MetricsData(
-            resource_metrics=[
-                ResourceMetrics(
-                    resource=rm.resource,
-                    scope_metrics=[
-                        ScopeMetrics(
-                            scope=sm.scope,
-                            metrics=[self._transform_metric(metric) for metric in sm.metrics],
-                            schema_url=sm.schema_url,
+        for resource_metric in metrics_data.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    metric_ = self._transform_metric(metric)
+                    data_type: Type[DataT] = metric.data.__class__
+                    data_kw: Dict[str, Any] = {
+                        key: getattr(metric.data, key, None)
+                        for key in ("is_monotonic", "aggregation_temporality")
+                        if hasattr(metric_.data, key)
+                    }
+                    for data_point in metric.data.data_points:
+                        metrics_data_ = MetricsData(
+                            resource_metrics=[
+                                ResourceMetrics(
+                                    resource=resource_metric.resource,
+                                    scope_metrics=[
+                                        ScopeMetrics(
+                                            scope=scope_metric.scope,
+                                            metrics=[
+                                                Metric(
+                                                    name=metric_.name,
+                                                    description=metric_.description,
+                                                    unit=metric_.unit,
+                                                    data=data_type(data_points=[cast(Any, data_point)], **data_kw),
+                                                )
+                                            ],
+                                            schema_url=scope_metric.schema_url,
+                                        )
+                                    ],
+                                    schema_url=resource_metric.schema_url,
+                                )
+                            ]
                         )
-                        for sm in rm.scope_metrics
-                    ],
-                    schema_url=rm.schema_url,
-                )
-                for rm in metrics_data.resource_metrics
-            ]
-        )
 
-        self._collector.add_metrics_data(metrics_data_)
+                        reservoir = ExemplarReservoir(instrument_name=metric.name, attributes=data_point.attributes)
+                        exemplars: List[Optional[Exemplar]] = []
+
+                        if isinstance(data_point, HistogramDataPoint):
+                            current_exemplar = None
+                            for bucket_count, explicit_bounds, bucket in zip(
+                                data_point.bucket_counts,
+                                (*data_point.explicit_bounds, None),
+                                range(len(data_point.bucket_counts)),
+                            ):
+                                if bucket_count:
+                                    for exemplar in reservoir.collect(
+                                        filter_key=lambda e: e.time_unix_nano >= data_point.start_time_unix_nano
+                                        and e.time_unix_nano <= data_point.time_unix_nano
+                                        and (explicit_bounds is None or e.value <= explicit_bounds),
+                                        sort_key=lambda e: -e.value,
+                                        bucket=bucket,
+                                        limit=1,
+                                    ):
+                                        current_exemplar = exemplar
+                                exemplars.append(current_exemplar)
+                        elif isinstance(data_point, NumberDataPoint):
+                            is_monotonic = getattr(reservoir.aggregation, "_instrument_is_monotonic", None)
+                            if is_monotonic is None:
+                                is_monotonic = getattr(metric.data, "is_monotonic", None)
+                            if is_monotonic:
+                                for exemplar in reservoir.collect(
+                                    filter_key=lambda e: bool(
+                                        e.time_unix_nano >= data_point.start_time_unix_nano
+                                        and e.time_unix_nano <= data_point.time_unix_nano
+                                    ),
+                                    sort_key=lambda e: -e.time_unix_nano,
+                                    limit=1,
+                                ):
+                                    exemplars.append(exemplar)
+
+                        self._collector.add_metrics_data(metrics_data_)
+                        self._collector.add_exemplars_data(exemplars)
+                        reservoir.reset()
 
 
 class TomodachiPrometheusMeterProvider(MeterProvider):
@@ -237,6 +314,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
 
         resource = _create_resource()
         reader = TomodachiPrometheusMetricReader(prefix, registry)
+
         super().__init__(metric_readers=[reader], resource=resource)
 
     def _get_target_info(self) -> Dict[str, str]:
