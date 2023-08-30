@@ -162,8 +162,14 @@ class _CustomCollector(_PrometheusCustomCollector):
             for metric_family in metric_family_id_metric_family.values():
                 if metric_family.__class__.__name__ in ("HistogramMetricFamily", "CounterMetricFamily"):
                     for idx, sample in enumerate(metric_family.samples[:]):
+                        if metric_family.__class__.__name__ == "HistogramMetricFamily" and (
+                            not sample.name.endswith("_bucket")
+                        ):
+                            continue
+                        if sample.name.endswith("_created"):
+                            continue
                         exemplar = exemplars.pop(0) if exemplars else None
-                        if exemplar:
+                        if exemplar and not sample.exemplar:
                             metric_family.samples[idx] = sample._replace(
                                 exemplar=PrometheusExemplar(
                                     {"trace_id": exemplar.trace_id, "span_id": exemplar.span_id},
