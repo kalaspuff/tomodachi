@@ -66,7 +66,7 @@ def test_opentelemetry_auto_configure() -> None:
         assert logger_provider.resource.attributes["telemetry.auto.version"]
 
         assert meter_provider is not None
-        assert len(meter_provider._sdk_config.views) == 2
+        assert len(meter_provider._sdk_config.views) == 1
     finally:
         os.environ.clear()
         for k, v in environ.items():
@@ -97,7 +97,7 @@ def test_opentelemetry_load_tomodachi_prometheus_meter_provider() -> None:
 
         meter_provider = _get_meter_provider()
         assert meter_provider is not None
-        assert len(meter_provider._sdk_config.views) == 3
+        assert len(meter_provider._sdk_config.views) == 2
         assert getattr(meter_provider, "_prometheus_server_started", None) is False
         assert getattr(meter_provider, "_prometheus_registry", None) is not None
         assert type(meter_provider).__name__ == "TomodachiPrometheusMeterProvider"

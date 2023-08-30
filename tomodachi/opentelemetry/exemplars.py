@@ -40,14 +40,17 @@ from tomodachi.opentelemetry.environment_variables import OTEL_PYTHON_TOMODACHI_
 
 # status of exemplars support for Python OTEL: https://github.com/open-telemetry/opentelemetry-python/issues/2407
 
-TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED = str(
-    os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED)
-    or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED")
-    or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_EXEMPLARS_ENABLED")
-    or os.environ.get("OTEL_EXPORTER_PROMETHEUS_EXEMPLARS_ENABLED")
-    or os.environ.get("TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED")
-    or 0
-).lower().strip() in ("1", "true")
+
+def IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED() -> bool:
+    return str(
+        os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED)
+        or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED")
+        or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_EXEMPLARS_ENABLED")
+        or os.environ.get("OTEL_EXPORTER_PROMETHEUS_EXEMPLARS_ENABLED")
+        or os.environ.get("IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED")
+        or os.environ.get("TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED")
+        or 0
+    ).lower().strip() in ("1", "true")
 
 
 @dataclass(frozen=True)
