@@ -171,7 +171,10 @@ class _CustomCollector(_PrometheusCustomCollector):
                         exemplar = exemplars.pop(0) if exemplars else None
                         if exemplar and not sample.exemplar:
                             exemplar_labels = {
-                                **{self._sanitize(k): self._check_value(v) for k, v in exemplar.attributes or {}},
+                                **{
+                                    self._sanitize(k): self._check_value(v)
+                                    for k, v in (exemplar.attributes or {}).items()
+                                },
                                 "trace_id": exemplar.trace_id,
                                 "span_id": exemplar.span_id,
                             }
