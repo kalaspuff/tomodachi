@@ -112,7 +112,7 @@ def test_opentelemetry_load_tomodachi_prometheus_meter_provider() -> None:
 
         setattr(prometheus_client, "start_http_server", _start_http_server)
 
-        meter_provider.get_meter("tomodachi.opentelemetry")
+        meter_provider.get_meter("tomodachi")
         assert getattr(meter_provider, "_prometheus_server_started", None) is True
         assert catched_values == [
             (),

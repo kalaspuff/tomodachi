@@ -139,8 +139,8 @@ class TomodachiInstrumentor(BaseInstrumentor):
                         logger_provider._resource = resource
                         setattr(handler._logger, "_resource", logger_provider.resource)
 
-        tracer = get_tracer("tomodachi.opentelemetry", tomodachi_version, tracer_provider)
-        meter = get_meter("tomodachi.opentelemetry", tomodachi_version, meter_provider)
+        tracer = get_tracer("tomodachi", tomodachi_version, tracer_provider)
+        meter = get_meter("tomodachi", tomodachi_version, meter_provider)
 
         if meter and not isinstance(meter, NoOpMeter) and not tracer:
             # collect metrics even if tracing is disabled

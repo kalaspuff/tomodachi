@@ -1,7 +1,7 @@
 import logging
 import os
 from os import environ
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Type, Union, cast
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Type, cast
 
 from opentelemetry import trace
 from opentelemetry._logs import _internal as logs_internal
@@ -48,6 +48,7 @@ from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
 from opentelemetry.sdk.trace.id_generator import IdGenerator
 from opentelemetry.sdk.trace.sampling import Sampler
+from opentelemetry.sdk.util.instrumentation import InstrumentationScope
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import set_tracer_provider
 from opentelemetry.util._importlib_metadata import entry_points
@@ -55,6 +56,7 @@ from opentelemetry.util._providers import _load_provider
 from opentelemetry.util.types import Attributes, AttributeValue
 from pkg_resources import EntryPoint
 
+from tomodachi.__version__ import __version__ as tomodachi_version
 from tomodachi.opentelemetry.exemplars import (
     IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED,
     ExemplarAggregation,
@@ -292,28 +294,37 @@ def _create_resource(attributes: Optional[Dict[str, AttributeValue]] = None) -> 
     return Resource.create(attributes).merge(OTELResourceDetector().detect())
 
 
-class DynamicAggregation(Aggregation):
-    _duration_aggregation = ExplicitBucketHistogramAggregation(
-        boundaries=(0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10)
-    )
-    _default_aggregation = DefaultAggregation()
+class DynamicAggregationSelection(NamedTuple):
+    instrument_type: Type[Instrument]
+    instrumentation_scope: InstrumentationScope
+    instrument_names: Sequence[str]
 
-    def _resolve_aggregation(
-        self, instrument: Instrument
-    ) -> Union[ExplicitBucketHistogramAggregation, DefaultAggregation]:
-        if (
-            isinstance(instrument, Histogram)
-            and instrument.instrumentation_scope.name == "tomodachi.opentelemetry"
-            and instrument.name
-            in (
+
+class DynamicAggregation(Aggregation):
+    _aggregation_selection: Dict[DynamicAggregationSelection, Aggregation] = {
+        DynamicAggregationSelection(
+            instrument_type=Histogram,
+            instrumentation_scope=InstrumentationScope("tomodachi", tomodachi_version),
+            instrument_names=(
                 "function.duration",
                 "http.server.duration",
                 "messaging.amazonsqs.duration",
                 "messaging.rabbitmq.duration",
-            )
-            and instrument.unit == "s"
-        ):
-            return self._duration_aggregation
+            ),
+        ): ExplicitBucketHistogramAggregation(
+            boundaries=(0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10)
+        )
+    }
+    _default_aggregation = DefaultAggregation()
+
+    def _resolve_aggregation(self, instrument: Instrument) -> Aggregation:
+        for aggregation_selection, aggregation in self._aggregation_selection.items():
+            if (
+                isinstance(instrument, aggregation_selection.instrument_type)
+                and cast(Any, instrument).instrumentation_scope == aggregation_selection.instrumentation_scope
+                and cast(Any, instrument).name in aggregation_selection.instrument_names
+            ):
+                return aggregation
         return self._default_aggregation
 
     def _create_aggregation(
@@ -332,9 +343,9 @@ class DynamicAggregation(Aggregation):
 def _add_meter_provider_views(meter_provider: MeterProvider) -> None:
     views: List[View] = list(meter_provider._sdk_config.views)
     if DynamicAggregation not in [type(v._aggregation) for v in views]:
-        views.append(View(instrument_name="*", aggregation=DynamicAggregation(), meter_name="tomodachi.opentelemetry"))
+        views.append(View(instrument_name="*", aggregation=DynamicAggregation(), meter_name="tomodachi"))
     if ExemplarAggregation not in [type(v._aggregation) for v in views] and IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED():
-        views.append(View(instrument_name="*", aggregation=ExemplarAggregation(), meter_name="tomodachi.opentelemetry"))
+        views.append(View(instrument_name="*", aggregation=ExemplarAggregation(), meter_name="tomodachi"))
     meter_provider._sdk_config.views = (*views,)
 
 
