@@ -66,7 +66,7 @@ def test_opentelemetry_auto_configure() -> None:
         assert logger_provider.resource.attributes["telemetry.auto.version"]
 
         assert meter_provider is not None
-        assert len(meter_provider._sdk_config.views) == 4
+        assert len(meter_provider._sdk_config.views) == 2
     finally:
         os.environ.clear()
         for k, v in environ.items():
@@ -90,13 +90,14 @@ def test_opentelemetry_load_tomodachi_prometheus_meter_provider() -> None:
     start_http_server = prometheus_client.start_http_server
     try:
         os.environ["OTEL_PYTHON_METER_PROVIDER"] = "tomodachi_prometheus"
+        os.environ["OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED"] = "true"
 
         configurator = OpenTelemetryConfigurator()
         configurator.configure()
 
         meter_provider = _get_meter_provider()
         assert meter_provider is not None
-        assert len(meter_provider._sdk_config.views) == 4
+        assert len(meter_provider._sdk_config.views) == 3
         assert getattr(meter_provider, "_prometheus_server_started", None) is False
         assert getattr(meter_provider, "_prometheus_registry", None) is not None
         assert type(meter_provider).__name__ == "TomodachiPrometheusMeterProvider"
