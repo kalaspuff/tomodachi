@@ -3,7 +3,7 @@ import re
 from collections import deque
 from json import dumps
 from re import IGNORECASE, UNICODE, compile
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import Any, Deque, Dict, List, Optional, Type, cast
 
 from opentelemetry.exporter.prometheus import _CustomCollector as _PrometheusCustomCollector
 from opentelemetry.sdk.metrics import Meter, MeterProvider
@@ -135,7 +135,7 @@ class _CustomCollector(_PrometheusCustomCollector):
     def __init__(self, prefix: str = "", registry: CollectorRegistry = REGISTRY_) -> None:
         super().__init__(prefix)
         self._registry = registry
-        self._exemplars_data: deque[List[Optional[Exemplar]]] = deque()
+        self._exemplars_data: Deque[List[Optional[Exemplar]]] = deque()
 
     def add_exemplars_data(self, exemplars_data: List[Optional[Exemplar]]) -> None:
         self._exemplars_data.append(exemplars_data)
