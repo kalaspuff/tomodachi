@@ -55,7 +55,11 @@ from opentelemetry.util._providers import _load_provider
 from opentelemetry.util.types import Attributes, AttributeValue
 from pkg_resources import EntryPoint
 
-from tomodachi.opentelemetry.exemplars import ExemplarAggregation, ExemplarReservoir
+from tomodachi.opentelemetry.exemplars import (
+    TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED,
+    ExemplarAggregation,
+    ExemplarReservoir,
+)
 
 
 def _get_trace_exporters() -> Dict[str, Type[SpanExporter]]:
@@ -320,21 +324,23 @@ class DynamicAggregation(Aggregation):
     ) -> _Aggregation:
         aggregation_factory = self._resolve_aggregation(instrument)
         aggregation = aggregation_factory._create_aggregation(instrument, attributes, start_time_unix_nano)
-        ExemplarReservoir(instrument=instrument, aggregation=aggregation)
+        if TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED:
+            ExemplarReservoir(instrument=instrument, aggregation=aggregation)
         return aggregation
 
 
 def _add_meter_provider_views(meter_provider: MeterProvider) -> None:
     if not [v for v in meter_provider._sdk_config.views if v._meter_name == "tomodachi.opentelemetry"]:
-        meter_provider._sdk_config.views = (
-            *meter_provider._sdk_config.views,
-            View(instrument_name="*", aggregation=DynamicAggregation()),
-            View(
-                instrument_name="*",
-                aggregation=ExemplarAggregation(),
-                meter_name="tomodachi.opentelemetry",
-            ),
-        )
+        views = [View(instrument_name="*", aggregation=DynamicAggregation())]
+        if TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED:
+            views.append(
+                View(
+                    instrument_name="*",
+                    aggregation=ExemplarAggregation(),
+                    meter_name="tomodachi.opentelemetry",
+                )
+            )
+        meter_provider._sdk_config.views = (*meter_provider._sdk_config.views, *views)
 
 
 def _initialize_components(auto_instrumentation_version: Optional[str] = None) -> None:

@@ -1,10 +1,25 @@
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from random import randint
 from time import time_ns
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from opentelemetry.metrics import Instrument
 from opentelemetry.sdk.metrics._internal.aggregation import (
@@ -18,8 +33,21 @@ from opentelemetry.sdk.metrics._internal.measurement import Measurement
 from opentelemetry.trace import format_span_id, format_trace_id, get_current_span
 from opentelemetry.util.types import Attributes, AttributeValue
 
+from tomodachi.opentelemetry.environment_variables import OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED
+
 # currently experimental workaround to provide exemplars to metrics in Prometheus OpenMetrics format.
 # exemplar spec: https://opentelemetry.io/docs/specs/otel/metrics/sdk/#exemplar
+
+# status of exemplars support for Python OTEL: https://github.com/open-telemetry/opentelemetry-python/issues/2407
+
+TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED = str(
+    os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED)
+    or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED")
+    or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_EXEMPLARS_ENABLED")
+    or os.environ.get("OTEL_EXPORTER_PROMETHEUS_EXEMPLARS_ENABLED")
+    or os.environ.get("TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED")
+    or 0
+).lower().strip() in ("1", "true")
 
 
 @dataclass(frozen=True)
@@ -100,12 +128,15 @@ class BaseExemplarReservoir(ABC):
 
 
 class ExemplarPool:
+    max_exemplars_in_pool: int = 30
     _exemplars: List[Exemplar]
 
     def __init__(self) -> None:
         self._exemplars = []
 
     def add_exemplar(self, exemplar: Exemplar) -> None:
+        if len(self._exemplars) >= self.max_exemplars_in_pool:
+            self._exemplars.pop(0)
         self._exemplars.append(exemplar)
 
     def clear(self) -> None:
@@ -115,19 +146,21 @@ class ExemplarPool:
 class ExemplarReservoir(BaseExemplarReservoir):
     instrument: Instrument
     aggregation: _Aggregation
-    attributes: Attributes
-    _buckets: List[ExemplarPool]
+    attributes: Mapping[str, AttributeValue]
+    _attributes: frozenset[Tuple[str, AttributeValue]]
+    _buckets: Tuple[ExemplarPool, ...]
 
     def _initialize(self, instrument: Instrument, aggregation: _Aggregation, attributes: Attributes) -> None:
         self.instrument = instrument
         self.aggregation = aggregation
-        self.attributes = attributes
-        self._buckets = [ExemplarPool() for _ in range(self.num_buckets)]
+        self.attributes = attributes or {}
+        self._attributes_set = frozenset(self.attributes.items())
+        self._buckets = tuple(ExemplarPool() for _ in range(self.num_buckets))
 
     def _offer(self, measurement: Measurement) -> Tuple[bool, int]:
         return False, 0
 
-    def _exemplars_from_buckets(self, buckets: List[ExemplarPool]) -> List[Exemplar]:
+    def _exemplars_from_buckets(self, buckets: Iterable[ExemplarPool]) -> List[Exemplar]:
         exemplars: List[Exemplar] = []
         for bucket in buckets:
             exemplars = exemplars + bucket._exemplars
@@ -142,7 +175,7 @@ class ExemplarReservoir(BaseExemplarReservoir):
                 self._buckets[bucket].add_exemplar(
                     Exemplar(
                         value=measurement.value,
-                        attributes=measurement.attributes,
+                        attributes=dict((measurement.attributes or {}).items() - self._attributes_set),
                         time_unix_nano=time_unix_nano,
                         _trace_id=span_context.trace_id,
                         _span_id=span_context.span_id,
@@ -224,7 +257,10 @@ class AlignedHistogramBucketExemplarReservoir(ExemplarReservoir):
 
     def reset(self) -> None:
         for bucket in self._buckets:
-            bucket.clear()
+            if bucket._exemplars:
+                exemplar = bucket._exemplars.pop()
+                bucket.clear()
+                bucket.add_exemplar(exemplar)
 
     @property
     def num_buckets(self) -> int:

@@ -58,3 +58,13 @@ Additional details are available `in the specification
 <https://opentelemetry.io/docs/specs/otel/compatibility/prometheus_and_openmetrics/#resource-attributes-1`__.
 Default: True
 """
+
+OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED = "OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED"
+"""
+.. envvar:: OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED
+
+The :envvar:`OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED` if set to True will include exemplars in
+the Prometheus output when queried with the OpenMetrics accept header. Use of these exemplars with the
+Prometheus meter provider are currently experimental.
+Default: False
+"""

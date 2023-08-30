@@ -27,7 +27,7 @@ from tomodachi.opentelemetry.environment_variables import (
     OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS,
     OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT,
 )
-from tomodachi.opentelemetry.exemplars import Exemplar, ExemplarReservoir
+from tomodachi.opentelemetry.exemplars import TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED, Exemplar, ExemplarReservoir
 
 UNIT_TRANSFORM_MAP = {
     "s": "seconds",
@@ -265,6 +265,12 @@ class TomodachiPrometheusMetricReader(MetricReader):
                             ]
                         )
 
+                        self._collector.add_metrics_data(metrics_data_)
+
+                        if not TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED:
+                            self._collector.add_exemplars_data([])
+                            continue
+
                         reservoir = ExemplarReservoir(instrument_name=metric.name, attributes=data_point.attributes)
                         exemplars: List[Optional[Exemplar]] = []
 
@@ -301,7 +307,6 @@ class TomodachiPrometheusMetricReader(MetricReader):
                                 ):
                                     exemplars.append(exemplar)
 
-                        self._collector.add_metrics_data(metrics_data_)
                         self._collector.add_exemplars_data(exemplars)
                         reservoir.reset()
 
