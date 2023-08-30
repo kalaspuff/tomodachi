@@ -97,6 +97,7 @@ class OtelScopeInfoCollector(Info):
         super().__init__(
             "otel_scope",
             "Instrumentation Scope metadata",
+            registry=None,
         )
         self._value = {}
 
