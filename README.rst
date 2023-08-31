@@ -82,7 +82,7 @@ Recommendations and examples. 🧘
 
 **Please note – this library is a work in progress.** 🐣
 
-Consider ``tomodachi`` as beta software. This library follows an unregular release schedule. There may be breaking changes between `0.x` versions.
+Consider ``tomodachi`` as beta software. This library follows an unregular release schedule. There may be breaking changes between ``0.x`` versions.
 
 Usage
 =====
@@ -335,7 +335,7 @@ Run services with:
 
 .. code:: bash
 
-    local ~/code/service$ tomodachi run <service.py ...>
+    local ~/code/service$ tomodachi run service.py
 
 ----
 
@@ -464,8 +464,8 @@ Run the service 😎
 
 .. code:: bash
 
-    # cli alias is set up automatically on installation
-    local ~/code/service$ tomodachi run service.py
+    # cli alias is set up automatically on installation
+    local ~/code/service$ tomodachi run service.py
 
     # alternatively using the tomodachi.run module
     local ~/code/service$ python -m tomodachi.run service.py
@@ -481,13 +481,13 @@ Run the service 😎
 .. code:: bash
 
     local ~$ curl -v "http://127.0.0.1:9700/resource/1234"
-    > HTTP/1.1 200 OK
-    > Content-Type: text/plain; charset=utf-8
-    > Server: tomodachi
-    > Content-Length: 9
-    > Date: Sun, 16 Oct 2022 13:38:02 GMT
-    >
-    > id = 1234
+    # > HTTP/1.1 200 OK
+    # > Content-Type: text/plain; charset=utf-8
+    # > Server: tomodachi
+    # > Content-Length: 9
+    # > Date: Sun, 16 Oct 2022 13:38:02 GMT
+    # >
+    # > id = 1234
 
 
 Getting an instance of a service
@@ -661,22 +661,22 @@ Building and running the container, forwarding host's port 31337 to port 80.
 
 .. code:: bash
 
-    local ~/code/service$ docker build . -t tomodachi-microservice
-    > Sending build context to Docker daemon  9.216kB
-    > Step 1/7 : FROM python:3.10-bullseye
-    > 3.10-bullseye: Pulling from library/python
-    > ...
-    >  ---> 3f7f3ab065d4
-    > Step 7/7 : CMD ["tomodachi", "run", "service.py"]
-    >  ---> Running in b8dfa9deb243
-    > Removing intermediate container b8dfa9deb243
-    >  ---> 8f09a3614da3
-    > Successfully built 8f09a3614da3
-    > Successfully tagged tomodachi-microservice:latest
+    local ~/code/service$ docker build . -t tomodachi-microservice
+    # > Sending build context to Docker daemon  9.216kB
+    # > Step 1/7 : FROM python:3.10-bullseye
+    # > 3.10-bullseye: Pulling from library/python
+    # > ...
+    # >  ---> 3f7f3ab065d4
+    # > Step 7/7 : CMD ["tomodachi", "run", "service.py"]
+    # >  ---> Running in b8dfa9deb243
+    # > Removing intermediate container b8dfa9deb243
+    # >  ---> 8f09a3614da3
+    # > Successfully built 8f09a3614da3
+    # > Successfully tagged tomodachi-microservice:latest
 
 .. code:: bash
 
-    local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
+    local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
 
 .. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/53dfc4d2b3a8f9df16995aa61541afa2412b1074/docs/assets/tomodachi-in-docker.png
     :align: center
@@ -687,43 +687,43 @@ Making requests to the running container.
 .. code:: bash
 
     local ~$ curl http://127.0.0.1:31337/ | jq
-    > {
-    >   "data": "hello world!",
-    >   "execution_context": {
-    >     "tomodachi_version": "x.x.xx",
-    >     "python_version": "3.x.x",
-    >     "system_platform": "Linux",
-    >     "process_id": 1,
-    >     "init_timestamp": "2022-10-16T13:38:01.201509Z",
-    >     "event_loop": "asyncio",
-    >     "http_enabled": true,
-    >     "http_current_tasks": 1,
-    >     "http_total_tasks": 1,
-    >     "aiohttp_version": "x.x.xx"
-    >   }
-    > }
+    # {
+    #   "data": "hello world!",
+    #   "execution_context": {
+    #     "tomodachi_version": "x.x.xx",
+    #     "python_version": "3.x.x",
+    #     "system_platform": "Linux",
+    #     "process_id": 1,
+    #     "init_timestamp": "2022-10-16T13:38:01.201509Z",
+    #     "event_loop": "asyncio",
+    #     "http_enabled": true,
+    #     "http_current_tasks": 1,
+    #     "http_total_tasks": 1,
+    #     "aiohttp_version": "x.x.xx"
+    #   }
+    # }
 
 .. code:: bash
 
     local ~$ curl http://127.0.0.1:31337/health -i
-    > HTTP/1.1 200 OK
-    > Content-Type: application/json; charset=utf-8
-    > Server: tomodachi
-    > Content-Length: 21
-    > Date: Sun, 16 Oct 2022 13:40:44 GMT
-    >
-    > {"status": "healthy"}
+    # > HTTP/1.1 200 OK
+    # > Content-Type: application/json; charset=utf-8
+    # > Server: tomodachi
+    # > Content-Length: 21
+    # > Date: Sun, 16 Oct 2022 13:40:44 GMT
+    # >
+    # > {"status": "healthy"}
 
 .. code:: bash
 
     local ~$ curl http://127.0.0.1:31337/no-route -i
-    > HTTP/1.1 404 Not Found
-    > Content-Type: application/json; charset=utf-8
-    > Server: tomodachi
-    > Content-Length: 22
-    > Date: Sun, 16 Oct 2022 13:41:18 GMT
-    >
-    > {"error": "not-found"}
+    # > HTTP/1.1 404 Not Found
+    # > Content-Type: application/json; charset=utf-8
+    # > Server: tomodachi
+    # > Content-Length: 22
+    # > Date: Sun, 16 Oct 2022 13:41:18 GMT
+    # >
+    # > {"error": "not-found"}
 
 
 **It's actually as easy as that to get something spinning. The hard part is usually to figure out (or decide) what to build next.**
@@ -746,6 +746,8 @@ HTTP endpoints:
 .. code:: python
 
     @tomodachi.http(method, url, ignore_logging=[200])
+    def handler(self, request, *args, **kwargs):
+        ...
 
 Usage:
   Sets up an **HTTP endpoint** for the specified ``method`` (``GET``, ``PUT``, ``POST``, ``DELETE``) on the regexp ``url``.
@@ -756,6 +758,9 @@ Usage:
 .. code:: python
 
     @tomodachi.http_static(path, url)
+    def handler(self, request, *args, **kwargs):
+        # noop
+        pass
 
 Usage:
   Sets up an **HTTP endpoint for static content** available as ``GET`` / ``HEAD`` from the ``path`` on disk on the base regexp ``url``.
@@ -765,6 +770,14 @@ Usage:
 .. code:: python
 
     @tomodachi.websocket(url)
+    def handler(self, request, *args, **kwargs):
+        async def _receive(data: Union[str, bytes]) -> None:
+            ...
+
+        async def _close() -> None:
+            ...
+
+        return _receive, _close
 
 Usage:
   Sets up a **websocket endpoint** on the regexp ``url``. The invoked function is called upon websocket connection and should return a two value tuple containing callables for a function receiving frames (first callable) and a function called on websocket close (second callable). The passed arguments to the function beside the class object is first the ``websocket`` response connection which can be used to send frames to the client, and optionally also the ``request`` object.
@@ -774,6 +787,8 @@ Usage:
 .. code:: python
 
     @tomodachi.http_error(status_code)
+    def handler(self, request, *args, **kwargs):
+        ...
 
 Usage:
   A function which will be called if the **HTTP request would result in a 4XX** ``status_code``. You may use this for example to set up a custom handler on "404 Not Found" or "403 Forbidden" responses.
@@ -796,6 +811,8 @@ AWS SNS+SQS messaging:
         max_number_of_consumed_messages=MAX_NUMBER_OF_CONSUMED_MESSAGES
         **kwargs,
     )
+    def handler(self, data, *args, **kwargs):
+        ...
 
 Usage:
   This would set up an **AWS SQS queue**, subscribing to messages on the **AWS SNS topic** ``topic`` (if a ``topic`` is specified), whereafter it will start consuming messages from the queue.
@@ -837,6 +854,8 @@ AMQP messaging (RabbitMQ):
         queue_name=None,
         **kwargs,
     )
+    def handler(self, data, *args, **kwargs):
+        ...
 
 Usage:
   Sets up the method to be called whenever a **AMQP / RabbitMQ message is received** for the specified ``routing_key``. By default the ``'amq.topic'`` topic exchange would be used, it may also be overridden by setting the ``options.amqp.exchange_name`` dict value on the service class.
@@ -861,6 +880,8 @@ Scheduled functions / cron / triggered on time interval:
         timezone=None,
         immediately=False,
     )
+    def handler(self, *args, **kwargs):
+        ...
 
 Usage:
   A **scheduled function** invoked on either a specified ``interval`` (you may use the popular cron notation as a str for fine-grained interval or specify an integer value of seconds) or a specific ``timestamp``. The ``timezone`` will default to your local time unless explicitly stated.
@@ -872,6 +893,8 @@ Usage:
 .. code:: python
 
     @tomodachi.heartbeat
+    def handler(self, *args, **kwargs):
+        ...
 
 Usage:
   A function which will be **invoked every second**.
@@ -884,6 +907,8 @@ Usage:
     @tomodachi.hourly
     @tomodachi.daily
     @tomodachi.monthly
+    def handler(self, *args, **kwargs):
+        ...
 
 Usage:
   A scheduled function which will be invoked once **every minute / hour / day / month**.
@@ -1029,17 +1054,13 @@ This example portrays a middleware function which adds trace spans around the fu
 .. code:: python
 
     async def trace_middleware(
-        func: Callable[... Awaitable],
+        func: Callable[..., Awaitable],
         *,
         topic: str,
         message_attributes: dict,
-        sns_message_id: str
+        sns_message_id: str,
     ) -> None:
-        ctx: Context | None = None
-
-        if carrier_traceparent := message_attributes.get("telemetry.carrier.traceparent"):
-            carrier: dict[str, list[str] | str] = {"traceparent": carrier_traceparent}
-            ctx = TraceContextTextMapPropagator().extract(carrier=carrier)
+        ctx = TraceContextTextMapPropagator().extract(carrier=message_attributes)
 
         with tracer.start_as_current_span(f"SNSSQS handler '{func.__name__}'", context=ctx) as span:
             span.set_attribute("messaging.system", "AmazonSQS")
@@ -1072,7 +1093,7 @@ This example portrays a middleware function which adds trace spans around the fu
 
 **Example of a middleware specified as a class:**
 
-A middleware can also be specified as the object of a class, in which case the `__call__`` method of the object will be invoked as the middleware function. Note that bound functions such as self has to be included in the signature as it's called as a normal class function.
+A middleware can also be specified as the object of a class, in which case the ``__call__`` method of the object will be invoked as the middleware function. Note that bound functions such as self has to be included in the signature as it's called as a normal class function.
 
 This class provides a simplistic basic auth implementation validating credentials in the HTTP Authorization header for HTTP requests to the service.
 
@@ -1198,7 +1219,7 @@ Note that when using the standard library logger directly the contextual logger 
 
 A GET request to ``/example`` of this service would result in five log records being emitted (as shown formatted with the ``json`` formatter). The four from the example above and the last one from the ``tomodachi.transport.http`` module.
 
-.. code:: json
+.. code:: javascript
 
     {"timestamp": "2023-08-13T19:25:15.923627Z", "logger": "tomodachi.http.handler", "level": "info", "message": "http request", "handler": "http_handler", "type": "tomodachi.http"}
     {"timestamp": "2023-08-13T19:25:15.923894Z", "logger": "service.logger", "level": "info", "message": "with logging module"}
@@ -1439,7 +1460,7 @@ In the service class an attribute named ``options`` (as a ``tomodachi.Options`` 
 ``http.max_keepalive_requests``                            An optional number (int) of requests which is allowed for a keep-alive connection. After the specified number of requests has been done, the connection will be closed. An option value of ``0`` or ``None`` (default) will allow any number of requests over an open keep-alive connection.                                                                                                                                                                                        ``None``
 ``http.max_keepalive_time``                                An optional maximum time in seconds (int) for which keep-alive connections are kept open. If a keep-alive connection has been kept open for more than ``http.max_keepalive_time`` seconds, the following request will be closed upon returning a response. The feature is not used by default and won't be used if the value is ``0`` or ``None``. A keep-alive connection may otherwise be open unless inactive for more than the keep-alive timeout.                              ``None``
 ``http.client_max_size``                                   The client’s maximum size in a request, as an integer, in bytes.                                                                                                                                                                                                                                                                                                                                                                                                                    ``(1024 ** 2) * 100``
-``http.termination_grace_period_seconds``                  The number of seconds to wait for functions called via HTTP to gracefully finish execution before terminating the service, for example if service received a `SIGINT` or `SIGTERM` signal while requests were still awaiting response results.                                                                                                                                                                                                                                      ``30``
+``http.termination_grace_period_seconds``                  The number of seconds to wait for functions called via HTTP to gracefully finish execution before terminating the service, for example if service received a ``SIGINT`` or ``SIGTERM`` signal while requests were still awaiting response results.                                                                                                                                                                                                                                  ``30``
 ``http.real_ip_header``                                    Header to read the value of the client's real IP address from if service operates behind a reverse proxy. Only used if ``http.real_ip_from`` is set and the proxy's IP correlates with the value from ``http.real_ip_from``.                                                                                                                                                                                                                                                        ``"X-Forwarded-For"``
 ``http.real_ip_from``                                      IP address(es) or IP subnet(s) / CIDR. Allows the ``http.real_ip_header`` header value to be used as client's IP address if connecting reverse proxy's IP equals a value in the list or is within a specified subnet. For example ``["127.0.0.1/32", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]`` would permit header to be used if closest reverse proxy is ``"127.0.0.1"`` or within the three common private network IP address ranges.                                    ``[]``
 ``http.content_type``                                      Default content-type header to use if not specified in the response.                                                                                                                                                                                                                                                                                                                                                                                                                ``"text/plain; charset=utf-8"``

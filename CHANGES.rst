@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.26.0 (2023-08-xx)
+0.26.0 (2023-08-31)
 -------------------
 
 **New and updated**
@@ -624,8 +624,8 @@ Changes
   ``{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}``.
 
 - The event loop that the process will execute on can now be specified
-  on startup using ``--loop [auto|asyncio|uvloop]``, currently the `auto`
-  (or `default`) value will use Python's builtin `asyncio` event loop.
+  on startup using ``--loop [auto|asyncio|uvloop]``, currently the ``auto``
+  (or ``default``) value will use Python's builtin ``asyncio`` event loop.
 
 - Fixes a bug that could cause a termination signal to stop the service
   in the middle of processing a message received via AWS SQS. The service
@@ -1220,7 +1220,7 @@ Changes
 0.7.0 (2018-01-27)
 ------------------
 
-- Added `@websocket` as a decorator type for handling websockets. A function
+- Added ``@websocket`` as a decorator type for handling websockets. A function
   call should return two callables which will be used for receiving messages
   through the socket and as a way to notify about the closure of the socket.
 
@@ -1228,13 +1228,13 @@ Changes
 0.6.5 (2018-01-16)
 ------------------
 
-- Updated `aiohttp` to latest version which solves incompabilities with `yarl`.
+- Updated ``aiohttp`` to latest version which solves incompabilities with ``yarl``.
 
 
 0.6.4 (2018-01-15)
 ------------------
 
-- Added a stricter dependency check for `yarl`.
+- Added a stricter dependency check for ``yarl``.
 
 
 0.6.3 (2018-01-12)
@@ -1258,8 +1258,8 @@ Changes
 0.6.1 (2017-11-15)
 ------------------
 
-- Introduced new options for AWS SNS/SQS transport to use `aws_endpoint_urls`
-  for `sns` and `sqs` if the user wishes to connect to other endpoints and the
+- Introduced new options for AWS SNS/SQS transport to use ``aws_endpoint_urls``
+  for ``sns`` and ``sqs`` if the user wishes to connect to other endpoints and the
   actual AWS endpoints, which could be useful for development and testing. The
   AWS SNS/SQS examples has been updated with values to reflect these options.
 
