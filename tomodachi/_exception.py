@@ -17,7 +17,7 @@ def limit_exception_traceback(
     tb_back = None
     tb = exc.__traceback__
     while tb:
-        module_name = tb.tb_frame.f_globals.get("__name__", "")
+        module_name = tb.tb_frame.f_globals.get("__name__", "") if tb.tb_frame and tb.tb_frame.f_globals else ""
         frames.append((tb, module_name))
         if module_name not in ignored_modules:
             tb_back = tb
