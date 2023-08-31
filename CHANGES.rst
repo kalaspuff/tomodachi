@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.26.0 (2023-08-31)
+0.26.0 (2023-09-01)
 -------------------
 
 **New and updated**
@@ -27,6 +27,7 @@ Changes
 - The complete refactoring of logging changes how log entries are being emitted, both in the way that the event / message of the log records has changed, but also how a log handler is now also added to the ``logging.root`` logger on service start.
 - Third party log records will if propagation is enabled also be processed in ``tomodachi.logging`` which may cause duplicate log output depending on how the third party logger is configured.
 - Removed the ``log_setup()`` function that previously was added to the service object on class initialization and that was used to setup log output to disk.
+- Tracebacks for uncaught exceptions are now extracted to only include frames relevant to the service application and not the internal ``tomodachi`` frames, which usually will be uninteresting for debugging.
 
 **Bug fixes**
 
