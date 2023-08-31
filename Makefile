@@ -27,7 +27,11 @@ default:
 .PHONY: build
 build:
 	rm -rf build dist
+	cp README.rst README.rst.tmp
+	cat README.rst.tmp | tr '\n' '\r' | sed -e $$'s/.. raw:: html\r*\(    [^\r]*\r\)*\r//g' | tr '\r' '\n' > README.rst
 	poetry build
+	cp README.rst.tmp README.rst
+	rm README.rst.tmp
 
 .PHONY: install
 install:
