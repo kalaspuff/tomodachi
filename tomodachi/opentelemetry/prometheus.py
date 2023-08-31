@@ -3,7 +3,7 @@ import re
 from collections import deque
 from json import dumps
 from re import IGNORECASE, UNICODE, compile
-from typing import Any, Deque, Dict, Generator, List, Optional, cast
+from typing import Any, Callable, Deque, Dict, Generator, List, Optional, cast
 
 from opentelemetry.exporter.prometheus import _CustomCollector as _PrometheusCustomCollector
 from opentelemetry.sdk.metrics import Meter, MeterProvider
@@ -12,7 +12,6 @@ from opentelemetry.sdk.metrics.export import Metric, MetricReader, MetricsData, 
 from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID as RESOURCE_SERVICE_INSTANCE_ID
 from opentelemetry.sdk.resources import SERVICE_NAME as RESOURCE_SERVICE_NAME
 from opentelemetry.sdk.resources import SERVICE_NAMESPACE as RESOURCE_SERVICE_NAMESPACE
-from opentelemetry.sdk.util.instrumentation import InstrumentationScope
 from opentelemetry.util.types import AttributeValue
 from prometheus_client import Info
 from prometheus_client.core import Metric as PrometheusMetric
@@ -23,12 +22,16 @@ from prometheus_client.samples import Sample as PrometheusSample
 from tomodachi import logging
 from tomodachi.opentelemetry.distro import _create_resource
 from tomodachi.opentelemetry.environment_variables import (
+    OTEL_PYTHON_TOMODACHI_PROMETHEUS_ADDRESS,
     OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO,
     OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_TARGET_INFO,
-    OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS,
-    OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT,
+    OTEL_PYTHON_TOMODACHI_PROMETHEUS_NAMESPACE_PREFIX,
+    OTEL_PYTHON_TOMODACHI_PROMETHEUS_PORT,
 )
 from tomodachi.opentelemetry.exemplars import IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED, Exemplar, ExemplarReservoir
+
+# currently experimental workaround to provide metrics for Prometheus to scrape according to specification.
+
 
 UNIT_TRANSFORM_MAP = {
     "s": "seconds",
@@ -90,34 +93,9 @@ PER_UNIT_TRANSFORM_MAP = {
 REGISTRY_ = CollectorRegistry(auto_describe=True)
 
 
-class OtelScopeInfoCollector(Info):
-    _registry: Optional[CollectorRegistry] = None
-
-    def register(self, registry: Optional[CollectorRegistry] = REGISTRY_) -> None:
-        if not self._registry and registry:
-            registry.register(self)
-            self._registry = registry
-
-    def unregister(self) -> None:
-        if self._registry:
-            self._registry.unregister(self)
-            self._registry = None
-
-    @property
-    def is_registered(self) -> bool:
-        return True if self._registry else False
-
-
-otel_scope_info_collector_ = OtelScopeInfoCollector(
-    "otel_scope",
-    "Instrumentation Scope metadata",
-    labelnames=("otel_scope_name", "otel_scope_version"),
-    registry=None,
-)
-
-
 class _CustomCollector(_PrometheusCustomCollector):
     _metrics_datas: Deque[MetricsData]
+    _callback: Callable  # type: ignore
 
     def __init__(self, prefix: str = "", registry: CollectorRegistry = REGISTRY_) -> None:
         super().__init__(prefix)
@@ -151,49 +129,51 @@ class _CustomCollector(_PrometheusCustomCollector):
             return True
         return False
 
-    def collect(self) -> Generator[PrometheusMetric, Any, Any]:
+    def collect(self) -> Generator[PrometheusMetric, Any, Any]:  # type: ignore
         if self._callback is not None:
             self._callback()
 
-        if self._include_scope_info and self._metrics_datas:
-            otel_scope_info_collector = Info(
-                "otel_scope",
-                "Instrumentation Scope metadata",
-                labelnames=("otel_scope_name", "otel_scope_version"),
-                registry=None,
-            )
-            for metrics_data in self._metrics_datas:
-                for resource_metric in metrics_data.resource_metrics:
-                    for scope_metric in resource_metric.scope_metrics:
-                        otel_scope_info_collector.labels(
-                            otel_scope_name=scope_metric.scope.name, otel_scope_version=scope_metric.scope.version or ""
-                        )
-            for metric_family in otel_scope_info_collector.collect():
-                yield metric_family
-
-        target_info: Dict[str, str] = self._registry.get_target_info() or {}
-        add_metric_labels = {k: v for k, v in target_info.items() if k in ("job", "instance")}
-
-        metric_family_id_metric_family: Dict[str, PrometheusMetric] = {}
-
-        while self._metrics_datas:
-            metrics_data = self._metrics_datas.popleft()
-            add_metric_labels_ = add_metric_labels.copy()
+        if self._metrics_datas:
             if self._include_scope_info:
-                for resource_metric in metrics_data.resource_metrics:
-                    for scope_metric in resource_metric.scope_metrics:
-                        add_metric_labels_["otel_scope_name"] = scope_metric.scope.name
-                        add_metric_labels_["otel_scope_version"] = scope_metric.scope.version or ""
-
-            self._translate_to_prometheus(
-                metrics_data, self._exemplars.popleft(), add_metric_labels_, metric_family_id_metric_family
-            )
-
-            if metric_family_id_metric_family:
-                for metric_family in metric_family_id_metric_family.values():
+                otel_scope_info_collector = Info(
+                    "otel_scope",
+                    "Instrumentation Scope metadata",
+                    labelnames=("otel_scope_name", "otel_scope_version"),
+                    registry=None,
+                )
+                for metrics_data in self._metrics_datas:
+                    for resource_metric in metrics_data.resource_metrics:
+                        for scope_metric in resource_metric.scope_metrics:
+                            otel_scope_info_collector.labels(
+                                otel_scope_name=scope_metric.scope.name,
+                                otel_scope_version=scope_metric.scope.version or "",
+                            )
+                for metric_family in otel_scope_info_collector.collect():
                     yield metric_family
 
-    def _translate_to_prometheus(
+            target_info: Dict[str, str] = self._registry.get_target_info() or {}
+            add_metric_labels = {k: v for k, v in target_info.items() if k in ("job", "instance")}
+
+            metric_family_id_metric_family: Dict[str, PrometheusMetric] = {}
+
+            while self._metrics_datas:
+                metrics_data = self._metrics_datas.popleft()
+                add_metric_labels_ = add_metric_labels.copy()
+                if self._include_scope_info:
+                    for resource_metric in metrics_data.resource_metrics:
+                        for scope_metric in resource_metric.scope_metrics:
+                            add_metric_labels_["otel_scope_name"] = scope_metric.scope.name
+                            add_metric_labels_["otel_scope_version"] = scope_metric.scope.version or ""
+
+                self.translate_to_prometheus(
+                    metrics_data, self._exemplars.popleft(), add_metric_labels_, metric_family_id_metric_family
+                )
+
+                if metric_family_id_metric_family:
+                    for metric_family in metric_family_id_metric_family.values():
+                        yield metric_family
+
+    def translate_to_prometheus(
         self,
         metrics_data: MetricsData,
         exemplars: List[Optional[Exemplar]],
@@ -201,7 +181,7 @@ class _CustomCollector(_PrometheusCustomCollector):
         metric_family_id_metric_family: Dict[str, PrometheusMetric],
     ) -> None:
         metric_family_id_metric_family.clear()
-        super()._translate_to_prometheus(metrics_data, metric_family_id_metric_family)
+        self._translate_to_prometheus(metrics_data, metric_family_id_metric_family)
         if metric_family_id_metric_family:
             if add_metric_labels:
                 for metric_family in metric_family_id_metric_family.values():
@@ -234,7 +214,7 @@ class _CustomCollector(_PrometheusCustomCollector):
 
 
 class TomodachiPrometheusMetricReader(MetricReader):
-    def __init__(self, prefix: str = "tomodachi", registry: CollectorRegistry = REGISTRY_) -> None:
+    def __init__(self, prefix: str = "", registry: CollectorRegistry = REGISTRY_) -> None:
         super().__init__()
         self._collector = _CustomCollector(prefix, registry)
         self._registry = registry
@@ -297,8 +277,8 @@ class TomodachiPrometheusMetricReader(MetricReader):
                         self._collector.add_exemplars([])
                         continue
 
-                    # currently only provides exemplars for metrics with the "tomodachi" scope
-                    # todo: add support to add exemplars on any scope
+                    # currently only provides exemplars for metrics on the "tomodachi" scope
+                    # todo: add support to add exemplars on any instrumentation scope
                     if scope_metric.scope.name != "tomodachi":
                         self._collector.add_exemplars([])
                         continue
@@ -352,10 +332,19 @@ class TomodachiPrometheusMetricReader(MetricReader):
 
 
 class TomodachiPrometheusMeterProvider(MeterProvider):
-    def __init__(self, prefix: str = "tomodachi", registry: CollectorRegistry = REGISTRY_) -> None:
+    def __init__(self, prefix: Optional[str] = None, registry: CollectorRegistry = REGISTRY_) -> None:
         self._prometheus_server_started = False
         self._prometheus_registry = registry
         self._non_letters_digits_underscore_re = compile(r"[^\w]", UNICODE | IGNORECASE)
+
+        if prefix is None:
+            prefix = str(
+                os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_NAMESPACE_PREFIX)
+                or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_NAMESPACE_PREFIX")
+                or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_NAMESPACE_PREFIX")
+                or os.environ.get("OTEL_EXPORTER_PROMETHEUS_NAMESPACE_PREFIX")
+                or ""
+            )
 
         resource = _create_resource()
         reader = TomodachiPrometheusMetricReader(prefix, registry)
@@ -381,15 +370,9 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
         def _sanitize_value(value: AttributeValue) -> str:
             return str(value if isinstance(value, str) else dumps(value, default=str))
 
-        resource_attributes = {
-            _sanitize_key(k): _sanitize_value(v)
-            for k, v in resource.attributes.items()
-            if k
-            not in (RESOURCE_SERVICE_INSTANCE_ID, RESOURCE_SERVICE_NAME, RESOURCE_SERVICE_NAMESPACE, "job", "instance")
-        }
-
+        resource_attributes = {_sanitize_key(k): _sanitize_value(v) for k, v in resource.attributes.items()}
         target_info: Dict[str, str] = self._prometheus_registry.get_target_info() or {}
-        return {"job": job, "instance": instance, **resource_attributes, **target_info}
+        return {**resource_attributes, **target_info, "job": job, "instance": instance}
 
     def _start_prometheus_http_server(self) -> None:
         if self._prometheus_server_started:
@@ -398,7 +381,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
         import prometheus_client
 
         addr = str(
-            os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS)
+            os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_ADDRESS)
             or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS")
             or os.environ.get("OTEL_PYTHON_TOMODACHI_PROMETHEUS_ADDRESS")
             or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_ADDRESS")
@@ -407,7 +390,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
             or "localhost"
         )
         port = int(
-            os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT)
+            os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_PORT)
             or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT")
             or os.environ.get("OTEL_PYTHON_TOMODACHI_PROMETHEUS_PORT")
             or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_PORT")
@@ -435,7 +418,6 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
                     opentelemetry_metric_provider="tomodachi_prometheus",
                 )
 
-        # start prometheus client
         try:
             prometheus_client.start_http_server(port=port, addr=addr, registry=self._prometheus_registry)
         except OSError as e:

@@ -1343,11 +1343,12 @@ The ``tomodachi.opentelemetry`` module also provides a Prometheus meter provider
 Environment variables to configure Prometheus meter provider
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS`` (or ``OTEL_EXPORTER_PROMETHEUS_HOST``) specifies the host address the Prometheus export server should listen on. (default: ``"localhost"``)
-* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT`` (or ``OTEL_EXPORTER_PROMETHEUS_PORT``) specifies the port the Prometheus export server should listen on. (default: ``9464``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_ADDRESS`` specifies the host address the Prometheus export server should listen on. (default: ``"localhost"``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_PORT`` specifies the port the Prometheus export server should listen on. (default: ``9464``)
 * ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO`` specifies whether to include scope information as ``otel_scope_info`` value. (default: ``true``)
 * ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_TARGET_INFO`` specifies whether to include resource attributes as ``target_info`` value. (default: ``true``)
 * ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED`` specifies whether exemplars (experimental) should be collected and used in Prometheus export. (default: ``false``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_NAMESPACE_PREFIX`` specifies the namespace prefix for Prometheus metrics. A final underscore is automatically added if prefix is used. (default: ``""``)
 
 Dependency requirement for Prometheus meter provider
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1370,7 +1371,7 @@ With exemplars enabled, make sure to call the Prometheus client with the accept 
 Example: starting a service with instrumentation
 ------------------------------------------------
 
-This example will start and instrument a service with OTLP exported traces sent to the endpoint ``otelcol:4317`` and metrics that can be scraped by Prometheus from port ``9464``. Additionally *exemplars* will be added to the Prometheus collected metrics that includes sample exemplars with trace_id and span_id labels.
+This example will start and instrument a service with OTLP exported traces sent to the endpoint ``otelcol:4317`` and metrics that can be scraped by Prometheus from port ``9464``. All metrics except for ``target_info`` and ``otel_scope_inf`` will be prefixed with ``"tomodachi_"``. Additionally *exemplars* will be added to the Prometheus collected metrics that includes sample exemplars with trace_id and span_id labels.
 
 .. code:: bash
 
@@ -1379,8 +1380,9 @@ This example will start and instrument a service with OTLP exported traces sent 
         OTEL_EXPORTER_OTLP_ENDPOINT=otelcol:4317 \
         OTEL_PYTHON_METER_PROVIDER=tomodachi_prometheus \
         OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED=true \
-        OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS=0.0.0.0 \
-        OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT=9464 \
+        OTEL_PYTHON_TOMODACHI_PROMETHEUS_ADDRESS=0.0.0.0 \
+        OTEL_PYTHON_TOMODACHI_PROMETHEUS_PORT=9464 \
+        OTEL_PYTHON_TOMODACHI_PROMETHEUS_NAMESPACE_PREFIX=tomodachi \
         tomodachi run service/app.py
 
 ----
