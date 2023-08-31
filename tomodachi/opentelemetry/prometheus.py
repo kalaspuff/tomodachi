@@ -18,6 +18,7 @@ from prometheus_client import Info
 from prometheus_client.core import Metric as PrometheusMetric
 from prometheus_client.registry import Collector, CollectorRegistry
 from prometheus_client.samples import Exemplar as PrometheusExemplar
+from prometheus_client.samples import Sample as PrometheusSample
 
 from tomodachi import logging
 from tomodachi.opentelemetry.distro import _create_resource
@@ -140,6 +141,13 @@ class _CustomCollector(_PrometheusCustomCollector):
     def add_exemplars_data(self, exemplars_data: List[Optional[Exemplar]]) -> None:
         self._exemplars_data.append(exemplars_data)
 
+    def _is_valid_exemplar_metric(self, metric: PrometheusMetric, sample: PrometheusSample) -> bool:
+        if metric.type == "counter" and sample.name.endswith("_total"):
+            return True
+        if metric.type in ("histogram", "gaugehistogram") and sample.name.endswith("_bucket"):
+            return True
+        return False
+
     def _translate_to_prometheus(
         self,
         metrics_data: MetricsData,
@@ -160,13 +168,9 @@ class _CustomCollector(_PrometheusCustomCollector):
                         sample.labels.update(add_metric_labels)
 
             for metric_family in metric_family_id_metric_family.values():
-                if metric_family.__class__.__name__ in ("HistogramMetricFamily", "CounterMetricFamily"):
+                if metric_family.type in ("histogram", "gaugehistogram"):
                     for idx, sample in enumerate(metric_family.samples[:]):
-                        if metric_family.__class__.__name__ == "HistogramMetricFamily" and (
-                            not sample.name.endswith("_bucket")
-                        ):
-                            continue
-                        if sample.name.endswith("_created"):
+                        if not self._is_valid_exemplar_metric(metric_family, sample):
                             continue
                         exemplar = exemplars.pop(0) if exemplars else None
                         if exemplar and not sample.exemplar:
