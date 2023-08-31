@@ -3,11 +3,11 @@ import re
 from collections import deque
 from json import dumps
 from re import IGNORECASE, UNICODE, compile
-from typing import Any, Deque, Dict, List, Optional, Type, cast
+from typing import Any, Deque, Dict, List, Optional, cast
 
 from opentelemetry.exporter.prometheus import _CustomCollector as _PrometheusCustomCollector
 from opentelemetry.sdk.metrics import Meter, MeterProvider
-from opentelemetry.sdk.metrics._internal.point import DataT, HistogramDataPoint, NumberDataPoint
+from opentelemetry.sdk.metrics._internal.point import HistogramDataPoint, NumberDataPoint
 from opentelemetry.sdk.metrics.export import Metric, MetricReader, MetricsData, ResourceMetrics, ScopeMetrics
 from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID as RESOURCE_SERVICE_INSTANCE_ID
 from opentelemetry.sdk.resources import SERVICE_NAME as RESOURCE_SERVICE_NAME
@@ -254,45 +254,36 @@ class TomodachiPrometheusMetricReader(MetricReader):
         for resource_metric in metrics_data.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
                 for metric in scope_metric.metrics:
-                    metric_ = self._transform_metric(metric)
-                    data_type: Type[DataT] = metric.data.__class__
-                    data_kw: Dict[str, Any] = {
-                        key: getattr(metric.data, key, None)
-                        for key in ("is_monotonic", "aggregation_temporality")
-                        if hasattr(metric_.data, key)
-                    }
+                    metrics_data_ = MetricsData(
+                        resource_metrics=[
+                            ResourceMetrics(
+                                resource=resource_metric.resource,
+                                scope_metrics=[
+                                    ScopeMetrics(
+                                        scope=scope_metric.scope,
+                                        metrics=[self._transform_metric(metric)],
+                                        schema_url=scope_metric.schema_url,
+                                    )
+                                ],
+                                schema_url=resource_metric.schema_url,
+                            )
+                        ]
+                    )
+                    self._collector.add_metrics_data(metrics_data_)
+
+                    if not IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED() or scope_metric.scope.name != "tomodachi":
+                        self._collector.add_exemplars_data([])
+                        continue
+
+                    # currently only provides exemplars for metrics with the "tomodachi" scope
+                    # todo: add support for measurement offers to add exemplars on any scope
+                    if scope_metric.scope.name != "tomodachi":
+                        self._collector.add_exemplars_data([])
+                        continue
+
+                    exemplars: List[Optional[Exemplar]] = []
                     for data_point in metric.data.data_points:
-                        metrics_data_ = MetricsData(
-                            resource_metrics=[
-                                ResourceMetrics(
-                                    resource=resource_metric.resource,
-                                    scope_metrics=[
-                                        ScopeMetrics(
-                                            scope=scope_metric.scope,
-                                            metrics=[
-                                                Metric(
-                                                    name=metric_.name,
-                                                    description=metric_.description,
-                                                    unit=metric_.unit,
-                                                    data=data_type(data_points=[cast(Any, data_point)], **data_kw),
-                                                )
-                                            ],
-                                            schema_url=scope_metric.schema_url,
-                                        )
-                                    ],
-                                    schema_url=resource_metric.schema_url,
-                                )
-                            ]
-                        )
-
-                        self._collector.add_metrics_data(metrics_data_)
-
-                        if not IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED():
-                            self._collector.add_exemplars_data([])
-                            continue
-
                         reservoir = ExemplarReservoir(instrument_name=metric.name, attributes=data_point.attributes)
-                        exemplars: List[Optional[Exemplar]] = []
 
                         if isinstance(data_point, HistogramDataPoint):
                             current_exemplar = None
@@ -314,6 +305,7 @@ class TomodachiPrometheusMetricReader(MetricReader):
                                 exemplars.append(current_exemplar)
                         elif isinstance(data_point, NumberDataPoint):
                             is_monotonic = getattr(reservoir.aggregation, "_instrument_is_monotonic", None)
+                            current_exemplar = None
                             if is_monotonic is None:
                                 is_monotonic = getattr(metric.data, "is_monotonic", None)
                             if is_monotonic:
@@ -325,10 +317,12 @@ class TomodachiPrometheusMetricReader(MetricReader):
                                     sort_key=lambda e: -e.time_unix_nano,
                                     limit=1,
                                 ):
-                                    exemplars.append(exemplar)
+                                    current_exemplar = exemplar
+                            exemplars.append(current_exemplar)
 
-                        self._collector.add_exemplars_data(exemplars)
                         reservoir.reset()
+
+                    self._collector.add_exemplars_data(exemplars)
 
 
 class TomodachiPrometheusMeterProvider(MeterProvider):
