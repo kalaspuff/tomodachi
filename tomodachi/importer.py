@@ -15,7 +15,7 @@ class ServicePackageError(ImportError):
 
 class ServiceImporter(object):
     @classmethod
-    def import_service_file(cls, file_name: str) -> ModuleType:
+    def import_service_file(cls, file_name: str, no_exec: bool = False) -> ModuleType:
         cwd = os.getcwd()
         file_path = "{}/{}.py".format(os.path.realpath(cwd), file_name)
         if file_path.endswith(".py.py"):
@@ -79,6 +79,8 @@ class ServiceImporter(object):
                     )
                 else:
                     service_import_name = ""
+                if no_exec:
+                    return service_import
                 spec.loader.exec_module(service_import)
             except ImportError as e:
                 if service_import_name and str(e) == "No module named '{}'".format(service_import_name):
@@ -139,12 +141,14 @@ class ServiceImporter(object):
         return service_import
 
     @classmethod
-    def import_module(cls, file_name: str) -> ModuleType:
+    def import_module(cls, file_name: str, no_exec: bool = False) -> ModuleType:
         cwd = os.getcwd()
         file_path = "{}/{}".format(os.path.realpath(cwd), file_name)
 
         spec: Any = importlib.util.spec_from_file_location(file_name, file_path)
         module_import = importlib.util.module_from_spec(spec)
+        if no_exec:
+            return module_import
         spec.loader.exec_module(module_import)
 
         return module_import

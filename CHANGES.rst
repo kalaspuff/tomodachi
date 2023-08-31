@@ -8,6 +8,10 @@ Changes
 
 - Major refactoring of how logging is done, introducing ``tomodachi.get_logger()`` built on ``structlog``. Contextual logger available for all handlers, etc.
 - Provides the option of hooking in ``tomodachi`` to a custom logger the user provides.
+- Adds instrumentation for ``opentelemetry`` (OTEL / OpenTelemetry) that can be enabled if ``tomodachi`` is installed using the ``opentelemetry`` extras.
+- OTEL auto instrumentation can be achieved by starting services using either the ``tomodachi run`` argument ``--opentelemetry-instrument`` (equivalent to setting env: ``TOMODACHI_OPENTELEMETRY_INSTRUMENT=1``) or using the ``opentelemetry-instrument`` CLI.
+- An experimental meter provider for exporting OpenTelemetry metrics on a Prometheus server can be used by installing the ``opentelemetry-exporter-prometheus`` extras and using the ``OTEL_PYTHON_METER_PROVIDER=tomodachi_prometheus`` environment value in combination with OTEL instrumentation.
+- Adds the option to enable exemplars in the Prometheus client for OpenTelemetry metrics, to be able to link to traces from collected metrics in Grafana, et al.
 - The HTTP body for requests with a body is read before the handler is called and if the connection was closed prematurely before the body could be read, the request will be ignored.
 - Replaces the banner shown when starting a service without ``--production``. The banner now includes the operating system, architecture, which Python runtime from which virtualenv is used, etc. in order to aid debugging during development for issues caused by environment misconfiguration.
 - Updated the CLI usage output from ``--help``.
@@ -30,7 +34,7 @@ Changes
 - Bug fix for an issue which could cause the watcher to fail to restart the service after a syntax error was encountered.
 - Adds some missing type hint annotations.
 - Added additional logging of uncaught exceptions that previously may have been silenced.
-- Fixes so that the ``--log-level`` CLI argument value is actually applied to loggers.
+- Fixed that the ``--log-level`` CLI argument value is actually applied to loggers.
 - Fix for a race condition which could freeze a process if a service was manually stopped (interrupted with ctrl+c) before it had called its first lifecycle function (``_start_service``).
 
 **Deprecations**

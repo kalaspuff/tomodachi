@@ -63,6 +63,14 @@ uvloop = { version = ">=0.14.0,<1.0.0", optional = true }
 aiodns = { version = ">=1.2.0", optional = true }
 Brotli = { version = "^1.0.9", optional = true }
 
+# opentelemetry
+opentelemetry-instrumentation = { version = "==0.40b0", allow-prereleases = true, optional = true }
+opentelemetry-api = { version = ">=1.19.0,<1.20.0", optional = true }
+opentelemetry-sdk = { version = ">=1.19.0,<1.20.0", optional = true }
+opentelemetry-exporter-otlp = { version = ">=1.19.0,<1.20", optional = true }
+opentelemetry-util-http = { version = "==0.40b0", allow-prereleases = true, optional = true }
+opentelemetry-exporter-prometheus = { version = "==1.12.0rc1", allow-prereleases = true, optional = true }
+
 # extras management
 asahi-extras = { version = "*", optional = true }
 
@@ -71,6 +79,10 @@ protobuf = ["protobuf"]
 uvloop = ["uvloop"]
 aiodns = ["aiodns"]
 brotli = ["Brotli"]
+
+opentelemetry = ["opentelemetry-instrumentation", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otlp", "opentelemetry-util-http"]
+opentelemetry-exporter-prometheus = ["opentelemetry-exporter-prometheus", "opentelemetry-instrumentation", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otlp", "opentelemetry-util-http"]
+instruments = ["tomodachi"]
 
 aws = ["asahi-extras"]        # ["aiobotocore", "botocore", "aiohttp"]
 amqp = ["asahi-extras"]       # ["aioamqp"]
@@ -84,7 +96,7 @@ flake8 = { version = ">=3.8.4", markers = "sys_platform != \"win32\"" }
 flake8-black = { version = ">=0.2.0", markers = "sys_platform != \"win32\"" }
 flake8-isort = { version = ">=4.0.0", markers = "sys_platform != \"win32\"" }
 flake8-pyproject = { version = ">=1.1.0", markers = "sys_platform != \"win32\"" }
-isort = { version = ">=5.6.0", markers = "sys_platform != \"win32\"" }
+isort = { version = ">=5.6.0", markers = "sys_platform != \"win32\"", extras = ["plugins"] }
 pytest = { version = ">=6.1.0", markers = "sys_platform != \"win32\"" }
 pytest-cov = { version = ">=2.10.0", markers = "sys_platform != \"win32\"" }
 pytest-rerunfailures = { version = ">=10.2", markers = "sys_platform != \"win32\"" }
@@ -96,9 +108,28 @@ codecov = { version = ">=2.1.13", markers = "sys_platform != \"win32\"" }
 types-protobuf = { version = ">=0.1.13", markers = "sys_platform != \"win32\"" }
 types-pytz = { version = ">=2021.1.0", markers = "sys_platform != \"win32\"" }
 types-tzlocal = { version = ">=0.1.1", markers = "sys_platform != \"win32\"" }
+types-setuptools = { version = ">=16.0", markers = "sys_platform != \"win32\"" }
 
 [tool.poetry.scripts]
 tomodachi = "tomodachi.cli:cli_entrypoint"
+
+[tool.poetry.plugins."opentelemetry_instrumentor"]
+tomodachi = "tomodachi.opentelemetry:TomodachiInstrumentor"
+
+[tool.poetry.plugins."opentelemetry_meter_provider"]
+tomodachi_prometheus = "tomodachi.opentelemetry.prometheus:TomodachiPrometheusMeterProvider"
+
+[tool.poetry.plugins."opentelemetry_metric_reader"]
+tomodachi_prometheus = "tomodachi.opentelemetry.prometheus:TomodachiPrometheusMetricReader"
+
+[tool.poetry.plugins."opentelemetry_distro"]
+tomodachi = "tomodachi.opentelemetry.distro:OpenTelemetryDistro"
+
+[tool.poetry.plugins."opentelemetry_configurator"]
+tomodachi = "tomodachi.opentelemetry.distro:OpenTelemetryConfigurator"
+
+[tool.poetry.plugins."opentelemetry_environment_variables"]
+tomodachi = "tomodachi.opentelemetry.environment_variables"
 
 [build-system]
 requires = ["poetry_core>=1.0.0"]
@@ -115,6 +146,7 @@ profile = "black"
 line_length = 120
 src_paths = ["tomodachi", "tests", "examples"]
 known_first_party = ["tomodachi", "run_test_service_helper", "proto_build"]
+known_third_party = ["opentelemetry"]
 skip = [".mypy_cache", ".pytest_cache", "__pycache__", "tomodachi.egg-info", ".eggs", "syntax_error_service.py", ".git", ".venv", ".vscode", "build", "dist", "tmp"]
 
 [tool.mypy]
@@ -150,6 +182,8 @@ filterwarnings = [
     "ignore:Using the -c \\(--config\\) CLI argument is deprecated. Set and parse service config with environment variables instead.:DeprecationWarning:tomodachi",
     "ignore:Using the 'discovery' interface is deprecated. Please implement lifecycle hooks for your service instead.:DeprecationWarning:tomodachi",
     "ignore:'cgi' is deprecated and slated for removal in Python 3\\.13:DeprecationWarning:aiohttp",
+    "ignore:pkg_resources is deprecated as an API. See .*:DeprecationWarning:opentelemetry.instrumentation",
+    "ignore:Deprecated call to `pkg_resources.declare_namespace.*:DeprecationWarning:pkg_resources",
 ]
 
 [tool.coverage.run]

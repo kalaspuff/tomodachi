@@ -345,7 +345,7 @@ def test_access_log(loop: Any) -> None:
     with open(log_path) as file:
         content = file.read()
         assert "accepting http requests" in content
-        assert "http://127.0.0.1:{}/".format(port) in content
+        assert "http://localhost:{}/".format(port) in content
 
     async def _async(loop: Any) -> None:
         async with aiohttp.ClientSession(loop=loop) as client:
@@ -418,7 +418,7 @@ def test_access_log(loop: Any) -> None:
     with open(log_path) as file:
         content = file.read()
         assert "accepting http requests" in content
-        assert "http://127.0.0.1:{}/".format(port) in content
+        assert "http://localhost:{}/".format(port) in content
 
     loop.run_until_complete(_async(loop))
     instance.stop_service()

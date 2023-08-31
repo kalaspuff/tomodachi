@@ -44,6 +44,8 @@ class CLI:
             f"      specify a log formatter for tomodachi.logging. {DEFAULT}(default: console){COLOR_RESET}\n"
             f"  {OPTION}--custom-logger <module.attribute|module>{COLOR_RESET}\n"
             "      use a custom logger object or custom log module (as import path).\n"
+            f"  {OPTION}--opentelemetry-instrument{COLOR_RESET}\n"
+            "      auto-instruments the application with opentelemetry instrumentors.\n"
             "\n"
             f"{LABEL}usage examples:{COLOR_RESET}\n"
             f"  {SHELL}${COLOR_RESET} {AVAILABLE_COMMAND}tomodachi run --production --logger json --loop uvloop service/app.py{COLOR_RESET}\n"
@@ -77,6 +79,9 @@ class CLI:
         botocore_version = ""
         protobuf_version = ""
         uvloop_version = ""
+        opentelemetry_api_version = ""
+        opentelemetry_sdk_version = ""
+        opentelemetry_instrumentation_version = ""
 
         try:
             import aioamqp  # noqa  # isort:skip
@@ -174,6 +179,24 @@ class CLI:
         except Exception:  # pragma: no cover
             pass
 
+        try:
+            # Optional
+            import opentelemetry.instrumentation.version  # noqa  # isort:skip
+            import opentelemetry.sdk.version  # noqa  # isort:skip
+            import opentelemetry.version  # noqa  # isort:skip
+
+            opentelemetry_api_version = opentelemetry.version.__version__
+            opentelemetry_sdk_version = opentelemetry.sdk.version.__version__
+            opentelemetry_instrumentation_version = opentelemetry.instrumentation.version.__version__
+            if output_versions:
+                print("opentelemetry-api/{}".format(opentelemetry_api_version))
+                print("opentelemetry-sdk/{}".format(opentelemetry_sdk_version))
+                print("opentelemetry-instrumentation/{}".format(opentelemetry_instrumentation_version))
+        except ModuleNotFoundError:  # pragma: no cover
+            pass
+        except Exception:  # pragma: no cover
+            pass
+
         if not errors:
             try:
                 import tomodachi.helpers.logging  # noqa  # isort:skip
@@ -204,6 +227,9 @@ class CLI:
             "botocore": botocore_version or None,
             "protobuf": protobuf_version or None,
             "uvloop": uvloop_version or None,
+            "opentelemetry-api": opentelemetry_api_version or None,
+            "opentelemetry-sdk": opentelemetry_sdk_version or None,
+            "opentelemetry-instrumentation": opentelemetry_instrumentation_version or None,
         }
 
     def run_command(self, args: List[str]) -> None:
@@ -433,6 +459,29 @@ class CLI:
                 print("Invalid combination of --custom-logger and --logger options")
                 sys.exit(2)
 
+            # --opentelemetry-instrument (env: TOMODACHI_OPENTELEMETRY_INSTRUMENT)
+            env_opentelemetry_instrument = str(os.getenv("TOMODACHI_OPENTELEMETRY_INSTRUMENT", "")).lower() or None
+            if env_opentelemetry_instrument and env_opentelemetry_instrument in ("0", "no", "none", "false"):
+                env_opentelemetry_instrument = None
+
+            if env_opentelemetry_instrument or "--opentelemetry-instrument" in args:
+                if "--opentelemetry-instrument" in args:
+                    index = args.index("--opentelemetry-instrument")
+                    args.pop(index)
+
+                try:
+                    import opentelemetry.instrumentation.auto_instrumentation._load  # noqa  # isort:skip
+                    import opentelemetry.util.http  # noqa  # isort:skip
+                    import opentelemetry.sdk.version  # noqa  # isort:skip
+                    import opentelemetry.version  # noqa  # isort:skip
+                except Exception:  # pragma: no cover
+                    print("The 'opentelemetry' extras needs to be installed to use OpenTelemetry instrumentation")
+                    sys.exit(2)
+
+                auto_instrument_opentelemetry = True
+            else:
+                auto_instrument_opentelemetry = False
+
             if not args:
                 from tomodachi.helpers.colors import COLOR, COLOR_RESET, COLOR_STYLE
 
@@ -445,6 +494,14 @@ class CLI:
                 print("use the '--help' option for cli usage help.")
                 print(f"{COLOR.WHITE}{COLOR_STYLE.DIM}${COLOR_RESET} {COLOR.BLUE}tomodachi --help{COLOR_RESET}")
                 sys.exit(2)
+
+            if auto_instrument_opentelemetry:
+                from tomodachi.opentelemetry.auto_instrumentation import initialize as initialize_opentelemetry
+
+                try:
+                    initialize_opentelemetry()
+                except Exception:
+                    logging.getLogger("tomodachi.opentelemetry").exception("Failed to auto initialize opentelemetry")
 
             tomodachi.logging.set_default_formatter(env_logger)
             tomodachi.logging.set_custom_logger_factory(env_custom_logger)

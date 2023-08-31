@@ -94,10 +94,6 @@ class RequestHandler(web_protocol.RequestHandler):
 
     async def finish_response(self, request: web.BaseRequest, resp: web.StreamResponse, start_time: float) -> bool:
         result: bool = await super().finish_response(request, resp, start_time)
-        # print("finish_response", self._loop.time() - start_time)
-        # print(
-        #     request.method, request.path, request.query_string, request.content_length, get_forwarded_remote_ip(request)
-        # )
         return result
 
     def handle_error(
@@ -242,6 +238,9 @@ class DynamicResource(web_urldispatcher.DynamicResource):
         self._name = name
         self._pattern = pattern
         self._formatter = ""
+
+        simplified = re.compile(r"^\^?(.+?)\$?$").match(pattern.pattern)
+        self._simplified_pattern = simplified.group(1) if simplified else pattern.pattern
 
 
 class Response(object):
@@ -953,6 +952,8 @@ class HttpTransport(Invoker):
                 handler_start_time: int = 0
                 handler_stop_time: int = 0
 
+                caught_exceptions: List[Exception] = []
+
                 try:
                     if not response:
                         handler_start_time = time.perf_counter_ns() if access_log else 0
@@ -971,6 +972,7 @@ class HttpTransport(Invoker):
                             logging.getLogger("exception").exception(
                                 "uncaught exception: {}".format(str(error_handler_exception))
                             )
+                            caught_exceptions.append(error_handler_exception)
                             error_handler = context.get("_http_error_handler", {}).get(500, None)
                             if error_handler:
                                 try:
@@ -983,6 +985,7 @@ class HttpTransport(Invoker):
                                     logging.getLogger("exception").exception(
                                         "uncaught exception: {}".format(str(fallback_error_handler_exception))
                                     )
+                                    caught_exceptions.append(fallback_error_handler_exception)
                                     response = web.HTTPInternalServerError()
                                     response.body = b""
                             else:
@@ -995,6 +998,7 @@ class HttpTransport(Invoker):
                     handler_stop_time = time.perf_counter_ns() if access_log else 0
                     limit_exception_traceback(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
                     logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
+                    caught_exceptions.append(e)
                     error_handler = context.get("_http_error_handler", {}).get(500, None)
                     if error_handler:
                         try:
@@ -1007,6 +1011,7 @@ class HttpTransport(Invoker):
                             logging.getLogger("exception").exception(
                                 "uncaught exception: {}".format(str(fallback_error_handler_exception))
                             )
+                            caught_exceptions.append(fallback_error_handler_exception)
                             response = web.HTTPInternalServerError()
                             response.body = b""
 
@@ -1026,6 +1031,9 @@ class HttpTransport(Invoker):
 
                         response = web.Response(status=499, headers={})
                         response._eof_sent = True
+                        setattr(response, "_replaced_status_code", replaced_status_code)
+                        if replaced_response_content_length is not None:
+                            setattr(response, "_replaced_response_content_length", replaced_response_content_length)
 
                     request_version = (
                         (request.version.major, request.version.minor)
@@ -1152,6 +1160,9 @@ class HttpTransport(Invoker):
                         response.headers[hdrs.CONNECTION] = "close"
                         response.force_close()
 
+                    if caught_exceptions:
+                        setattr(response, "_caught_exceptions", caught_exceptions)
+
                     if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
                         raise response
 
@@ -1267,7 +1278,8 @@ class HttpTransport(Invoker):
                     )
                 )
 
-            app: web.Application = web.Application(middlewares=[middleware], client_max_size=client_max_size)
+            middlewares = context.get("_aiohttp_pre_middleware", []) + [middleware]
+            app: web.Application = web.Application(middlewares=middlewares, client_max_size=client_max_size)
             app._set_loop(None)
             for method, pattern, handler, route_context in context.get("_http_routes", []):
                 try:
@@ -1414,7 +1426,7 @@ class HttpTransport(Invoker):
                 error_message = re.sub(".*: ", "", e.strerror)
                 logger.warning(
                     "unable to bind service [http] to http://{}:{}/".format(
-                        "127.0.0.1" if host == "0.0.0.0" else host, port
+                        "localhost" if host in ("0.0.0.0", "127.0.0.1") else host, port
                     ),
                     host=host,
                     port=port,
@@ -1558,7 +1570,7 @@ class HttpTransport(Invoker):
                     if getattr(registry, "add_http_endpoint", None):
                         await registry.add_http_endpoint(obj, host, port, method, pattern)
 
-            listen_url = "http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
+            listen_url = "http://{}:{}/".format("localhost" if host in ("0.0.0.0", "127.0.0.1") else host, port)
             logger.info("accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port)
 
             if logger_handler:

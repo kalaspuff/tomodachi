@@ -118,7 +118,7 @@ def render_banner(
         try:
 
             async def _import_module_without_logger() -> Any:
-                return ServiceImporter.import_service_file(file_path)
+                return ServiceImporter.import_service_file(file_path, no_exec=True)
 
             service_import = loop.run_until_complete(_import_module_without_logger())
             if service_import and service_import.__file__:

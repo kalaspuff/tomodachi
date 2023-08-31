@@ -68,6 +68,7 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
     "importer": ("tomodachi.importer", None),
     "launcher": ("tomodachi.launcher", None),
     "logging": ("tomodachi.logging", None),
+    "opentelemetry": ("tomodachi.opentelemetry", None),
     "watcher": ("tomodachi.watcher", None),
 }
 __imported_modules: Dict[str, Any] = {}
@@ -116,7 +117,7 @@ def __getattr__(name: str) -> Any:
                         )
                     )
                     print("")
-                    logging.exception("")
+                    logging.getLogger("exception").exception("")
                     print("")
 
                 logging.getLogger("exception").warning("Unable to initialize dependencies")
@@ -190,6 +191,26 @@ def __getattr__(name: str) -> Any:
                             )
                         )
                         print("")
+                    if module_name == "tomodachi.opentelemetry" and missing_module_name in (
+                        "opentelemetry",
+                        "opentelemetry.instrumentation",
+                        "opentelemetry.sdk",
+                        "opentelemetry.metrics",
+                        "opentelemetry.sdk._logs",
+                        "opentelemetry._logs",
+                        "opentelemetry.util.http",
+                    ):
+                        print(
+                            "{}[fatal error] The '{}' package is missing.{}".format(
+                                color, missing_module_name, color_reset
+                            )
+                        )
+                        print(
+                            "{}[fatal error] Install 'tomodachi' with 'opentelemetry' extras to use opentelemetry instrumentation.{}".format(
+                                color, color_reset
+                            )
+                        )
+                        print("")
                 print("Exiting: Service terminating with exit code: 1")
                 sys.exit(1)
             except Exception as e:  # pragma: no cover
@@ -199,7 +220,7 @@ def __getattr__(name: str) -> Any:
                     "Fatal dependency failure: '{}:{}' failed to load (error: \"{}\")".format(module_name, name, str(e))
                 )
                 print("")
-                logging.exception("")
+                logging.getLogger("exception").exception("")
                 print("")
 
                 logging.getLogger("exception").warning("Unable to initialize dependencies")
@@ -223,10 +244,12 @@ __author__: str = "Carl Oscar Aaro"
 __email__: str = "hello@carloscar.com"
 
 CLASS_ATTRIBUTE: str = "_tomodachi_class_is_service_class"
+TOMODACHI_CLASSES: List[Type] = []
 
 __all__ = [
     "service",
     "Service",
+    "TomodachiServiceMeta",
     "__version__",
     "__version_info__",
     "__build_time__",
@@ -244,6 +267,7 @@ __all__ = [
     "importer",
     "launcher",
     "logging",
+    "opentelemetry",
     "watcher",
     "run",
     "_set_service",
@@ -339,6 +363,8 @@ class TomodachiServiceMeta(type):
         for base in bases:
             if hasattr(base, CLASS_ATTRIBUTE):
                 delattr(base, CLASS_ATTRIBUTE)
+
+        TOMODACHI_CLASSES.append(result)
 
         return cast(TomodachiServiceMeta, result)
 

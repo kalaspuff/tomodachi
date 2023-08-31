@@ -10,6 +10,7 @@ import time
 from typing import Any, Callable, Dict, List, Literal, Match, Optional, Set, Tuple, Union, cast, overload
 
 import aioamqp
+import aioamqp.properties
 
 from tomodachi import get_contextvar, logging
 from tomodachi._exception import limit_exception_traceback
@@ -152,22 +153,40 @@ class AmqpTransport(Invoker):
                 payload = await asyncio.create_task(build_message_func(service, routing_key, data, **kwargs))
 
         async def _publish_message() -> None:
-            success = False
-            while not success:
-                try:
-                    await cls.channel.basic_publish(
-                        str.encode(payload),
-                        exchange_name,
-                        cls.encode_routing_key(cls.get_routing_key(routing_key, service.context, routing_key_prefix)),
-                    )
-                    success = True
-                except AssertionError:
-                    await cls.connect(service, service.context)
+            properties: Dict = {}
+            await cls._publish_message(
+                routing_key, exchange_name, payload, properties, routing_key_prefix, service, service.context
+            )
 
         if wait:
             return await asyncio.create_task(_publish_message())
         else:
             return asyncio.create_task(_publish_message())
+
+    @classmethod
+    async def _publish_message(
+        cls,
+        /,
+        routing_key: str,
+        exchange_name: str,
+        payload: Any,
+        properties: Dict,
+        routing_key_prefix: Optional[str],
+        service: Any,
+        context: Dict,
+    ) -> None:
+        success = False
+        while not success:
+            try:
+                await cls.channel.basic_publish(
+                    str.encode(payload),
+                    exchange_name,
+                    cls.encode_routing_key(cls.get_routing_key(routing_key, context, routing_key_prefix)),
+                    properties,
+                )
+                success = True
+            except AssertionError:
+                await cls.connect(service, context)
 
     @classmethod
     def get_routing_key(
@@ -284,7 +303,9 @@ class AmqpTransport(Invoker):
         original_kwargs: Dict[str, Any] = {k: v for k, v in _callback_kwargs.items()}
         args_set = (set(values.args[1:]) | set(values.kwonlyargs) | set(callback_kwargs or [])) - set(["self"])
 
-        async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
+        async def handler(
+            payload: Any, delivery_tag: Any, routing_key: str, properties: aioamqp.properties.Properties
+        ) -> Any:
             logging.bind_logger(logging.getLogger("tomodachi.amqp").new(logger="tomodachi.amqp"))
 
             kwargs = dict(original_kwargs)
@@ -329,6 +350,12 @@ class AmqpTransport(Invoker):
                             not isinstance(message, dict) or "routing_key" not in message
                         ):
                             kwargs["routing_key"] = routing_key
+                        if "exchange_name" in args_set and (
+                            not isinstance(message, dict) or "exchange_name" not in message
+                        ):
+                            kwargs["exchange_name"] = exchange_name
+                        if "properties" in args_set and (not isinstance(message, dict) or "properties" not in message):
+                            kwargs["properties"] = properties
                         if "message_uuid" in args_set and (
                             not isinstance(message, dict) or "message_uuid" not in message
                         ):
@@ -349,6 +376,10 @@ class AmqpTransport(Invoker):
                         kwargs["message"] = message
                     if "routing_key" in args_set:
                         kwargs["routing_key"] = routing_key
+                    if "exchange_name" in args_set:
+                        kwargs["exchange_name"] = exchange_name
+                    if "properties" in args_set:
+                        kwargs["properties"] = properties
                     if "message_uuid" in args_set:
                         kwargs["message_uuid"] = message_uuid
 
@@ -391,15 +422,20 @@ class AmqpTransport(Invoker):
                     execute_middlewares(
                         func,
                         routine_func,
-                        context.get("message_middleware", []),
+                        context.get("_amqp_message_pre_middleware", []) + context.get("message_middleware", []),
                         *(obj, message, routing_key),
                         message=message,
                         message_uuid=message_uuid,
                         routing_key=routing_key,
+                        exchange_name=exchange_name,
+                        properties=properties,
                     )
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
-                limit_exception_traceback(e, ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"))
+                limit_exception_traceback(
+                    e,
+                    ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"),
+                )
                 logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(
@@ -618,9 +654,11 @@ class AmqpTransport(Invoker):
                 return queue_name
 
             def callback(routing_key: str, handler: Callable) -> Callable:
-                async def _callback(self: Any, body: bytes, envelope: Any, properties: Any) -> None:
+                async def _callback(
+                    self: Any, body: bytes, envelope: Any, properties: aioamqp.properties.Properties
+                ) -> None:
                     # await channel.basic_reject(delivery_tag, requeue=True)
-                    await asyncio.shield(handler(body.decode(), envelope.delivery_tag, routing_key))
+                    await asyncio.shield(handler(body.decode(), envelope.delivery_tag, routing_key, properties))
 
                 return _callback
 

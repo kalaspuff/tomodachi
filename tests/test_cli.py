@@ -339,3 +339,56 @@ def test_cli_start_service_without_config_arguments(capsys: Any) -> None:
     assert "initializing service instance" not in (out + err)
     assert "tomodachi version      ⇢ {}".format(tomodachi.__version__) not in (out + err)
     assert "Missing config file on command line" in (out + err)
+
+
+def test_cli_start_service_with_opentelemetry_auto_instrumention(capsys: Any) -> None:
+    import tomodachi.opentelemetry.instrumentation
+    from tomodachi import TOMODACHI_CLASSES
+
+    class TestServiceClass(tomodachi.Service):
+        pass
+
+    assert TestServiceClass in TOMODACHI_CLASSES
+
+    assert len(TOMODACHI_CLASSES) >= 3
+    assert [cls for cls in TOMODACHI_CLASSES if hasattr(cls, "_is_instrumented_by_opentelemetry") is True] == [
+        tomodachi.opentelemetry.instrumentation._InstrumentedTomodachiService
+    ]
+
+    for cls in TOMODACHI_CLASSES:
+        if cls is tomodachi.opentelemetry.instrumentation._InstrumentedTomodachiService:
+            assert hasattr(cls, "_is_instrumented_by_opentelemetry") is True
+        else:
+            assert hasattr(cls, "_is_instrumented_by_opentelemetry") is False
+
+    with pytest.raises(SystemExit) as pytest_wrapped_exception:
+        tomodachi.cli.cli_entrypoint(
+            ["tomodachi", "run", "tests/services/auto_closing_service_exit_call.py", "--opentelemetry-instrument"]
+        )
+
+    assert pytest_wrapped_exception.type == SystemExit
+    assert pytest_wrapped_exception.value.code == 0
+
+    out, err = capsys.readouterr()
+    assert "initializing service instance" in (out + err)
+    assert "starting the service" in (out + err)
+    assert "enabled handler functions" in (out + err)
+    assert "tomodachi.exit [0] was called" in (out + err)
+    assert "stopping service" in (out + err)
+    assert "terminated service" in (out + err)
+
+    assert [
+        cls for cls in TOMODACHI_CLASSES if hasattr(cls, "_is_instrumented_by_opentelemetry") is True
+    ] == TOMODACHI_CLASSES
+
+    assert getattr(TestServiceClass, "_opentelemetry_tracer_provider", None) is not None
+    assert hasattr(TestServiceClass, "_is_instrumented_by_opentelemetry") is True
+
+    tomodachi.opentelemetry.instrumentation.TomodachiInstrumentor().uninstrument()
+
+    assert [cls for cls in TOMODACHI_CLASSES if hasattr(cls, "_is_instrumented_by_opentelemetry") is True] == [
+        tomodachi.opentelemetry.instrumentation._InstrumentedTomodachiService
+    ]
+
+    assert getattr(TestServiceClass, "_opentelemetry_tracer_provider", None) is None
+    assert hasattr(TestServiceClass, "_is_instrumented_by_opentelemetry") is False

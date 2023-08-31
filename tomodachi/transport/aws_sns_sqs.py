@@ -266,13 +266,14 @@ class AWSSNSSQSTransport(Invoker):
 
         async def _publish_message() -> str:
             logging.getLogger("tomodachi.awssnssqs").bind(topic=topic)
-            return await cls.publish_message(
+            return await cls._publish_message(
                 topic_arn,
                 payload,
                 cast(Dict, message_attributes),
                 service.context,
                 group_id=group_id,
                 deduplication_id=deduplication_id,
+                service=service,
             )
 
         if wait:
@@ -362,6 +363,19 @@ class AWSSNSSQSTransport(Invoker):
         if queue_name_prefix:
             return "{}{}".format(queue_name_prefix, queue_name)
         return queue_name
+
+    @classmethod
+    def get_queue_name_without_prefix(cls, queue_name: str, context: Dict) -> str:
+        queue_name_prefix: Optional[str] = cls.options(context).aws_sns_sqs.queue_name_prefix
+        if queue_name_prefix:
+            if queue_name.startswith(queue_name_prefix):
+                prefix_length = len(queue_name_prefix)
+                return queue_name[prefix_length:]
+        return queue_name
+
+    @classmethod
+    def get_queue_name_from_queue_url(cls, queue_url: str) -> str:
+        return queue_url.rsplit("/")[-1]
 
     @classmethod
     def validate_queue_name(cls, queue_name: str) -> None:
@@ -633,7 +647,7 @@ class AWSSNSSQSTransport(Invoker):
                     execute_middlewares(
                         func,
                         routine_func,
-                        context.get("message_middleware", []),
+                        context.get("_awssnssqs_message_pre_middleware", []) + context.get("message_middleware", []),
                         *(obj, message, topic),
                         message=message,
                         message_uuid=message_uuid,
@@ -954,6 +968,30 @@ class AWSSNSSQSTransport(Invoker):
         context: Dict,
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
+        service: Any = None,
+    ) -> str:
+        return await cls._publish_message(
+            topic_arn,
+            message,
+            message_attributes,
+            context,
+            group_id=group_id,
+            deduplication_id=deduplication_id,
+            service=service,
+        )
+
+    @classmethod
+    async def _publish_message(
+        cls,
+        /,
+        topic_arn: str,
+        message: Any,
+        message_attributes: Dict,
+        context: Dict,
+        *,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+        service: Any = None,
     ) -> str:
         if not connector.get_client("tomodachi.sns"):
             await cls.create_client("sns", context)
