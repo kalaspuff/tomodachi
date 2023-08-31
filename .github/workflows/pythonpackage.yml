@@ -19,7 +19,7 @@ jobs:
         ports:
           - 5672:5672
       localstack_main:
-        image: localstack/localstack:latest
+        image: localstack/localstack:2.2.0
         env:
           DEFAULT_REGION: eu-west-1
           PERSISTENCE: 0
