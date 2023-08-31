@@ -47,7 +47,7 @@ Using the provided handler managers, the need for devs to interface with low-lev
 ----
 
 Quicklinks to the documentation 📖
-=================================
+====================================
 
 *This documentation README includes information on how to get started with services, what built-in functionality exists in this library, lists of available configuration parameters and a few examples of service code.*
 
@@ -1123,7 +1123,7 @@ This class provides a simplistic basic auth implementation validating credential
 ----
 
 Logging and log formatting using the ``tomodachi.logging`` module 📚
-===================================================================
+======================================================================
 
 A context aware logger is available from the ``tomodachi.logging`` module that can be fetched with ``tomodachi.logging.get_logger()`` or just ``tomodachi.get_logger()`` for short.
 
@@ -1526,7 +1526,7 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
 ----
 
 Good practices for running services in production 🤞
-===================================================
+======================================================
 
 When running a ``tomodachi`` service in a production environment, it's important to ensure that the service is set up correctly to handle the demands and constraints of a live system. Here's some recommendations of options and operating practices to make running the services a breeze.
 
@@ -1619,7 +1619,6 @@ Requirements 👍
 * uvloop_ (optional: alternative event loop implementation)
 
 .. _Python: https://www.python.org
-.. _asyncio: http://docs.python.org/3.10/library/asyncio.html
 .. _aiohttp: https://github.com/aio-libs/aiohttp
 .. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _botocore: https://github.com/boto/botocore
@@ -1681,7 +1680,7 @@ Additional questions and information
 What is the best way to run a ``tomodachi`` service?
   Docker containers are great and can be scaled out in Kubernetes, Nomad or other orchestration engines. Some may instead run several services on the same environment, on the same machine if their workloads are smaller or more consistent. Remember to gather your output and monitor your instances or clusters.
 
-  See the section on `good practices for running services in production <https://tomodachi.dev/docs/running-a-service-in-production>`_ for more insights.
+  See the section on `good practices for running services in production environments <https://tomodachi.dev/docs/running-a-service-in-production>`_ for more insights.
 
 Are there any more example services?
   There are a few examples in the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples>`_ folder, including using ``tomodachi`` in an `example Docker environment <https://github.com/kalaspuff/tomodachi/tree/master/examples/docker_examples/http_service>`_ with or without docker-compose. There are examples to publish events / messages to an AWS SNS topic and subscribe to an AWS SQS queue. There's also a similar code available of how to work with pub/sub for RabbitMQ via the AMQP transport protocol.
