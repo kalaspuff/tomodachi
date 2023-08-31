@@ -1345,7 +1345,7 @@ Environment variables to configure Prometheus meter provider
 
 * ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_ADDRESS`` (or ``OTEL_EXPORTER_PROMETHEUS_HOST``) specifies the host address the Prometheus export server should listen on. (default: ``"localhost"``)
 * ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_METER_PROVIDER_PORT`` (or ``OTEL_EXPORTER_PROMETHEUS_PORT``) specifies the port the Prometheus export server should listen on. (default: ``9464``)
-* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO`` specifies whether to include scope information as ``otel_scope_info`` value. (default: ``false``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO`` specifies whether to include scope information as ``otel_scope_info`` value. (default: ``true``)
 * ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_TARGET_INFO`` specifies whether to include resource attributes as ``target_info`` value. (default: ``true``)
 * ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED`` specifies whether exemplars (experimental) should be collected and used in Prometheus export. (default: ``false``)
 

@@ -3,7 +3,7 @@ import re
 from collections import deque
 from json import dumps
 from re import IGNORECASE, UNICODE, compile
-from typing import Any, Deque, Dict, List, Optional, cast
+from typing import Any, Deque, Dict, Generator, List, Optional, cast
 
 from opentelemetry.exporter.prometheus import _CustomCollector as _PrometheusCustomCollector
 from opentelemetry.sdk.metrics import Meter, MeterProvider
@@ -92,15 +92,6 @@ REGISTRY_ = CollectorRegistry(auto_describe=True)
 
 class OtelScopeInfoCollector(Info):
     _registry: Optional[CollectorRegistry] = None
-    _value: Dict[str, str]
-
-    def __init__(self) -> None:
-        super().__init__(
-            "otel_scope",
-            "Instrumentation Scope metadata",
-            registry=None,
-        )
-        self._value = {}
 
     def register(self, registry: Optional[CollectorRegistry] = REGISTRY_) -> None:
         if not self._registry and registry:
@@ -116,30 +107,42 @@ class OtelScopeInfoCollector(Info):
     def is_registered(self) -> bool:
         return True if self._registry else False
 
-    @property
-    def value(self) -> Dict[str, str]:
-        return self._value
 
-    def set_info(self, info: InstrumentationScope) -> None:
-        value = {}
-        if info.name:
-            value["otel_scope_name"] = info.name
-        if info.version:
-            value["otel_scope_version"] = info.version
-        self.info(value)
-
-
-otel_scope_info_collector = OtelScopeInfoCollector()
+otel_scope_info_collector_ = OtelScopeInfoCollector(
+    "otel_scope",
+    "Instrumentation Scope metadata",
+    labelnames=("otel_scope_name", "otel_scope_version"),
+    registry=None,
+)
 
 
 class _CustomCollector(_PrometheusCustomCollector):
+    _metrics_datas: Deque[MetricsData]
+
     def __init__(self, prefix: str = "", registry: CollectorRegistry = REGISTRY_) -> None:
         super().__init__(prefix)
         self._registry = registry
-        self._exemplars_data: Deque[List[Optional[Exemplar]]] = deque()
+        self._exemplars: Deque[List[Optional[Exemplar]]] = deque()
+        self._include_scope_info = bool(
+            str(
+                os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO)
+                or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO")
+                or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_INCLUDE_OTEL_SCOPE_INFO")
+                or os.environ.get("OTEL_EXPORTER_PROMETHEUS_INCLUDE_OTEL_SCOPE_INFO")
+                or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_INCLUDE_SCOPE_INFO")
+                or os.environ.get("OTEL_EXPORTER_PROMETHEUS_INCLUDE_SCOPE_INFO")
+                or 1
+            )
+            .lower()
+            .strip()
+            in (
+                "1",
+                "true",
+            )
+        )
 
-    def add_exemplars_data(self, exemplars_data: List[Optional[Exemplar]]) -> None:
-        self._exemplars_data.append(exemplars_data)
+    def add_exemplars(self, exemplars_data: List[Optional[Exemplar]]) -> None:
+        self._exemplars.append(exemplars_data)
 
     def _is_valid_exemplar_metric(self, metric: PrometheusMetric, sample: PrometheusSample) -> bool:
         if metric.type == "counter" and sample.name.endswith("_total"):
@@ -148,20 +151,58 @@ class _CustomCollector(_PrometheusCustomCollector):
             return True
         return False
 
+    def collect(self) -> Generator[PrometheusMetric, Any, Any]:
+        if self._callback is not None:
+            self._callback()
+
+        if self._include_scope_info and self._metrics_datas:
+            otel_scope_info_collector = Info(
+                "otel_scope",
+                "Instrumentation Scope metadata",
+                labelnames=("otel_scope_name", "otel_scope_version"),
+                registry=None,
+            )
+            for metrics_data in self._metrics_datas:
+                for resource_metric in metrics_data.resource_metrics:
+                    for scope_metric in resource_metric.scope_metrics:
+                        otel_scope_info_collector.labels(
+                            otel_scope_name=scope_metric.scope.name, otel_scope_version=scope_metric.scope.version or ""
+                        )
+            for metric_family in otel_scope_info_collector.collect():
+                yield metric_family
+
+        target_info: Dict[str, str] = self._registry.get_target_info() or {}
+        add_metric_labels = {k: v for k, v in target_info.items() if k in ("job", "instance")}
+
+        metric_family_id_metric_family: Dict[str, PrometheusMetric] = {}
+
+        while self._metrics_datas:
+            metrics_data = self._metrics_datas.popleft()
+            add_metric_labels_ = add_metric_labels.copy()
+            if self._include_scope_info:
+                for resource_metric in metrics_data.resource_metrics:
+                    for scope_metric in resource_metric.scope_metrics:
+                        add_metric_labels_["otel_scope_name"] = scope_metric.scope.name
+                        add_metric_labels_["otel_scope_version"] = scope_metric.scope.version or ""
+
+            self._translate_to_prometheus(
+                metrics_data, self._exemplars.popleft(), add_metric_labels_, metric_family_id_metric_family
+            )
+
+            if metric_family_id_metric_family:
+                for metric_family in metric_family_id_metric_family.values():
+                    yield metric_family
+
     def _translate_to_prometheus(
         self,
         metrics_data: MetricsData,
+        exemplars: List[Optional[Exemplar]],
+        add_metric_labels: Dict[str, str],
         metric_family_id_metric_family: Dict[str, PrometheusMetric],
     ) -> None:
         metric_family_id_metric_family.clear()
         super()._translate_to_prometheus(metrics_data, metric_family_id_metric_family)
-        exemplars = self._exemplars_data.popleft()
         if metric_family_id_metric_family:
-            target_info: Dict[str, str] = self._registry.get_target_info() or {}
-            add_metric_labels = {k: v for k, v in target_info.items() if k in ("job", "instance")}
-            if otel_scope_info_collector.is_registered:
-                add_metric_labels.update(otel_scope_info_collector.value)
-
             if add_metric_labels:
                 for metric_family in metric_family_id_metric_family.values():
                     for sample in metric_family.samples:
@@ -195,24 +236,6 @@ class _CustomCollector(_PrometheusCustomCollector):
 class TomodachiPrometheusMetricReader(MetricReader):
     def __init__(self, prefix: str = "tomodachi", registry: CollectorRegistry = REGISTRY_) -> None:
         super().__init__()
-
-        try:
-            if str(
-                os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO)
-                or os.environ.get("OTEL_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO")
-                or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_INCLUDE_OTEL_SCOPE_INFO")
-                or os.environ.get("OTEL_EXPORTER_PROMETHEUS_INCLUDE_OTEL_SCOPE_INFO")
-                or os.environ.get("OTEL_PYTHON_EXPORTER_PROMETHEUS_INCLUDE_SCOPE_INFO")
-                or os.environ.get("OTEL_EXPORTER_PROMETHEUS_INCLUDE_SCOPE_INFO")
-                or 0
-            ).lower().strip() in (
-                "1",
-                "true",
-            ):
-                otel_scope_info_collector.register(registry)
-        except ValueError:
-            pass
-
         self._collector = _CustomCollector(prefix, registry)
         self._registry = registry
         self._registry.register(cast(Collector, self._collector))
@@ -221,7 +244,6 @@ class TomodachiPrometheusMetricReader(MetricReader):
     def shutdown(self, timeout_millis: float = 30_000, **kwargs: Any) -> None:
         super().shutdown(timeout_millis=timeout_millis, **kwargs)
         self._registry.unregister(cast(Collector, self._collector))
-        otel_scope_info_collector.unregister()
 
     def _transform_metric(self, metric: Metric) -> Metric:
         # https://github.com/open-telemetry/opentelemetry-java/issues/5529
@@ -271,19 +293,23 @@ class TomodachiPrometheusMetricReader(MetricReader):
                     )
                     self._collector.add_metrics_data(metrics_data_)
 
-                    if not IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED() or scope_metric.scope.name != "tomodachi":
-                        self._collector.add_exemplars_data([])
+                    if not IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED():
+                        self._collector.add_exemplars([])
                         continue
 
                     # currently only provides exemplars for metrics with the "tomodachi" scope
-                    # todo: add support for measurement offers to add exemplars on any scope
+                    # todo: add support to add exemplars on any scope
                     if scope_metric.scope.name != "tomodachi":
-                        self._collector.add_exemplars_data([])
+                        self._collector.add_exemplars([])
                         continue
 
                     exemplars: List[Optional[Exemplar]] = []
                     for data_point in metric.data.data_points:
-                        reservoir = ExemplarReservoir(instrument_name=metric.name, attributes=data_point.attributes)
+                        reservoir = ExemplarReservoir(
+                            instrument_name=metric.name,
+                            instrumentation_scope=scope_metric.scope,
+                            attributes=data_point.attributes,
+                        )
 
                         if isinstance(data_point, HistogramDataPoint):
                             current_exemplar = None
@@ -322,7 +348,7 @@ class TomodachiPrometheusMetricReader(MetricReader):
 
                         reservoir.reset()
 
-                    self._collector.add_exemplars_data(exemplars)
+                    self._collector.add_exemplars(exemplars)
 
 
 class TomodachiPrometheusMeterProvider(MeterProvider):
@@ -445,6 +471,5 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
         version: Optional[str] = None,
         schema_url: Optional[str] = None,
     ) -> Meter:
-        otel_scope_info_collector.set_info(InstrumentationScope(name, version, schema_url))
         self._start_prometheus_http_server()
         return super().get_meter(name, version=version, schema_url=schema_url)

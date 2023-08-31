@@ -30,6 +30,7 @@ from opentelemetry.sdk.metrics._internal.aggregation import (
 )
 from opentelemetry.sdk.metrics._internal.instrument import Histogram
 from opentelemetry.sdk.metrics._internal.measurement import Measurement
+from opentelemetry.sdk.util.instrumentation import InstrumentationScope
 from opentelemetry.trace import format_span_id, format_trace_id, get_current_span
 from opentelemetry.util.types import Attributes, AttributeValue
 
@@ -76,7 +77,7 @@ T = TypeVar("T", bound="BaseExemplarReservoir")
 class BaseExemplarReservoir(ABC):
     _instances: Optional[
         Dict[
-            Tuple[str, frozenset[Tuple[str, AttributeValue]]],
+            Tuple[InstrumentationScope, str, frozenset[Tuple[str, AttributeValue]]],
             Union[SimpleFixedSizeExemplarReservoir, AlignedHistogramBucketExemplarReservoir],
         ]
     ] = None
@@ -84,8 +85,9 @@ class BaseExemplarReservoir(ABC):
     def __new__(
         cls: Type[BaseExemplarReservoir],
         *,
-        instrument: Optional[Instrument] = None,
         measurement: Optional[Measurement] = None,
+        instrument: Optional[Instrument] = None,
+        instrumentation_scope: Optional[InstrumentationScope] = None,
         instrument_name: Optional[str] = None,
         aggregation: Optional[_Aggregation] = None,
         attributes: Optional[Attributes] = None,
@@ -99,14 +101,17 @@ class BaseExemplarReservoir(ABC):
         elif aggregation:
             attributes = aggregation._attributes
 
+        if instrument and not instrumentation_scope:
+            instrumentation_scope = getattr(instrument, "instrumentation_scope", None)
+
         if instrument and not instrument_name:
             instrument_name = getattr(instrument, "name", None) or ""
 
-        if not instrument_name:
-            raise Exception("instrument or instrument_name is required to load a reservoir")
+        if not instrument_name or instrumentation_scope is None:
+            raise Exception("instrument or instrument_name + instrumentation_scope is required to load a reservoir")
 
         aggr_key = frozenset(attributes.items() if attributes is not None else {})
-        key = (instrument_name, aggr_key)
+        key = (instrumentation_scope, instrument_name, aggr_key)
 
         instance: Optional[Union[SimpleFixedSizeExemplarReservoir, AlignedHistogramBucketExemplarReservoir]]
         instance = cls._instances.get(key)

@@ -44,7 +44,7 @@ The :envvar:`OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO` if set to True
 info metric "otel_scope_info" with labels "otel_scope_name" and "otel_scope_version", as well as the labels
 are also added to all metric points. Additional details are available `in the specification
 <https://opentelemetry.io/docs/specs/otel/compatibility/prometheus_and_openmetrics/#instrumentation-scope-1`__.
-Default: False
+Default: True
 """
 
 OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_TARGET_INFO = "OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_TARGET_INFO"
