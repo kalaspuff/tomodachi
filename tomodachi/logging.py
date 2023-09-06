@@ -90,7 +90,9 @@ class LogProcessorTimestamp:
 
     def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
         if self.key not in event_dict:
-            event_dict[self.key] = datetime.datetime.utcnow().isoformat(timespec="microseconds") + "Z"
+            event_dict[self.key] = (
+                datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+            )
         return event_dict
 
 
@@ -348,7 +350,11 @@ class _PythonLoggingLoggerFormatter(logging.Formatter):
         self.style._fmt = fmt
 
     def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
-        return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
+        return (
+            datetime.datetime.fromtimestamp(record.created, tz=datetime.timezone.utc)
+            .isoformat(timespec="microseconds")
+            .replace("+00:00", "Z")
+        )
 
     def __repr__(self) -> str:
         return "PythonLoggingFormatter"
@@ -420,7 +426,11 @@ class _StdLoggingFormatter(logging.Formatter):
             return ""
 
     def formatTime(self, record: logging.LogRecord, datefmt: Optional[str] = None) -> str:
-        return datetime.datetime.utcfromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
+        return (
+            datetime.datetime.fromtimestamp(record.created, tz=datetime.timezone.utc)
+            .isoformat(timespec="microseconds")
+            .replace("+00:00", "Z")
+        )
 
     def __repr__(self) -> str:
         name = self._name or self.__class__.__name__

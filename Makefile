@@ -127,7 +127,7 @@ _pypi_release: _check_release _check_build_time
 
 .PHONY: _set_build_time_value
 _set_build_time_value:
-	sed -i'' -e "s/^__build_time__ = \"[^\"]*\"/__build_time__ = \"`python -c "import datetime; print(datetime.datetime.utcnow().isoformat(timespec='microseconds') + 'Z')"`\"/" tomodachi/__version__.py
+	sed -i'' -e "s/^__build_time__ = \"[^\"]*\"/__build_time__ = \"`python -c "import datetime; print(datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='microseconds').replace('+00:00', 'Z'))"`\"/" tomodachi/__version__.py
 	rm -f tomodachi/__version__.py-e
 
 .PHONY: _unset_build_time_value

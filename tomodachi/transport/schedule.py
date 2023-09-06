@@ -527,7 +527,9 @@ class Scheduler(Invoker):
 
                     current_time = time.time()
                     invocation_time = (
-                        datetime.datetime.utcfromtimestamp(int(prev_call_at or current_time)).isoformat() + "Z"
+                        datetime.datetime.fromtimestamp(int(prev_call_at or current_time), tz=datetime.timezone.utc)
+                        .isoformat()
+                        .replace("+00:00", "Z")
                     )
 
                     task = asyncio.ensure_future(handler(invocation_time=invocation_time))
@@ -535,8 +537,9 @@ class Scheduler(Invoker):
                         getattr(task, "set_name")(
                             "{}/{}".format(
                                 func.__qualname__,
-                                datetime.datetime.utcfromtimestamp(current_time).isoformat(timespec="microseconds")
-                                + "Z",
+                                datetime.datetime.fromtimestamp(current_time, tz=datetime.timezone.utc)
+                                .isoformat(timespec="microseconds")
+                                .replace("+00:00", "Z"),
                             )
                         )
                     tasks.append(task)
