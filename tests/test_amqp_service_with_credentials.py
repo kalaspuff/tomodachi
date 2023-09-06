@@ -12,8 +12,8 @@ from run_test_service_helper import start_service
     not os.environ.get("TOMODACHI_TEST_RABBITMQ_ENABLED"),
     reason="RabbitMQ needs to be enabled and environment TOMODACHI_TEST_RABBITMQ_ENABLED needs to be set",
 )
-def test_start_amqp_service_with_credentials(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/amqp_service_with_credentials.py", monkeypatch, loop=loop)
+def test_start_amqp_service_with_credentials(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/amqp_service_with_credentials.py", loop=loop)
 
     assert services is not None
     assert len(services) == 1
@@ -50,10 +50,8 @@ def test_start_amqp_service_with_credentials(monkeypatch: Any, capsys: Any, loop
     not os.environ.get("TOMODACHI_TEST_RABBITMQ_ENABLED"),
     reason="RabbitMQ needs to be enabled and environment TOMODACHI_TEST_RABBITMQ_ENABLED needs to be set",
 )
-def test_start_amqp_service_with_credentials_without_envelope(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service(
-        "tests/services/amqp_service_with_credentials_without_envelope.py", monkeypatch, loop=loop
-    )
+def test_start_amqp_service_with_credentials_without_envelope(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/amqp_service_with_credentials_without_envelope.py", loop=loop)
 
     assert services is not None
     assert len(services) == 1
@@ -81,10 +79,8 @@ def test_start_amqp_service_with_credentials_without_envelope(monkeypatch: Any, 
     not os.environ.get("TOMODACHI_TEST_RABBITMQ_ENABLED"),
     reason="RabbitMQ needs to be enabled and environment TOMODACHI_TEST_RABBITMQ_ENABLED needs to be set",
 )
-def test_start_amqp_service_with_credentials_with_custom_envelope(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service(
-        "tests/services/amqp_service_with_credentials_with_custom_envelope.py", monkeypatch, loop=loop
-    )
+def test_start_amqp_service_with_credentials_with_custom_envelope(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/amqp_service_with_credentials_with_custom_envelope.py", loop=loop)
 
     assert services is not None
     assert len(services) == 1

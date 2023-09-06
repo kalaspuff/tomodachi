@@ -17,6 +17,7 @@ class Invoker(object):
         def _wrapper(*args: Any, **kwargs: Any) -> Callable:
             def wrapper(func: Callable) -> Callable:
                 fn: Optional[Callable] = func
+                unwrapped_func = func
                 while fn:
                     unwrapped_func = fn
                     if getattr(fn, "__wrapped__", None) and not getattr(fn, FUNCTION_ATTRIBUTE, None):

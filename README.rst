@@ -1,8 +1,13 @@
-``tomodachi`` - a lightweight microservices library on Python asyncio
-=====================================================================
-  A Python 3 microservice library / framework using ``asyncio`` (async / await) with
-  HTTP, websockets, RabbitMQ / AMQP and AWS SNS+SQS built-in support for event based
-  messaging and intra-service communication.
+``tomodachi`` ⌁ *a lightweight microservice lib* ⌁ *for Python 3*
+=================================================================
+
+.. raw:: html
+
+    <p align="left">
+        <sup><i>tomodachi</i> [<b>友達</b>] <i>means friends — 🦊🐶🐻🐯🐮🐸🐍 — a suitable name for microservices working together.</i> ✨✨</sup>
+        <br/>
+        <sup><tt>events</tt> <tt>messaging</tt> <tt>api</tt> <tt>pubsub</tt> <tt>sns+sqs</tt> <tt>amqp</tt> <tt>http</tt> <tt>queues</tt> <tt>handlers</tt> <tt>scheduling</tt> <tt>tasks</tt> <tt>microservice</tt> <tt>tomodachi</tt></sup>
+    </p>
 
 .. image:: https://github.com/kalaspuff/tomodachi/workflows/Python%20package/badge.svg
     :target: https://github.com/kalaspuff/tomodachi/actions
@@ -13,95 +18,222 @@
 .. image:: https://img.shields.io/pypi/pyversions/tomodachi.svg
     :target: https://pypi.python.org/pypi/tomodachi
 
-Tomodachi is a tiny framework designed to build fast microservices listening on
-HTTP or communicating over event driven message buses like RabbitMQ, AMQP,
-AWS (Amazon Web Services) SNS+SQS, etc. It's designed to be extendable to make
-use of any type of transport layer available.
+----
 
-*Tomodachi* [**友達**] *means friends – a suitable name for microservices working
-together.* 😻 👬 👭 👫 😻
+``tomodachi`` *is a library designed to make it easy for devs to build microservices using* ``asyncio`` *on Python.*
 
+Includes ready implementations to support handlers built for HTTP requests, websockets, AWS SNS+SQS and RabbitMQ / AMQP for 🚀 event based messaging, 🔗 intra-service communication and 🐶 watchdog handlers.
 
-Project documentation
----------------------
+* HTTP request handlers (API endpoints) are sent requests via the ``aiohttp`` server library. 🪢
+* Events and message handlers are hooked into a message bus, such as a queue, from for example AWS (Amazon Web Services) SNS+SQS (``aiobotocore``), RabbitMQ / AMQP (``aioamqp``), etc. 📡
 
-- Getting started / installation: https://tomodachi.dev/docs
+Using the provided handler managers, the need for devs to interface with low-level libs directly should be lower, making it more of a breeze to focus on building the business logic. 🪄
 
-- Example code: https://tomodachi.dev/docs/examples
+.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/53dfc4d2b3a8f9df16995aa61541afa2412b1074/docs/assets/tomodachi-run-service.png
+    :align: center
 
-- Endpoint built-ins:
+``tomodachi`` has a featureset to meet most basic needs, for example…
 
-  + HTTP endpoints: https://tomodachi.dev/docs/http
-
-  + AWS SNS+SQS event messaging: https://tomodachi.dev/docs/aws-sns-sqs
-
-  + AMQP messaging (RabbitMQ): https://tomodachi.dev/docs/amqp-rabbitmq
-
-  + Scheduled functions and cron: https://tomodachi.dev/docs/scheduled-functions-cron
-
-- Options and configuration parameters: https://tomodachi.dev/docs/options
-
-- Middleware functionality: https://tomodachi.dev/docs/middlewares
-
-- Function signature keywords: https://tomodachi.dev/docs/function-keywords
-
-- FAQ: https://tomodachi.dev/docs/faq
-
-.. image:: https://img.shields.io/badge/tomodachi.dev-documentation-ff69b4
-    :target: https://tomodachi.dev/docs/getting-started
-
-
-Usage
------
-``tomodachi`` is used to execute service code via command line interface or within
-container images.
-
-.. code::
-
-    Usage: tomodachi <command> [options] [arguments]
-
-    Options:
-      -h, --help                                Show this help message and exit
-      -v, --version                             Print tomodachi version
-      --dependency-versions                     Print versions of dependencies
-
-    Available commands:
-      ---
-      Command: run
-      Starts service(s) defined in the .py files specified as <service> argument(s)
-
-      $ tomodachi run <service ...> [-c <config-file ...>] [--production]
-      | --loop [auto|asyncio|uvloop]            Event loop implementation [asyncio]
-      | --production                            Disable restart on file changes
-      | -c, --config <files>                    Use configuration from JSON files
-      | -l, --log <level>, --log-level <level>  Specify log level
-
-
-.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/master/docs/assets/microservice-in-30-seconds-white.gif
-
-``README``
-==========
-
-*This documentation README includes a guide of how to get started with services,
-what built-in functionality exists in this library, lists of available configuration
-parameters and a few examples of service code.*
-
-**Use https://tomodachi.dev/docs for extensive project documentation.**
+* ``🦸`` ⋯ Graceful termination of consumers, listeners and tasks to ensure smooth deployments.
+* ``⏰`` ⋯ Scheduled function execution (cron notation / time interval) for building watchdog handlers.
+* ``🍔`` ⋯ Execution middleware interface for incoming HTTP requests and received messages.
+* ``💌`` ⋯ Simple envelope building and parsing for both receiving and publishing messages.
+* ``📚`` ⋯ Logging support via ``structlog`` with template loggers for both "dev console" and JSON output.
+* ``⛑️`` ⋯ Loggers and handler managers built to support exception tracing, from for example Sentry.
+* ``📡`` ⋯ SQS queues with filter policies for SNS topic subscriptions filtering messages on message attributes.
+* ``📦`` ⋯ Supports SQS dead-letter queues via redrive policy – infra orchestration from service optional.
+* ``🌱`` ⋯ Designed to be extendable – most kinds of transport layers or event sources can be added.
 
 ----
 
-Please follow some of the amazing contributors to ``tomodachi`` and add features that you deem are missing and/or fix
-bugs you encounter in the repo. Read more in the `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
+Quicklinks to the documentation 📖
+====================================
 
-.. image:: https://contrib.rocks/image?repo=kalaspuff/tomodachi
-   :target: https://github.com/kalaspuff/tomodachi/graphs/contributors
+*This documentation README includes information on how to get started with services, what built-in functionality exists in this library, lists of available configuration parameters and a few examples of service code.*
 
+Visit `https://tomodachi.dev/ <https://tomodachi.dev/docs>`_ for additional documentation. 📔
+
+- `Getting started / installation <https://tomodachi.dev/docs>`_
+
+Handler types / endpoint built-ins. 🛍️
+
+* `HTTP and WebSocket endpoints <https://tomodachi.dev/docs/http>`_
+* `AWS SNS+SQS event messaging <https://tomodachi.dev/docs/aws-sns-sqs>`_
+* `RabbitMQ / AMQP messaging <https://tomodachi.dev/docs/amqp-rabbitmq>`_
+* `Scheduled functions and cron <https://tomodachi.dev/docs/scheduled-functions-cron>`_
+
+Service options to tweak handler managers. 🛠️
+
+* `Options and configuration parameters  <https://tomodachi.dev/docs/options>`_
+
+Use the features you need. 🌮
+
+* `Middleware functionality  <https://tomodachi.dev/docs/middlewares>`_
+* `Function signature keywords  <https://tomodachi.dev/docs/function-keywords>`_
+* `Logging and log formatters  <https://tomodachi.dev/docs/using-the-tomodachi-logger>`_
+* `OpenTelemetry instrumentation  <https://tomodachi.dev/docs/opentelemetry>`_
+
+Recommendations and examples. 🧘
+
+* `Good practices for running services in production <https://tomodachi.dev/docs/running-a-service-in-production>`_
+* `Example code and template services <https://tomodachi.dev/docs/examples>`_
+
+----
+
+**Please note – this library is a work in progress.** 🐣
+
+Consider ``tomodachi`` as beta software. This library follows an unregular release schedule. There may be breaking changes between ``0.x`` versions.
+
+Usage
+=====
+
+``tomodachi`` is used to execute service code via command line interface or within container images. It will be installed automatically when the package is installed in the environment.
+
+The CLI endpoint ``tomodachi`` is then used to run services defined as ``tomodachi`` service classes.
+
+.. raw:: html
+
+    <img src="https://raw.githubusercontent.com/kalaspuff/tomodachi/53dfc4d2b3a8f9df16995aa61541afa2412b1074/docs/assets/tomodachi-usage.png" width="65%" align="right">
+
+Start a service with its class definition defined in ``./service/app.py`` by running ``tomodachi run service/app.py``. Finally stop the service with the keyboard interrupt ``<ctrl+c>``.
+
+The run command has some options available that can be specified with arguments to the CLI.
+
+Most options can also be set as an environment variable value.
+
+For example setting environment ``TOMODACHI_LOGGER=json`` will yield the same change to the logger as if running the service using the argument ``--logger json``.
+
+.. raw:: html
+
+    <br clear="right"/>
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--loop [auto|asyncio|uvloop]</tt></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_LOOP=...</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+The value for ``--loop`` can either be set to ``asyncio``, ``uvloop`` or ``auto``. The ``uvloop`` value can only be used if uvloop is installed in the execution environment. Note that the default ``auto`` value will currently end up using the event loop implementation that is preferred by the Python interpreter, which in most cases will be ``asyncio``.
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--production</tt></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_PRODUCTION=1</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+Use ``--production`` to disable the file watcher that restarts the service on file changes and to hide the startup info banner.
+
+| ⇢ *recommendation* ✨👀
+| ⇢ Highly recommended to enable this option for built docker images and for builds of services that are to be released to any environment. The only time you should run without the ``--production`` option is during development and in local development environment.
 |
-| **Please note: this library is a work in progress.**
 
-Consider `tomodachi` as beta software. `tomodachi` is still an experimental
-project with an unregular release schedule. The package is not yet available
-as `1.0.0` and there may be breaking changes between `0.x` versions.
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--log-level [debug|info|warning|error|critical]</tt></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_LOG_LEVEL=...</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+Set the minimum log level for which the loggers will emit logs to their handlers with the ``--log-level`` option. By default the minimum log level is set to ``info`` (which includes ``info``, ``warning``, ``error`` and ``critical``, resulting in only the ``debug`` log records to be filtered out).
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--logger [console|json|python|disabled]</tt></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_LOGGER=...</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+Apply the ``--logger`` option to change the log formatter that is used by the library. The default value ``console`` is mostly suited for local development environments as it provides a structured and colorized view of log records. The console colors can be disabled by setting the env value ``NO_COLOR=1``.
+
+| ⇢ *recommendation* ✨👀
+| ⇢ For released services / images it's recommended to use the* ``json`` *option so that you can set up structured log collection via for example Logstash, Fluentd, Fluent Bit, Vector, etc.*
+|
+
+If you prefer to disable log output from the library you can use ``disabled`` (and presumably add a log handler with another implementation).
+
+The ``python`` option isn't recommended, but available if required to use the loggers from Python's built-in ``logging`` module. Note that the built-in ``logging`` module will be used any way. as the library's loggers are both added as handlers to ``logging.root`` and has propagation of records through to ``logging`` as well.
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--custom-logger &lt;module.attribute|module&gt;</tt></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_CUSTOM_LOGGER=...</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+If the template loggers from the option above doesnt' cut it or if you already have your own logger (preferably a ``structlog`` logger) and processor chain set up, you can specify a ``--custom-logger`` which will also make ``tomodachi`` use your logger set up. This is suitable also if your app is using a custom logging setup that would differ in output from what the ``tomodachi`` loggers outputs.
+
+If your logger is initialized in for example the module ``yourapp.logging`` and the initialized (``structlog``) logger is aptly named ``logger``, then use ``--custom-logger yourapp.logging.logger`` (or set as an env value ``TOMODACHI_CUSTOM_LOGGER=yourapp.logging.logger``).
+
+The path to the logger attribute in the module you're specifying must implement ``debug``, ``info``, ``warning``, ``error``, ``exception``, ``critical`` and preferably also ``new(context: Dict[str, Any]) -> Logger`` (as that is what primarily will be called to create (or get) a logger).
+
+Although non-native ``structlog`` loggers can be used as custom loggers, it's highly recommended to specify a path that has been assigned a value from ``structlog.wrap_logger`` or ``structlog.get_logger``.
+
+.. raw:: html
+
+    <table align="left">
+    <thead>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🧩</th>
+    <th align="left" width="440px"><tt>--opentelemetry-instrument</tt></th>
+    </tr>
+    <tr vertical-align="center">
+    <th align="center" width="50px">🖥️</th>
+    <th align="left" width="440px"><tt>TOMODACHI_OPENTELEMETRY_INSTRUMENT=1</tt></th>
+    </tr>
+    </thead>
+    </table>
+    <br clear="left"/>
+
+Use ``--opentelemetry-instrument`` to enable OpenTelemetry auto instrumentation of the service and libraries for which the environment has installed instrumentors.
+
+If ``tomodachi`` is installed in the environment, using the argument ``--opentelemetry-instrument`` (or setting the ``TOMODACHI_OPENTELEMETRY_INSTRUMENT=1`` env variable value) is mostly equivalent to starting the service using the ``opentelemetry-instrument`` CLI – OTEL distros, configurators and instrumentors will be loaded automatically and ``OTEL_*`` environment values will be processed in the same way.
 
 ----
 
@@ -125,15 +257,20 @@ later is used to run the microservices you build.
     local ~$ tomodachi --version
     > tomodachi x.xx.xx
 
+``tomodachi`` can be installed together with a set of "extras" that will install a set of dependencies that are useful for different purposes. The extras are:
 
-Probably goes without saying – services you build, their dependencies,
-together with runtime utilities like this one, should preferably always be
-installed and run in isolated environments like Docker containers or virtual
-environments.
+* ``uvloop``: for the possibility to start services with the ``--loop uvloop`` option.
+* ``protobuf``: for protobuf support in envelope transformation and message serialization.
+* ``aiodns``: to use ``aiodns`` as the DNS resolver for ``aiohttp``.
+* ``brotli``: to use ``brotli`` compression in ``aiohttp``.
+* ``opentelemetry``: for OpenTelemetry instrumentation support.
+* ``opentelemetry-exporter-prometheus``: to use the experimental OTEL meter provider for Prometheus.
 
+Services and their dependencies, together with runtime utilities like ``tomodachi``, should preferably always be installed and run in isolated environments like Docker containers or virtual environments.
 
 Building blocks for a service class and microservice entrypoint
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 1. ``import tomodachi`` and create a class that inherits ``tomodachi.Service``,
    it can be called anything… or just ``Service`` to keep it simple.
 2. Add a ``name`` attribute to the class and give it a string value. Having
@@ -198,8 +335,7 @@ Run services with:
 
 .. code:: bash
 
-    local ~/code/service$ tomodachi run <path to .py file with service class code>
-
+    local ~/code/service$ tomodachi run service.py
 
 ----
 
@@ -228,6 +364,7 @@ some kind of async pub/sub tasks.
 
 Basic HTTP based service 🌟
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Code for a simple service which would service data over HTTP, pretty similar, but with a few more concepts added.
 
 .. code:: python
@@ -262,6 +399,7 @@ Code for a simple service which would service data over HTTP, pretty similar, bu
 
 RabbitMQ or AWS SNS+SQS event based messaging service 🐰
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Example of a service that calls a function when messages are published on an AMQP topic exchange.
 
 .. code:: python
@@ -284,6 +422,7 @@ Example of a service that calls a function when messages are published on an AMQ
 
 AWS SNS+SQS event based messaging service 📡
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Example of a service using AWS SNS+SQS managed pub/sub messaging. AWS SNS and AWS SQS together
 brings managed message queues for microservices, distributed systems, and serverless applications hosted
 on AWS. ``tomodachi`` services can customize their enveloping functionality to both unwrap incoming messages
@@ -312,64 +451,48 @@ scalability in distributed architectures, when for example hosted in Docker on K
 
 Scheduling, inter-communication between services, etc. ⚡️
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 There are other examples available with code of how to use services with self-invoking
 methods called on a specified interval or at specific times / days, as well as additional examples
 for inter-communication pub/sub between different services on both AMQP or AWS SNS+SQS as shown
 above. See more at the `examples folder <https://github.com/kalaspuff/tomodachi/blob/master/examples/>`_.
 
-
 ----
 
 Run the service 😎
 ------------------
+
 .. code:: bash
 
     # cli alias is set up automatically on installation
     local ~/code/service$ tomodachi run service.py
 
     # alternatively using the tomodachi.run module
-    local ~/code/tomodachi$ python -m tomodachi.run service.py
+    local ~/code/service$ python -m tomodachi.run service.py
 
 
-*Defaults to output information on stdout.*
+*Defaults to output startup banner on stdout and log output on stderr.*
 
-.. code:: bash
-
-    local ~/code/service$ tomodachi run service.py
-    >
-    > ---
-    > Starting tomodachi services (pid: 1) ...
-    > * service.py
-    >
-    > Current version: tomodachi x.x.xx on Python 3.x.x
-    > Event loop implementation: asyncio
-    > Local time: October 16, 2022 - 13:38:01,201509 UTC
-    > Timestamp in UTC: 2022-10-16T13:38:01.201509Z
-    >
-    > File watcher is active - code changes will automatically restart services
-    > Quit running services with <ctrl+c>
-    >
-    > 2022-10-16 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    > 2022-10-16 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:9700/
-    > 2022-10-16 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
-
+.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/53dfc4d2b3a8f9df16995aa61541afa2412b1074/docs/assets/tomodachi-run-service.png
+    :align: center
 
 *HTTP service acts like a normal web server.*
 
 .. code:: bash
 
     local ~$ curl -v "http://127.0.0.1:9700/resource/1234"
-    > HTTP/1.1 200 OK
-    > Content-Type: text/plain; charset=utf-8
-    > Server: tomodachi
-    > Content-Length: 9
-    > Date: Sun, 16 Oct 2022 13:38:02 GMT
-    >
-    > id = 1234
+    # > HTTP/1.1 200 OK
+    # > Content-Type: text/plain; charset=utf-8
+    # > Server: tomodachi
+    # > Content-Length: 9
+    # > Date: Sun, 16 Oct 2022 13:38:02 GMT
+    # >
+    # > id = 1234
 
 
 Getting an instance of a service
 --------------------------------
+
 If the a Service instance is needed outside the Service class itself, it can be acquired with ``tomodachi.get_service``. If multiple Service instances exist within the same event loop, the name of the Service can be used to get the correct one.
 
 .. code:: python
@@ -385,6 +508,7 @@ If the a Service instance is needed outside the Service class itself, it can be 
 
 Stopping the service
 --------------------
+
 Stopping a service can be achieved by either sending a ``SIGINT`` <ctrl+c> or ``SIGTERM`` signal to to the ``tomodachi`` Python process, or by invoking the ``tomodachi.exit()`` function, which will initiate the termination processing flow. The ``tomodachi.exit()`` call can additionally take an optional exit code as an argument, which otherwise will default to use exit code 0.
 
 * ``SIGINT`` signal (equivalent to using <ctrl+c>)
@@ -396,7 +520,6 @@ The process' exit code can also be altered by changing the value of ``tomodachi.
 All above mentioned ways of initiating the termination flow of the service will perform a graceful shutdown of the service which will try to await open HTTP handlers and await currently running tasks using tomodachi's scheduling functionality as well as await tasks processing messages from queues such as AWS SQS or RabbitMQ.
 
 Some tasks may timeout during termination according to used configuration (see options such as ``http.termination_grace_period_seconds``) if they are long running tasks. Additionally container handlers may impose additional timeouts for how long termination are allowed to take. If no ongoing tasks are to be awaited and the service lifecycle can be cleanly terminated the shutdown usually happens within milliseconds.
-
 
 Function hooks for service lifecycle changes
 --------------------------------------------
@@ -481,7 +604,7 @@ quite this small, but as a template to get started.
     WORKDIR /app
     COPY service.py .
     ENV PYTHONUNBUFFERED=1
-    CMD ["tomodachi", "run", "service.py", "--production"]
+    CMD ["tomodachi", "run", "service.py"]
 
 **service.py**
 
@@ -539,24 +662,24 @@ Building and running the container, forwarding host's port 31337 to port 80.
 .. code:: bash
 
     local ~/code/service$ docker build . -t tomodachi-microservice
-    > Sending build context to Docker daemon  9.216kB
-    > Step 1/7 : FROM python:3.10-bullseye
-    > 3.10-bullseye: Pulling from library/python
-    > ...
-    >  ---> 3f7f3ab065d4
-    > Step 7/7 : CMD ["tomodachi", "run", "service.py", "--production"]
-    >  ---> Running in b8dfa9deb243
-    > Removing intermediate container b8dfa9deb243
-    >  ---> 8f09a3614da3
-    > Successfully built 8f09a3614da3
-    > Successfully tagged tomodachi-microservice:latest
+    # > Sending build context to Docker daemon  9.216kB
+    # > Step 1/7 : FROM python:3.10-bullseye
+    # > 3.10-bullseye: Pulling from library/python
+    # > ...
+    # >  ---> 3f7f3ab065d4
+    # > Step 7/7 : CMD ["tomodachi", "run", "service.py"]
+    # >  ---> Running in b8dfa9deb243
+    # > Removing intermediate container b8dfa9deb243
+    # >  ---> 8f09a3614da3
+    # > Successfully built 8f09a3614da3
+    # > Successfully tagged tomodachi-microservice:latest
 
 .. code:: bash
 
     local ~/code/service$ docker run -ti -p 31337:80 tomodachi-microservice
-    > 2022-10-16 13:38:01,234 (services.service): Initializing service "example" [id: <uuid>]
-    > 2022-10-16 13:38:01,248 (transport.http): Listening [http] on http://127.0.0.1:80/
-    > 2022-10-16 13:38:01,248 (services.service): Started service "example" [id: <uuid>]
+
+.. image:: https://raw.githubusercontent.com/kalaspuff/tomodachi/53dfc4d2b3a8f9df16995aa61541afa2412b1074/docs/assets/tomodachi-in-docker.png
+    :align: center
 
 Making requests to the running container.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -564,39 +687,43 @@ Making requests to the running container.
 .. code:: bash
 
     local ~$ curl http://127.0.0.1:31337/ | jq
-    > {
-    >   "data": "hello world!",
-    >   "execution_context": {
-    >     "tomodachi_version": "x.x.xx",
-    >     "python_version": "3.x.x",
-    >     "system_platform": "Linux",
-    >     "process_id": 1,
-    >     "init_timestamp": "2022-10-16T13:38:01.201509Z",
-    >     "event_loop": "asyncio",
-    >     "http_enabled": true,
-    >     "http_current_tasks": 1,
-    >     "http_total_tasks": 1,
-    >     "aiohttp_version": "x.x.xx"
-    >   }
-    > }
+    # {
+    #   "data": "hello world!",
+    #   "execution_context": {
+    #     "tomodachi_version": "x.x.xx",
+    #     "python_version": "3.x.x",
+    #     "system_platform": "Linux",
+    #     "process_id": 1,
+    #     "init_timestamp": "2022-10-16T13:38:01.201509Z",
+    #     "event_loop": "asyncio",
+    #     "http_enabled": true,
+    #     "http_current_tasks": 1,
+    #     "http_total_tasks": 1,
+    #     "aiohttp_version": "x.x.xx"
+    #   }
+    # }
+
+.. code:: bash
 
     local ~$ curl http://127.0.0.1:31337/health -i
-    > HTTP/1.1 200 OK
-    > Content-Type: application/json; charset=utf-8
-    > Server: tomodachi
-    > Content-Length: 21
-    > Date: Sun, 16 Oct 2022 13:40:44 GMT
-    >
-    > {"status": "healthy"}
+    # > HTTP/1.1 200 OK
+    # > Content-Type: application/json; charset=utf-8
+    # > Server: tomodachi
+    # > Content-Length: 21
+    # > Date: Sun, 16 Oct 2022 13:40:44 GMT
+    # >
+    # > {"status": "healthy"}
+
+.. code:: bash
 
     local ~$ curl http://127.0.0.1:31337/no-route -i
-    > HTTP/1.1 404 Not Found
-    > Content-Type: application/json; charset=utf-8
-    > Server: tomodachi
-    > Content-Length: 22
-    > Date: Sun, 16 Oct 2022 13:41:18 GMT
-    >
-    > {"error": "not-found"}
+    # > HTTP/1.1 404 Not Found
+    # > Content-Type: application/json; charset=utf-8
+    # > Server: tomodachi
+    # > Content-Length: 22
+    # > Date: Sun, 16 Oct 2022 13:41:18 GMT
+    # >
+    # > {"error": "not-found"}
 
 
 **It's actually as easy as that to get something spinning. The hard part is usually to figure out (or decide) what to build next.**
@@ -611,6 +738,7 @@ should be adviced to hold off and use other tech for those kinds of deployments.
 
 Available built-ins used as endpoints 🚀
 ========================================
+
 As shown, there's different ways to trigger your microservice function in which the most common ones are either directly via HTTP or via event based messaging (for example AMQP or AWS SNS+SQS). Here's a list of the currently available built-ins you may use to decorate your service functions.
 
 HTTP endpoints:
@@ -618,6 +746,8 @@ HTTP endpoints:
 .. code:: python
 
     @tomodachi.http(method, url, ignore_logging=[200])
+    def handler(self, request, *args, **kwargs):
+        ...
 
 Usage:
   Sets up an **HTTP endpoint** for the specified ``method`` (``GET``, ``PUT``, ``POST``, ``DELETE``) on the regexp ``url``.
@@ -628,6 +758,9 @@ Usage:
 .. code:: python
 
     @tomodachi.http_static(path, url)
+    def handler(self, request, *args, **kwargs):
+        # noop
+        pass
 
 Usage:
   Sets up an **HTTP endpoint for static content** available as ``GET`` / ``HEAD`` from the ``path`` on disk on the base regexp ``url``.
@@ -637,6 +770,14 @@ Usage:
 .. code:: python
 
     @tomodachi.websocket(url)
+    def handler(self, request, *args, **kwargs):
+        async def _receive(data: Union[str, bytes]) -> None:
+            ...
+
+        async def _close() -> None:
+            ...
+
+        return _receive, _close
 
 Usage:
   Sets up a **websocket endpoint** on the regexp ``url``. The invoked function is called upon websocket connection and should return a two value tuple containing callables for a function receiving frames (first callable) and a function called on websocket close (second callable). The passed arguments to the function beside the class object is first the ``websocket`` response connection which can be used to send frames to the client, and optionally also the ``request`` object.
@@ -646,6 +787,8 @@ Usage:
 .. code:: python
 
     @tomodachi.http_error(status_code)
+    def handler(self, request, *args, **kwargs):
+        ...
 
 Usage:
   A function which will be called if the **HTTP request would result in a 4XX** ``status_code``. You may use this for example to set up a custom handler on "404 Not Found" or "403 Forbidden" responses.
@@ -668,6 +811,8 @@ AWS SNS+SQS messaging:
         max_number_of_consumed_messages=MAX_NUMBER_OF_CONSUMED_MESSAGES
         **kwargs,
     )
+    def handler(self, data, *args, **kwargs):
+        ...
 
 Usage:
   This would set up an **AWS SQS queue**, subscribing to messages on the **AWS SNS topic** ``topic`` (if a ``topic`` is specified), whereafter it will start consuming messages from the queue.
@@ -709,6 +854,8 @@ AMQP messaging (RabbitMQ):
         queue_name=None,
         **kwargs,
     )
+    def handler(self, data, *args, **kwargs):
+        ...
 
 Usage:
   Sets up the method to be called whenever a **AMQP / RabbitMQ message is received** for the specified ``routing_key``. By default the ``'amq.topic'`` topic exchange would be used, it may also be overridden by setting the ``options.amqp.exchange_name`` dict value on the service class.
@@ -733,6 +880,8 @@ Scheduled functions / cron / triggered on time interval:
         timezone=None,
         immediately=False,
     )
+    def handler(self, *args, **kwargs):
+        ...
 
 Usage:
   A **scheduled function** invoked on either a specified ``interval`` (you may use the popular cron notation as a str for fine-grained interval or specify an integer value of seconds) or a specific ``timestamp``. The ``timezone`` will default to your local time unless explicitly stated.
@@ -744,6 +893,8 @@ Usage:
 .. code:: python
 
     @tomodachi.heartbeat
+    def handler(self, *args, **kwargs):
+        ...
 
 Usage:
   A function which will be **invoked every second**.
@@ -756,6 +907,8 @@ Usage:
     @tomodachi.hourly
     @tomodachi.daily
     @tomodachi.monthly
+    def handler(self, *args, **kwargs):
+        ...
 
 Usage:
   A scheduled function which will be invoked once **every minute / hour / day / month**.
@@ -901,17 +1054,13 @@ This example portrays a middleware function which adds trace spans around the fu
 .. code:: python
 
     async def trace_middleware(
-        func: Callable[... Awaitable],
+        func: Callable[..., Awaitable],
         *,
         topic: str,
         message_attributes: dict,
-        sns_message_id: str
+        sns_message_id: str,
     ) -> None:
-        ctx: Context | None = None
-
-        if carrier_traceparent := message_attributes.get("telemetry.carrier.traceparent"):
-            carrier: dict[str, list[str] | str] = {"traceparent": carrier_traceparent}
-            ctx = TraceContextTextMapPropagator().extract(carrier=carrier)
+        ctx = TraceContextTextMapPropagator().extract(carrier=message_attributes)
 
         with tracer.start_as_current_span(f"SNSSQS handler '{func.__name__}'", context=ctx) as span:
             span.set_attribute("messaging.system", "AmazonSQS")
@@ -944,7 +1093,7 @@ This example portrays a middleware function which adds trace spans around the fu
 
 **Example of a middleware specified as a class:**
 
-A middleware can also be specified as the object of a class, in which case the `__call__`` method of the object will be invoked as the middleware function. Note that bound functions such as self has to be included in the signature as it's called as a normal class function.
+A middleware can also be specified as the object of a class, in which case the ``__call__`` method of the object will be invoked as the middleware function. Note that bound functions such as self has to be included in the signature as it's called as a normal class function.
 
 This class provides a simplistic basic auth implementation validating credentials in the HTTP Authorization header for HTTP requests to the service.
 
@@ -994,16 +1143,281 @@ This class provides a simplistic basic auth implementation validating credential
 
 ----
 
+Logging and log formatting using the ``tomodachi.logging`` module 📚
+======================================================================
+
+A context aware logger is available from the ``tomodachi.logging`` module that can be fetched with ``tomodachi.logging.get_logger()`` or just ``tomodachi.get_logger()`` for short.
+
+The logger is a initiated using the popular ``structlog`` package (`structlog documentation <https://www.structlog.org/en/stable/bound-loggers.html>`_), and can be used in the same way as the standard library logger, with a few additional features, such as holding a context and logging of additional values.
+
+The logger returned from ``tomodachi.get_logger()`` will hold the context of the current handler task or request for rich contextual log records.
+
+To get a logger with another name than the logger set for the current context, use ``tomodachi.get_logger(name="my-logger")``.
+
+.. code:: python
+
+    from typing import Any
+
+    import tomodachi
+
+    class Service(tomodachi.Service):
+        name = "service"
+
+        @tomodachi.aws_sns_sqs("test-topic", queue_name="test-queue")
+        async def sqs_handler(self, data: Any, topic: str, sns_message_id: str) -> None:
+            tomodachi.get_logger().info("received msg", topic=topic, sns_message_id=sns_message_id)
+
+The log record will be enriched with the context of the current handler task or request and the output should look something like this if the ``json`` formatter is used (note that the example output below has been prettified – the JSON that is actually used outputs the entire log entry on one single line):
+
+.. code:: json
+
+    {
+        "timestamp": "2023-08-13T17:44:09.176295Z",
+        "logger": "tomodachi.awssnssqs.handler",
+        "level": "info",
+        "message": "received msg",
+        "handler": "sqs_handler",
+        "type": "tomodachi.awssnssqs",
+        "topic": "test-topic",
+        "sns_message_id": "a1eba63e-8772-4b36-b7e0-b2f524f34bff"
+    }
+
+Interactions with Python's built-in ``logging`` module
+------------------------------------------------------
+
+Note that the log entries are propagated to the standard library logger (as long as it wasn't filtered), in order to allow third party handler hooks to pick up records or act on them. This will make sure that integrations such a Sentry's exception tracing will work out of the box.
+
+Similarly the ``tomodachi`` logger will also by default receive records from the standard library logger as adds a ``logging.root`` handler, so that the ``tomodachi`` logger can be used as a drop-in replacement for the standard library logger. Because of this third party modules using Python's default ``logging`` module will use the same formatter as ``tomodachi``. Note that if ``logging.basicConfig()`` is called before the ``tomodachi`` logger is initialized, ``tomodachi`` may not be able to add its ``logging.root`` handler.
+
+Note that when using the standard library logger directly the contextual logger won't be selected by default.
+
+.. code:: python
+
+    import logging
+
+    from aiohttp.web import Request, Response
+    import tomodachi
+
+    class Service(tomodachi.Service):
+        name = "service"
+
+        @tomodachi.http("GET", r"/example")
+        async def http_handler(self, request: Request) -> Response:
+            # contextual logger
+            tomodachi.get_logger().info("http request")
+
+            # these two rows result in similar log records
+            logging.getLogger("service.logger").info("with logging module")
+            tomodachi.get_logger("service.logger").info("with tomodachi.logging module")
+
+            # extra fields from built in logger ends up as "extra" in log records
+            logging.getLogger("service.logger").info("adding extra", extra={
+                "http_request_path": request.path
+            })
+
+            return Response(body="hello world")
+
+A GET request to ``/example`` of this service would result in five log records being emitted (as shown formatted with the ``json`` formatter). The four from the example above and the last one from the ``tomodachi.transport.http`` module.
+
+.. code:: javascript
+
+    {"timestamp": "2023-08-13T19:25:15.923627Z", "logger": "tomodachi.http.handler", "level": "info", "message": "http request", "handler": "http_handler", "type": "tomodachi.http"}
+    {"timestamp": "2023-08-13T19:25:15.923894Z", "logger": "service.logger", "level": "info", "message": "with logging module"}
+    {"timestamp": "2023-08-13T19:25:15.924043Z", "logger": "service.logger", "level": "info", "message": "with tomodachi.logging module"}
+    {"timestamp": "2023-08-13T19:25:15.924172Z", "logger": "service.logger", "level": "info", "message": "adding extra", "extra": {"http_request_path": "/example"}}
+    {"timestamp": "2023-08-13T19:25:15.924507Z", "logger": "tomodachi.http.response", "level": "info", "message": "", "status_code": 200, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/example", "http_version": "HTTP/1.1", "response_content_length": 11, "user_agent": "curl/7.88.1", "handler_elapsed_time": "0.00135s", "request_time": "0.00143s"}
+
+Configuring the logger
+----------------------
+Start the service using the ``--logger json`` arguments (or setting ``TOMODACHI_LOGGER=json`` environment value) to change the log formatter to use the ``json`` log formatter. The default log formatter ``console`` is mostly suited for local development environments as it provides a structured and colorized view of log records.
+
+It's also possible to use your own logger implementation by specifying ``--custom-logger ...`` (or setting ``TOMODACHI_CUSTOM_LOGGER=...`` environment value).
+
+Read more about how to start the service with another formatter or implementation in the `usage section <#usage>`_
+
+----
+
+Using OpenTelemetry instrumentation
+===================================
+
+Install ``tomodachi`` using the ``opentelemetry`` extras to enable instrumentation for OpenTelemetry. In addition, install with the ``opentelemetry-exporter-prometheus`` extras to use Prometheus exporter metrics.
+
+.. code:: bash
+
+    local ~$ pip install tomodachi[opentelemetry]
+    local ~$ pip install tomodachi[opentelemetry,opentelemetry-exporter-prometheus]
+
+When added as a Poetry dependency the ``opentelemetry`` extras can be enabled by adding ``tomodachi = {extras = ["opentelemetry"]}`` to the ``pyproject.toml`` file, and when added to a ``requiements.txt`` file the ``opentelemetry`` extras can be enabled by adding ``tomodachi[opentelemetry]`` to the file.
+
+Auto instrumentation: ``tomodachi --opentelemetry-instrument``
+--------------------------------------------------------------
+
+Passing the ``--opentelemetry-instrument`` argument to ``tomodachi run`` will automatically instrument the service with the appropriate exporters and configuration according to the set ``OTEL_*`` environment variables.
+
+If ``tomodachi`` is installed in the environment, using ``tomodachi --opentelemetry-instrument service.py`` is mostly equivalent to running ``opentelemetry-instrument tomodachi run service.py`` and will load distros, configurators and instrumentors automatically in the same way as the ``opentelemetry-instrument`` CLI would do.
+
+.. code:: bash
+
+    local ~$ OTEL_LOGS_EXPORTER=console \
+        OTEL_TRACES_EXPORTER=console \
+        OTEL_METRICS_EXPORTER=console \
+        OTEL_SERVICE_NAME=example-service \
+        tomodachi --opentelemetry-instrument run service/app.py
+
+The environment variable ``TOMODACHI_OPENTELEMETRY_INSTRUMENT`` if set will also enable auto instrumentation in the same way.
+
+.. code:: bash
+
+    local ~$ OTEL_LOGS_EXPORTER=console \
+        OTEL_TRACES_EXPORTER=console \
+        OTEL_METRICS_EXPORTER=console \
+        OTEL_SERVICE_NAME=example-service \
+        TOMODACHI_OPENTELEMETRY_INSTRUMENT=1 \
+        tomodachi run service/app.py
+
+Auto instrumentation using the ``opentelemetry-instrument`` CLI
+---------------------------------------------------------------
+
+Auto instrumentation using the ``opentelemetry-instrument`` CLI can be achieved by starting services using ``opentelemetry-instrument [otel-options] tomodachi run [options] <service.py ...>``.
+
+.. code:: bash
+
+    # either define the OTEL_* environment variables to specify instrumentation specification
+    local ~$ OTEL_LOGS_EXPORTER=console \
+        OTEL_TRACES_EXPORTER=console \
+        OTEL_METRICS_EXPORTER=console \
+        OTEL_SERVICE_NAME=example-service \
+        opentelemetry-instrument tomodachi run service/app.py
+
+    # or use the arguments passed to the opentelemetry-instrument command
+    local ~$ opentelemetry-instrument \
+        --logs_exporter console \
+        --traces_exporter console \
+        --metrics_exporter console \
+        --service_name example-service \
+        tomodachi run service/app.py
+
+Manual instrumentation
+----------------------
+
+Auto instrumentation using either ``tomodachi --opentelemetry-instrument``, setting the ``TOMODACHI_OPENTELEMETRY_INSTRUMENT=1`` env value or using the ``opentelemetry-instrument`` CLI are the recommended ways of instrumenting services, as they will automatically instrument the service (and libs with instrumentors installed) with the appropriate exporters and configuration.
+
+However, instrumentation can also be enabled by importing the ``TomodachiInstrumentor`` instrumentation class and calling its' ``instrument`` function.
+
+.. code:: python
+
+    import tomodachi
+    from tomodachi.opentelemetry import TomodachiInstrumentor
+
+    TomodachiInstrumentor().instrument()
+
+    class Service(tomodachi.Service):
+        name = "example-service"
+
+        @tomodachi.http(GET, r"/example")
+        async def example(self, request):
+            return 200, "hello world"
+
+Starting such a service with the appropriate ``OTEL_*`` environment variables would properly instrument traces, logs and metrics for the service without the need to use the ``opentelemetry-instrument`` CLI.
+
+.. code:: bash
+
+    local ~$ OTEL_LOGS_EXPORTER=console \
+        OTEL_TRACES_EXPORTER=console \
+        OTEL_METRICS_EXPORTER=console \
+        OTEL_SERVICE_NAME=example-service \
+        tomodachi run service/app.py
+
+Service name dynamically set if missing ``OTEL_SERVICE_NAME`` value
+-------------------------------------------------------------------
+
+If the ``OTEL_SERVICE_NAME`` environment variable value (or ``--service_name`` argument to ``opentelemetry-instrument``) is not set, the resource' ``service.name`` will instead be set to the ``name`` attribute of the service class. In case the service class uses the default generic names (``service`` or ``app``), the resource' ``service.name`` will instead be set to the default as specified in https://github.com/open-telemetry/semantic-conventions/tree/main/docs/resource#service.
+
+Note for use cases where multiple service classes are started in the same Python process. Instrumentation for logging and metrics will currently primarily use the ``OTEL_SERVICE_NAME``, and if it's missing then use the name from the *first* instrumented service class. The same goes for the ``service.instance.id`` resource attribute, which will be set to the first instrumented service class' ``uuid`` value (which in most cases is automatically assigned on service start).
+
+Exclude lists to exclude certain URLs from traces and metrics
+-------------------------------------------------------------
+
+To exclude certain URLs from traces and metrics, set the environment variable ``OTEL_PYTHON_TOMODACHI_EXCLUDED_URLS`` (or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the URLs.
+
+Regexes from the ``OTEL_PYTHON_AIOHTTP_EXCLUDED_URLS`` environment variable will also be excluded.
+
+For example,
+
+.. code:: bash
+
+    export OTEL_PYTHON_TOMODACHI_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
+You can also pass comma delimited regexes directly to the ``instrument`` method:
+
+.. code:: python
+
+    TomodachiInstrumentor().instrument(excluded_urls="client/.*/info,healthcheck")
+
+Prometheus meter provider (experimental)
+----------------------------------------
+
+The ``tomodachi.opentelemetry`` module also provides a Prometheus meter provider that can be used to export metrics to Prometheus. Run ``opentelemetry-instrument`` with the ``--meter_provider tomodachi_prometheus`` argument (or set ``OTEL_PYTHON_METER_PROVIDER=tomodachi_prometheus`` environment value) to enable the Prometheus meter provider.
+
+Environment variables to configure Prometheus meter provider
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_ADDRESS`` specifies the host address the Prometheus export server should listen on. (default: ``"localhost"``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_PORT`` specifies the port the Prometheus export server should listen on. (default: ``9464``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO`` specifies whether to include scope information as ``otel_scope_info`` value. (default: ``true``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_TARGET_INFO`` specifies whether to include resource attributes as ``target_info`` value. (default: ``true``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED`` specifies whether exemplars (experimental) should be collected and used in Prometheus export. (default: ``false``)
+* ``OTEL_PYTHON_TOMODACHI_PROMETHEUS_NAMESPACE_PREFIX`` specifies the namespace prefix for Prometheus metrics. A final underscore is automatically added if prefix is used. (default: ``""``)
+
+Dependency requirement for Prometheus meter provider
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``tomodachi_prometheus`` meter provider requires that the ``opentelemetry-exporter-prometheus``and ``prometheus_client`` packages package are installed.
+
+Use ``tomodachi`` extras ``opentelemetry-exporter-prometheus`` to automatically include a compatible version of the exporter.
+
+OpenMetrics output from Prometheus with exemplars enabled
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+With exemplars enabled, make sure to call the Prometheus client with the accept header ``application/openmetrics-text`` to ensure exemplars are included in the response.
+
+.. code:: bash
+
+    curl http://localhost:9464/metrics -H "Accept: application/openmetrics-text"
+
+💡 Note that if the accept header ``application/openmetrics-text`` is missing from the request, exemplars will be excluded from the response.
+
+Example: starting a service with instrumentation
+------------------------------------------------
+
+This example will start and instrument a service with OTLP exported traces sent to the endpoint ``otelcol:4317`` and metrics that can be scraped by Prometheus from port ``9464``. All metrics except for ``target_info`` and ``otel_scope_inf`` will be prefixed with ``"tomodachi_"``. Additionally *exemplars* will be added to the Prometheus collected metrics that includes sample exemplars with trace_id and span_id labels.
+
+.. code:: bash
+
+    local ~$ TOMODACHI_OPENTELEMETRY_INSTRUMENT=1 \
+        OTEL_TRACES_EXPORTER=otlp \
+        OTEL_EXPORTER_OTLP_ENDPOINT=otelcol:4317 \
+        OTEL_PYTHON_METER_PROVIDER=tomodachi_prometheus \
+        OTEL_PYTHON_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED=true \
+        OTEL_PYTHON_TOMODACHI_PROMETHEUS_ADDRESS=0.0.0.0 \
+        OTEL_PYTHON_TOMODACHI_PROMETHEUS_PORT=9464 \
+        OTEL_PYTHON_TOMODACHI_PROMETHEUS_NAMESPACE_PREFIX=tomodachi \
+        tomodachi run service/app.py
+
+----
+
 Additional configuration options 🤩
 ===================================
-A ``tomodachi.Service`` extended service class may specify a class attribute named ``options`` (as a ``tomodachi.Options`` object) for additional configuration.
+
+In the service class an attribute named ``options`` (as a ``tomodachi.Options`` object) can be set for additional configuration.
 
 .. code:: python
 
     import json
 
     import tomodachi
-
 
     class Service(tomodachi.Service):
         name = "http-example"
@@ -1034,7 +1448,6 @@ A ``tomodachi.Service`` extended service class may specify a class attribute nam
         async def error_404(self, request):
             return json.dumps({"error": "not-found"})
 
-
 =========================================================  ==================================================================================================================================================================================================================================================================================================================================================================================================================================================================================  ===========================================
 ⁝⁝ **HTTP server parameters** ⁝⁝ ``options["http"][key]``                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ``_____________________________``
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -------------------------------------------
@@ -1047,11 +1460,11 @@ A ``tomodachi.Service`` extended service class may specify a class attribute nam
 ``http.max_keepalive_requests``                            An optional number (int) of requests which is allowed for a keep-alive connection. After the specified number of requests has been done, the connection will be closed. An option value of ``0`` or ``None`` (default) will allow any number of requests over an open keep-alive connection.                                                                                                                                                                                        ``None``
 ``http.max_keepalive_time``                                An optional maximum time in seconds (int) for which keep-alive connections are kept open. If a keep-alive connection has been kept open for more than ``http.max_keepalive_time`` seconds, the following request will be closed upon returning a response. The feature is not used by default and won't be used if the value is ``0`` or ``None``. A keep-alive connection may otherwise be open unless inactive for more than the keep-alive timeout.                              ``None``
 ``http.client_max_size``                                   The client’s maximum size in a request, as an integer, in bytes.                                                                                                                                                                                                                                                                                                                                                                                                                    ``(1024 ** 2) * 100``
-``http.termination_grace_period_seconds``                  The number of seconds to wait for functions called via HTTP to gracefully finish execution before terminating the service, for example if service received a `SIGINT` or `SIGTERM` signal while requests were still awaiting response results.                                                                                                                                                                                                                                      ``30``
+``http.termination_grace_period_seconds``                  The number of seconds to wait for functions called via HTTP to gracefully finish execution before terminating the service, for example if service received a ``SIGINT`` or ``SIGTERM`` signal while requests were still awaiting response results.                                                                                                                                                                                                                                  ``30``
 ``http.real_ip_header``                                    Header to read the value of the client's real IP address from if service operates behind a reverse proxy. Only used if ``http.real_ip_from`` is set and the proxy's IP correlates with the value from ``http.real_ip_from``.                                                                                                                                                                                                                                                        ``"X-Forwarded-For"``
 ``http.real_ip_from``                                      IP address(es) or IP subnet(s) / CIDR. Allows the ``http.real_ip_header`` header value to be used as client's IP address if connecting reverse proxy's IP equals a value in the list or is within a specified subnet. For example ``["127.0.0.1/32", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]`` would permit header to be used if closest reverse proxy is ``"127.0.0.1"`` or within the three common private network IP address ranges.                                    ``[]``
 ``http.content_type``                                      Default content-type header to use if not specified in the response.                                                                                                                                                                                                                                                                                                                                                                                                                ``"text/plain; charset=utf-8"``
-``http.access_log``                                        If set to the default value (boolean) ``True`` the HTTP access log will be output to stdout (logger ``transport.http``). If set to a ``str`` value, the access log will additionally also be stored to file using value as filename.                                                                                                                                                                                                                                                ``True``
+``http.access_log``                                        If set to the default value (boolean) ``True`` the HTTP access log will be output to stdout (logger ``tomodachi.http``). If set to a ``str`` value, the access log will additionally also be stored to file using value as filename.                                                                                                                                                                                                                                                ``True``
 ``http.server_header``                                     ``"Server"`` header value in responses.                                                                                                                                                                                                                                                                                                                                                                                                                                             ``"tomodachi"``
 ---------------------------------------------------------  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  -------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1102,7 +1515,6 @@ A ``tomodachi.Service`` extended service class may specify a class attribute nam
 ``watcher.watched_file_endings``                           Additions to the list of file endings that the watcher should monitor for file changes. Already followed file endings are ``".py"``, ``".pyi"``, ``".json"``, ``".yml"``, ``".html"`` and ``".phtml"``.                                                                                                                                                                                                                                                                             ``[]``
 =========================================================  ==================================================================================================================================================================================================================================================================================================================================================================================================================================================================================  ===========================================
 
-
 Decorated functions using ``@tomodachi.decorator`` 🎄
 -----------------------------------------------------
 Invoker functions can of course be decorated using custom functionality. For ease of use you can then in turn decorate your decorator with the the built-in ``@tomodachi.decorator`` to ease development.
@@ -1132,6 +1544,89 @@ If the decorator would return anything else than ``True`` or ``None`` (or not sp
             # Do magic here!
             return "OK"
 
+----
+
+Good practices for running services in production 🤞
+======================================================
+
+When running a ``tomodachi`` service in a production environment, it's important to ensure that the service is set up correctly to handle the demands and constraints of a live system. Here's some recommendations of options and operating practices to make running the services a breeze.
+
+* Go for a Docker 🐳 environment if possible – preferably orchestrated with for example Kubernetes to handle automated scaling events to meet demand of incoming requests and/or event queues.
+* Make sure that a ``SIGTERM`` signal is passed to the ``python`` process when a pod is scheduled for termination to give it time to gracefully stop listeners, consumers and finish active handler tasks.
+
+  - This should work automatically for services in Docker if the ``CMD`` statement in your ``Dockerfile`` is starting the ``tomodachi`` service directly.
+  - In case shell scripts are used in ``CMD`` you might need to trap signals and forward them to the service process.
+
+* To give services the time to gracefully complete active handler executions and shut down, make sure that the orchestration engine waits at least 30 seconds from sending the ``SIGTERM`` to remove the pod.
+
+  - For extra compatibility in k8s and to get around most kind of edge-cases of intermittent timeouts and problems with ingress connections, set the pod spec ``terminationGracePeriodSeconds`` to ``90`` seconds and use a ``preStop`` lifecycle hook of 20 seconds.
+
+    .. code:: yaml
+
+        spec:
+          terminationGracePeriodSeconds: 90
+          containers:
+            lifecycle:
+              preStop:
+                exec:
+                  command: ["/bin/sh", "-c", "sleep 20"]
+
+* If your service inbound network access to HTTP handlers from users or API clients, then it's usually preferred to put some kind of ingress (nginx, haproxy or other type of load balancer) to proxy connections to the service pods.
+
+  - Let the ingress handle public TLS, http2 / http3, client facing keep-alives and WebSocket protocol upgrades and let the service handler just take care of the business logic.
+  - Use HTTP options such as the ones in this service to have the service rotate keep-alive connections so that ingress connections doesn't stick to the old pods after a scaling event.
+
+    If keep-alive connections from ingresses to services stick for too long, the new replicas added when scaling out won't get their balanced share of the requests and the old pods will continue to receive most of the requests.
+
+    .. code:: python
+
+        import tomodachi
+
+        class Service(tomodachi.Service):
+            name = "service"
+
+            options = tomodachi.Options(
+                http=tomodachi.Options.HTTP(
+                    port=80,
+                    content_type="application/json; charset=utf-8",
+                    real_ip_from=["127.0.0.1/32", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
+                    keepalive_timeout=10,
+                    max_keepalive_time=30,
+                )
+            )
+
+* Use a JSON log formatter such as the one enabled via ``--logger json`` (or env variable ``TOMODACHI_LOGGER=json``) so that the log entries can be picked up by a log collector.
+* Always start the service with the ``--production`` CLI argument (or set the env variable ``TOMODACHI_PRODUCTION=1``) to disable the file watcher that restarts the service on file changes, and to hide the start banner so it doesn't end up in log buffers.
+* Not related to ``tomodachi`` directly, but always remember to collect the log output and monitor your instances or clusters.
+
+Arguments to ``tomodachi run`` when running in production env
+-------------------------------------------------------------
+
+.. code:: bash
+
+    tomodachi run service/app.py --loop uvloop --production --log-level warning --logger json
+
+Here's a breakdown of the arguments and why they would be good for these kinds of environments.
+
+* ``--loop uvloop``: This argument sets the event loop implementation to ``uvloop``, which is known to be faster than the default ``asyncio`` loop. This can help improve the performance of your service. However, you should ensure that ``uvloop`` is installed in your environment before using this option.
+* ``--production``: This argument disables the file watcher that restarts the service on file changes and hides the startup info banner. This is important in a production environment where you don't want your service to restart every time a file changes. It also helps to reduce unnecessary output in your logs.
+* ``--log-level warning``: This argument sets the minimum log level to ``warning``. In a production environment, you typically don't want to log every single detail of your service's operation. By setting the log level to ``warning``, you ensure that only important messages are logged.
+
+  If your infrastructure supports rapid collection of log entries and you see a clear benefit of including logs of log level ``info``, it would make sense to use ``--log-level info`` instead of filtering on at least ``warning``.
+* ``--logger json``: This argument sets the log formatter to output logs in JSON format. This is useful in a production environment where you might have a log management system that can parse and index JSON logs for easier searching and analysis.
+
+You can also set these options using environment variables. This can be useful if you're deploying your service in a containerized environment like Docker or Kubernetes, where you can set environment variables in your service's configuration. Here's how you would set the same options using environment variables:
+
+.. code:: bash
+
+    export TOMODACHI_LOOP=uvloop
+    export TOMODACHI_PRODUCTION=1
+    export TOMODACHI_LOG_LEVEL=warning
+    export TOMODACHI_LOGGER=json
+
+    tomodachi run service/app.py
+
+By using environment variables, you can easily change the configuration of your service without having to modify your code or your command line arguments. This can be especially useful in a CI/CD pipeline where you might want to adjust your service's configuration based on the environment it's being deployed to.
 
 ----
 
@@ -1141,50 +1636,72 @@ Requirements 👍
 * aiohttp_ (``aiohttp`` is the currently supported HTTP server implementation for ``tomodachi``)
 * aiobotocore_ and botocore_ (used for AWS SNS+SQS pub/sub messaging)
 * aioamqp_ (used for RabbitMQ / AMQP pub/sub messaging)
+* structlog_ (used for logging)
 * uvloop_ (optional: alternative event loop implementation)
 
 .. _Python: https://www.python.org
-.. _asyncio: http://docs.python.org/3.10/library/asyncio.html
 .. _aiohttp: https://github.com/aio-libs/aiohttp
 .. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _botocore: https://github.com/boto/botocore
 .. _aioamqp: https://github.com/Polyconseil/aioamqp
+.. _structlog: https://github.com/hynek/structlog
 .. _uvloop: https://github.com/MagicStack/uvloop
 
+----
 
-``LICENSE`` 🙋
-==============
-``tomodachi`` is offered under the MIT License.
+Pull requests and bug reports
+=============================
 
-* MIT License: https://github.com/kalaspuff/tomodachi/blob/master/LICENSE
+This library is open source software. Please add a pull request with the feature that you deem are missing from the lib or for bug fixes that you encounter.
 
+Make sure that the tests and linters are passing. A limited number of tests can be run locally without external services. Use GitHub Actions to run the full test suite and to verify linting and regressions. `Read more in the contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
 
-``CHANGELOG`` 🧳
-================
+GitHub repository
+-----------------
+
+The latest developer version of ``tomodachi`` is always available at GitHub.
+
+* Clone repo: ``git clone git@github.com:kalaspuff/tomodachi.git``
+
+* GitHub: https://github.com/kalaspuff/tomodachi
+
+Acknowledgements + contributors
+===============================
+
+🙇 Thank you everyone that has come with ideas, reported issues, built and operated services, helped debug and made contributions to the library code directly or via libraries that build on the base functionality.
+
+🙏 Many thanks to the amazing contributors that have helped to make ``tomodachi`` better.
+
+.. image:: https://contrib.rocks/image?repo=kalaspuff/tomodachi
+   :target: https://github.com/kalaspuff/tomodachi/graphs/contributors
+
+----
+
+Changelog of releases
+=====================
+
 Changes are recorded in the repo as well as together with the GitHub releases.
 
 * In repository: https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst
 
 * Release tags: https://github.com/kalaspuff/tomodachi/releases
 
+----
 
-``GITHUB / SOURCE`` 🦄
-======================
-The latest developer version of ``tomodachi`` is always available at GitHub.
+LICENSE
+=======
 
-* Clone repo: ``git@github.com:kalaspuff/tomodachi.git``
+``tomodachi`` is offered under the `MIT license <https://github.com/kalaspuff/tomodachi/blob/master/LICENSE>`_.
 
-* GitHub: https://github.com/kalaspuff/tomodachi
+----
 
-* Latest release: https://github.com/kalaspuff/tomodachi/releases/latest
+Additional questions and information
+====================================
 
-
-Any questions?
-==============
 What is the best way to run a ``tomodachi`` service?
   Docker containers are great and can be scaled out in Kubernetes, Nomad or other orchestration engines. Some may instead run several services on the same environment, on the same machine if their workloads are smaller or more consistent. Remember to gather your output and monitor your instances or clusters.
 
-  For real workloads: Go for a Dockerized environment if possible – async task queues are usually nice and services could scale up and down for keeping up with incoming demand; if you require network access like HTTP from users or API clients directly to the service, then it's usually preferred to put some kind of ingress (nginx, haproxy or other type of load balancer) to proxy requests to the service pods. Let the ingress then handle public TLS, http2 / http3, client facing keep-alives and WebSocket protocol upgrades and let the service instead take care of the business logic.
+  See the section on `good practices for running services in production environments <https://tomodachi.dev/docs/running-a-service-in-production>`_ for more insights.
 
 Are there any more example services?
   There are a few examples in the `examples <https://github.com/kalaspuff/tomodachi/blob/master/examples>`_ folder, including using ``tomodachi`` in an `example Docker environment <https://github.com/kalaspuff/tomodachi/tree/master/examples/docker_examples/http_service>`_ with or without docker-compose. There are examples to publish events / messages to an AWS SNS topic and subscribe to an AWS SQS queue. There's also a similar code available of how to work with pub/sub for RabbitMQ via the AMQP transport protocol.
@@ -1193,7 +1710,7 @@ Why should I use this?
   ``tomodachi`` is a perfect place to start when experimenting with your architecture or trying out a concept for a new service. It may not have all the features you desire and it may never do, but I believe it's great for bootstrapping microservices in async Python.
 
 I have some great additions!
-  Sweet! Please send me a PR with your ideas. There's now automatic tests that are running as GitHub actions to verify linting and regressions. Get started at the short `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
+  Sweet! Please open a pull request with your additions. Make sure that the tests and linters are passing. A limited number of tests can be run locally without external services. Use GitHub Actions to run the full test suite and to verify linting and regressions. Get started at the short `contribution guide <https://github.com/kalaspuff/tomodachi/blob/master/CONTRIBUTING.rst>`_.
 
 Beta software in production?
   There are some projects and organizations that already are running services based on ``tomodachi`` in production. The library is provided as is with an unregular release schedule, and as with most software, there will be unfortunate bugs or crashes. Consider this currently as beta software (with an ambition to be stable enough for production). Would be great to hear about other use-cases in the wild!
@@ -1202,7 +1719,3 @@ Beta software in production?
 
 Who built this and why?
   My name is **Carl Oscar Aaro** [`@kalaspuff <https://github.com/kalaspuff>`_] and I'm a coder from Sweden. When I started writing the first few lines of this library back in 2016, my intention was just to learn more about Python's ``asyncio``, the event loop, event sourcing and message queues. A lot has happened since – now running services in both production and development clusters, while also using microservices for quick proof of concepts and experimentation. 🎉
-
-
-* https://github.com/kalaspuff
-* https://www.linkedin.com/in/carloscaraaro/

@@ -23,7 +23,7 @@ class ServiceB(tomodachi.Service):
 
     @aws_sns_sqs("example-pubsub-callback")
     async def callback(self, data: Any) -> None:
-        self.log(f"Received data (function: callback) - '{data}'")
+        tomodachi.get_logger().info(f"Received data (function: callback) - '{data}'")
 
     async def _started_service(self) -> None:
-        self.log("Subscribing to messages on topic 'example-pubsub-callback'")
+        tomodachi.get_logger().info("Subscribing to messages on topic 'example-pubsub-callback'")

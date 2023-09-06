@@ -33,6 +33,10 @@ def get_service(name: Optional[str] = None) -> Any:
     return _services.get(name) if name else None
 
 
+def get_services() -> Any:
+    return list(_services.values())
+
+
 def get_instance(name: Optional[str] = None) -> Any:
     # alias for tomodachi.get_service()
     return get_service(name)

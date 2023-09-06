@@ -1,6 +1,51 @@
 Changes
 =======
 
+0.26.0 (2023-09-01)
+-------------------
+
+**New and updated**
+
+- Major refactoring of how logging is done, introducing ``tomodachi.get_logger()`` built on ``structlog``. Contextual logger available for all handlers, etc.
+- Provides the option of hooking in ``tomodachi`` to a custom logger the user provides.
+- Adds instrumentation for ``opentelemetry`` (OTEL / OpenTelemetry) that can be enabled if ``tomodachi`` is installed using the ``opentelemetry`` extras.
+- OTEL auto instrumentation can be achieved by starting services using either the ``tomodachi run`` argument ``--opentelemetry-instrument`` (equivalent to setting env: ``TOMODACHI_OPENTELEMETRY_INSTRUMENT=1``) or using the ``opentelemetry-instrument`` CLI.
+- An experimental meter provider for exporting OpenTelemetry metrics on a Prometheus server can be used by installing the ``opentelemetry-exporter-prometheus`` extras and using the ``OTEL_PYTHON_METER_PROVIDER=tomodachi_prometheus`` environment value in combination with OTEL instrumentation.
+- Adds the option to enable exemplars in the Prometheus client for OpenTelemetry metrics, to be able to link to traces from collected metrics in Grafana, et al.
+- The HTTP body for requests with a body is read before the handler is called and if the connection was closed prematurely before the body could be read, the request will be ignored.
+- Replaces the banner shown when starting a service without ``--production``. The banner now includes the operating system, architecture, which Python runtime from which virtualenv is used, etc. in order to aid debugging during development for issues caused by environment misconfiguration.
+- Updated the CLI usage output from ``--help``.
+- Added a value ``tomodachi.__build_time__`` which includes the timestamp when the build for the installed release was done. The time that has passed since build time will be included in the start banner.
+- Makes use of ``asyncio`` tasks instead of simply awaiting the coroutines so that the context from contextvars will be propagated correctly and not risk being corrupted by handlers.
+- Added an internal lazy meta importer to ease renaming and deprecations of modules.
+- Added additional lazy loading of submodules.
+- Each argument for ``tomodachi run`` is now accompanied with an environment variable to do the same. For example ``--log-level warning`` can be achieved by setting ``TOMODACHI_LOG_LEVEL=warning``.
+- Updated documentation with additional information.
+
+**Potentially breaking changes**
+
+- The complete refactoring of logging changes how log entries are being emitted, both in the way that the event / message of the log records has changed, but also how a log handler is now also added to the ``logging.root`` logger on service start.
+- Third party log records will if propagation is enabled also be processed in ``tomodachi.logging`` which may cause duplicate log output depending on how the third party logger is configured.
+- Removed the ``log_setup()`` function that previously was added to the service object on class initialization and that was used to setup log output to disk.
+- Tracebacks for uncaught exceptions are now extracted to only include frames relevant to the service application and not the internal ``tomodachi`` frames, which usually will be uninteresting for debugging.
+
+**Bug fixes**
+
+- Fixes exception catching of lifecycle handlers (``_start_service``, ``_started_service``, etc.) which previously could stall a service raising an exception while starting, instead of exiting with a non-zero exit code.
+- Bug fix for an issue which could cause the watcher to fail to restart the service after a syntax error was encountered.
+- Adds some missing type hint annotations.
+- Added additional logging of uncaught exceptions that previously may have been silenced.
+- Fixed that the ``--log-level`` CLI argument value is actually applied to loggers.
+- Fix for a race condition which could freeze a process if a service was manually stopped (interrupted with ctrl+c) before it had called its first lifecycle function (``_start_service``).
+
+**Deprecations**
+
+- Added deprecation warnings for more legacy functionality to give notice that those functions will be removed in a future release.
+- The use of the ``log()`` function added to the service object is deprecated. Use the ``structlog`` logger from ``tomodachi.get_logger()`` instead.
+- Using the ``RequestHandler.get_request_ip`` is deprecated. Instead use the ``tomodachi.get_forwarded_remote_ip()`` function.
+- Deprecated the use of the CLI argument ``-c`` (``--config``) which could be used to set object attributes from a JSON file. A better pattern is to read optional config data from an environment variable.
+
+
 0.25.1 (2023-08-11)
 -------------------
 
@@ -580,8 +625,8 @@ Changes
   ``{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}``.
 
 - The event loop that the process will execute on can now be specified
-  on startup using ``--loop [auto|asyncio|uvloop]``, currently the `auto`
-  (or `default`) value will use Python's builtin `asyncio` event loop.
+  on startup using ``--loop [auto|asyncio|uvloop]``, currently the ``auto``
+  (or ``default``) value will use Python's builtin ``asyncio`` event loop.
 
 - Fixes a bug that could cause a termination signal to stop the service
   in the middle of processing a message received via AWS SQS. The service
@@ -1176,7 +1221,7 @@ Changes
 0.7.0 (2018-01-27)
 ------------------
 
-- Added `@websocket` as a decorator type for handling websockets. A function
+- Added ``@websocket`` as a decorator type for handling websockets. A function
   call should return two callables which will be used for receiving messages
   through the socket and as a way to notify about the closure of the socket.
 
@@ -1184,13 +1229,13 @@ Changes
 0.6.5 (2018-01-16)
 ------------------
 
-- Updated `aiohttp` to latest version which solves incompabilities with `yarl`.
+- Updated ``aiohttp`` to latest version which solves incompabilities with ``yarl``.
 
 
 0.6.4 (2018-01-15)
 ------------------
 
-- Added a stricter dependency check for `yarl`.
+- Added a stricter dependency check for ``yarl``.
 
 
 0.6.3 (2018-01-12)
@@ -1214,8 +1259,8 @@ Changes
 0.6.1 (2017-11-15)
 ------------------
 
-- Introduced new options for AWS SNS/SQS transport to use `aws_endpoint_urls`
-  for `sns` and `sqs` if the user wishes to connect to other endpoints and the
+- Introduced new options for AWS SNS/SQS transport to use ``aws_endpoint_urls``
+  for ``sns`` and ``sqs`` if the user wishes to connect to other endpoints and the
   actual AWS endpoints, which could be useful for development and testing. The
   AWS SNS/SQS examples has been updated with values to reflect these options.
 

@@ -1,10 +1,17 @@
 import asyncio
+import os
 import time
 from typing import Any
+
+import pytest
 
 from run_test_service_helper import start_service
 
 
+@pytest.mark.skipif(
+    not os.environ.get("TOMODACHI_TEST_AWS_ACCESS_KEY_ID") or not os.environ.get("TOMODACHI_TEST_AWS_ACCESS_SECRET"),
+    reason="AWS configuration options missing in environment",
+)
 def test_wrapped_invoker_functions(capsys: Any, loop: Any) -> None:
     services, future = start_service("tests/services/wrapped_invoker_function_service.py", loop=loop)
 

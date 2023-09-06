@@ -1,0 +1,6 @@
+paths:
+  - tomodachi
+  - tests
+  - examples
+paths-ignore:
+  - tests/services/syntax_error_service.py

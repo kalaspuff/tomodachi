@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 import asyncio
 import binascii
 import functools
 import hashlib
 import inspect
-import logging
 import re
 import time
-from typing import Any, Callable, Dict, List, Match, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Literal, Match, Optional, Set, Tuple, Union, cast, overload
 
 import aioamqp
+import aioamqp.properties
 
+from tomodachi import get_contextvar, logging
+from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -63,6 +67,57 @@ class AmqpTransport(Invoker):
     transport: Any = None
     exchange_name: str
 
+    @overload
+    @classmethod
+    async def publish(
+        cls,
+        service: Any,
+        data: Any,
+        routing_key: str = "",
+        exchange_name: str = "",
+        wait: Literal[True] = True,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    @overload
+    @classmethod
+    async def publish(
+        cls,
+        service: Any,
+        data: Any,
+        routing_key: str,
+        exchange_name: str,
+        wait: Literal[False],
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
+        **kwargs: Any,
+    ) -> asyncio.Task[None]:
+        ...
+
+    @overload
+    @classmethod
+    async def publish(
+        cls,
+        service: Any,
+        data: Any,
+        routing_key: str = "",
+        exchange_name: str = "",
+        *,
+        wait: Literal[False],
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
+        **kwargs: Any,
+    ) -> asyncio.Task[None]:
+        ...
+
     @classmethod
     async def publish(
         cls,
@@ -76,7 +131,7 @@ class AmqpTransport(Invoker):
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
         **kwargs: Any,
-    ) -> None:
+    ) -> Optional[asyncio.Task[None]]:
         if not cls.channel:
             await cls.connect(service, service.context)
         exchange_name = exchange_name or cls.exchange_name or "amq.topic"
@@ -95,26 +150,43 @@ class AmqpTransport(Invoker):
         if message_envelope:
             build_message_func = getattr(message_envelope, "build_message", None)
             if build_message_func:
-                payload = await build_message_func(service, routing_key, data, **kwargs)
+                payload = await asyncio.create_task(build_message_func(service, routing_key, data, **kwargs))
 
         async def _publish_message() -> None:
-            success = False
-            while not success:
-                try:
-                    await cls.channel.basic_publish(
-                        str.encode(payload),
-                        exchange_name,
-                        cls.encode_routing_key(cls.get_routing_key(routing_key, service.context, routing_key_prefix)),
-                    )
-                    success = True
-                except AssertionError:
-                    await cls.connect(service, service.context)
+            properties: Dict = {}
+            await cls._publish_message(
+                routing_key, exchange_name, payload, properties, routing_key_prefix, service, service.context
+            )
 
         if wait:
-            await _publish_message()
+            return await asyncio.create_task(_publish_message())
         else:
-            loop: Any = asyncio.get_event_loop()
-            loop.create_task(_publish_message())
+            return asyncio.create_task(_publish_message())
+
+    @classmethod
+    async def _publish_message(
+        cls,
+        /,
+        routing_key: str,
+        exchange_name: str,
+        payload: Any,
+        properties: Dict,
+        routing_key_prefix: Optional[str],
+        service: Any,
+        context: Dict,
+    ) -> None:
+        success = False
+        while not success:
+            try:
+                await cls.channel.basic_publish(
+                    str.encode(payload),
+                    exchange_name,
+                    cls.encode_routing_key(cls.get_routing_key(routing_key, context, routing_key_prefix)),
+                    properties,
+                )
+                success = True
+            except AssertionError:
+                await cls.connect(service, context)
 
     @classmethod
     def get_routing_key(
@@ -231,7 +303,11 @@ class AmqpTransport(Invoker):
         original_kwargs: Dict[str, Any] = {k: v for k, v in _callback_kwargs.items()}
         args_set = (set(values.args[1:]) | set(values.kwonlyargs) | set(callback_kwargs or [])) - set(["self"])
 
-        async def handler(payload: Any, delivery_tag: Any, routing_key: str) -> Any:
+        async def handler(
+            payload: Any, delivery_tag: Any, routing_key: str, properties: aioamqp.properties.Properties
+        ) -> Any:
+            logging.bind_logger(logging.getLogger("tomodachi.amqp").new(logger="tomodachi.amqp"))
+
             kwargs = dict(original_kwargs)
 
             message = payload
@@ -242,9 +318,11 @@ class AmqpTransport(Invoker):
                     parse_message_func = getattr(message_envelope, "parse_message", None)
                     if parse_message_func:
                         if len(parser_kwargs):
-                            message, message_uuid, timestamp = await parse_message_func(payload, **parser_kwargs)
+                            message, message_uuid, timestamp = await asyncio.create_task(
+                                parse_message_func(payload, **parser_kwargs)
+                            )
                         else:
-                            message, message_uuid, timestamp = await parse_message_func(payload)
+                            message, message_uuid, timestamp = await asyncio.create_task(parse_message_func(payload))
                     if message_uuid:
                         if not context.get("_amqp_received_messages"):
                             context["_amqp_received_messages"] = {}
@@ -272,12 +350,19 @@ class AmqpTransport(Invoker):
                             not isinstance(message, dict) or "routing_key" not in message
                         ):
                             kwargs["routing_key"] = routing_key
+                        if "exchange_name" in args_set and (
+                            not isinstance(message, dict) or "exchange_name" not in message
+                        ):
+                            kwargs["exchange_name"] = exchange_name
+                        if "properties" in args_set and (not isinstance(message, dict) or "properties" not in message):
+                            kwargs["properties"] = properties
                         if "message_uuid" in args_set and (
                             not isinstance(message, dict) or "message_uuid" not in message
                         ):
                             kwargs["message_uuid"] = message_uuid
                 except (Exception, asyncio.CancelledError, BaseException) as e:
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                    limit_exception_traceback(e, ("tomodachi.transport.amqp",))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     if message is not False and not message_uuid:
                         await cls.channel.basic_client_ack(delivery_tag)
                     elif message is False and message_uuid:
@@ -291,6 +376,10 @@ class AmqpTransport(Invoker):
                         kwargs["message"] = message
                     if "routing_key" in args_set:
                         kwargs["routing_key"] = routing_key
+                    if "exchange_name" in args_set:
+                        kwargs["exchange_name"] = exchange_name
+                    if "properties" in args_set:
+                        kwargs["properties"] = properties
                     if "message_uuid" in args_set:
                         kwargs["message_uuid"] = message_uuid
 
@@ -299,6 +388,11 @@ class AmqpTransport(Invoker):
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.amqp.handler").bind(handler=func.__name__, type="tomodachi.amqp")
+                )
+                get_contextvar("service.logger").set("tomodachi.amqp.handler")
+
                 kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
@@ -319,17 +413,30 @@ class AmqpTransport(Invoker):
             increase_execution_context_value("amqp_current_tasks")
             increase_execution_context_value("amqp_total_tasks")
             try:
-                return_value = await execute_middlewares(
-                    func,
-                    routine_func,
-                    context.get("message_middleware", []),
-                    *(obj, message, routing_key),
-                    message=message,
-                    message_uuid=message_uuid,
-                    routing_key=routing_key,
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.amqp.middleware").bind(
+                        middleware=Ellipsis, handler=func.__name__, type="tomodachi.amqp"
+                    )
+                )
+                return_value = await asyncio.create_task(
+                    execute_middlewares(
+                        func,
+                        routine_func,
+                        context.get("_amqp_message_pre_middleware", []) + context.get("message_middleware", []),
+                        *(obj, message, routing_key),
+                        message=message,
+                        message_uuid=message_uuid,
+                        routing_key=routing_key,
+                        exchange_name=exchange_name,
+                        properties=properties,
+                    )
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                limit_exception_traceback(
+                    e,
+                    ("tomodachi.transport.amqp", "tomodachi.helpers.middleware"),
+                )
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 return_value = None
                 if issubclass(
                     e.__class__,
@@ -353,6 +460,9 @@ class AmqpTransport(Invoker):
 
     @classmethod
     async def connect(cls, obj: Any, context: Dict) -> Any:
+        logger = logging.getLogger("tomodachi.amqp")
+        logging.bind_logger(logger)
+
         logging.getLogger("aioamqp.protocol").setLevel(logging.WARNING)
         logging.getLogger("aioamqp.channel").setLevel(logging.WARNING)
 
@@ -381,21 +491,15 @@ class AmqpTransport(Invoker):
             cls.transport = transport
         except ConnectionRefusedError as e:
             error_message = "connection refused"
-            logging.getLogger("transport.amqp").warning(
-                "Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message)
-            )
+            logger.warning("Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get("log_level")) from e
         except aioamqp.exceptions.AmqpClosedConnection as e:
             error_message = e.__context__
-            logging.getLogger("transport.amqp").warning(
-                "Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message)
-            )
+            logger.warning("Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get("log_level")) from e
         except OSError as e:
             error_message = e.strerror
-            logging.getLogger("transport.amqp").warning(
-                "Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message)
-            )
+            logger.warning("Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get("log_level")) from e
 
         channel = await protocol.channel()
@@ -425,6 +529,9 @@ class AmqpTransport(Invoker):
             return None
         context["_amqp_subscribed"] = True
 
+        logger = logging.getLogger("tomodachi.amqp")
+        logging.bind_logger(logger)
+
         set_execution_context(
             {
                 "amqp_enabled": True,
@@ -445,6 +552,9 @@ class AmqpTransport(Invoker):
         )
 
         async def _subscribe() -> None:
+            logger = logging.getLogger("tomodachi.amqp")
+            logging.bind_logger(logger)
+
             async def declare_queue(
                 routing_key: str,
                 func: Callable,
@@ -457,6 +567,14 @@ class AmqpTransport(Invoker):
                 auto_delete: bool = False,
                 competing_consumer: Optional[bool] = None,
             ) -> Optional[str]:
+                logger = logging.getLogger("tomodachi.amqp").bind(
+                    wrapped_handler=func.__name__,
+                    routing_key=routing_key or Ellipsis,
+                    exchange_name=exchange_name or Ellipsis,
+                    queue_name=queue_name or Ellipsis,
+                )
+                logging.bind_logger(logger)
+
                 try:
                     if exchange_name and exchange_name != "amq.topic":
                         await channel.exchange_declare(
@@ -469,21 +587,21 @@ class AmqpTransport(Invoker):
                 except aioamqp.exceptions.ChannelClosed as e:
                     error_message = e.args[1]
                     if e.args[0] == 403 and exchange_name.startswith("amq."):
-                        logging.getLogger("transport.amqp").warning(
+                        logger.warning(
                             'Unable to declare exchange [amqp] "{}", starts with reserved "amq." ({})'.format(
                                 exchange_name, error_message
                             )
                         )
                         raise
                     elif e.args[0] == 507 or e.args[0] == 406:
-                        logging.getLogger("transport.amqp").warning(
+                        logger.warning(
                             'Unable to change type of existing exchange [amqp] "{}" ({})'.format(
                                 exchange_name, error_message
                             )
                         )
                         raise
                     else:
-                        logging.getLogger("transport.amqp").warning(
+                        logger.warning(
                             'Unable to declare exchange [amqp] "{}" ({})'.format(exchange_name, error_message)
                         )
                         raise
@@ -516,7 +634,7 @@ class AmqpTransport(Invoker):
                         arguments=amqp_arguments,
                     )
                     if max_consumers is not None and data.get("consumer_count", 0) >= max_consumers:
-                        logging.getLogger("transport.amqp").warning(
+                        logger.warning(
                             'Max consumers ({}) for queue [amqp] "{}" has been reached'.format(
                                 max_consumers, queue_name
                             )
@@ -536,17 +654,25 @@ class AmqpTransport(Invoker):
                 return queue_name
 
             def callback(routing_key: str, handler: Callable) -> Callable:
-                async def _callback(self: Any, body: bytes, envelope: Any, properties: Any) -> None:
+                async def _callback(
+                    self: Any, body: bytes, envelope: Any, properties: aioamqp.properties.Properties
+                ) -> None:
                     # await channel.basic_reject(delivery_tag, requeue=True)
-                    await asyncio.shield(handler(body.decode(), envelope.delivery_tag, routing_key))
+                    await asyncio.shield(handler(body.decode(), envelope.delivery_tag, routing_key, properties))
 
                 return _callback
 
             for routing_key, exchange_name, competing, queue_name, func, handler in context.get(
                 "_amqp_subscribers", []
             ):
-                queue_name = await declare_queue(
-                    routing_key, func, exchange_name=exchange_name, competing_consumer=competing, queue_name=queue_name
+                queue_name = await asyncio.create_task(
+                    declare_queue(
+                        routing_key,
+                        func,
+                        exchange_name=exchange_name,
+                        competing_consumer=competing,
+                        queue_name=queue_name,
+                    )
                 )
                 await channel.basic_consume(callback(routing_key, handler), queue_name=queue_name)
 
@@ -554,6 +680,7 @@ class AmqpTransport(Invoker):
 
 
 __amqp = AmqpTransport.decorator(AmqpTransport.subscribe_handler)
+
 amqp_publish = AmqpTransport.publish
 publish = AmqpTransport.publish
 

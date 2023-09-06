@@ -26,5 +26,5 @@ class ServiceSendMessage(tomodachi.Service):
         data = str(uuid.uuid4())
         topic = "example-pubsub-new-message"
 
-        self.log(f"Publishing message '{data}' on topic '{topic}'")
+        tomodachi.get_logger().info(f"Publishing message '{data}' on topic '{topic}'")
         await aws_sns_sqs_publish(self, data, topic=topic, wait=True)

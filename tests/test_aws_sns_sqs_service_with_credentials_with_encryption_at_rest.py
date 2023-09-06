@@ -14,9 +14,9 @@ from tomodachi.transport.aws_sns_sqs import AWSSNSSQSTransport, connector
     not os.environ.get("TOMODACHI_TEST_AWS_ACCESS_KEY_ID") or not os.environ.get("TOMODACHI_TEST_AWS_ACCESS_SECRET"),
     reason="AWS configuration options missing in environment",
 )
-def test_start_aws_sns_sqs_service_with_credentials(monkeypatch: Any, capsys: Any, loop: Any) -> None:
+def test_start_aws_sns_sqs_service_with_credentials(capsys: Any, loop: Any) -> None:
     services, future = start_service(
-        "tests/services/aws_sns_sqs_service_with_credentials_with_encryption_at_rest.py", monkeypatch, loop=loop
+        "tests/services/aws_sns_sqs_service_with_credentials_with_encryption_at_rest.py", loop=loop
     )
 
     assert services is not None

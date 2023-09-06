@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from logging.handlers import WatchedFileHandler
 
 import tomodachi
 
@@ -15,6 +16,12 @@ class LoggingService(tomodachi.Service):
             os.remove(self.log_path)
         except OSError:
             pass
+
+    def log_setup(self, filename: str) -> None:
+        wfh = WatchedFileHandler(filename=filename)
+        wfh.setLevel(logging.DEBUG)
+        wfh.setFormatter(tomodachi.logging.JSONFormatter)
+        tomodachi.logging.getLogger().addHandler(wfh)
 
     async def _start_service(self) -> None:
         self.log_setup(filename=self.log_path)

@@ -1,14 +1,16 @@
+from __future__ import annotations
+
 import asyncio
 import functools
 import inspect
 import ipaddress
-import logging
 import os
 import pathlib
 import platform
 import re
 import time
 import uuid
+import warnings
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
 import yarl
@@ -21,6 +23,8 @@ from aiohttp.streams import EofStream
 from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
 
+from tomodachi import get_contextvar, logging
+from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     increase_execution_context_value,
@@ -30,107 +34,67 @@ from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 from tomodachi.options import Options
 
-http_logger = logging.getLogger("transport.http")
-
-
-# Should be implemented as lazy load instead
-class ColoramaCache:
-    _is_colorama_installed: Optional[bool] = None
-    _colorama: Any = None
-
 
 class HttpException(Exception):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._log_level = kwargs.get("log_level") if kwargs and kwargs.get("log_level") else "INFO"
+    pass
+
+
+def get_forwarded_remote_ip(request: web.BaseRequest) -> str:
+    try:
+        return cast(str, request._cache["forwarded_remote_ip"])
+    except KeyError:
+        return ""
 
 
 class RequestHandler(web_protocol.RequestHandler):
     __slots__ = (
         *web_protocol.RequestHandler.__slots__,
-        "_server_header",
-        "_access_log",
         "_connection_start_time",
         "_keepalive",
     )
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._server_header = kwargs.pop("server_header", None) if kwargs else None
-        self._access_log = kwargs.pop("access_log", None) if kwargs else None
-
-        self._connection_start_time = time.time()
-
-        super().__init__(*args, access_log=None, **kwargs)  # type: ignore
+    _manager: Server
 
     @staticmethod
-    def get_request_ip(request: Any, context: Optional[Dict] = None) -> Optional[str]:
-        if request._cache.get("request_ip"):
-            return str(request._cache.get("request_ip", ""))
+    def get_request_ip(request: web.Request, *a: Any, **kw: Any) -> str:
+        warnings.warn(
+            "Using the 'RequestHandler.get_request_ip()' function is deprecated. Use the 'tomodachi.get_forwarded_remote_ip()' function instead.",
+            DeprecationWarning,
+        )
 
-        if request.transport:
-            if not context:
-                context = {}
-            http_options: Options.HTTP = HttpTransport.options(context).http
-            real_ip_header = http_options.real_ip_header
-            real_ip_from = http_options.real_ip_from
-            if isinstance(real_ip_from, str):
-                real_ip_from = [real_ip_from]
+        return get_forwarded_remote_ip(request)
 
-            peername = request.transport.get_extra_info("peername")
-            request_ip = None
-            if peername:
-                request_ip, _ = peername
-            if (
-                real_ip_header
-                and real_ip_from
-                and request.headers.get(real_ip_header)
-                and request_ip
-                and len(real_ip_from)
+    def _cache_remote_ip(self, request: web.BaseRequest) -> None:
+        remote_ip: str = request.remote or ""
+
+        if self._manager._real_ip_header and self._manager._real_ip_from:
+            if any(
+                [ipaddress.ip_address(remote_ip) in ipaddress.ip_network(cidr) for cidr in self._manager._real_ip_from]
             ):
-                if any([ipaddress.ip_address(request_ip) in ipaddress.ip_network(cidr) for cidr in real_ip_from]):
-                    request_ip = request.headers.get(real_ip_header).split(",")[0].strip().split(" ")[0].strip()
+                header_value = request.headers.get(self._manager._real_ip_header)
+                if header_value:
+                    remote_ip = header_value.split(",")[0].strip().split(" ")[0].strip()
 
-            request._cache["request_ip"] = request_ip
-            return request_ip
+        request._cache["forwarded_remote_ip"] = remote_ip
+        request._cache["request_ip"] = remote_ip  # deprecated
 
-        return None
+    async def start(self) -> None:
+        self._connection_start_time = time.time()
+        await super().start()
 
-    @staticmethod
-    def colorize_status(text: Optional[Union[str, int]], status: Optional[Union[str, int, bool]] = False) -> str:
-        if ColoramaCache._is_colorama_installed is None:
-            try:
-                import colorama  # noqa  # isort:skip
+    async def _handle_request(
+        self,
+        request: web.BaseRequest,
+        start_time: float,
+        *args: Any,
+    ) -> Tuple[web.StreamResponse, bool]:
+        self._cache_remote_ip(request)
+        result: Tuple[web.StreamResponse, bool] = await super()._handle_request(request, start_time, *args)
+        return result
 
-                ColoramaCache._is_colorama_installed = True
-                ColoramaCache._colorama = colorama
-            except Exception:
-                ColoramaCache._is_colorama_installed = False
-
-        if ColoramaCache._is_colorama_installed is False:
-            return str(text) if text else ""
-
-        if status is False:
-            status = text
-        status_code = str(status) if status else None
-        if status_code and not http_logger.handlers:
-            output_text = str(text) if text else ""
-            color = None
-
-            if status_code == "101":
-                color = ColoramaCache._colorama.Fore.CYAN
-            elif status_code[0] == "2":
-                color = ColoramaCache._colorama.Fore.GREEN
-            elif status_code[0] == "3" or status_code == "499":
-                color = ColoramaCache._colorama.Fore.YELLOW
-            elif status_code[0] == "4":
-                color = ColoramaCache._colorama.Fore.RED
-            elif status_code[0] == "5":
-                color = ColoramaCache._colorama.Fore.WHITE + ColoramaCache._colorama.Back.RED
-
-            if color:
-                return "{}{}{}".format(color, output_text, ColoramaCache._colorama.Style.RESET_ALL)
-            return output_text
-
-        return str(text) if text else ""
+    async def finish_response(self, request: web.BaseRequest, resp: web.StreamResponse, start_time: float) -> bool:
+        result: bool = await super().finish_response(request, resp, start_time)
+        return result
 
     def handle_error(
         self, request: Any, status: int = 500, exc: Any = None, message: Optional[str] = None
@@ -141,26 +105,24 @@ class RequestHandler(web_protocol.RequestHandler):
         information. It always closes current connection."""
         if self.transport is None:
             # client has been disconnected during writing.
-            if self._access_log:
+            if self._manager._access_log:
                 request_ip = RequestHandler.get_request_ip(request, None)
                 version_string = None
                 if isinstance(request.version, HttpVersion):
                     version_string = "HTTP/{}.{}".format(request.version.major, request.version.minor)
-                http_logger.info(
-                    '[{}] [{}] {} {} "{} {}{}{}" - {} "{}" -'.format(
-                        RequestHandler.colorize_status("http", 499),
-                        RequestHandler.colorize_status(499),
-                        request_ip or "",
-                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                        if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                        else "-",
-                        request.method,
-                        request.path,
-                        "?{}".format(request.query_string) if request.query_string else "",
-                        " {}".format(version_string) if version_string else "",
-                        request.content_length if request.content_length is not None else "-",
-                        request.headers.get("User-Agent", "").replace('"', ""),
-                    )
+
+                status_code = 499
+                logging.getLogger("tomodachi.http.response").info(
+                    "client disconnected during writing",
+                    status_code=status_code,
+                    remote_ip=request_ip or "",
+                    auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                    request_method=request.method,
+                    request_path=request.path,
+                    request_query_string=request.query_string or Ellipsis,
+                    http_version=version_string,
+                    request_content_length=request.content_length if request.content_length else Ellipsis,
+                    user_agent=request.headers.get("User-Agent", ""),
                 )
 
         headers: CIMultiDict = CIMultiDict({})
@@ -169,7 +131,7 @@ class RequestHandler(web_protocol.RequestHandler):
         msg = "" if status == 500 or not message else message
 
         headers[hdrs.CONTENT_LENGTH] = str(len(msg))
-        headers[hdrs.SERVER] = self._server_header or ""
+        headers[hdrs.SERVER] = self._manager._server_header
 
         if isinstance(request.version, HttpVersion) and (request.version.major, request.version.minor) in (
             (1, 0),
@@ -189,18 +151,47 @@ class RequestHandler(web_protocol.RequestHandler):
                 peername = request.transport.get_extra_info("peername")
                 if peername:
                     request_ip, _ = peername
-            if self._access_log:
-                http_logger.info(
-                    '[{}] [{}] {} {} "INVALID" {} - "" -'.format(
-                        RequestHandler.colorize_status("http", status),
-                        RequestHandler.colorize_status(status),
-                        request_ip or "",
-                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                        if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                        else "-",
-                        len(msg),
+            if self._manager._access_log:
+                if not status or status >= 500:
+                    logging.getLogger("tomodachi.http.response").warning(
+                        "error in request handling",
+                        status_code=status,
+                        remote_ip=request_ip or "",
+                        auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                        response_content_length=len(msg),
+                        request_content_length=(
+                            request.content_length
+                            if request.content_length
+                            else (
+                                len(request._read_bytes)
+                                if request._read_bytes is not None and len(request._read_bytes)
+                                else Ellipsis
+                            )
+                        ),
+                        request_content_read_length=len(request._read_bytes)
+                        if request._read_bytes is not None and len(request._read_bytes)
+                        else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis),
                     )
-                )
+                else:
+                    logging.getLogger("tomodachi.http.response").info(
+                        "bad http request",
+                        status_code=status,
+                        remote_ip=request_ip or "",
+                        auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                        response_content_length=len(msg),
+                        request_content_length=(
+                            request.content_length
+                            if request.content_length
+                            else (
+                                len(request._read_bytes)
+                                if request._read_bytes is not None and len(request._read_bytes)
+                                else Ellipsis
+                            )
+                        ),
+                        request_content_read_length=len(request._read_bytes)
+                        if request._read_bytes is not None and len(request._read_bytes)
+                        else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis),
+                    )
 
         return resp
 
@@ -215,18 +206,30 @@ class Server(web_server.Server):
         "request_factory",
         "_server_header",
         "_access_log",
+        "_real_ip_header",
+        "_real_ip_from",
     )
 
+    _loop: asyncio.AbstractEventLoop
+    _kwargs: Dict[str, Any]
+
+    _server_header: str
+    _access_log: Union[bool, str]
+    _real_ip_header: str
+    _real_ip_from: List[str]
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._server_header = kwargs.pop("server_header", None) if kwargs else None
-        self._access_log = kwargs.pop("access_log", None) if kwargs else None
+        self._server_header = cast(str, kwargs.pop("server_header", "") if kwargs else "")
+        self._access_log = cast(Union[bool, str], kwargs.pop("access_log", False) if kwargs else False)
+        self._real_ip_header = cast(str, kwargs.pop("real_ip_header", "") if kwargs else "")
+        self._real_ip_from = cast(List[str], kwargs.pop("real_ip_from", []) if kwargs else [])
+
+        kwargs["access_log"] = None
 
         super().__init__(*args, **kwargs)
 
     def __call__(self) -> RequestHandler:
-        return RequestHandler(
-            self, loop=self._loop, server_header=self._server_header, access_log=self._access_log, **self._kwargs
-        )
+        return RequestHandler(self, loop=self._loop, **self._kwargs)
 
 
 class DynamicResource(web_urldispatcher.DynamicResource):
@@ -235,6 +238,9 @@ class DynamicResource(web_urldispatcher.DynamicResource):
         self._name = name
         self._pattern = pattern
         self._formatter = ""
+
+        simplified = re.compile(r"^\^?(.+?)\$?$").match(pattern.pattern)
+        self._simplified_pattern = simplified.group(1) if simplified else pattern.pattern
 
 
 class Response(object):
@@ -289,7 +295,7 @@ class Response(object):
             try:
                 body_value = body.encode(charset.lower())
             except (ValueError, LookupError, UnicodeEncodeError) as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 raise web.HTTPInternalServerError() from e
         elif self._body:
             body_value = self._body.encode() if not isinstance(self._body, bytes) else self._body
@@ -352,6 +358,8 @@ class HttpTransport(Invoker):
         middlewares = context.get("http_middleware", [])
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
+            logger = logging.getLogger("tomodachi.http.handler").bind(handler=func.__name__, type="tomodachi.http")
+
             kwargs = dict(original_kwargs)
             arg_matches: Dict[str, Any] = {}
 
@@ -369,10 +377,20 @@ class HttpTransport(Invoker):
                 if "request" in values.args:
                     arg_matches["request"] = request
 
+            if not context.get("_http_accept_new_requests"):
+                raise web.HTTPServiceUnavailable()
+
+            if pre_handler_func:
+                await pre_handler_func(obj, request)
+                logger = logging.getLogger("tomodachi.http.handler")
+
             @functools.wraps(func)
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
+                logging.bind_logger(logger)
+                get_contextvar("service.logger").set("tomodachi.http.handler")
+
                 kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
@@ -387,18 +405,20 @@ class HttpTransport(Invoker):
                 )
                 return return_value
 
-            if not context.get("_http_accept_new_requests"):
-                raise web.HTTPServiceUnavailable()
-
-            if pre_handler_func:
-                await pre_handler_func(obj, request)
-
             return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
             if middlewares:
-                return_value = await execute_middlewares(
-                    func, routine_func, middlewares, *(obj, request), request=request
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.http.middleware").bind(
+                        middleware=Ellipsis, handler=func.__name__, type="tomodachi.http"
+                    )
+                )
+                return_value = await asyncio.create_task(
+                    execute_middlewares(func, routine_func, middlewares, *(obj, request), request=request)
                 )
             else:
+                logging.bind_logger(logger)
+                get_contextvar("service.logger").set("tomodachi.http.handler")
+
                 a = [arg_matches[k] if k in arg_matches else (request,)[i] for i, k in enumerate(args_list)]
                 args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
 
@@ -530,6 +550,10 @@ class HttpTransport(Invoker):
         middlewares = context.get("http_middleware", [])
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
+            logger = logging.getLogger("tomodachi.http.handler").bind(
+                handler=func.__name__, type="tomodachi.http_error", status_code=status_code
+            )
+
             kwargs = dict(original_kwargs)
             arg_matches: Dict[str, Any] = {}
 
@@ -549,6 +573,9 @@ class HttpTransport(Invoker):
             async def routine_func(
                 *a: Any, **kw: Any
             ) -> Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]:
+                logging.bind_logger(logger)
+                get_contextvar("service.logger").set("tomodachi.http.handler")
+
                 kw_values = {k: v for k, v in {**kwargs, **kw}.items() if values.varkw or k in args_set}
                 args_values = [
                     kw_values.pop(key) if key in kw_values else a[i + 1]
@@ -565,10 +592,20 @@ class HttpTransport(Invoker):
 
             return_value: Union[str, bytes, Dict, List, Tuple, web.Response, web.FileResponse, Response]
             if middlewares:
-                return_value = await execute_middlewares(
-                    func, routine_func, middlewares, *(obj, request), request=request, status_code=status_code
+                logging.bind_logger(
+                    logging.getLogger("tomodachi.http.middleware").bind(
+                        middleware=Ellipsis, handler=func.__name__, type="tomodachi.http_error", status_code=status_code
+                    )
+                )
+                return_value = await asyncio.create_task(
+                    execute_middlewares(
+                        func, routine_func, middlewares, *(obj, request), request=request, status_code=status_code
+                    )
                 )
             else:
+                logging.bind_logger(logger)
+                get_contextvar("service.logger").set("tomodachi.http.handler")
+
                 a = [arg_matches[k] if k in arg_matches else (request,)[i] for i, k in enumerate(args_list)]
                 args_values = [kwargs.pop(key) if key in kwargs else a[i] for i, key in enumerate(args_list)]
 
@@ -596,6 +633,8 @@ class HttpTransport(Invoker):
 
     @classmethod
     async def websocket_handler(cls, obj: Any, context: Dict, func: Any, url: str) -> Any:
+        response_logger = logging.getLogger("tomodachi.http.websocket")
+
         pattern = r"^{}$".format(re.sub(r"\$$", "", re.sub(r"^\^?(.*)$", r"\1", url)))
         compiled_pattern = re.compile(pattern)
 
@@ -604,6 +643,8 @@ class HttpTransport(Invoker):
         async def _pre_handler_func(_: Any, request: web.Request) -> None:
             request._cache["is_websocket"] = True
             request._cache["websocket_uuid"] = str(uuid.uuid4())
+
+            logging.getLogger("tomodachi.http.handler").bind(handler=func.__name__, type="tomodachi.websocket")
 
         values = inspect.getfullargspec(func)
         original_kwargs = (
@@ -628,19 +669,14 @@ class HttpTransport(Invoker):
                     pass
 
                 if access_log:
-                    http_logger.info(
-                        '[{}] {} {} "CANCELLED {}{}" {} "{}" {}'.format(
-                            RequestHandler.colorize_status("websocket", 101),
-                            request_ip,
-                            '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                            if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                            else "-",
-                            request.path,
-                            "?{}".format(request.query_string) if request.query_string else "",
-                            request._cache.get("websocket_uuid", ""),
-                            request.headers.get("User-Agent", "").replace('"', ""),
-                            "-",
-                        )
+                    response_logger.info(
+                        websocket_state="cancelled",
+                        remote_ip=request_ip,
+                        auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                        request_path=request.path,
+                        request_query_string=request.query_string or Ellipsis,
+                        websocket_id=request._cache.get("websocket_uuid", ""),
+                        user_agent=request.headers.get("User-Agent", ""),
                     )
 
                 return
@@ -649,19 +685,14 @@ class HttpTransport(Invoker):
             context["_http_open_websockets"].append(websocket)
 
             if access_log:
-                http_logger.info(
-                    '[{}] {} {} "OPEN {}{}" {} "{}" {}'.format(
-                        RequestHandler.colorize_status("websocket", 101),
-                        request_ip,
-                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                        if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                        else "-",
-                        request.path,
-                        "?{}".format(request.query_string) if request.query_string else "",
-                        request._cache.get("websocket_uuid", ""),
-                        request.headers.get("User-Agent", "").replace('"', ""),
-                        "-",
-                    )
+                response_logger.info(
+                    websocket_state="open",
+                    remote_ip=request_ip,
+                    auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                    request_path=request.path,
+                    request_query_string=request.query_string or Ellipsis,
+                    websocket_id=request._cache.get("websocket_uuid", ""),
+                    user_agent=request.headers.get("User-Agent", ""),
                 )
 
             kwargs = dict(original_kwargs)
@@ -699,7 +730,8 @@ class HttpTransport(Invoker):
                     (await routine) if inspect.isawaitable(routine) else routine
                 )
             except Exception as e:
-                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                limit_exception_traceback(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
+                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 try:
                     await websocket.close()
                 except Exception:
@@ -711,20 +743,14 @@ class HttpTransport(Invoker):
                     pass
 
                 if access_log:
-                    http_logger.info(
-                        '[{}] {} {} "{} {}{}" {} "{}" {}'.format(
-                            RequestHandler.colorize_status("websocket", 500),
-                            request_ip,
-                            '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                            if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                            else "-",
-                            RequestHandler.colorize_status("ERROR", 500),
-                            request.path,
-                            "?{}".format(request.query_string) if request.query_string else "",
-                            request._cache.get("websocket_uuid", ""),
-                            request.headers.get("User-Agent", "").replace('"', ""),
-                            "-",
-                        )
+                    response_logger.info(
+                        websocket_state="error",
+                        remote_ip=request_ip,
+                        auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                        request_path=request.path,
+                        request_query_string=request.query_string or Ellipsis,
+                        websocket_id=request._cache.get("websocket_uuid", ""),
+                        user_agent=request.headers.get("User-Agent", ""),
                     )
 
                 return
@@ -747,18 +773,20 @@ class HttpTransport(Invoker):
                             try:
                                 await _receive_func(message.data)
                             except Exception as e:
-                                logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                                limit_exception_traceback(e, ("tomodachi.transport.http",))
+                                logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     elif message.type == WSMsgType.ERROR:
                         if not context.get("log_level") or context.get("log_level") in ["DEBUG"]:
                             ws_exception = websocket.exception()
                             if isinstance(ws_exception, (EofStream, RuntimeError)):
                                 pass
                             elif isinstance(ws_exception, Exception):
+                                limit_exception_traceback(ws_exception, ("tomodachi.transport.http",))
                                 logging.getLogger("exception").exception(
-                                    "Uncaught exception: {}".format(str(ws_exception))
+                                    "uncaught exception: {}".format(str(ws_exception)), exception=ws_exception
                                 )
                             else:
-                                http_logger.warning('Websocket exception: "{}"'.format(ws_exception))
+                                response_logger.warning("websocket exception", websocket_exception=ws_exception)
                     elif message.type == WSMsgType.CLOSED:
                         break  # noqa
             except Exception:
@@ -768,7 +796,8 @@ class HttpTransport(Invoker):
                     try:
                         await _close_func()
                     except Exception as e:
-                        logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
+                        limit_exception_traceback(e, ("tomodachi.transport.http",))
+                        logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                 try:
                     await websocket.close()
                 except Exception:
@@ -787,10 +816,19 @@ class HttpTransport(Invoker):
             return None
         context["_http_server_started"] = True
 
+        logger = logging.getLogger("tomodachi.http")
+        logging.bind_logger(logger)
+
         http_options: Options.HTTP = HttpTransport.options(context).http
 
-        server_header = http_options.server_header
-        access_log = http_options.access_log
+        server_header = http_options.server_header or ""
+        access_log = http_options.access_log or False
+        real_ip_header = http_options.real_ip_header or ""
+        real_ip_from = (
+            [http_options.real_ip_from]
+            if http_options.real_ip_from and isinstance(http_options.real_ip_from, str)
+            else http_options.real_ip_from or []
+        )
 
         logger_handler = None
         if isinstance(access_log, str):
@@ -799,35 +837,52 @@ class HttpTransport(Invoker):
             try:
                 wfh = WatchedFileHandler(filename=access_log)
             except FileNotFoundError as e:
-                http_logger.warning('Unable to use file for access log - invalid path ("{}")'.format(access_log))
+                logger.warning('Unable to use file for access log - invalid path ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             except PermissionError as e:
-                http_logger.warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
+                logger.warning('Unable to use file for access log - invalid permissions ("{}")'.format(access_log))
                 raise HttpException(str(e)) from e
             wfh.setLevel(logging.DEBUG)
-            http_logger.setLevel(logging.DEBUG)
-            http_logger.info('Logging to "{}"'.format(access_log))
+            wfh.setFormatter(logging.JSONFormatter)
             logger_handler = wfh
-            http_logger.addHandler(logger_handler)
+            logger.info("logging requests to file", file_path=access_log)
+            logging.getLogger("tomodachi.http.response").addHandler(logger_handler)
 
         async def _start_server() -> None:
+            logger = logging.getLogger("tomodachi.http")
+            logging.bind_logger(logger)
+            response_logger = logging.getLogger("tomodachi.http.response")
+
             loop = asyncio.get_event_loop()
 
             logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
             async def request_handler_func(
-                request: web.Request, handler: Callable
+                request: web.Request, handler: Callable, request_start_time: int = 0
             ) -> Union[web.Response, web.FileResponse]:
-                response: Union[web.Response, web.FileResponse]
+                response: Optional[Union[web.Response, web.FileResponse]] = None
                 request_ip = RequestHandler.get_request_ip(request, context)
 
-                if not request_ip:
-                    # Transport broken before request handling started, ignore request
-                    response = web.Response(status=499, headers={hdrs.SERVER: server_header or ""})
-                    response._eof_sent = True
-                    response.force_close()
-
-                    return response
+                # try to read body if it exists and can be read
+                premature_eof = False
+                if request.body_exists and request.can_read_body and (request.content_length or request.content):
+                    try:
+                        if (
+                            request._read_bytes is None
+                            and request.content
+                            and request.content.is_eof()
+                            and getattr(request.content, "_size", 0) > 0
+                            and request.content.exception()
+                        ):
+                            request._read_bytes = request.content._read_nowait(-1)
+                        else:
+                            await request.read()
+                    except web.HTTPException as exc:
+                        # internal aiohttp exception raised (for example if entity too large)
+                        response = exc
+                    except Exception:
+                        # failed to read body (for example if connection is closed before the entire body was sent)
+                        premature_eof = True
 
                 if request.headers.get("Authorization"):
                     try:
@@ -835,29 +890,150 @@ class HttpTransport(Invoker):
                     except ValueError:
                         pass
 
-                timer = time.time() if access_log else 0
-                response = web.Response(status=503, headers={})
+                if not request_ip or premature_eof:
+                    # ignore request for broken transport before request handling and before entire body was sent
+                    response = web.Response(status=499, headers={hdrs.SERVER: server_header})
+                    response._eof_sent = True
+                    response.force_close()
+
+                    if access_log:
+                        status_code = response.status if response is not None else 500
+                        ignore_logging = getattr(handler, "ignore_logging", False)
+                        if ignore_logging is True:
+                            pass
+                        elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
+                            pass
+
+                        request_version = (
+                            (request.version.major, request.version.minor)
+                            if isinstance(request.version, HttpVersion)
+                            else (1, 0)
+                        )
+                        version_string = None
+                        if isinstance(request.version, HttpVersion):
+                            version_string = "HTTP/{}.{}".format(request_version[0], request_version[1])
+
+                        msg = (
+                            "ignored http request - connection closed before body was sent"
+                            if premature_eof
+                            else "ignored http request"
+                        )
+                        response_logger.info(
+                            msg,
+                            status_code=499,
+                            remote_ip=request_ip or "",
+                            auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                            request_method=request.method,
+                            request_path=request.path,
+                            request_query_string=request.query_string or Ellipsis,
+                            http_version=version_string,
+                            response_content_length=response.content_length
+                            if response is not None and response.content_length is not None
+                            else Ellipsis,
+                            request_content_length=(
+                                request.content_length
+                                if request.content_length
+                                else (
+                                    len(request._read_bytes)
+                                    if not premature_eof
+                                    and request._read_bytes is not None
+                                    and len(request._read_bytes)
+                                    else Ellipsis
+                                )
+                            ),
+                            request_content_read_length=len(request._read_bytes)
+                            if request._read_bytes is not None and len(request._read_bytes)
+                            else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis),
+                            user_agent=request.headers.get("User-Agent", ""),
+                        )
+
+                    return response
+
+                handler_start_time: int = 0
+                handler_stop_time: int = 0
+
+                caught_exceptions: List[Exception] = []
+
                 try:
-                    response = await handler(request)
+                    if not response:
+                        handler_start_time = time.perf_counter_ns() if access_log else 0
+                        response = await handler(request)
+                        handler_stop_time = time.perf_counter_ns() if access_log else 0
                 except web.HTTPException as e:
+                    handler_stop_time = time.perf_counter_ns() if access_log else 0
                     error_handler = context.get("_http_error_handler", {}).get(e.status, None)
                     if error_handler:
-                        response = await error_handler(request)
+                        try:
+                            response = await error_handler(request)
+                        except Exception as error_handler_exception:
+                            limit_exception_traceback(
+                                error_handler_exception, ("tomodachi.transport.http", "tomodachi.helpers.middleware")
+                            )
+                            logging.getLogger("exception").exception(
+                                "uncaught exception: {}".format(str(error_handler_exception))
+                            )
+                            caught_exceptions.append(error_handler_exception)
+                            error_handler = context.get("_http_error_handler", {}).get(500, None)
+                            if error_handler:
+                                try:
+                                    response = await error_handler(request)
+                                except Exception as fallback_error_handler_exception:
+                                    limit_exception_traceback(
+                                        fallback_error_handler_exception,
+                                        ("tomodachi.transport.http", "tomodachi.helpers.middleware"),
+                                    )
+                                    logging.getLogger("exception").exception(
+                                        "uncaught exception: {}".format(str(fallback_error_handler_exception))
+                                    )
+                                    caught_exceptions.append(fallback_error_handler_exception)
+                                    response = web.HTTPInternalServerError()
+                                    response.body = b""
+                            else:
+                                response = web.HTTPInternalServerError()
+                                response.body = b""
                     else:
                         response = e
                         response.body = str(e).encode("utf-8")
                 except Exception as e:
+                    handler_stop_time = time.perf_counter_ns() if access_log else 0
+                    limit_exception_traceback(e, ("tomodachi.transport.http", "tomodachi.helpers.middleware"))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
+                    caught_exceptions.append(e)
                     error_handler = context.get("_http_error_handler", {}).get(500, None)
-                    logging.getLogger("exception").exception("Uncaught exception: {}".format(str(e)))
                     if error_handler:
-                        response = await error_handler(request)
+                        try:
+                            response = await error_handler(request)
+                        except Exception as fallback_error_handler_exception:
+                            limit_exception_traceback(
+                                fallback_error_handler_exception,
+                                ("tomodachi.transport.http", "tomodachi.helpers.middleware"),
+                            )
+                            logging.getLogger("exception").exception(
+                                "uncaught exception: {}".format(str(fallback_error_handler_exception))
+                            )
+                            caught_exceptions.append(fallback_error_handler_exception)
+                            response = web.HTTPInternalServerError()
+                            response.body = b""
+
                     else:
                         response = web.HTTPInternalServerError()
                         response.body = b""
                 finally:
+                    replaced_status_code = None
+                    replaced_response_content_length = None
                     if not request.transport:
+                        replaced_status_code = response.status if response is not None else 500
+                        replaced_response_content_length = (
+                            response.content_length
+                            if response is not None and response.content_length is not None
+                            else None
+                        )
+
                         response = web.Response(status=499, headers={})
                         response._eof_sent = True
+                        setattr(response, "_replaced_status_code", replaced_status_code)
+                        if replaced_response_content_length is not None:
+                            setattr(response, "_replaced_response_content_length", replaced_response_content_length)
 
                     request_version = (
                         (request.version.major, request.version.minor)
@@ -866,7 +1042,9 @@ class HttpTransport(Invoker):
                     )
 
                     if access_log:
-                        request_time = time.time() - timer
+                        total_request_time = ((time.perf_counter_ns() - request_start_time) / 1000000.0) / 1000.0
+                        handler_elapsed_time = ((handler_stop_time - handler_start_time) / 1000000.0) / 1000.0
+
                         version_string = None
                         if isinstance(request.version, HttpVersion):
                             version_string = "HTTP/{}.{}".format(request_version[0], request_version[1])
@@ -879,45 +1057,53 @@ class HttpTransport(Invoker):
                             elif isinstance(ignore_logging, (list, tuple)) and status_code in ignore_logging:
                                 pass
                             else:
-                                http_logger.info(
-                                    '[{}] [{}] {} {} "{} {}{}{}" {} {} "{}" {}'.format(
-                                        RequestHandler.colorize_status("http", status_code),
-                                        RequestHandler.colorize_status(status_code),
-                                        request_ip,
-                                        '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                                        if request._cache.get("auth")
-                                        and getattr(request._cache.get("auth"), "login", None)
-                                        else "-",
-                                        request.method,
-                                        request.path,
-                                        "?{}".format(request.query_string) if request.query_string else "",
-                                        " {}".format(version_string) if version_string else "",
-                                        response.content_length
-                                        if response is not None and response.content_length is not None
-                                        else "-",
-                                        request.content_length if request.content_length is not None else "-",
-                                        request.headers.get("User-Agent", "").replace('"', ""),
-                                        "{0:.5f}s".format(round(request_time, 5)),
-                                    )
+                                response_logger.info(
+                                    status_code=status_code,
+                                    replaced_status_code=replaced_status_code or Ellipsis,
+                                    remote_ip=request_ip,
+                                    auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                                    request_method=request.method,
+                                    request_path=request.path,
+                                    request_query_string=request.query_string or Ellipsis,
+                                    http_version=version_string,
+                                    response_content_length=response.content_length
+                                    if response is not None and response.content_length is not None
+                                    else Ellipsis,
+                                    replaced_response_content_length=replaced_response_content_length or Ellipsis,
+                                    request_content_length=(
+                                        request.content_length
+                                        if request.content_length
+                                        else (
+                                            len(request._read_bytes)
+                                            if request._read_bytes is not None and len(request._read_bytes)
+                                            else Ellipsis
+                                        )
+                                    ),
+                                    request_content_read_length=len(request._read_bytes)
+                                    if request._read_bytes is not None and len(request._read_bytes)
+                                    else (
+                                        (request.content and getattr(request.content, "total_bytes", None)) or Ellipsis
+                                    ),
+                                    user_agent=request.headers.get("User-Agent", ""),
+                                    handler_elapsed_time="{0:.5f}s".format(round(handler_elapsed_time, 5))
+                                    if handler_start_time and handler_stop_time
+                                    else Ellipsis,
+                                    request_time="{0:.5f}s".format(round(total_request_time, 5)),
                                 )
                         else:
-                            http_logger.info(
-                                '[{}] {} {} "CLOSE {}{}" {} "{}" {}'.format(
-                                    RequestHandler.colorize_status("websocket", 101),
-                                    request_ip,
-                                    '"{}"'.format(request._cache["auth"].login.replace('"', ""))
-                                    if request._cache.get("auth") and getattr(request._cache.get("auth"), "login", None)
-                                    else "-",
-                                    request.path,
-                                    "?{}".format(request.query_string) if request.query_string else "",
-                                    request._cache.get("websocket_uuid", ""),
-                                    request.headers.get("User-Agent", "").replace('"', ""),
-                                    "{0:.5f}s".format(round(request_time, 5)),
-                                )
+                            response_logger.info(
+                                websocket_state="closed",
+                                remote_ip=request_ip,
+                                auth_user=getattr(request._cache.get("auth") or {}, "login", None) or Ellipsis,
+                                request_path=request.path,
+                                request_query_string=request.query_string or Ellipsis,
+                                websocket_id=request._cache.get("websocket_uuid", ""),
+                                user_agent=request.headers.get("User-Agent", ""),
+                                total_request_time="{0:.5f}s".format(round(total_request_time, 5)),
                             )
 
                     if response is not None:
-                        response.headers[hdrs.SERVER] = server_header or ""
+                        response.headers[hdrs.SERVER] = server_header
 
                         if request_version in ((1, 0), (1, 1)) and not request._cache.get("is_websocket"):
                             use_keepalive = False
@@ -962,6 +1148,21 @@ class HttpTransport(Invoker):
                         if not context["_http_tcp_keepalive"] and not request._cache.get("is_websocket"):
                             response.force_close()
 
+                    if response is None:
+                        try:
+                            raise Exception("invalid response value")
+                        except Exception as e:
+                            limit_exception_traceback(e, ("tomodachi.transport.http",))
+                            logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
+
+                        response = web.HTTPInternalServerError()
+                        response.body = b""
+                        response.headers[hdrs.CONNECTION] = "close"
+                        response.force_close()
+
+                    if caught_exceptions:
+                        setattr(response, "_caught_exceptions", caught_exceptions)
+
                     if isinstance(response, (web.HTTPException, web.HTTPInternalServerError)):
                         raise response
 
@@ -969,9 +1170,14 @@ class HttpTransport(Invoker):
 
             @web.middleware
             async def middleware(request: web.Request, handler: Callable) -> Union[web.Response, web.FileResponse]:
+                request_start_time = time.perf_counter_ns() if access_log else 0
+
                 increase_execution_context_value("http_current_tasks")
                 increase_execution_context_value("http_total_tasks")
-                task = asyncio.ensure_future(request_handler_func(request, handler))
+
+                task = asyncio.ensure_future(
+                    request_handler_func(request, handler, request_start_time=request_start_time)
+                )
                 context["_http_active_requests"] = context.get("_http_active_requests", set())
                 context["_http_active_requests"].add(task)
                 try:
@@ -992,12 +1198,21 @@ class HttpTransport(Invoker):
                         except KeyError:
                             pass
                         raise
-                except Exception:
+                except web.HTTPException:
                     decrease_execution_context_value("http_current_tasks")
                     try:
                         context["_http_active_requests"].remove(task)
                     except KeyError:
                         pass
+                    raise
+                except Exception as e:
+                    decrease_execution_context_value("http_current_tasks")
+                    try:
+                        context["_http_active_requests"].remove(task)
+                    except KeyError:
+                        pass
+                    limit_exception_traceback(e, ("tomodachi.transport.http",))
+                    logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     raise
                 except BaseException:
                     decrease_execution_context_value("http_current_tasks")
@@ -1063,7 +1278,8 @@ class HttpTransport(Invoker):
                     )
                 )
 
-            app: web.Application = web.Application(middlewares=[middleware], client_max_size=client_max_size)
+            middlewares = context.get("_aiohttp_pre_middleware", []) + [middleware]
+            app: web.Application = web.Application(middlewares=middlewares, client_max_size=client_max_size)
             app._set_loop(None)
             for method, pattern, handler, route_context in context.get("_http_routes", []):
                 try:
@@ -1155,7 +1371,7 @@ class HttpTransport(Invoker):
 
             reuse_port = True if http_options.reuse_port else False
             if reuse_port and platform.system() != "Linux":
-                http_logger.warning(
+                logger.warning(
                     "The http option reuse_port (socket.SO_REUSEPORT) can only enabled on Linux platforms - current "
                     f"platform is {platform.system()} - will revert option setting to not reuse ports"
                 )
@@ -1180,35 +1396,48 @@ class HttpTransport(Invoker):
                 web_server = Server(
                     app._handle,
                     request_factory=app._make_request,
-                    server_header=server_header or "",
+                    server_header=server_header,
                     access_log=access_log,
+                    real_ip_header=real_ip_header,
+                    real_ip_from=real_ip_from,
                     keepalive_timeout=keepalive_timeout,
                     tcp_keepalive=tcp_keepalive,
                 )
+
                 if reuse_port:
                     if not port:
-                        http_logger.warning(
+                        logger.warning(
                             "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
                             "listening on random ports with SO_REUSEPORT is dangerous - please double check your intent"
                         )
                     elif str(port) in HttpTransport.server_port_mapping.values():
-                        http_logger.warning(
+                        logger.warning(
                             "The http option reuse_port (socket option SO_REUSEPORT) is enabled by default on Linux - "
                             "different service classes should not use the same port ({})".format(port)
                         )
+
                 if port:
                     HttpTransport.server_port_mapping[web_server] = str(port)
+
                 server_task = loop.create_server(web_server, host, port, reuse_port=reuse_port)
                 server = await server_task
             except OSError as e:
                 context["_http_accept_new_requests"] = False
                 error_message = re.sub(".*: ", "", e.strerror)
-                http_logger.warning(
-                    "Unable to bind service [http] to http://{}:{}/ ({})".format(
-                        "127.0.0.1" if host == "0.0.0.0" else host, port, error_message
-                    )
+                logger.warning(
+                    "unable to bind service [http] to http://{}:{}/".format(
+                        "localhost" if host in ("0.0.0.0", "127.0.0.1") else host, port
+                    ),
+                    host=host,
+                    port=port,
+                    error_message=error_message,
                 )
-                raise HttpException(str(e), log_level=context.get("log_level")) from e
+
+                try:
+                    raise HttpException(str(e)).with_traceback(e.__traceback__) from None
+                except Exception as exc:
+                    exc.__traceback__ = e.__traceback__
+                    raise
 
             if server.sockets:
                 socket_address = server.sockets[0].getsockname()
@@ -1237,7 +1466,7 @@ class HttpTransport(Invoker):
 
                 open_websockets = context.get("_http_open_websockets", [])[:]
                 if open_websockets:
-                    http_logger.info("Closing {} websocket connection(s)".format(len(open_websockets)))
+                    logger.info("closing websocket connections", connection_count=len(open_websockets))
                     tasks = []
                     for websocket in open_websockets:
                         try:
@@ -1274,16 +1503,14 @@ class HttpTransport(Invoker):
                         if log_wait_message:
                             log_wait_message = False
                             if len(web_server.connections) and len(web_server.connections) != len(active_requests):
-                                http_logger.info(
-                                    "Waiting for {} keep-alive connection(s) to close".format(
-                                        len(web_server.connections)
-                                    )
+                                logger.info(
+                                    "awaiting keep-alive connections", connection_count=len(web_server.connections)
                                 )
                             if active_requests:
-                                http_logger.info(
-                                    "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
-                                        len(active_requests), termination_grace_period_seconds
-                                    )
+                                logger.info(
+                                    "awaiting requests to complete",
+                                    request_count=len(active_requests),
+                                    grace_period_seconds=termination_grace_period_seconds,
                                 )
 
                         await asyncio.sleep(0.25)
@@ -1295,10 +1522,10 @@ class HttpTransport(Invoker):
                 active_requests = context.get("_http_active_requests", set())
                 if active_requests:
                     if log_wait_message:
-                        http_logger.info(
-                            "Waiting for {} active request(s) to complete - grace period of {} seconds".format(
-                                len(active_requests), termination_grace_period_seconds
-                            )
+                        logger.info(
+                            "awaiting requests to complete",
+                            request_count=len(active_requests),
+                            grace_period_seconds=termination_grace_period_seconds,
                         )
 
                     try:
@@ -1311,10 +1538,9 @@ class HttpTransport(Invoker):
                     except (Exception, asyncio.TimeoutError, asyncio.CancelledError):
                         active_requests = context.get("_http_active_requests", set())
                         if active_requests:
-                            http_logger.warning(
-                                "All requests did not gracefully finish execution - {} request(s) remaining".format(
-                                    len(active_requests)
-                                )
+                            logger.warning(
+                                "all requests did not gracefully finish execution",
+                                remaining_request_count=len(active_requests),
                             )
                     context["_http_active_requests"] = set()
 
@@ -1322,10 +1548,8 @@ class HttpTransport(Invoker):
                     await asyncio.sleep(shutdown_sleep)
 
                 if len(web_server.connections):
-                    http_logger.warning(
-                        "The remaining {} open TCP connections will be forcefully closed".format(
-                            len(web_server.connections)
-                        )
+                    logger.warning(
+                        "forcefully closing open tcp connections", connection_count=len(web_server.connections)
                     )
                     await app.shutdown()
                     await asyncio.sleep(1)
@@ -1333,7 +1557,8 @@ class HttpTransport(Invoker):
                     await app.shutdown()
 
                 if logger_handler:
-                    http_logger.removeHandler(logger_handler)
+                    response_logger = logging.getLogger("tomodachi.http.response")
+                    response_logger.removeHandler(logger_handler)
                 await app.cleanup()
                 if stop_method:
                     await stop_method(*args, **kwargs)
@@ -1345,9 +1570,16 @@ class HttpTransport(Invoker):
                     if getattr(registry, "add_http_endpoint", None):
                         await registry.add_http_endpoint(obj, host, port, method, pattern)
 
-            http_logger.info(
-                "Listening [http] on http://{}:{}/".format("127.0.0.1" if host == "0.0.0.0" else host, port)
-            )
+            listen_url = "http://{}:{}/".format("localhost" if host in ("0.0.0.0", "127.0.0.1") else host, port)
+            logger.info("accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port)
+
+            if logger_handler:
+                response_logger = logging.getLogger("tomodachi.http.response")
+                response_logger._logger.propagate = False
+                response_logger.info(
+                    "accepting http requests", listen_url=listen_url, listen_host=host, listen_port=port
+                )
+                response_logger._logger.propagate = True
 
         return _start_server
 

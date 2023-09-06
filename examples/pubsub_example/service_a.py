@@ -23,10 +23,10 @@ class ServiceA(tomodachi.Service):
 
     @aws_sns_sqs("example-pubsub-new-message")
     async def new_message(self, data: Any) -> None:
-        self.log(f"Received data (function: new_message) - '{data}'")
+        tomodachi.get_logger().info(f"Received data (function: new_message) - '{data}'")
 
         callback_data = f"message received: '{data}'"
         await aws_sns_sqs_publish(self, callback_data, topic="example-pubsub-callback", wait=True)
 
     async def _started_service(self) -> None:
-        self.log("Subscribing to messages on topic 'example-pubsub-new-message'")
+        tomodachi.get_logger().info("Subscribing to messages on topic 'example-pubsub-new-message'")

@@ -4,7 +4,10 @@ from typing import Any
 
 import tomodachi
 from tomodachi.envelope.json_base import JsonBase
+from tomodachi.opentelemetry import TomodachiInstrumentor
 from tomodachi.transport.amqp import amqp, amqp_publish
+
+TomodachiInstrumentor().instrument()
 
 
 @tomodachi.service

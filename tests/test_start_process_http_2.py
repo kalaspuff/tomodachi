@@ -8,8 +8,8 @@ from run_test_service_helper import start_service
 
 
 @pytest.mark.flaky(reruns=10, reruns_delay=5)
-def test_start_process_http_later_request(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    func, future = start_service("tests/services/start_process_service_http_2.py", monkeypatch, wait=False, loop=loop)
+def test_start_process_http_later_request(capsys: Any, loop: Any) -> None:
+    func, future = start_service("tests/services/start_process_service_http_2.py", wait=False, loop=loop)
     port = 53252
 
     async def _async(loop: Any) -> None:

@@ -7,14 +7,15 @@ import platform
 from typing import Any
 
 import aiohttp
+import aiohttp.client_exceptions
 import pytest
 from multidict import CIMultiDictProxy
 
 from run_test_service_helper import start_service
 
 
-def test_start_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/http_service.py", monkeypatch, loop=loop)
+def test_start_http_service(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/http_service.py", loop=loop)
 
     assert services is not None
     assert len(services) == 1
@@ -33,8 +34,8 @@ def test_start_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     platform.system() == "Linux",
     reason="SO_REUSEPORT is automatically enable on Linux",
 )
-def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/http_service_same_port.py", monkeypatch, loop=loop)
+def test_conflicting_port_http_service(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/http_service_same_port.py", loop=loop)
 
     assert services is not None
     assert len(services) == 2
@@ -55,11 +56,11 @@ def test_conflicting_port_http_service(monkeypatch: Any, capsys: Any, loop: Any)
     loop.run_until_complete(future)
 
     out, err = capsys.readouterr()
-    assert "address already in use" in err or "address in use" in err
+    assert "address already in use" in (out + err) or "address in use" in (out + err)
 
 
-def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/http_service.py", monkeypatch, loop=loop)
+def test_request_http_service(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/http_service.py", loop=loop)
     instance = services.get("test_http")
     port = instance.context.get("_http_port")
 
@@ -133,7 +134,7 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
 
         async with aiohttp.ClientSession(loop=loop) as client:
             response = None
-            with pytest.raises(asyncio.TimeoutError):
+            with pytest.raises((asyncio.TimeoutError, aiohttp.client_exceptions.ClientOSError)):
                 response = await asyncio.shield(
                     client.get("http://127.0.0.1:{}/slow-exception".format(port), timeout=0.1)
                 )
@@ -142,7 +143,7 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
         async with aiohttp.ClientSession(loop=loop) as client:
             assert instance.slow_request is False
             response = None
-            with pytest.raises(asyncio.TimeoutError):
+            with pytest.raises((asyncio.TimeoutError, aiohttp.client_exceptions.ClientOSError)):
                 response = await asyncio.shield(client.get("http://127.0.0.1:{}/slow".format(port), timeout=0.1))
             assert response is None
             assert instance.slow_request is False
@@ -330,74 +331,94 @@ def test_request_http_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
     loop.run_until_complete(future)
 
 
-def test_access_log(monkeypatch: Any, loop: Any) -> None:
+def test_access_log(loop: Any) -> None:
     log_path = "/tmp/03c2ad00-d47d-4569-84a3-0958f88f6c14.log"
 
     logging.basicConfig(format="%(asctime)s (%(name)s): %(message)s", level=logging.INFO)
     logging.Formatter(fmt="%(asctime)s.%(msecs).03d", datefmt="%Y-%m-%d %H:%M:%S")
 
-    services, future = start_service("tests/services/http_access_log_service.py", monkeypatch, loop=loop)
+    services, future = start_service("tests/services/http_access_log_service.py", loop=loop)
     instance = services.get("test_http")
     port = instance.context.get("_http_port")
 
     assert os.path.exists(log_path) is True
     with open(log_path) as file:
         content = file.read()
-        assert "Listening [http] on http://127.0.0.1:{}/\n".format(port) in content
+        assert "accepting http requests" in content
+        assert "http://localhost:{}/".format(port) in content
 
     async def _async(loop: Any) -> None:
         async with aiohttp.ClientSession(loop=loop) as client:
             await client.get("http://127.0.0.1:{}/test_ignore_all".format(port))
             with open(log_path) as file:
                 content = file.read()
-                assert '[http] [200] 127.0.0.1 - "GET /test_ignore_all HTTP/1.1" 8 -' not in content
+                assert "test_ignore_all" not in content
 
         async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.post("http://127.0.0.1:{}/test_ignore_one".format(port), data="200")
             assert await response.read() == b"test-200"
             with open(log_path) as file:
                 content = file.read()
-                assert '[http] [200] 127.0.0.1 - "GET /test_ignore_all HTTP/1.1" 8 -' not in content
-                assert '[http] [200] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8 -' not in content
+                assert "test_ignore_all" not in content
+                assert "test_ignore_one" not in content
 
         async with aiohttp.ClientSession(loop=loop) as client:
             response = await client.post("http://127.0.0.1:{}/test_ignore_one".format(port))
             assert await response.read() == b"test-201"
             with open(log_path) as file:
                 content = file.read()
-                assert '[http] [200] 127.0.0.1 - "GET /test_ignore_all HTTP/1.1" 8 -' not in content
-                assert '[http] [200] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8 0' not in content
-                assert '[http] [201] 127.0.0.1 - "POST /test_ignore_one HTTP/1.1" 8 0' in content
+                assert "test_ignore_all" not in content
+                assert '"status_code": 200' not in content
+                assert (
+                    '"status_code": 201, "remote_ip": "127.0.0.1", "request_method": "POST", "request_path": "/test_ignore_one", "http_version": "HTTP/1.1", "response_content_length": 8, "user_agent": '
+                    in content
+                )
 
         async with aiohttp.ClientSession(loop=loop) as client:
             await client.get("http://127.0.0.1:{}/test".format(port))
             with open(log_path) as file:
                 content = file.read()
-                assert '[http] [200] 127.0.0.1 - "GET /test HTTP/1.1" 4 -' in content
-                assert '[http] [404] 127.0.0.1 - "GET /404 HTTP/1.1" 8 -' not in content
+                assert (
+                    '"status_code": 200, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/test", "http_version": "HTTP/1.1", "response_content_length": 4, "user_agent": '
+                    in content
+                )
+                assert '"status_code": 404' not in content
 
         async with aiohttp.ClientSession(loop=loop) as client:
             await client.get("http://127.0.0.1:{}/404".format(port))
             with open(log_path) as file:
                 content = file.read()
-                assert '[http] [200] 127.0.0.1 - "GET /test HTTP/1.1" 4 -' in content
-                assert '[http] [404] 127.0.0.1 - "GET /404 HTTP/1.1" 8 -' in content
+                assert (
+                    '"status_code": 200, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/test", "http_version": "HTTP/1.1", "response_content_length": 4, "user_agent": '
+                    in content
+                )
+                assert (
+                    '"status_code": 404, "remote_ip": "127.0.0.1", "request_method": "GET", "request_path": "/404", "http_version": "HTTP/1.1", "response_content_length": 8, "user_agent": '
+                    in content
+                )
 
         async with aiohttp.ClientSession(loop=loop) as client:
             await client.post("http://127.0.0.1:{}/zero-post".format(port), data=b"")
             with open(log_path) as file:
                 content = file.read()
-                assert '[http] [404] 127.0.0.1 - "POST /zero-post HTTP/1.1" 8 0' in content
+                assert (
+                    '"status_code": 404, "remote_ip": "127.0.0.1", "request_method": "POST", "request_path": "/zero-post", "http_version": "HTTP/1.1", "response_content_length": 8, "user_agent": '
+                    in content
+                )
 
         async with aiohttp.ClientSession(loop=loop) as client:
             await client.post("http://127.0.0.1:{}/post".format(port), data=b"RANDOMDATA")
             with open(log_path) as file:
                 content = file.read()
-                assert '[http] [404] 127.0.0.1 - "POST /post HTTP/1.1" 8 10' in content
+                assert (
+                    '"status_code": 404, "remote_ip": "127.0.0.1", "request_method": "POST", "request_path": "/post", "http_version": "HTTP/1.1", "response_content_length": 8, "request_content_length": 10, "request_content_read_length": 10, "user_agent": '
+                    in content
+                )
 
     with open(log_path) as file:
         content = file.read()
-        assert "Listening [http] on http://127.0.0.1:{}/\n".format(port) in content
+        assert "accepting http requests" in content
+        assert "http://localhost:{}/".format(port) in content
 
     loop.run_until_complete(_async(loop))
     instance.stop_service()

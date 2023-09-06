@@ -1,5 +1,4 @@
 import asyncio
-import os
 from typing import Any, Callable, Dict
 
 from aiohttp import web
@@ -12,7 +11,7 @@ async def middleware_function(
     func: Callable, service: Any, request: web.Request, context: Dict, *args: Any, **kwargs: Any
 ) -> Any:
     # Functionality before function is called
-    service.log("middleware before")
+    tomodachi.get_logger().info("middleware before")
 
     return_value = await func(*args, **kwargs)
 
@@ -20,15 +19,13 @@ async def middleware_function(
     # return_value = await func(*args, id='overridden', **kwargs)
 
     # Functionality after function is called
-    service.log("middleware after")
+    tomodachi.get_logger().info("middleware after")
 
     return return_value
 
 
 class ExampleHttpMiddlewareService(tomodachi.Service):
-    name = "example-http-middleware-service"
-    log_level = "DEBUG"
-    uuid = str(os.environ.get("SERVICE_UUID") or "")
+    name = "example-http-service"
 
     # Adds a middleware function that is run on every HTTP call. Several middlewares can be chained.
     http_middleware = [middleware_function]

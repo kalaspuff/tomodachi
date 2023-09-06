@@ -5,7 +5,10 @@ import importlib
 import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
-from tomodachi.__version__ import __version__, __version_info__
+from tomodachi.__version__ import __build_time__
+from tomodachi.__version__ import __version__ as __version__
+from tomodachi.__version__ import __version_info__
+from tomodachi.logging import Logger, LoggerProtocol, get_logger
 from tomodachi.options import Options, OptionsInterface
 
 try:
@@ -16,6 +19,7 @@ try:
         get_execution_context,
         get_instance,
         get_service,
+        get_services,
         increase_execution_context_value,
         set_execution_context,
     )
@@ -29,11 +33,14 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
     "amqp": ("tomodachi.transport.amqp",),
     "amqp_publish": ("tomodachi.transport.amqp",),
     "aws_sns_sqs": ("tomodachi.transport.aws_sns_sqs",),
+    "awssnssqs": ("tomodachi.transport.aws_sns_sqs",),
     "aws_sns_sqs_publish": ("tomodachi.transport.aws_sns_sqs",),
+    "awssnssqs_publish": ("tomodachi.transport.aws_sns_sqs",),
     "HttpException": ("tomodachi.transport.http",),
     "HttpResponse": ("tomodachi.transport.http", "Response"),
     "get_http_response_status": ("tomodachi.transport.http",),
     "get_http_response_status_sync": ("tomodachi.transport.http",),
+    "get_forwarded_remote_ip": ("tomodachi.transport.http",),
     "http": ("tomodachi.transport.http",),
     "http_error": ("tomodachi.transport.http",),
     "http_static": ("tomodachi.transport.http",),
@@ -50,8 +57,19 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
     "aiobotocore_client_connector": ("tomodachi.helpers.aiobotocore_connector", "connector"),
     "AiobotocoreClientConnector": ("tomodachi.helpers.aiobotocore_connector", "ClientConnector"),
     "_log": ("tomodachi.helpers.logging", "log"),
-    "_log_setup": ("tomodachi.helpers.logging", "log_setup"),
     "cli": ("tomodachi.cli", None),
+    "discovery": ("tomodachi.discovery", None),
+    "envelope": ("tomodachi.envelope", None),
+    "helpers": ("tomodachi.helpers", None),
+    "invoker": ("tomodachi.invoker", None),
+    "options": ("tomodachi.options", None),
+    "transport": ("tomodachi.transport", None),
+    "container": ("tomodachi.container", None),
+    "importer": ("tomodachi.importer", None),
+    "launcher": ("tomodachi.launcher", None),
+    "logging": ("tomodachi.logging", None),
+    "opentelemetry": ("tomodachi.opentelemetry", None),
+    "watcher": ("tomodachi.watcher", None),
 }
 __imported_modules: Dict[str, Any] = {}
 __cached_defs: Dict[str, Any] = {}
@@ -99,7 +117,7 @@ def __getattr__(name: str) -> Any:
                         )
                     )
                     print("")
-                    logging.exception("")
+                    logging.getLogger("exception").exception("")
                     print("")
 
                 logging.getLogger("exception").warning("Unable to initialize dependencies")
@@ -173,6 +191,26 @@ def __getattr__(name: str) -> Any:
                             )
                         )
                         print("")
+                    if module_name == "tomodachi.opentelemetry" and missing_module_name in (
+                        "opentelemetry",
+                        "opentelemetry.instrumentation",
+                        "opentelemetry.sdk",
+                        "opentelemetry.metrics",
+                        "opentelemetry.sdk._logs",
+                        "opentelemetry._logs",
+                        "opentelemetry.util.http",
+                    ):
+                        print(
+                            "{}[fatal error] The '{}' package is missing.{}".format(
+                                color, missing_module_name, color_reset
+                            )
+                        )
+                        print(
+                            "{}[fatal error] Install 'tomodachi' with 'opentelemetry' extras to use opentelemetry instrumentation.{}".format(
+                                color, color_reset
+                            )
+                        )
+                        print("")
                 print("Exiting: Service terminating with exit code: 1")
                 sys.exit(1)
             except Exception as e:  # pragma: no cover
@@ -182,7 +220,7 @@ def __getattr__(name: str) -> Any:
                     "Fatal dependency failure: '{}:{}' failed to load (error: \"{}\")".format(module_name, name, str(e))
                 )
                 print("")
-                logging.exception("")
+                logging.getLogger("exception").exception("")
                 print("")
 
                 logging.getLogger("exception").warning("Unable to initialize dependencies")
@@ -206,18 +244,32 @@ __author__: str = "Carl Oscar Aaro"
 __email__: str = "hello@carloscar.com"
 
 CLASS_ATTRIBUTE: str = "_tomodachi_class_is_service_class"
+TOMODACHI_CLASSES: List[Type] = []
 
 __all__ = [
     "service",
     "Service",
+    "TomodachiServiceMeta",
     "__version__",
     "__version_info__",
+    "__build_time__",
     "__author__",
     "__email__",
     "decorator",
     "cli",
+    "discovery",
+    "envelope",
+    "helpers",
+    "invoker",
+    "options",
+    "transport",
+    "container",
+    "importer",
+    "launcher",
+    "logging",
+    "opentelemetry",
+    "watcher",
     "run",
-    "_run",
     "_set_service",
     "_unset_service",
     "_clear_services",
@@ -227,6 +279,7 @@ __all__ = [
     "decrease_execution_context_value",
     "increase_execution_context_value",
     "get_service",
+    "get_services",
     "get_instance",
     "exit",
     "context",
@@ -234,6 +287,8 @@ __all__ = [
     "aiobotocore_client_connector",
     "Options",
     "OptionsInterface",
+    "Logger",
+    "get_logger",
     "amqp",
     "amqp_publish",
     "aws_sns_sqs",
@@ -247,6 +302,7 @@ __all__ = [
     "HttpException",
     "get_http_response_status",
     "get_http_response_status_sync",
+    "get_forwarded_remote_ip",
     "schedule",
     "heartbeat",
     "every_second",
@@ -264,6 +320,17 @@ class TomodachiServiceMeta(type):
         cls: Type[TomodachiServiceMeta], name: str, bases: Tuple[type, ...], attributedict: Dict
     ) -> TomodachiServiceMeta:
         attributedict[CLASS_ATTRIBUTE] = True
+
+        if bases and not attributedict.get("logger") and not any([hasattr(base, "logger") for base in bases]):
+            attributedict["logger"] = cast(
+                Logger,
+                property(
+                    lambda s, *a: getattr(s, "__logger_logger", get_logger(context("service.logger"))),
+                    lambda s, *a: s.__setattr__("__logger_logger", a[0]),
+                    lambda s, *a: s.__setattr__("__logger_logger", None),
+                ),
+            )
+
         result = cast(Type["Service"], super().__new__(cls, name, bases, dict(attributedict)))
 
         if bases and not result.uuid:
@@ -284,10 +351,20 @@ class TomodachiServiceMeta(type):
             )
             result.options = Options(**result.options)
 
+        if bases and hasattr(result, "discovery"):
+            import warnings  # isort:skip
+
+            warnings.warn(
+                "Using the 'discovery' interface is deprecated. Please implement lifecycle hooks for your service instead.",
+                DeprecationWarning,
+            )
+
         # Removing the CLASS_ATTRIBUTE for classes that were used as bases for inheritance to other classes
         for base in bases:
             if hasattr(base, CLASS_ATTRIBUTE):
                 delattr(base, CLASS_ATTRIBUTE)
+
+        TOMODACHI_CLASSES.append(result)
 
         return cast(TomodachiServiceMeta, result)
 
@@ -297,8 +374,15 @@ class Service(metaclass=TomodachiServiceMeta):
     name: str = ""
     uuid: str = ""
     options: Options
+    logger: LoggerProtocol
 
     def log(self, *args: Any, **kwargs: Any) -> None:
+        import warnings  # isort:skip
+
+        warnings.warn(
+            "Using the 'service.log()' function is deprecated. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.",
+            DeprecationWarning,
+        )
         __getattr__("_log")(self, *args, **kwargs)
 
     def log_setup(
@@ -307,8 +391,13 @@ class Service(metaclass=TomodachiServiceMeta):
         level: Optional[Union[str, int]] = None,
         formatter: Any = True,
         filename: Optional[str] = None,
-    ) -> Any:
-        return __getattr__("_log_setup")(self, name=name, level=level, formatter=formatter, filename=filename)
+    ) -> None:
+        import warnings  # isort:skip
+
+        warnings.warn(
+            "Using the 'service.log_setup()' function is deprecated and has no effect. Use the structlog logger from 'tomodachi.logging.get_logger()' instead.",
+            DeprecationWarning,
+        )
 
     def __setattr__(self, item: str, value: Any) -> None:
         if item == "options" and not isinstance(value, Options):
@@ -321,10 +410,24 @@ class Service(metaclass=TomodachiServiceMeta):
                 DeprecationWarning,
             )
             value = Options(**value)
+        if item == "discovery":
+            import warnings  # isort:skip
+
+            warnings.warn(
+                "Using the 'discovery' interface is deprecated. Please implement lifecycle hooks for your service instead.",
+                DeprecationWarning,
+            )
         super().__setattr__(item, value)
 
 
 def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
+    import warnings  # isort:skip
+
+    warnings.warn(
+        "Using the '@tomodachi.service' decorator is deprecated. Service classes should instead inherit from the 'tomodachi.Service' class.",
+        DeprecationWarning,
+    )
+
     if isinstance(cls, TomodachiServiceMeta):
         return cls
 
@@ -333,14 +436,14 @@ def service(cls: Type[object]) -> Type[TomodachiServiceMeta]:
 
 
 def exit(exit_code: Optional[int] = None) -> None:
-    import logging  # noqa # isort:skip
     import sys  # noqa # isort:skip
     from tomodachi.launcher import ServiceLauncher  # noqa  # isort:skip
 
     exit_code = exit_code if exit_code is not None else SERVICE_EXIT_CODE
-    logging.getLogger("system").warning(f"Termination initiatied via tomodachi.exit call [exit_code: {exit_code}]")
+    get_logger("tomodachi.exit").warning("tomodachi.exit [{}] was called".format(exit_code), exit_code=exit_code)
     ServiceLauncher.restart_services = False
     setattr(sys.modules[__name__], "SERVICE_EXIT_CODE", exit_code)
+    get_contextvar("exit_code").set(SERVICE_EXIT_CODE)
     ServiceLauncher.stop_services()
 
 
@@ -349,7 +452,7 @@ def run(app: Optional[Union[str, List[str], Tuple[str]]] = None, *args: str, **k
         return
     setattr(run, "__tomodachi_called", True)
 
-    run_args = []
+    run_args: List[str] = []
     if not app:
         import inspect  # noqa  # isort:skip
 

@@ -5,10 +5,15 @@ import uuid as uuid_
 from contextlib import contextmanager
 from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional
 
+from opentelemetry.sdk.trace import TracerProvider
+
 import tomodachi
 from tomodachi import Options
 from tomodachi.envelope import JsonBase
+from tomodachi.opentelemetry import TomodachiInstrumentor
 from tomodachi.transport.aws_sns_sqs import MessageAttributesType, aws_sns_sqs, aws_sns_sqs_publish
+
+TomodachiInstrumentor().instrument(tracer_provider=TracerProvider())
 
 
 def middleware_decorator(middleware_func: Callable[..., Generator[Awaitable, None, None]]) -> Callable[..., Awaitable]:
@@ -145,6 +150,7 @@ class AWSSNSSQSService(tomodachi.Service):
             sqs=os.environ.get("TOMODACHI_TEST_AWS_SQS_ENDPOINT_URL") or None,
         ),
     )
+
     message_middleware: List[Callable[..., Awaitable[Any]]] = [
         middleware_init_000,
         middleware_func_abc,

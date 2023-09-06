@@ -4,8 +4,8 @@ from typing import Any
 from run_test_service_helper import start_service
 
 
-def test_schedule_service(monkeypatch: Any, capsys: Any, loop: Any) -> None:
-    services, future = start_service("tests/services/schedule_service.py", monkeypatch, loop=loop)
+def test_schedule_service(capsys: Any, loop: Any) -> None:
+    services, future = start_service("tests/services/schedule_service.py", loop=loop)
 
     assert services is not None
     assert len(services) == 1
