@@ -11,14 +11,18 @@ def get_time_since_build(timestamp: Optional[str] = None, build_time: Optional[s
         build_time = tomodachi_build_time
 
     if not timestamp:
-        timestamp = datetime.datetime.utcnow().isoformat(timespec="microseconds") + "Z"
+        timestamp = (
+            datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+        )
 
     if build_time:
         try:
-            tomodachi_build_datetime = datetime.datetime.strptime(build_time, "%Y-%m-%dT%H:%M:%S.%f%z").replace(
-                tzinfo=None
+            tomodachi_build_datetime = datetime.datetime.strptime(build_time, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(
+                datetime.timezone.utc
             )
-            current_datetime = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f%z").replace(tzinfo=None)
+            current_datetime = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(
+                datetime.timezone.utc
+            )
             timedelta_since_tomodachi_build = current_datetime - tomodachi_build_datetime
             if timedelta_since_tomodachi_build.days == 0:
                 seconds = timedelta_since_tomodachi_build.seconds

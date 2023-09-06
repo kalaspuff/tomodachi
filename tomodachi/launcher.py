@@ -5,7 +5,6 @@ import os
 import platform
 import signal
 import sys
-import time
 import traceback
 from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
 
@@ -210,9 +209,8 @@ class ServiceLauncher(object):
                 tomodachi.logging.set_default_formatter()
                 tomodachi.logging.configure(log_level=log_level)
 
-            init_timestamp = time.time()
             init_timestamp_str = (
-                datetime.datetime.utcfromtimestamp(init_timestamp).isoformat(timespec="microseconds") + "Z"
+                datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
             )
 
             process_id = os.getpid()
