@@ -1403,13 +1403,13 @@ files = [
 
 [[package]]
 name = "opentelemetry-util-http"
-version = "0.40b0"
+version = "0.41b0"
 description = "Web util for OpenTelemetry"
 optional = true
 python-versions = ">=3.7"
 files = [
-    {file = "opentelemetry_util_http-0.40b0-py3-none-any.whl", hash = "sha256:7e071110b724a24d70de7441aeb4541bf8495ba5f5c33927e6b806d597379d0f"},
-    {file = "opentelemetry_util_http-0.40b0.tar.gz", hash = "sha256:47d93efa1bb6c71954a5c6ae29a9546efae77f6875dc6c807a76898e0d478b80"},
+    {file = "opentelemetry_util_http-0.41b0-py3-none-any.whl", hash = "sha256:6a167fd1e0e8b0f629530d971165b5d82ed0be2154b7f29498499c3a517edee5"},
+    {file = "opentelemetry_util_http-0.41b0.tar.gz", hash = "sha256:16d5bd04a380dc1079e766562d1e1626cbb47720f197f67010c45f090fffdfb3"},
 ]
 
 [[package]]
@@ -2140,4 +2140,4 @@ uvloop = ["uvloop"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "f3a6c3ba8d241d62283cefaa988e31f27ee7b22c55c4c8ff2b84be90afef9cea"
+content-hash = "0aa4c6002d0fbe1ff8447f1e66f60b81e610be0ff610fdb58750d00e1804b6b7"
