@@ -64,7 +64,7 @@ aiodns = { version = ">=1.2.0", optional = true }
 Brotli = { version = "^1.0.9", optional = true }
 
 # opentelemetry
-opentelemetry-instrumentation = { version = "==0.40b0", allow-prereleases = true, optional = true }
+opentelemetry-instrumentation = { version = "==0.41b0", allow-prereleases = true, optional = true }
 opentelemetry-api = { version = ">=1.19.0,<1.20.0", optional = true }
 opentelemetry-sdk = { version = ">=1.19.0,<1.20.0", optional = true }
 opentelemetry-exporter-otlp = { version = ">=1.19.0,<1.20", optional = true }
