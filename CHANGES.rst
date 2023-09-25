@@ -150,6 +150,7 @@ Changes
 
 0.24.3 (2023-06-15)
 -------------------
+
 - Fixes an issue in the internal retry logic when using ``aws_sns_sqs_publish``
   if calls to the AWS API ``SNS.Publish`` would intermittently respond with 408
   response without any body, which previously would've resulted in a
@@ -176,6 +177,7 @@ Changes
 
 0.24.2 (2023-06-13)
 -------------------
+
 - Fixes typing syntax for compatibility with Python 3.8 and Python 3.9 to solve the
   incompatibility for Python 3.8 and Python 3.9 introduced in the the 0.24.1 release.
 
@@ -189,6 +191,7 @@ Changes
 
 0.24.1 (2023-06-01)
 -------------------
+
 - Adds max number of messages that the service will consume when using AWS SNS+SQS
   handlers configurable. (github: **navid-agz**)
 
@@ -198,6 +201,7 @@ Changes
 
 0.24.0 (2022-10-25)
 -------------------
+
 - ``cchardet`` is no longer a direct dependency to ``tomodachi`` on Python 3.10 and
   Python 3.11. If you want to use it, you must install it separately, which may
   require additional build tools when installing on Python 3.10+.
@@ -213,6 +217,7 @@ Changes
 
 0.23.0 (2022-10-16)
 -------------------
+
 - Properly handles ``aiobotocore`` client using an async contextmanager.
   Drops support for ``aiobotocore`` versions prior 1.3.0, but will now supporting
   newer versions. (github: **drestrepom**)
@@ -238,6 +243,7 @@ Changes
 
 0.22.3 (2022-08-09)
 -------------------
+
 - Support for assigning values to AWS SQS queue attributes value
   ``VisibilityTimeout`` and ``RedrivePolicy`` that is used to assign a
   queue to use a dead-letter queue after a number of failed attempts to
@@ -280,6 +286,7 @@ Changes
 
 0.22.2 (2022-04-07)
 -------------------
+
 - Fixes an issue with live reloading on code changes (development mode)
   with services utilizing ``protobuf`` messages, which in same edge cases
   could trigger a repeated
@@ -289,6 +296,7 @@ Changes
 
 0.22.1 (2022-03-14)
 -------------------
+
 - Added an additional way of gracefully triggering shutdown of a running
   service, by using the new ``tomodachi.exit()`` function, which will
   initiate the termination processing flow in the same way as signaling
@@ -304,6 +312,7 @@ Changes
 
 0.22.0 (2022-02-25)
 -------------------
+
 - Handle exceptions lower in the stack for messaging services (AMQP and AWS
   SNS+SQS handlers), which now allows catching exceptions in middlewares,
   which was previously not possible. (github: **justcallmelarry**)
@@ -313,8 +322,10 @@ Changes
 
 - Type hint annotation improvements.
 
+
 0.21.8 (2021-11-19)
 -------------------
+
 - Adds the possibility to add a function called ``_stopping_service`` to the
   ``tomodachi`` Service class, which is run as soon as a termination signal
   is received by the service. (github: **justcallmelarry**)
@@ -335,12 +346,14 @@ Changes
 
 0.21.7 (2021-08-24)
 -------------------
+
 - Pins ``aiobotocore`` to use up to 1.3.x releases, since the 1.4.x
   versions session handling currently causes issues when used.
 
 
 0.21.6 (2021-08-17)
 -------------------
+
 - Now pins the ``tzlocal`` version to not use the 3.x releases as it would
   currently break services using scheduled functions (the ``@schedule``
   decorator, et al) if ``tzlocal`` 3.0 is installed.
@@ -352,6 +365,7 @@ Changes
 
 0.21.5 (2021-08-04)
 -------------------
+
 - If a ``PYTHONPATH`` environment value is set and a service is started
   without the ``--production`` flag, the paths specified in ``PYTHONPATH``
   will be added to the list of directories to watch for code changes and
@@ -368,6 +382,7 @@ Changes
 
 0.21.4 (2021-07-26)
 -------------------
+
 - Encryption at rest for AWS SNS and/or AWS SQS which can optionally be configured by specifying the KMS key alias or KMS key id as a tomodachi service option ``options.aws_sns_sqs.sns_kms_master_key_id`` (to configure encryption at rest on the SNS topics for which the tomodachi service handles the SNS -> SQS subscriptions) and/or ``options.aws_sns_sqs.sqs_kms_master_key_id`` (to configure encryption at rest for the SQS queues which the service is consuming).
 
   Note that an option value set to empty string (``""``) or ``False`` will unset the KMS master key id and thus disable encryption at rest. (The AWS APIs for SNS and SQS uses empty string value to the KMSMasterKeyId attribute to disable encryption with KMS if it was previously enabled).
@@ -388,6 +403,7 @@ Changes
 
 0.21.3 (2021-06-30)
 -------------------
+
 - Fixes an issue causing a ``UnboundLocalError`` if an incoming
   message to a service that had specified the enveloping
   implementation ``JsonBase`` where JSON encoded but actually
@@ -411,6 +427,7 @@ Changes
 
 0.21.2 (2021-02-16)
 -------------------
+
 - Bugfix for an issue which caused the ``sqs.DeleteMessage`` API call
   to be called three times for each processed SQS message (the
   request to delete a message from the queue is idempotent) when
@@ -425,6 +442,7 @@ Changes
 
 0.21.1 (2021-02-14)
 -------------------
+
 - Added ``sentry_sdk`` to the list of modules and packages to not be
   unloaded from ``sys.modules`` during hot reload of the running
   when code changes has been noticed. This to prevent errors like
@@ -435,6 +453,7 @@ Changes
 
 0.21.0 (2021-02-10)
 -------------------
+
 - Uses the socket option ``SO_REUSEPORT`` by default on Linux unless
   specifically disabled via the ``http.reuse_port`` option set
   to ``False``. This will allow several processes to bind to the
@@ -481,6 +500,7 @@ Changes
 
 0.20.7 (2020-11-27)
 -------------------
+
 - Reworked type hinting annotations for AWS SNS+SQS filter policies
   as there were still cases found in the previous tomodachi version
   that didn't work as they should, and raised mypy errors where a
@@ -489,6 +509,7 @@ Changes
 
 0.20.6 (2020-11-24)
 -------------------
+
 - Fixes a type annotation for the ``aws_sns_sqs`` decorator's keyword
   argument ``filter_policy``, which could result in a ``mypy`` error
   if an "anything-but" filter policy was used.
@@ -496,12 +517,14 @@ Changes
 
 0.20.5 (2020-11-18)
 -------------------
+
 - Await potential lingering connection responses before shutting down
   HTTP server.
 
 
 0.20.4 (2020-11-17)
 -------------------
+
 - Optimizations for HTTP based function tasks, which should lower the
   base CPU usage for ``tomodachi.http`` decorated tasks between
   5% - 25% when using middlewares or the default access log.
@@ -509,6 +532,7 @@ Changes
 
 0.20.3 (2020-11-16)
 -------------------
+
 - Corrects an issue with having multiple invoker decorators to the
   same service function / task.
 
@@ -521,6 +545,7 @@ Changes
 
 0.20.2 (2020-11-16)
 -------------------
+
 - Fixes an issue which could cause hot reloading of services to break
   (for example when using Protocol Buffers), due to the change in
   pre-initialized modules from the ``tomodachi`` 0.20.0 release.
@@ -528,6 +553,7 @@ Changes
 
 0.20.1 (2020-11-04)
 -------------------
+
 - Fixes the bug which caused almost all dependencies to be optional
   installs ("extras") if ``tomodachi`` were installed with ``pip``.
   All previous required dependencies are now again installed by default
@@ -536,6 +562,7 @@ Changes
 
 0.20.0 (2020-10-27)
 -------------------
+
 - Lazy loading of dependencies to lower memory footprint and to make
   services launch quicker as they usually don't use all built-in
   implementations. Reference services launch noticeable faster now.
@@ -574,17 +601,20 @@ Changes
 
 0.19.2 (2020-10-27)
 -------------------
+
 - Added support for ``aiohttp`` 3.7.x.
 
 
 0.19.1 (2020-10-26)
 -------------------
+
 - Documentation related updates. External documentation is available at
   https://tomodachi.dev/docs.
 
 
 0.19.0 (2020-10-23)
 -------------------
+
 - Note: This is a rather large release with a lot of updates. Also, this
   release includes a lot of improvements to be able to quicker implement
   features for the future and modernizes a lot of the build, testing and
@@ -722,6 +752,7 @@ Changes
 
 0.18.0 (2020-09-15)
 -------------------
+
 - Changed the order of when to execute the service's own
   ``_stop_service()`` function, to always run after active HTTP
   requests has finished executing, as well as awaiting ongoing AMQP
@@ -730,6 +761,7 @@ Changes
 
 0.17.1 (2020-06-16)
 -------------------
+
 - Updated generated proto class using protoc 3.12.2 for messages
   using proto envelope, which should solve some deprecation
   warnings.
@@ -737,6 +769,7 @@ Changes
 
 0.17.0 (2020-06-16)
 -------------------
+
 - Proper support for Python 3.8. Now correctly handles
   ``CancelledError`` exceptions that previously sent a lot of
   unwanted output on service shutdown or restart.
@@ -758,11 +791,13 @@ Changes
 
 0.16.6 (2020-02-25)
 -------------------
+
 - Removes the dependency on ``ujson``.
 
 
 0.16.5 (2020-02-12)
 -------------------
+
 - Bugfix for context reference mismatch when using custom
   invocation decorators which could cause the provided
   context variable to not include the correct information.
@@ -770,6 +805,7 @@ Changes
 
 0.16.4 (2019-08-28)
 -------------------
+
 - Fix for the the race condition causing ``delete_message`` to
   raise an exception, when draining the SQS receive messages call,
   while stopping the service.
@@ -777,6 +813,7 @@ Changes
 
 0.16.3 (2019-08-23)
 -------------------
+
 - It's now possible to get the request object for websocket
   handlers by adding a third argument to the invoker function.
   ``(self, websocket, request)`` or by specifying ``request`` as
@@ -792,6 +829,7 @@ Changes
 
 0.16.2 (2019-03-27)
 -------------------
+
 - Added keyword arguments for overriding the ``topic_prefix`` and
   ``routing_key_prefix`` when publishing messages. Useful by for
   example intermediaries that needs to publishing messages to
@@ -802,6 +840,7 @@ Changes
 
 0.16.1 (2019-03-21)
 -------------------
+
 - Bug fix for websocket handler functions signature inspection in
   middlewares, which caused the function signature to return a
   non-wrapped internal function.
@@ -809,6 +848,7 @@ Changes
 
 0.16.0 (2019-03-07)
 -------------------
+
 - Refactored all internal middleware functionality to use the same base
   function for executing middlewares.
 
@@ -820,6 +860,7 @@ Changes
 
 0.15.1 (2019-03-07)
 -------------------
+
 - Middlewares first argument ``func: Callable`` will now be wrapped with
   the endpoint function, using ``@functools.wraps``, so that signatures
   and keywords may be inspected and applied accordingly.
@@ -828,6 +869,7 @@ Changes
 
 0.15.0 (2019-02-27)
 -------------------
+
 - ``message_middleware`` will now receive four arguments instead of the
   earlier three.
   ``func: Callable, service: Any, message: Any, topic: str`` for SNS and
@@ -842,6 +884,7 @@ Changes
 
 0.14.8 (2019-01-28)
 -------------------
+
 - Fixes an issue when websockets were initiated together with an HTTP
   middleware applying additional arguments and keywords.
 
@@ -854,6 +897,7 @@ Changes
 
 0.14.7 (2019-01-21)
 -------------------
+
 - Added helper functions to be able to get the status code of
   a HTTP response or on a raised exception during a HTTP request.
   ``await tomodachi.get_http_response_status(value, request=request)`` or
@@ -862,6 +906,7 @@ Changes
 
 0.14.6 (2019-01-14)
 -------------------
+
 - Extended middleware functionality to also be available for
   event based messaging (AMQP and SNS+SQS) as
   ``message_middleware``.
@@ -869,6 +914,7 @@ Changes
 
 0.14.5 (2019-01-09)
 -------------------
+
 - Added the support of middlewares to inject additional arguments
   and keywords arguments or overriding existing keyword arguments
   of the invoked function.
@@ -876,6 +922,7 @@ Changes
 
 0.14.4 (2019-01-06)
 -------------------
+
 - Service classes may now use ``http_middleware`` which is a list
   of functions to be run on all HTTP calls and may change the
   behaviour before or after the invoked function is called, either
@@ -890,11 +937,13 @@ Changes
 
 0.14.3 (2018-12-26)
 -------------------
+
 - Added support for ``aiohttp`` 3.5.x.
 
 
 0.14.2 (2018-12-19)
 -------------------
+
 - Solves an issue which caused SNS / SQS invoked functions to
   never resume the ReceiveMessage API calls on connection failure,
   resulting in log output saying "Session closed" and requiring
@@ -905,12 +954,14 @@ Changes
 
 0.14.1 (2018-12-04)
 -------------------
+
 - Fixes an issue which caused scheduled functions to spam output
   on computer sleep when developing locally.
 
 
 0.14.0 (2018-12-04)
 -------------------
+
 - Added the possibility of specifying ``message_protocol`` for
   AMQP / SNS+SQS enveloping per function, so that it's possible to
   use both (for example) raw data and enveloped data within the
@@ -941,11 +992,13 @@ Changes
 
 0.13.7 (2018-08-10)
 -------------------
+
 - Correction for non-defined exception in Python 3.5.
 
 
 0.13.6 (2018-08-10)
 -------------------
+
 - Improved error handling if strict tomodachi dependencies fail to
   load, for example if an installed dependency is corrupt or missing.
 
@@ -955,6 +1008,7 @@ Changes
 
 0.13.5 (2018-08-08)
 -------------------
+
 - Fixes an issue which caused HTTP invoker functions to be accessible
   before the bootstrapper function ``_start_service()`` had been
   completed. Now ``_start_service()`` is called first, followed by
@@ -966,6 +1020,7 @@ Changes
 
 0.13.4 (2018-08-06)
 -------------------
+
 - Added type hinting stubs for ProtoBuf ``_pb2.py`` file to allow
   ``mypy`` to validate functions utilizing the generated protobuf
   files.
@@ -973,17 +1028,20 @@ Changes
 
 0.13.3 (2018-08-03)
 -------------------
+
 - RST correction from last release.
 
 
 0.13.2 (2018-08-03)
 -------------------
+
 - Correction regarding type hinting as to where a ``bytes`` value
   could be used as the HTTP body in ``Response`` objects.
 
 
 0.13.1 (2018-08-01)
 -------------------
+
 - Fixes bug with type hinting reporting 'error: Module has no
   attribute "decorator"' when applying a ``@tomodachi.decorator``
   decorator.
@@ -991,6 +1049,7 @@ Changes
 
 0.13.0 (2018-07-25)
 -------------------
+
 - Restructured base message protocols for both JSON and ProtoBuf. JSON
   protocol is now called ``tomodachi-json-base--1.0.0`` (earlier
   ``json_base-wip``) and the ProtoBuf protocol is now referred to as
@@ -1000,12 +1059,14 @@ Changes
 
 0.12.7 (2018-07-04)
 -------------------
+
 - Fixed an issue for using ProtoBuf in development as hot-reloading didn't
   work as expected. (github: **smaaland**)
 
 
 0.12.6 (2018-07-02)
 -------------------
+
 - Additional compatibility for Python 3.7 support including CI testing for
   Python 3.7.
 
@@ -1014,6 +1075,7 @@ Changes
 
 0.12.5 (2018-06-27)
 -------------------
+
 - Messages via SNS+SQS or AMQP over 60000 bytes as ProtoBuf will now be sent
   in a gzipped base64 encoded format to allow for larger limits and lower
   potential SNS costs due to multiplexed messaging. (github: **smaaland**)
@@ -1021,6 +1083,7 @@ Changes
 
 0.12.4 (2018-06-24)
 -------------------
+
 - Updated ``aioamqp`` to the latest version with support for Python 3.7.
 
 - Updated service imports for improved Python 3.7 compatibility.
@@ -1028,22 +1091,26 @@ Changes
 
 0.12.3 (2018-06-12)
 -------------------
+
 - Improved type hinting support.
 
 
 0.12.2 (2018-06-12)
 -------------------
+
 - Added stubs for type hinting via tools like ``mypy``.
 
 
 0.12.1 (2018-06-07)
 -------------------
+
 - Added complete support for ``aiohttp`` 3.3.x release and
   ``aiobotocore`` 0.9.x releases.
 
 
 0.12.0 (2018-05-31)
 -------------------
+
 - Improved handling of imports to allow relative imports in
   services and to use better error messages if the parent
   package is using a reserved name.
@@ -1056,6 +1123,7 @@ Changes
 
 0.11.3 (2018-05-25)
 -------------------
+
 - Added additional function for message validation functionality.
   (github: **smaaland**)
 
@@ -1064,6 +1132,7 @@ Changes
 
 0.11.2 (2018-05-19)
 -------------------
+
 - Improved base documentation.
 
 - Improved and updated examples.
@@ -1073,6 +1142,7 @@ Changes
 
 0.11.1 (2018-05-18)
 -------------------
+
 - Decorators for invoker functions already decorated with for example
   ``@tomodachi.http`` or ``@tomodachi.aws_sns_sqs`` is now easier to
   implement using the ``@tomodachi.decorator`` decorator.
@@ -1084,12 +1154,14 @@ Changes
 
 0.11.0 (2018-05-15)
 -------------------
+
 - Propagation of exceptions in invoked functions to be able to hook in
   exception handlers into logging. (github: **0x1EE7**)
 
 
 0.10.2 (2018-05-15)
 -------------------
+
 - Encoding issue for Protocol Buffers messages solved.
   (github: **smaaland**).
 
@@ -1098,12 +1170,14 @@ Changes
 
 0.10.1 (2018-04-26)
 -------------------
+
 - Fixes a bug for optional dependency ``protobuf``. ``message_protocol``
   imports would break unless the ``google.protobuf`` package was installed.
 
 
 0.10.0 (2018-04-20)
 -------------------
+
 - Base example message protocol class for using Protocol Buffers over AMQP
   or AWS SNS+SQS. (github: **smaaland**).
 
@@ -1119,18 +1193,21 @@ Changes
 
 0.9.5 (2018-03-16)
 ------------------
+
 - More robust handling of invoking service files that aren't a part of a
   Python package.
 
 
 0.9.4 (2018-03-06)
 ------------------
+
 - Fixes an issue affecting websocket connections where the receive function
   was invalidly called twice of which one time were without error handling.
 
 
 0.9.3 (2018-03-06)
 ------------------
+
 - Solves an error with functions for AMQP / AWS SNS+SQS functions that are used
   without a message_protocol class.
 
@@ -1147,6 +1224,7 @@ Changes
 
 0.9.2 (2018-03-05)
 ------------------
+
 - Improved error handling for bad requests (error 400) on HTTP calls.
 
 - File watcher for hot-reload now excludes ignored directories in a more
@@ -1156,6 +1234,7 @@ Changes
 
 0.9.1 (2018-03-05)
 ------------------
+
 - ``schedule`` functions limits to 20 running tasks of the same function to
   prevent overflows in development.
 
@@ -1168,6 +1247,7 @@ Changes
 
 0.9.0 (2018-03-04)
 ------------------
+
 - Updated to use ``aiohttp`` 3.X.X+ and ``aiobotocore`` 0.6.X+.
 
 - Dropped support for Python versions below 3.5.3 as new ``aiohttp`` requires
@@ -1177,6 +1257,7 @@ Changes
 
 0.8.3 (2018-03-02)
 ------------------
+
 - Print stack trace for outputs from ``schedule`` invoker functions tasks
   instead of silently catching exceptions.
 
@@ -1186,16 +1267,19 @@ Changes
 
 0.8.2 (2018-02-28)
 ------------------
+
 - Fixed broken HTTP transports due to missing colorama import.
 
 
 0.8.1 (2018-02-27)
 ------------------
+
 - Correction for README in 0.8.X release.
 
 
 0.8.0 (2018-02-27)
 ------------------
+
 - It's now possible to specify queue_name on AWS SNS+SQS and AMQP decorators
   for competing queues. If not specified an automatically generated hash will
   be used as queue name as it worked previously.
@@ -1574,6 +1658,7 @@ Changes
 
 - No automatic conversion will be tried if the returned response of an http
   method is of ``bytes`` type.
+
 
 0.2.1 (2017-05-03)
 ------------------
