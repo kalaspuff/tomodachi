@@ -477,6 +477,8 @@ class AWSSNSSQSTransport(Invoker):
             sns_message_id: Optional[str] = None,
             sqs_message_id: Optional[str] = None,
             message_timestamp: Optional[str] = None,
+            message_deduplication_id: Optional[str] = None,
+            message_group_id: Optional[str] = None,
         ) -> Any:
             logging.bind_logger(logging.getLogger("tomodachi.awssnssqs").new(logger="tomodachi.awssnssqs"))
 
@@ -572,6 +574,14 @@ class AWSSNSSQSTransport(Invoker):
                             not isinstance(message, dict) or "message_timestamp" not in message
                         ):
                             kwargs["message_timestamp"] = message_timestamp
+                        if "message_deduplication_id" in args_set and (
+                            not isinstance(message, dict) or "message_deduplication_id" not in message
+                        ):
+                            kwargs["message_deduplication_id"] = message_deduplication_id
+                        if "message_group_id" in args_set and (
+                            not isinstance(message, dict) or "message_group_id" not in message
+                        ):
+                            kwargs["message_group_id"] = message_group_id
 
                 except (Exception, asyncio.CancelledError, BaseException) as e:
                     limit_exception_traceback(e, ("tomodachi.transport.aws_sns_sqs",))
@@ -605,6 +615,10 @@ class AWSSNSSQSTransport(Invoker):
                         kwargs["sqs_message_id"] = sqs_message_id
                     if "message_timestamp" in args_set:
                         kwargs["message_timestamp"] = message_timestamp
+                    if "message_deduplication_id" in args_set:
+                        kwargs["message_deduplication_id"] = message_deduplication_id
+                    if "message_group_id" in args_set:
+                        kwargs["message_group_id"] = message_group_id
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
                     del kwargs[values.args[1]]
@@ -659,6 +673,8 @@ class AWSSNSSQSTransport(Invoker):
                         sns_message_id=sns_message_id,
                         sqs_message_id=sqs_message_id,
                         message_timestamp=message_timestamp,
+                        message_deduplication_id=message_deduplication_id,
+                        message_group_id=message_group_id,
                     )
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
@@ -1629,6 +1645,8 @@ class AWSSNSSQSTransport(Invoker):
                     sns_message_id: Optional[str],
                     sqs_message_id: Optional[str],
                     message_timestamp: Optional[str],
+                    message_deduplication_id: Optional[str],
+                    message_group_id: Optional[str],
                 ) -> Callable[..., Coroutine]:
                     async def _callback() -> None:
                         await handler(
@@ -1641,6 +1659,8 @@ class AWSSNSSQSTransport(Invoker):
                             sns_message_id,
                             sqs_message_id,
                             message_timestamp,
+                            message_deduplication_id,
+                            message_group_id,
                         )
 
                     return _callback
@@ -1650,7 +1670,7 @@ class AWSSNSSQSTransport(Invoker):
                 while cls.close_waiter and not cls.close_waiter.done():
                     coro_wrappers: List[Callable[..., Coroutine]] = []
 
-                    # In case of FIFO queues, we have to cannot receive more
+                    # In case of FIFO queues, we cannot receive more
                     # than one message at a time, because otherwise we will not
                     # be able to ensure their execution order.
                     message_limit = 1 if queue_url.endswith(".fifo") else max_number_of_consumed_messages
@@ -1663,7 +1683,11 @@ class AWSSNSSQSTransport(Invoker):
                                         QueueUrl=queue_url,
                                         WaitTimeSeconds=wait_time_seconds,
                                         MaxNumberOfMessages=message_limit,
-                                        AttributeNames=["ApproximateReceiveCount"],
+                                        AttributeNames=[
+                                            "ApproximateReceiveCount",
+                                            "MessageDeduplicationId",
+                                            "MessageGroupId",
+                                        ],
                                     ),
                                     timeout=40,
                                 )
@@ -1767,6 +1791,12 @@ class AWSSNSSQSTransport(Invoker):
                             approximate_receive_count: Optional[int] = (
                                 int(message.get("Attributes", {}).get("ApproximateReceiveCount", 0)) or None
                             )
+                            message_deduplication_id: Optional[str] = (
+                                str(message.get("Attributes", {}).get("MessageDeduplicationId", "")) or None
+                            )
+                            message_group_id: Optional[str] = (
+                                str(message.get("Attributes", {}).get("MessageGroupId", "")) or None
+                            )
 
                             sns_message_id = message_body.get("MessageId") or ""
                             sqs_message_id = message.get("MessageId") or ""
@@ -1783,6 +1813,8 @@ class AWSSNSSQSTransport(Invoker):
                                     sns_message_id,
                                     sqs_message_id,
                                     message_timestamp,
+                                    message_deduplication_id,
+                                    message_group_id,
                                 )
                             )
                     except asyncio.CancelledError:
