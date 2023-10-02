@@ -1,11 +1,17 @@
 Changes
 =======
 
-0.26.1 (2023-xx-xx)
+0.26.2 (2023-xx-xx)
+-------------------
+- ...
+
+
+0.26.1 (2023-10-02)
 -------------------
 
 - Uses less strict version constraints on OpenTelemetry dependencies to make it easier to use newer versions of OpenTelemetry libraries together with ``tomodachi`` services.
 - Passes FIFO message attributes (``message_deduplication_id`` and ``message_group_id``) to ``tomodachi`` handler functions as keyword argument provided transport values. (github: **filipsnastins**)
+
 
 0.26.0 (2023-09-01)
 -------------------

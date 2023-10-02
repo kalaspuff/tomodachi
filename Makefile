@@ -97,6 +97,7 @@ _set_dev_version:
 		fi ; \
 		DEV_VERSION=$$(python -c "import sys; v=list(map(int, sys.stdin.read().split('.'))); v[-1] += 1; v.append('dev0'); print(tuple(v))" <<< "$$(python tomodachi/__version__.py)") ; \
 		sed -i'' -e "s/^__version_info__\([^=]*\)= [(][^)]*[)]/__version_info__\1= $$DEV_VERSION/" tomodachi/__version__.py ; \
+		black tomodachi/__version__.py ; \
 		rm -f tomodachi/__version__.py-e ; \
 		poetry version `python tomodachi/__version__.py` ; \
 	fi
