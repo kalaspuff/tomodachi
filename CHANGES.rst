@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.26.1 (2023-xx-xx)
+0.26.1 (2023-10-02)
 -------------------
 
 - Uses less strict version constraints on OpenTelemetry dependencies to make it easier to use newer versions of OpenTelemetry libraries together with ``tomodachi`` services.
