@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 import uuid as uuid_
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 import tomodachi
 from tomodachi.discovery.aws_sns_registration import AWSSNSRegistration
@@ -57,7 +57,19 @@ class AWSSNSSQSService(tomodachi.Service):
                 self.closer.set_result(None)
 
     @aws_sns_sqs("test-topic", competing=False)
-    async def test(self, data: Any, metadata: Any, service: Any) -> None:
+    async def test(
+        self,
+        data: Any,
+        metadata: Any,
+        service: Any,
+        message_deduplication_id: Optional[str],
+        message_group_id: Optional[str],
+    ) -> None:
+        if message_deduplication_id is not None:
+            raise Exception("Message deduplication ID cannot be set for non-FIFO topics and queues")
+        if message_group_id is not None:
+            raise Exception("Message group ID cannot be set for non-FIFO topics and queues")
+
         if data == self.data_uuid:
             self.test_topic_data_received = True
             self.test_topic_metadata_topic = metadata.get("topic")
@@ -66,8 +78,16 @@ class AWSSNSSQSService(tomodachi.Service):
             self.check_closer()
 
     @aws_sns_sqs("test-fifo-topic", queue_name="test-fifo-queue-{}.fifo".format(data_uuid), fifo=True)
-    async def test_fifo(self, data: Any, metadata: Any, service: Any) -> None:
+    async def test_fifo(
+        self, data: Any, metadata: Any, service: Any, message_deduplication_id: str, message_group_id: str
+    ) -> None:
         data_val, data_uuid_match = data.split(".")
+
+        if not message_deduplication_id.startswith("deduplication-"):
+            raise Exception(f"Invalid deduplication id: {message_deduplication_id}")
+        if not message_group_id.startswith("group-"):
+            raise Exception(f"Invalid group id: {message_group_id}")
+
         if data_uuid_match == self.data_uuid:
             # Fail the second message once in order to ensure that the third
             # message won't be handled until the second has been processed
@@ -191,7 +211,7 @@ class AWSSNSSQSService(tomodachi.Service):
                 "1.{}".format(self.data_uuid),
                 topic="test-fifo-topic",
                 group_id="group-1.{}".format(self.data_uuid),
-                deduplication_id="1.{}".format(self.data_uuid),
+                deduplication_id="deduplication-1.{}".format(self.data_uuid),
             )
             await asyncio.sleep(3)
             await aws_sns_sqs_publish(
@@ -199,7 +219,7 @@ class AWSSNSSQSService(tomodachi.Service):
                 "1.{}".format(self.data_uuid),
                 topic="test-fifo-topic",
                 group_id="group-1.{}".format(self.data_uuid),
-                deduplication_id="1.{}".format(self.data_uuid),
+                deduplication_id="deduplication-1.{}".format(self.data_uuid),
             )
             await asyncio.sleep(3)
             await aws_sns_sqs_publish(
@@ -207,7 +227,7 @@ class AWSSNSSQSService(tomodachi.Service):
                 "2.{}".format(self.data_uuid),
                 topic="test-fifo-topic",
                 group_id="group-1.{}".format(self.data_uuid),
-                deduplication_id="2.{}".format(self.data_uuid),
+                deduplication_id="deduplication-2.{}".format(self.data_uuid),
             )
             await asyncio.sleep(3)
             await aws_sns_sqs_publish(
@@ -215,7 +235,7 @@ class AWSSNSSQSService(tomodachi.Service):
                 "3.{}".format(self.data_uuid),
                 topic="test-fifo-topic",
                 group_id="group-1.{}".format(self.data_uuid),
-                deduplication_id="3.{}".format(self.data_uuid),
+                deduplication_id="deduplication-3.{}".format(self.data_uuid),
             )
 
             for _ in range(10):

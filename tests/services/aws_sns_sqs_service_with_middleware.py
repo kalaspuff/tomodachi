@@ -166,6 +166,8 @@ class AWSSNSSQSService(tomodachi.Service):
     test_receipt_handle: str = ""
     test_message_attributes: Optional[Dict] = None
     test_approximate_receive_count: int = 0
+    test_message_deduplication_id: Optional[None] = None
+    test_message_group_id: Optional[None] = None
     test_middleware_values: Optional[Dict] = None
 
     data_uuid = data_uuid
@@ -184,6 +186,8 @@ class AWSSNSSQSService(tomodachi.Service):
         message_attributes: Dict,
         initial_a_value: int,
         topic: str,
+        message_deduplication_id: Optional[None],
+        message_group_id: Optional[None],
         a_value: int = 0,
         another_value: int = 42,
         queue_url: str = "",
@@ -199,6 +203,8 @@ class AWSSNSSQSService(tomodachi.Service):
             self.test_receipt_handle = receipt_handle
             self.test_message_attributes = message_attributes
             self.test_approximate_receive_count = approximate_receive_count
+            self.test_message_deduplication_id = message_deduplication_id
+            self.test_message_group_id = message_group_id
             self.test_middleware_values = {
                 "kwarg_abc": kwarg_abc,
                 "kwarg_xyz": kwarg_xyz,

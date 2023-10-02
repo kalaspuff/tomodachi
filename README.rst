@@ -1392,7 +1392,7 @@ With exemplars enabled, make sure to call the Prometheus client with the accept 
 Example: starting a service with instrumentation
 ------------------------------------------------
 
-This example will start and instrument a service with OTLP exported traces sent to the endpoint ``otelcol:4317`` and metrics that can be scraped by Prometheus from port ``9464``. All metrics except for ``target_info`` and ``otel_scope_inf`` will be prefixed with ``"tomodachi_"``. Additionally *exemplars* will be added to the Prometheus collected metrics that includes sample exemplars with trace_id and span_id labels.
+This example will start and instrument a service with OTLP exported traces sent to the endpoint ``otelcol:4317`` and metrics that can be scraped by Prometheus from port ``9464``. All metrics except for ``target_info`` and ``otel_scope_info`` will be prefixed with ``"tomodachi_"``. Additionally *exemplars* will be added to the Prometheus collected metrics that includes sample exemplars with trace_id and span_id labels.
 
 .. code:: bash
 
