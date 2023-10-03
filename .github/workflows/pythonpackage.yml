@@ -48,6 +48,8 @@ jobs:
         run: |
           poetry install --no-interaction -E uvloop -E protobuf -E aiodns -E opentelemetry -E opentelemetry-exporter-prometheus
           poetry show --tree
+        env:
+          AIOHTTP_NO_EXTENSIONS: 1
       - name: Test poetry build step
         run: poetry build
       - name: Run unit tests
