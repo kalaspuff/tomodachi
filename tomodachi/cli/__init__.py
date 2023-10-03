@@ -171,7 +171,7 @@ class CLI:
             # Optional
             import uvloop  # noqa  # isort:skip
 
-            uvloop_version = uvloop.__version__  # type: ignore
+            uvloop_version = str(getattr(uvloop, "__version__", ""))
             if output_versions:
                 print("uvloop/{}".format(uvloop_version))
         except ModuleNotFoundError:  # pragma: no cover

@@ -382,7 +382,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             ) as span:
                 TraceContextTextMapPropagator().inject(carrier=message_attributes)
                 sns_message_id = await aws_sns_sqs_publish_message(
-                    topic_arn, message, message_attributes, context, *args, **kwargs
+                    topic_arn, message, message_attributes, context, *args, service=service, **kwargs
                 )
                 span.set_attribute("messaging.message.id", sns_message_id)
                 span.set_status(StatusCode.OK)
