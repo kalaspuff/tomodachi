@@ -1837,13 +1837,13 @@ files = [
 
 [[package]]
 name = "types-tzlocal"
-version = "5.0.1.1"
+version = "5.1.0.0"
 description = "Typing stubs for tzlocal"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
-    {file = "types-tzlocal-5.0.1.1.tar.gz", hash = "sha256:d0a9fb6f846c0416f18a040f2d15714d3d52a6165c541e9f4eef7356b53af011"},
-    {file = "types_tzlocal-5.0.1.1-py3-none-any.whl", hash = "sha256:55a66e06e0332d6e04886cf578953dcc465b3054e3f0a337da3bdcbaa59122a4"},
+    {file = "types-tzlocal-5.1.0.0.tar.gz", hash = "sha256:44c5f3497283070b899152f307385b5cf7f7d9b91b4b6aef0dc1406d897808bd"},
+    {file = "types_tzlocal-5.1.0.0-py3-none-any.whl", hash = "sha256:6aaf72ebf3d1c5a6711b7b47c434a5f4697efc6aac79d4a99e1fc24cc2b07863"},
 ]
 
 [package.dependencies]
