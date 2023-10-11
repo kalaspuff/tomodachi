@@ -37,13 +37,13 @@ boto3 = ["boto3 (>=1.28.17,<1.28.18)"]
 
 [[package]]
 name = "aiodns"
-version = "3.0.0"
+version = "3.1.0"
 description = "Simple DNS resolver for asyncio"
 optional = true
 python-versions = "*"
 files = [
-    {file = "aiodns-3.0.0-py3-none-any.whl", hash = "sha256:2b19bc5f97e5c936638d28e665923c093d8af2bf3aa88d35c43417fa25d136a2"},
-    {file = "aiodns-3.0.0.tar.gz", hash = "sha256:946bdfabe743fceeeb093c8a010f5d1645f708a241be849e17edfb0e49e08cd6"},
+    {file = "aiodns-3.1.0-py3-none-any.whl", hash = "sha256:5268c89765a4a17d6875f70686d6ee406a0d4c40f0b65a0a311fb400aecfedf4"},
+    {file = "aiodns-3.1.0.tar.gz", hash = "sha256:fadb59304f4e38fd23b2f1953107df5cf29121d66c4e9c37a9bb13832c0c0513"},
 ]
 
 [package.dependencies]
