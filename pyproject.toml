@@ -156,7 +156,7 @@ target-version = "py38"
 select = [
     "F", # pyflakes
     "E", # pycodestyle (erorr)
-    "I", # isort
+    # "I", # isort
     "W", # pycodestyle (warning)
     "C901", # complex-structure
     "UP", # pyupgrade
@@ -180,6 +180,12 @@ select = [
 ]
 ignore = [
     "UP007", # union type annotations
+    "SIM105", # try-catch-pass
+    "S110", # try-catch-pass (logging)
+    "BLE001", # blind exception
+    "SLF001", # private attribute access
+    "I001", # isort
+    "I005", # isort
 ]
 src = [
   "src",
