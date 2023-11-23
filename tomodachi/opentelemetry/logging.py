@@ -20,18 +20,16 @@ if TYPE_CHECKING:  # pragma: no cover
 
 def add_trace_structlog_processor(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
     span = trace.get_current_span()
-    if not span.is_recording():
-        return event_dict
-
     ctx = span.get_span_context()
 
-    if ctx.span_id is not None:
-        event_dict["span_id"] = hex(ctx.span_id)
-    if ctx.trace_id is not None:
-        event_dict["trace_id"] = hex(ctx.trace_id)
+    if not ctx.is_valid:
+        return event_dict
 
-    parent = getattr(span, "parent", None)
-    if parent and parent.span_id is not None:
+    event_dict["span_id"] = hex(ctx.span_id)
+    event_dict["trace_id"] = hex(ctx.trace_id)
+
+    parent: Optional[trace.SpanContext] = getattr(span, "parent", None)
+    if parent:
         event_dict["parent_span_id"] = hex(parent.span_id)
 
     return event_dict
