@@ -100,7 +100,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                     Resource.create({**tracer_provider.resource._attributes, **additional_resource_attributes})
                 )
                 tracer_provider = copy.copy(tracer_provider)
-                tracer_provider._resource = resource
+                tracer_provider._resource = resource  # type: ignore[has-type]
                 setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
 
         if getattr(meter_provider._sdk_config, "resource", None):
@@ -136,7 +136,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                         resource = logger_provider.resource.merge(
                             Resource.create({**logger_provider.resource._attributes, **additional_resource_attributes})
                         )
-                        logger_provider._resource = resource
+                        logger_provider._resource = resource  # type: ignore[has-type]
                         setattr(handler._logger, "_resource", logger_provider.resource)
 
         tracer = get_tracer("tomodachi", tomodachi_version, tracer_provider)
