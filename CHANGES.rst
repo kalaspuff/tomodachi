@@ -1,9 +1,19 @@
 Changes
 =======
 
-0.26.2 (2023-xx-xx)
+0.26.3 (xxxx-xx-xx)
 -------------------
+
 - ...
+
+
+0.26.2 (2023-11-24)
+-------------------
+
+- Support for Python 3.12. Python 3.12 has been added to test matrix and trove classifiers.
+- Supports ``aiohttp`` 3.9.x versions.
+- Updated OpenTelemetry distro to handle MetricReaders and MetricExporters in a more flexible way (similar to how it was changed to be done in ``opentelemetry-sdk`` 1.21.0).
+- Log entries from ``tomodachi.logging`` on OTEL instrumented services will now include TraceContext (``span_id``, ``trace_id`` and ``parent_span_id``) on non-recording (but valid) spans.
 
 
 0.26.1 (2023-10-02)
