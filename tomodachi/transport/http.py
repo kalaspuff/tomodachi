@@ -760,9 +760,9 @@ class HttpTransport(Invoker):
 
             if callback_functions and isinstance(callback_functions, tuple):
                 if len(callback_functions) == 2:
-                    _receive_func, _close_func = cast(Tuple[Callable, Callable], callback_functions)
+                    _receive_func, _close_func = callback_functions
                 elif len(callback_functions) == 1:
-                    (_receive_func,) = cast(Tuple[Callable], callback_functions)
+                    (_receive_func,) = callback_functions
             elif callback_functions:
                 _receive_func = callback_functions
 

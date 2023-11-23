@@ -1057,7 +1057,7 @@ class AWSSNSSQSTransport(Invoker):
                 continue
             break
 
-        message_id = response.get("MessageId")
+        message_id: Optional[str] = response.get("MessageId")
         if not message_id or not isinstance(message_id, str):
             error_message = "Missing MessageId in response"
             logging.getLogger("tomodachi.awssnssqs").warning(
