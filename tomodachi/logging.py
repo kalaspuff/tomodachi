@@ -64,6 +64,7 @@ STD_LOGGER_FIELDS = set(
         "relativeCreated",
         "thread",
         "threadName",
+        "taskName",
         "process",
         "message",
         "args",
