@@ -1,7 +1,7 @@
 import logging
 import os
 from os import environ
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Type, cast
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Type, Union, cast
 
 from opentelemetry import trace
 from opentelemetry._logs import _internal as logs_internal
@@ -75,9 +75,9 @@ def _get_trace_exporters() -> Dict[str, Type[SpanExporter]]:
     )
 
 
-def _get_metric_exporters() -> Dict[str, Type[MetricExporter]]:
+def _get_metric_exporters() -> Dict[str, Union[Type[MetricExporter], Type[MetricReader]]]:
     return cast(  # type: ignore
-        Dict[str, Type[MetricExporter]],
+        Dict[str, Union[Type[MetricExporter], Type[MetricReader]]],
         _import_exporters(
             [],
             _get_exporter_names("metrics"),
@@ -239,7 +239,7 @@ def _init_tracing(
 
 
 def _init_metrics(
-    exporters: Optional[Dict[str, Type[MetricExporter]]] = None,
+    exporters: Optional[Dict[str, Union[Type[MetricExporter], Type[MetricReader]]]] = None,
     metric_readers: Optional[List[MetricReader]] = None,
     resource: Optional[Resource] = None,
     view: Optional[Sequence[View]] = None,
@@ -250,7 +250,10 @@ def _init_metrics(
     if exporters:
         for _, exporter_class in exporters.items():
             exporter_args: Dict[str, Any] = {}
-            metric_readers.append(PeriodicExportingMetricReader(exporter_class(**exporter_args)))
+            if issubclass(exporter_class, MetricReader):
+                metric_readers.append(exporter_class(**exporter_args))
+            else:
+                metric_readers.append(PeriodicExportingMetricReader(exporter_class(**exporter_args)))
 
     factory_args: Dict[str, Any] = {"metric_readers": metric_readers}
     if resource:

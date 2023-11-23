@@ -1636,7 +1636,7 @@ By using environment variables, you can easily change the configuration of your 
 
 Requirements 👍
 ===============
-* Python_ (``3.8+``, ``3.9+``, ``3.10+``, ``3.11+``)
+* Python_ (``3.8+``, ``3.9+``, ``3.10+``, ``3.11+``, ``3.12+``)
 * aiohttp_ (``aiohttp`` is the currently supported HTTP server implementation for ``tomodachi``)
 * aiobotocore_ and botocore_ (used for AWS SNS+SQS pub/sub messaging)
 * aioamqp_ (used for RabbitMQ / AMQP pub/sub messaging)
