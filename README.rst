@@ -9,8 +9,8 @@
         <sup><tt>events</tt> <tt>messaging</tt> <tt>api</tt> <tt>pubsub</tt> <tt>sns+sqs</tt> <tt>amqp</tt> <tt>http</tt> <tt>queues</tt> <tt>handlers</tt> <tt>scheduling</tt> <tt>tasks</tt> <tt>microservice</tt> <tt>tomodachi</tt></sup>
     </p>
 
-.. image:: https://github.com/kalaspuff/tomodachi/workflows/Python%20package/badge.svg
-    :target: https://github.com/kalaspuff/tomodachi/actions
+.. image:: https://github.com/kalaspuff/tomodachi/actions/workflows/pythonpackage.yml/badge.svg?branch=master
+    :target: https://github.com/kalaspuff/tomodachi/actions/workflows/pythonpackage.yml
 .. image:: https://img.shields.io/pypi/v/tomodachi.svg
     :target: https://pypi.python.org/pypi/tomodachi
 .. image:: https://codecov.io/gh/kalaspuff/tomodachi/branch/master/graph/badge.svg
