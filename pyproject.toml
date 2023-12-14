@@ -156,7 +156,7 @@ target-version = "py38"
 select = [
     "F", # pyflakes
     "E", # pycodestyle (erorr)
-    # "I", # isort
+    "I", # isort
     "W", # pycodestyle (warning)
     "C901", # complex-structure
     "UP", # pyupgrade
@@ -178,24 +178,41 @@ select = [
     "BLE", # flake8-blind-except
     "S", # flake8-bandit
 ]
+extend-select = ["I"]
 ignore = [
     "UP007", # union type annotations
+    "UP006", # type instead of Type
     "SIM105", # try-catch-pass
     "S110", # try-catch-pass (logging)
     "BLE001", # blind exception
     "SLF001", # private attribute access
     "I001", # isort
-    "I005", # isort
+    "PLR0913", # too many arguments
+    "UP037", # type annotation with quotes
 ]
 src = [
-  "src",
+  "tomodachi",
   "tests",
 ]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tomodachi", "run_test_service_helper", "proto_build"]
+known-third-party = ["opentelemetry", "prometheus_client"]
+
 
 [tool.ruff.per-file-ignores]
 "tests/**/*.py" = [
   "S101", # assert
   "PLR2004", # magic-value-comparison
+]
+"tomodachi/**/*_pb2.py*" = [
+    "UP009", # utf-8 encoding
+    "SLF001", # private member accessed
+    "E501", # line too long
+    "I001", # isort
+    "UP036", # version block outdated
+    "N802", # camelcase function
+    "N816", # mixedcase variable
 ]
 
 [tool.mypy]
