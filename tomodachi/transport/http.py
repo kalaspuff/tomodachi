@@ -168,9 +168,11 @@ class RequestHandler(web_protocol.RequestHandler):
                                 else Ellipsis
                             )
                         ),
-                        request_content_read_length=len(request._read_bytes)
-                        if request._read_bytes is not None and len(request._read_bytes)
-                        else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis),
+                        request_content_read_length=(
+                            len(request._read_bytes)
+                            if request._read_bytes is not None and len(request._read_bytes)
+                            else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis)
+                        ),
                     )
                 else:
                     logging.getLogger("tomodachi.http.response").info(
@@ -188,9 +190,11 @@ class RequestHandler(web_protocol.RequestHandler):
                                 else Ellipsis
                             )
                         ),
-                        request_content_read_length=len(request._read_bytes)
-                        if request._read_bytes is not None and len(request._read_bytes)
-                        else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis),
+                        request_content_read_length=(
+                            len(request._read_bytes)
+                            if request._read_bytes is not None and len(request._read_bytes)
+                            else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis)
+                        ),
                     )
 
         return resp
@@ -927,9 +931,11 @@ class HttpTransport(Invoker):
                             request_path=request.path,
                             request_query_string=request.query_string or Ellipsis,
                             http_version=version_string,
-                            response_content_length=response.content_length
-                            if response is not None and response.content_length is not None
-                            else Ellipsis,
+                            response_content_length=(
+                                response.content_length
+                                if response is not None and response.content_length is not None
+                                else Ellipsis
+                            ),
                             request_content_length=(
                                 request.content_length
                                 if request.content_length
@@ -941,9 +947,11 @@ class HttpTransport(Invoker):
                                     else Ellipsis
                                 )
                             ),
-                            request_content_read_length=len(request._read_bytes)
-                            if request._read_bytes is not None and len(request._read_bytes)
-                            else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis),
+                            request_content_read_length=(
+                                len(request._read_bytes)
+                                if request._read_bytes is not None and len(request._read_bytes)
+                                else ((request.content and getattr(request.content, "total_bytes", None)) or Ellipsis)
+                            ),
                             user_agent=request.headers.get("User-Agent", ""),
                         )
 
@@ -1066,9 +1074,11 @@ class HttpTransport(Invoker):
                                     request_path=request.path,
                                     request_query_string=request.query_string or Ellipsis,
                                     http_version=version_string,
-                                    response_content_length=response.content_length
-                                    if response is not None and response.content_length is not None
-                                    else Ellipsis,
+                                    response_content_length=(
+                                        response.content_length
+                                        if response is not None and response.content_length is not None
+                                        else Ellipsis
+                                    ),
                                     replaced_response_content_length=replaced_response_content_length or Ellipsis,
                                     request_content_length=(
                                         request.content_length
@@ -1079,15 +1089,20 @@ class HttpTransport(Invoker):
                                             else Ellipsis
                                         )
                                     ),
-                                    request_content_read_length=len(request._read_bytes)
-                                    if request._read_bytes is not None and len(request._read_bytes)
-                                    else (
-                                        (request.content and getattr(request.content, "total_bytes", None)) or Ellipsis
+                                    request_content_read_length=(
+                                        len(request._read_bytes)
+                                        if request._read_bytes is not None and len(request._read_bytes)
+                                        else (
+                                            (request.content and getattr(request.content, "total_bytes", None))
+                                            or Ellipsis
+                                        )
                                     ),
                                     user_agent=request.headers.get("User-Agent", ""),
-                                    handler_elapsed_time="{0:.5f}s".format(round(handler_elapsed_time, 5))
-                                    if handler_start_time and handler_stop_time
-                                    else Ellipsis,
+                                    handler_elapsed_time=(
+                                        "{0:.5f}s".format(round(handler_elapsed_time, 5))
+                                        if handler_start_time and handler_stop_time
+                                        else Ellipsis
+                                    ),
                                     request_time="{0:.5f}s".format(round(total_request_time, 5)),
                                 )
                         else:
@@ -1137,9 +1152,11 @@ class HttpTransport(Invoker):
                                 response.headers[hdrs.CONNECTION] = "keep-alive"
                                 response.headers[hdrs.KEEP_ALIVE] = "timeout={}{}".format(
                                     request.protocol._keepalive_timeout,
-                                    ", max={}".format(context["_http_max_keepalive_requests"])
-                                    if context["_http_max_keepalive_requests"]
-                                    else "",
+                                    (
+                                        ", max={}".format(context["_http_max_keepalive_requests"])
+                                        if context["_http_max_keepalive_requests"]
+                                        else ""
+                                    ),
                                 )
                             else:
                                 response.headers[hdrs.CONNECTION] = "close"

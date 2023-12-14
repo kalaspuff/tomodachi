@@ -137,7 +137,7 @@ class LinkQuoteStrings:
         self.keys = keys
 
     def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
-        return {k: (f"<{v}>" if k in self.keys and v and not v.startswith("<") else v) for k, v in event_dict.items()}
+        return {k: f"<{v}>" if k in self.keys and v and not v.startswith("<") else v for k, v in event_dict.items()}
 
 
 class RenameKeys:
@@ -469,31 +469,26 @@ DefaultHandler = DefaultRootLoggerHandler = _defaultHandler = StderrHandler()
 @overload
 def set_default_formatter(
     *, logger_type: Literal["json", "console", "no_color_console", "custom", "python", "disabled"]
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
 def set_default_formatter(
     logger_type: Literal["json", "console", "no_color_console", "custom", "python", "disabled"],
     /,
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
-def set_default_formatter(*, formatter: logging.Formatter) -> None:
-    ...
+def set_default_formatter(*, formatter: logging.Formatter) -> None: ...
 
 
 @overload
-def set_default_formatter(formatter: logging.Formatter, /) -> None:
-    ...
+def set_default_formatter(formatter: logging.Formatter, /) -> None: ...
 
 
 @overload
-def set_default_formatter(_arg: Literal[None] = None, /) -> None:
-    ...
+def set_default_formatter(_arg: Literal[None] = None, /) -> None: ...
 
 
 def set_default_formatter(
@@ -527,17 +522,23 @@ def set_default_formatter(
         formatter = (
             JSONFormatter
             if logger_type == "json"
-            else ConsoleFormatter
-            if logger_type == "console"
-            else NoColorConsoleFormatter
-            if logger_type == "no_color_console"
-            else CustomLoggerFormatter
-            if logger_type == "custom"
-            else DisabledFormatter
-            if logger_type == "disabled"
-            else PythonLoggingFormatter
-            if logger_type == "python"
-            else None
+            else (
+                ConsoleFormatter
+                if logger_type == "console"
+                else (
+                    NoColorConsoleFormatter
+                    if logger_type == "no_color_console"
+                    else (
+                        CustomLoggerFormatter
+                        if logger_type == "custom"
+                        else (
+                            DisabledFormatter
+                            if logger_type == "disabled"
+                            else PythonLoggingFormatter if logger_type == "python" else None
+                        )
+                    )
+                )
+            )
         )
 
         if not formatter:
@@ -957,23 +958,17 @@ class Logger(structlog.stdlib.BoundLogger):
 
 
 class LoggerProtocol(Protocol):
-    def info(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def info(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def debug(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def debug(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def warning(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def warning(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def error(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def error(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def critical(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def critical(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def exception(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def exception(self, *args: Any, **kwargs: Any) -> None: ...
 
 
 # backport of structlog 23.x ConsoleRenderer to be usable with structlog 21.x+.
@@ -1194,19 +1189,27 @@ def _get_logger(
     logger = (
         json_logger
         if logger_type == "json"
-        else console_logger
-        if logger_type == "console"
-        else no_color_console_logger
-        if logger_type == "no_color_console"
-        else custom_logger
-        if logger_type == "custom"
-        else python_logger
-        if logger_type == "python"
-        else disabled_logger
-        if logger_type == "disabled"
-        else forward_logger
-        if logger_type == "forward"
-        else None
+        else (
+            console_logger
+            if logger_type == "console"
+            else (
+                no_color_console_logger
+                if logger_type == "no_color_console"
+                else (
+                    custom_logger
+                    if logger_type == "custom"
+                    else (
+                        python_logger
+                        if logger_type == "python"
+                        else (
+                            disabled_logger
+                            if logger_type == "disabled"
+                            else forward_logger if logger_type == "forward" else None
+                        )
+                    )
+                )
+            )
+        )
     )
     if not logger:
         raise Exception(

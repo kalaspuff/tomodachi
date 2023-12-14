@@ -81,8 +81,7 @@ class AmqpTransport(Invoker):
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     @classmethod
@@ -98,8 +97,7 @@ class AmqpTransport(Invoker):
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
         **kwargs: Any,
-    ) -> asyncio.Task[None]:
-        ...
+    ) -> asyncio.Task[None]: ...
 
     @overload
     @classmethod
@@ -115,8 +113,7 @@ class AmqpTransport(Invoker):
         message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
         routing_key_prefix: Optional[str] = MESSAGE_ROUTING_KEY_PREFIX,
         **kwargs: Any,
-    ) -> asyncio.Task[None]:
-        ...
+    ) -> asyncio.Task[None]: ...
 
     @classmethod
     async def publish(
@@ -290,9 +287,11 @@ class AmqpTransport(Invoker):
         if not _callback_kwargs:
             _callback_kwargs = (
                 {
-                    k: values.defaults[i - len(values.args) + 1]
-                    if values.defaults and i >= len(values.args) - len(values.defaults) - 1
-                    else None
+                    k: (
+                        values.defaults[i - len(values.args) + 1]
+                        if values.defaults and i >= len(values.args) - len(values.defaults) - 1
+                        else None
+                    )
                     for i, k in enumerate(values.args[1:])
                 }
                 if values.args and len(values.args) > 1

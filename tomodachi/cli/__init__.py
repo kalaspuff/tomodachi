@@ -358,9 +358,7 @@ class CLI:
                 index = (
                     args.index("-l")
                     if "-l" in args
-                    else args.index("--log")
-                    if "--log" in args
-                    else args.index("--log-level")
+                    else args.index("--log") if "--log" in args else args.index("--log-level")
                 )
                 args.pop(index)
                 if len(args) > index:
