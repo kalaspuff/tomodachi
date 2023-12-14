@@ -1,10 +1,10 @@
 Changes
 =======
 
-0.26.3 (xxxx-xx-xx)
+0.26.3 (2023-12-14)
 -------------------
 
-- ...
+- Updated version constraints of the ``opentelemetry-exporter-prometheus`` dependency to use the correct (non-yanked) version range.
 
 
 0.26.2 (2023-11-24)
