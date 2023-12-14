@@ -5,6 +5,7 @@ Changes
 -------------------
 
 - Updated version constraints of the ``opentelemetry-exporter-prometheus`` dependency to use the correct (non-yanked) version range.
+- Support for ``aiobotocore`` 2.8.x releases and 2.9.x releases.
 
 
 0.26.2 (2023-11-24)
