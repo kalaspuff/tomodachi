@@ -203,9 +203,11 @@ class ExemplarReservoir(BaseExemplarReservoir):
                 sorted(
                     filter(
                         filter_key,
-                        self._buckets[bucket]._exemplars
-                        if bucket is not None
-                        else self._exemplars_from_buckets(self._buckets),
+                        (
+                            self._buckets[bucket]._exemplars
+                            if bucket is not None
+                            else self._exemplars_from_buckets(self._buckets)
+                        ),
                     ),
                     key=sort_key,
                 ),

@@ -21,15 +21,17 @@ async def execute_middlewares(
 
             logging.bind_logger(
                 logger.bind(
-                    middleware=getattr(middleware, "name", Ellipsis)
-                    if hasattr(middleware, "name")
-                    else (
-                        middleware.__name__
-                        if hasattr(middleware, "__name__")
+                    middleware=(
+                        getattr(middleware, "name", Ellipsis)
+                        if hasattr(middleware, "name")
                         else (
-                            type(middleware).__name__
-                            if hasattr(type(middleware), "__name__")
-                            else str(type(middleware))
+                            middleware.__name__
+                            if hasattr(middleware, "__name__")
+                            else (
+                                type(middleware).__name__
+                                if hasattr(type(middleware), "__name__")
+                                else str(type(middleware))
+                            )
                         )
                     )
                 )

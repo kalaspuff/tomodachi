@@ -168,8 +168,7 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @overload
     @classmethod
@@ -189,8 +188,7 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> asyncio.Task[str]:
-        ...
+    ) -> asyncio.Task[str]: ...
 
     @classmethod
     async def publish(
@@ -454,9 +452,11 @@ class AWSSNSSQSTransport(Invoker):
         if not _callback_kwargs:
             _callback_kwargs = (
                 {
-                    k: values.defaults[i - len(values.args) + 1]
-                    if values.defaults and i >= len(values.args) - len(values.defaults) - 1
-                    else None
+                    k: (
+                        values.defaults[i - len(values.args) + 1]
+                        if values.defaults and i >= len(values.args) - len(values.defaults) - 1
+                        else None
+                    )
                     for i, k in enumerate(values.args[1:])
                 }
                 if values.args and len(values.args) > 1

@@ -353,15 +353,17 @@ class ServiceContainer(object):
                                         registry._register_service,
                                         name,
                                         logger="tomodachi.discovery",
-                                        registry=registry.name
-                                        if hasattr(registry, "name")
-                                        else (
-                                            registry.__name__
-                                            if hasattr(registry, "__name__")
+                                        registry=(
+                                            registry.name
+                                            if hasattr(registry, "name")
                                             else (
-                                                type(registry).__name__
-                                                if hasattr(type(registry), "__name__")
-                                                else str(type(registry))
+                                                registry.__name__
+                                                if hasattr(registry, "__name__")
+                                                else (
+                                                    type(registry).__name__
+                                                    if hasattr(type(registry), "__name__")
+                                                    else str(type(registry))
+                                                )
                                             )
                                         ),
                                         operation="register",
@@ -502,15 +504,17 @@ class ServiceContainer(object):
                                 registry._deregister_service,
                                 name,
                                 logger="tomodachi.discovery",
-                                registry=registry.name
-                                if hasattr(registry, "name")
-                                else (
-                                    registry.__name__
-                                    if hasattr(registry, "__name__")
+                                registry=(
+                                    registry.name
+                                    if hasattr(registry, "name")
                                     else (
-                                        type(registry).__name__
-                                        if hasattr(type(registry), "__name__")
-                                        else str(type(registry))
+                                        registry.__name__
+                                        if hasattr(registry, "__name__")
+                                        else (
+                                            type(registry).__name__
+                                            if hasattr(type(registry), "__name__")
+                                            else str(type(registry))
+                                        )
                                     )
                                 ),
                                 operation="deregister",

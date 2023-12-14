@@ -298,26 +298,34 @@ def get_next_datetime(crontab_notation: str, now_date: datetime.datetime) -> Opt
     calculated_dates = [
         calculate_date(d.replace(tzinfo=tz) if tz else d, last_day, last_weekday)
         for d in [
-            datetime.datetime(
-                now_date.year,
-                now_date.month,
-                now_date.day,
-                now_date.hour,
-                now_date.minute,
-                now_date.second,
-                now_date.microsecond,
-            )
-            if now_date.second == 0
-            else None,
-            datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour, now_date.minute + 1)
-            if now_date.minute < 60 - 1
-            else None,
-            datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour + 1)
-            if now_date.hour < 24 - 1
-            else None,
-            datetime.datetime(now_date.year, now_date.month, now_date.day + 1)
-            if now_date.day < monthrange(now_date.year, now_date.month)[1] - 1
-            else None,
+            (
+                datetime.datetime(
+                    now_date.year,
+                    now_date.month,
+                    now_date.day,
+                    now_date.hour,
+                    now_date.minute,
+                    now_date.second,
+                    now_date.microsecond,
+                )
+                if now_date.second == 0
+                else None
+            ),
+            (
+                datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour, now_date.minute + 1)
+                if now_date.minute < 60 - 1
+                else None
+            ),
+            (
+                datetime.datetime(now_date.year, now_date.month, now_date.day, now_date.hour + 1)
+                if now_date.hour < 24 - 1
+                else None
+            ),
+            (
+                datetime.datetime(now_date.year, now_date.month, now_date.day + 1)
+                if now_date.day < monthrange(now_date.year, now_date.month)[1] - 1
+                else None
+            ),
             datetime.datetime(now_date.year, now_date.month + 1, 1) if now_date.month < 12 - 1 else None,
             datetime.datetime(now_date.year + 1, 1, 1),
         ]

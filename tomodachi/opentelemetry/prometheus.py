@@ -98,7 +98,8 @@ class _CustomCollector(_PrometheusCustomCollector):
     _callback: Callable  # type: ignore
 
     def __init__(self, prefix: str = "", registry: CollectorRegistry = REGISTRY_) -> None:
-        super().__init__(prefix)
+        super().__init__()
+        self._prefix = prefix
         self._registry = registry
         self._exemplars: Deque[List[Optional[Exemplar]]] = deque()
         self._include_scope_info = bool(
@@ -237,8 +238,10 @@ class TomodachiPrometheusMetricReader(MetricReader):
         else:
             unit = UNIT_TRANSFORM_MAP.get(unit, unit)
 
+        metric_name = metric.name if not self._collector._prefix else f"{self._collector._prefix}_{metric.name}"
+
         return Metric(
-            name=metric.name,
+            name=metric_name,
             description=metric.description,
             unit=unit,
             data=metric.data,
