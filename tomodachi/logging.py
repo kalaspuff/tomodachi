@@ -1000,13 +1000,7 @@ class ConsoleRenderer(structlog.dev.ConsoleRenderer):
 
         ts = event_dict.pop("timestamp", None)
         if ts is not None:
-            sio.write(
-                # can be a number if timestamp is UNIXy
-                _styles.timestamp
-                + str(ts)
-                + _styles.reset
-                + " "
-            )
+            sio.write(_styles.timestamp + str(ts) + _styles.reset + " ")
         level = event_dict.pop("level", None)
         if level is not None:
             sio.write(
