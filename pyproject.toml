@@ -70,7 +70,7 @@ opentelemetry-api = { version = ">=1.19.0,<2.0.0", optional = true }
 opentelemetry-sdk = { version = ">=1.19.0,<2.0.0", optional = true }
 opentelemetry-exporter-otlp = { version = ">=1.19.0,<2.0.0", optional = true }
 opentelemetry-util-http = { version = ">=0.40b0,<1.0.0", allow-prereleases = true, optional = true }
-opentelemetry-exporter-prometheus = { version = "==1.12.0rc1", allow-prereleases = true, optional = true }
+opentelemetry-exporter-prometheus = { version = ">=0.40b0,<1.0.0", allow-prereleases = true, optional = true }
 
 # extras management
 asahi-extras = { version = "*", optional = true }
