@@ -16,24 +16,24 @@ pamqp = ">=3.1.0"
 
 [[package]]
 name = "aiobotocore"
-version = "2.7.0"
+version = "2.9.0"
 description = "Async client for aws services using botocore and aiohttp"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "aiobotocore-2.7.0-py3-none-any.whl", hash = "sha256:aec605df77ce4635a0479b50fd849aa6b640900f7b295021ecca192e1140e551"},
-    {file = "aiobotocore-2.7.0.tar.gz", hash = "sha256:506591374cc0aee1bdf0ebe290560424a24af176dfe2ea7057fe1df97c4f0467"},
+    {file = "aiobotocore-2.9.0-py3-none-any.whl", hash = "sha256:acf5e49644e6e434b9ecc26284ae7e05d557effbdcdd8185e2eb08925f011853"},
+    {file = "aiobotocore-2.9.0.tar.gz", hash = "sha256:4dc1e20da4561ae662219ca95b20f923328c3106764a741bec00e98eb6680f7e"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.7.4.post0,<4.0.0"
 aioitertools = ">=0.5.1,<1.0.0"
-botocore = ">=1.31.16,<1.31.65"
+botocore = ">=1.33.2,<1.33.14"
 wrapt = ">=1.10.10,<2.0.0"
 
 [package.extras]
-awscli = ["awscli (>=1.29.16,<1.29.65)"]
-boto3 = ["boto3 (>=1.28.16,<1.28.65)"]
+awscli = ["awscli (>=1.31.2,<1.31.14)"]
+boto3 = ["boto3 (>=1.33.2,<1.33.14)"]
 
 [[package]]
 name = "aiodns"
@@ -317,13 +317,13 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "botocore"
-version = "1.31.64"
+version = "1.33.13"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">= 3.7"
 files = [
-    {file = "botocore-1.31.64-py3-none-any.whl", hash = "sha256:7b709310343a5b430ec9025b2e17c0bac6b16c05f1ac1d9521dece3f10c71bac"},
-    {file = "botocore-1.31.64.tar.gz", hash = "sha256:d8eb4b724ac437343359b318d73de0cfae0fecb24095827e56135b0ad6b44caf"},
+    {file = "botocore-1.33.13-py3-none-any.whl", hash = "sha256:aeadccf4b7c674c7d47e713ef34671b834bc3e89723ef96d994409c9f54666e6"},
+    {file = "botocore-1.33.13.tar.gz", hash = "sha256:fb577f4cb175605527458b04571451db1bd1a2036976b626206036acd4496617"},
 ]
 
 [package.dependencies]
@@ -335,7 +335,7 @@ urllib3 = [
 ]
 
 [package.extras]
-crt = ["awscrt (==0.16.26)"]
+crt = ["awscrt (==0.19.17)"]
 
 [[package]]
 name = "brotli"
@@ -2164,4 +2164,4 @@ uvloop = ["uvloop"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "b9d83fa5517529ca71b650bdfd93d5d33b76a6891d636aaf4bd7e4553de4575d"
+content-hash = "899a30d78548c9f873e3ff08d363a219aa598a323cba54390726b2664688742a"
