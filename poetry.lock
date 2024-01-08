@@ -1351,6 +1351,7 @@ optional = true
 python-versions = ">=3.7"
 files = [
     {file = "opentelemetry_instrumentation-0.43b0-py3-none-any.whl", hash = "sha256:0ff1334d7e359e27640e9d420024efeb73eacae464309c2e14ede7ba6c93967e"},
+    {file = "opentelemetry_instrumentation-0.43b0.tar.gz", hash = "sha256:c3755da6c4be8033be0216d0501e11f4832690f4e2eca5a3576fbf113498f0f6"},
 ]
 
 [package.dependencies]
@@ -1787,13 +1788,13 @@ files = [
 
 [[package]]
 name = "types-protobuf"
-version = "4.24.0.4"
+version = "4.24.0.20240106"
 description = "Typing stubs for protobuf"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "types-protobuf-4.24.0.4.tar.gz", hash = "sha256:57ab42cb171dfdba2c74bb5b50c250478538cc3c5ed95b8b368929ad0c9f90a5"},
-    {file = "types_protobuf-4.24.0.4-py3-none-any.whl", hash = "sha256:131ab7d0cbc9e444bc89c994141327dcce7bcaeded72b1acb72a94827eb9c7af"},
+    {file = "types-protobuf-4.24.0.20240106.tar.gz", hash = "sha256:024f034f3b5e2bb2bbff55ebc4d591ed0d2280d90faceedcb148b9e714a3f3ee"},
+    {file = "types_protobuf-4.24.0.20240106-py3-none-any.whl", hash = "sha256:0612ef3156bd80567460a15ac7c109b313f6022f1fee04b4d922ab2789baab79"},
 ]
 
 [[package]]
