@@ -53,7 +53,7 @@ cchardet = { version = ">=2.1.7", python = "<3.10" }
 aiohttp = ">=3.7.0,<3.10.0"
 colorama = ">=0.3.9,<0.5.0"
 asahi = ">=0.1,<0.3"
-structlog = ">=21.5.0,<24.0.0"
+structlog = ">=21.5.0,<25.0.0"
 
 # derived from aiobotocore for dependency resolution speed in same cases.
 botocore = ">=1.20.106"
