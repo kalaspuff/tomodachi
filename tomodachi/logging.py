@@ -469,26 +469,31 @@ DefaultHandler = DefaultRootLoggerHandler = _defaultHandler = StderrHandler()
 @overload
 def set_default_formatter(
     *, logger_type: Literal["json", "console", "no_color_console", "custom", "python", "disabled"]
-) -> None: ...
+) -> None:
+    ...
 
 
 @overload
 def set_default_formatter(
     logger_type: Literal["json", "console", "no_color_console", "custom", "python", "disabled"],
     /,
-) -> None: ...
+) -> None:
+    ...
 
 
 @overload
-def set_default_formatter(*, formatter: logging.Formatter) -> None: ...
+def set_default_formatter(*, formatter: logging.Formatter) -> None:
+    ...
 
 
 @overload
-def set_default_formatter(formatter: logging.Formatter, /) -> None: ...
+def set_default_formatter(formatter: logging.Formatter, /) -> None:
+    ...
 
 
 @overload
-def set_default_formatter(_arg: Literal[None] = None, /) -> None: ...
+def set_default_formatter(_arg: Literal[None] = None, /) -> None:
+    ...
 
 
 def set_default_formatter(
@@ -534,7 +539,9 @@ def set_default_formatter(
                         else (
                             DisabledFormatter
                             if logger_type == "disabled"
-                            else PythonLoggingFormatter if logger_type == "python" else None
+                            else PythonLoggingFormatter
+                            if logger_type == "python"
+                            else None
                         )
                     )
                 )
@@ -582,7 +589,7 @@ _patch_structlog_callsite_parameter_adder_processor()
 
 
 def set_custom_logger_factory(
-    logger_factory: Optional[Union[str, ModuleType, type, object]] = TOMODACHI_CUSTOM_LOGGER
+    logger_factory: Optional[Union[str, ModuleType, type, object]] = TOMODACHI_CUSTOM_LOGGER,
 ) -> None:
     if logger_factory is not None and logger_factory:
         logger_factory_ = _CustomLogger.get_logger_factory(logger_factory)
@@ -958,22 +965,31 @@ class Logger(structlog.stdlib.BoundLogger):
 
 
 class LoggerProtocol(Protocol):
-    def info(self, *args: Any, **kwargs: Any) -> None: ...
+    def info(self, *args: Any, **kwargs: Any) -> None:
+        ...
 
-    def debug(self, *args: Any, **kwargs: Any) -> None: ...
+    def debug(self, *args: Any, **kwargs: Any) -> None:
+        ...
 
-    def warning(self, *args: Any, **kwargs: Any) -> None: ...
+    def warning(self, *args: Any, **kwargs: Any) -> None:
+        ...
 
-    def error(self, *args: Any, **kwargs: Any) -> None: ...
+    def error(self, *args: Any, **kwargs: Any) -> None:
+        ...
 
-    def critical(self, *args: Any, **kwargs: Any) -> None: ...
+    def critical(self, *args: Any, **kwargs: Any) -> None:
+        ...
 
-    def exception(self, *args: Any, **kwargs: Any) -> None: ...
+    def exception(self, *args: Any, **kwargs: Any) -> None:
+        ...
 
 
 # backport of structlog 23.x ConsoleRenderer to be usable with structlog 21.x+.
 class ConsoleRenderer(structlog.dev.ConsoleRenderer):
     _colors: bool
+    _level_to_color: Dict[str, str]
+    _pad_event: int
+    _event_key: str
 
     def __init__(
         self,
@@ -986,6 +1002,14 @@ class ConsoleRenderer(structlog.dev.ConsoleRenderer):
             super().__init__(**kw)
 
         self._colors = kw.get("colors", not NO_COLOR) and not NO_COLOR
+        self._pad_event = kw.get("pad_event") or structlog.dev._EVENT_WIDTH
+        self._event_key = kw.get("event_key") or "event"
+
+        level_styles = kw.get("level_styles")
+        level_to_color = self.get_default_level_styles(self._colors) if level_styles is None else level_styles
+        for key in level_to_color:
+            level_to_color[key] += self._styles.bright
+        self._level_to_color = level_to_color
 
     def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> str:
         sio = StringIO()
@@ -1204,7 +1228,9 @@ def _get_logger(
                         else (
                             disabled_logger
                             if logger_type == "disabled"
-                            else forward_logger if logger_type == "forward" else None
+                            else forward_logger
+                            if logger_type == "forward"
+                            else None
                         )
                     )
                 )
