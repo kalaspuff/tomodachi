@@ -469,31 +469,26 @@ DefaultHandler = DefaultRootLoggerHandler = _defaultHandler = StderrHandler()
 @overload
 def set_default_formatter(
     *, logger_type: Literal["json", "console", "no_color_console", "custom", "python", "disabled"]
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
 def set_default_formatter(
     logger_type: Literal["json", "console", "no_color_console", "custom", "python", "disabled"],
     /,
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
-def set_default_formatter(*, formatter: logging.Formatter) -> None:
-    ...
+def set_default_formatter(*, formatter: logging.Formatter) -> None: ...
 
 
 @overload
-def set_default_formatter(formatter: logging.Formatter, /) -> None:
-    ...
+def set_default_formatter(formatter: logging.Formatter, /) -> None: ...
 
 
 @overload
-def set_default_formatter(_arg: Literal[None] = None, /) -> None:
-    ...
+def set_default_formatter(_arg: Literal[None] = None, /) -> None: ...
 
 
 def set_default_formatter(
@@ -539,9 +534,7 @@ def set_default_formatter(
                         else (
                             DisabledFormatter
                             if logger_type == "disabled"
-                            else PythonLoggingFormatter
-                            if logger_type == "python"
-                            else None
+                            else PythonLoggingFormatter if logger_type == "python" else None
                         )
                     )
                 )
@@ -965,23 +958,17 @@ class Logger(structlog.stdlib.BoundLogger):
 
 
 class LoggerProtocol(Protocol):
-    def info(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def info(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def debug(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def debug(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def warning(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def warning(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def error(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def error(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def critical(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def critical(self, *args: Any, **kwargs: Any) -> None: ...
 
-    def exception(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def exception(self, *args: Any, **kwargs: Any) -> None: ...
 
 
 ConsoleRenderer: type[structlog.dev.ConsoleRenderer]
@@ -1235,9 +1222,7 @@ def _get_logger(
                         else (
                             disabled_logger
                             if logger_type == "disabled"
-                            else forward_logger
-                            if logger_type == "forward"
-                            else None
+                            else forward_logger if logger_type == "forward" else None
                         )
                     )
                 )
