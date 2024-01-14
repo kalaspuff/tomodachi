@@ -1,10 +1,11 @@
 Changes
 =======
 
-0.26.4 (xxxx-xx-xx)
+0.26.4 (2024-01-14)
 -------------------
 
-- ...
+- Fixes an issue with the custom backport class of ``ConsoleRenderer`` extending ``structlog.dev.ConsoleRenderer`` (which caused an exception to be raised upon service start, when using ``structlog`` 23.3.0 or 24.1.0).
+- Uses the native ``ConsoleRenderer`` class from ``structlog`` when a modern version of ``structlog`` is used (23.3.0 or newer).
 
 
 0.26.3 (2023-12-14)
