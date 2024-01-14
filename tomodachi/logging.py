@@ -973,7 +973,7 @@ class LoggerProtocol(Protocol):
 
 ConsoleRenderer: type[structlog.dev.ConsoleRenderer]
 _structlog_version = tuple(map(lambda v: int(v) if v.isdigit() else v, structlog.__version__.split(".")))
-if _structlog_version < (23, 3, 0):
+if _structlog_version < (23, 3, 0):  # pragma: no cover
     # backport of structlog 23.x ConsoleRenderer to be usable with structlog 21.x+.
 
     class ConsoleRenderer_(structlog.dev.ConsoleRenderer):
