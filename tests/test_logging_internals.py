@@ -4,6 +4,7 @@ import sys
 from typing import Any, Dict
 
 import pytest
+import structlog
 
 import tomodachi
 
@@ -57,8 +58,11 @@ def test_internal_default_logger(capsys: Any) -> None:
 
     out, err = capsys.readouterr()
 
+    structlog_version = tuple(map(lambda v: int(v) if v.isdigit() else v, structlog.__version__.split(".")))
+    exception_level = "error" if structlog_version >= (24, 0, 0) else "exception"
+
     assert json.loads(out) == {
-        "level": "exception",
+        "level": exception_level,
         "logger": "default",
         "message": "this is the message",
         "exception": "TestException('test exception')",
@@ -66,17 +70,17 @@ def test_internal_default_logger(capsys: Any) -> None:
         "exc_message": "test exception",
         "tb_module_name": "test_logging_internals",
         "tb_function_name": "exception_func",
-        "tb_location": "./tests/test_logging_internals.py:16",
+        "tb_location": "./tests/test_logging_internals.py:17",
         "stacktrace": [
             {
                 "module_name": "test_logging_internals",
                 "function_name": "test_internal_default_logger",
-                "location": "./tests/test_logging_internals.py:54",
+                "location": "./tests/test_logging_internals.py:55",
             },
             {
                 "module_name": "test_logging_internals",
                 "function_name": "exception_func",
-                "location": "./tests/test_logging_internals.py:16",
+                "location": "./tests/test_logging_internals.py:17",
             },
         ],
         "timestamp": json.loads(out).get("timestamp"),
