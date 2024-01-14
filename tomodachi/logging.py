@@ -984,110 +984,117 @@ class LoggerProtocol(Protocol):
         ...
 
 
-# backport of structlog 23.x ConsoleRenderer to be usable with structlog 21.x+.
-class ConsoleRenderer(structlog.dev.ConsoleRenderer):
-    _colors: bool
-    _level_to_color: Dict[str, str]
-    _pad_event: int
-    _event_key: str
+ConsoleRenderer: type[structlog.dev.ConsoleRenderer]
+_structlog_version = tuple(map(lambda v: int(v) if v.isdigit() else v, structlog.__version__.split(".")))
+if _structlog_version < (23, 3, 0):
+    # backport of structlog 23.x ConsoleRenderer to be usable with structlog 21.x+.
 
-    def __init__(
-        self,
-        **kw: Any,
-    ):
-        try:
-            super().__init__(**kw)
-        except Exception:
-            self._event_key = kw.pop("event_key", "event")
-            super().__init__(**kw)
+    class ConsoleRenderer_(structlog.dev.ConsoleRenderer):
+        _colors: bool
+        _level_to_color: Dict[str, str]
+        _pad_event: int
+        _event_key: str
 
-        self._colors = kw.get("colors", not NO_COLOR) and not NO_COLOR
-        self._pad_event = kw.get("pad_event") or structlog.dev._EVENT_WIDTH
-        self._event_key = kw.get("event_key") or "event"
+        def __init__(
+            self,
+            **kw: Any,
+        ):
+            try:
+                super().__init__(**kw)
+                self._event_key = kw.get("event_key") or "event"
+            except Exception:
+                self._event_key = kw.pop("event_key", "event")
+                super().__init__(**kw)
 
-        level_styles = kw.get("level_styles")
-        level_to_color = self.get_default_level_styles(self._colors) if level_styles is None else level_styles
-        for key in level_to_color:
-            level_to_color[key] += self._styles.bright
-        self._level_to_color = level_to_color
+            self._colors = kw.get("colors", not NO_COLOR) and not NO_COLOR
+            self._pad_event = kw.get("pad_event") or structlog.dev._EVENT_WIDTH
 
-    def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> str:
-        sio = StringIO()
+            level_styles = kw.get("level_styles")
+            level_to_color = self.get_default_level_styles(self._colors) if level_styles is None else level_styles
+            for key in level_to_color:
+                level_to_color[key] += self._styles.bright
+            self._level_to_color = level_to_color
 
-        _styles = self._styles
-        _level_to_color = self._level_to_color
+        def __call__(self, logger: WrappedLogger, method_name: str, event_dict: EventDict) -> str:
+            sio = StringIO()
 
-        ts = event_dict.pop("timestamp", None)
-        if ts is not None:
-            sio.write(_styles.timestamp + str(ts) + _styles.reset + " ")
-        level = event_dict.pop("level", None)
-        if level is not None:
-            sio.write(
-                "["
-                + _level_to_color.get(level, "")
-                + structlog.dev._pad(level, self._longest_level)
-                + _styles.reset
-                + "] "
-            )
+            _styles = self._styles
+            _level_to_color = self._level_to_color
 
-        # force event to str for compatibility with standard library
-        event = event_dict.pop(self._event_key, None)
-        if not isinstance(event, str):
-            event = str(event)
-
-        if event_dict:
-            event = structlog.dev._pad(event, self._pad_event) + _styles.reset + " "
-        else:
-            event += _styles.reset
-        sio.write(_styles.bright + event)
-
-        logger_name = event_dict.pop("logger", None)
-        if logger_name is None:
-            logger_name = event_dict.pop("logger_name", None)
-
-        if logger_name is not None:
-            sio.write("[" + _styles.logger_name + _styles.bright + logger_name + _styles.reset + "] ")
-
-        stack = event_dict.pop("stack", None)
-        exc = event_dict.pop("exception", None)
-        exc_info = event_dict.pop("exc_info", None)
-
-        event_dict_keys: Iterable[str] = event_dict.keys()
-        if self._sort_keys:
-            event_dict_keys = sorted(event_dict_keys)
-
-        sio.write(
-            " ".join(
-                _styles.kv_key
-                + key
-                + _styles.reset
-                + "="
-                + _styles.kv_value
-                + self._repr(event_dict[key])
-                + _styles.reset
-                for key in event_dict_keys
-            )
-        )
-
-        if stack is not None:
-            sio.write("\n" + stack)
-            if exc_info or exc is not None:
-                sio.write("\n\n" + "=" * 79 + "\n")
-
-        if exc_info:
-            exc_info = structlog.processors._figure_out_exc_info(exc_info)
-
-            self._exception_formatter(sio, exc_info)
-        elif exc is not None:
-            if self._exception_formatter is not structlog.dev.plain_traceback:
-                warnings.warn(
-                    "Remove `format_exc_info` from your processor chain " "if you want pretty exceptions.",
-                    stacklevel=2,
+            ts = event_dict.pop("timestamp", None)
+            if ts is not None:
+                sio.write(_styles.timestamp + str(ts) + _styles.reset + " ")
+            level = event_dict.pop("level", None)
+            if level is not None:
+                sio.write(
+                    "["
+                    + _level_to_color.get(level, "")
+                    + structlog.dev._pad(level, self._longest_level)
+                    + _styles.reset
+                    + "] "
                 )
-            sio.write("\n" + exc)
 
-        return sio.getvalue()
+            # force event to str for compatibility with standard library
+            event = event_dict.pop(self._event_key, None)
+            if not isinstance(event, str):
+                event = str(event)
 
+            if event_dict:
+                event = structlog.dev._pad(event, self._pad_event) + _styles.reset + " "
+            else:
+                event += _styles.reset
+            sio.write(_styles.bright + event)
+
+            logger_name = event_dict.pop("logger", None)
+            if logger_name is None:
+                logger_name = event_dict.pop("logger_name", None)
+
+            if logger_name is not None:
+                sio.write("[" + _styles.logger_name + _styles.bright + logger_name + _styles.reset + "] ")
+
+            stack = event_dict.pop("stack", None)
+            exc = event_dict.pop("exception", None)
+            exc_info = event_dict.pop("exc_info", None)
+
+            event_dict_keys: Iterable[str] = event_dict.keys()
+            if self._sort_keys:
+                event_dict_keys = sorted(event_dict_keys)
+
+            sio.write(
+                " ".join(
+                    _styles.kv_key
+                    + key
+                    + _styles.reset
+                    + "="
+                    + _styles.kv_value
+                    + self._repr(event_dict[key])
+                    + _styles.reset
+                    for key in event_dict_keys
+                )
+            )
+
+            if stack is not None:
+                sio.write("\n" + stack)
+                if exc_info or exc is not None:
+                    sio.write("\n\n" + "=" * 79 + "\n")
+
+            if exc_info:
+                exc_info = structlog.processors._figure_out_exc_info(exc_info)
+
+                self._exception_formatter(sio, exc_info)
+            elif exc is not None:
+                if self._exception_formatter is not structlog.dev.plain_traceback:
+                    warnings.warn(
+                        "Remove `format_exc_info` from your processor chain " "if you want pretty exceptions.",
+                        stacklevel=2,
+                    )
+                sio.write("\n" + exc)
+
+            return sio.getvalue()
+
+    ConsoleRenderer = ConsoleRenderer_
+else:
+    ConsoleRenderer = structlog.dev.ConsoleRenderer
 
 console_logger: Logger = structlog.wrap_logger(
     None,
