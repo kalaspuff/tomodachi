@@ -16,13 +16,13 @@ pamqp = ">=3.1.0"
 
 [[package]]
 name = "aiobotocore"
-version = "2.9.0"
+version = "2.9.1"
 description = "Async client for aws services using botocore and aiohttp"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "aiobotocore-2.9.0-py3-none-any.whl", hash = "sha256:acf5e49644e6e434b9ecc26284ae7e05d557effbdcdd8185e2eb08925f011853"},
-    {file = "aiobotocore-2.9.0.tar.gz", hash = "sha256:4dc1e20da4561ae662219ca95b20f923328c3106764a741bec00e98eb6680f7e"},
+    {file = "aiobotocore-2.9.1-py3-none-any.whl", hash = "sha256:4f8f4074069c115c7558edf1c6e4f78c997fcfb805974e3fe1a8a8442cb923b3"},
+    {file = "aiobotocore-2.9.1.tar.gz", hash = "sha256:24daf4f1ce86e2fb5aee146cdc944736ef76791635ec3a9b6f3d5755b1ac3c46"},
 ]
 
 [package.dependencies]
