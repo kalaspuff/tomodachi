@@ -1060,17 +1060,20 @@ This example portrays a middleware function which adds trace spans around the fu
     async def trace_middleware(
         func: Callable[..., Awaitable],
         *,
+        queue_url: str,
         topic: str,
         message_attributes: dict,
         sns_message_id: str,
+        sqs_message_id: str,
     ) -> None:
         ctx = TraceContextTextMapPropagator().extract(carrier=message_attributes)
 
         with tracer.start_as_current_span(f"SNSSQS handler '{func.__name__}'", context=ctx) as span:
-            span.set_attribute("messaging.system", "AmazonSQS")
+            span.set_attribute("messaging.system", "aws_sqs")
             span.set_attribute("messaging.operation", "process")
-            span.set_attribute("messaging.source.name", topic)
-            span.set_attribute("messaging.message.id", sns_message_id)
+            span.set_attribute("messaging.destination.name", queue_url.rsplit("/")[-1])
+            span.set_attribute("messaging.destination_publish.name", topic or queue_url.rsplit("/")[-1])
+            span.set_attribute("messaging.message.id", sns_message_id or sqs_message_id)
 
             try:
                 # Calls the handler function (or next middleware in the chain)
