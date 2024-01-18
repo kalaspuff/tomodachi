@@ -161,17 +161,14 @@ class QueueDoesNotExistError(AWSSNSSQSException):
 
 class MessageEnvelopeProtocol(Protocol):
     @classmethod
-    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str:
-        ...
+    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str: ...
 
     @classmethod
-    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]:
-        ...
+    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]: ...
 
 
 class MessageBodyFormatterProtocol(Protocol):
-    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str:
-        ...
+    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str: ...
 
 
 @dataclasses.dataclass(unsafe_hash=True)
@@ -260,8 +257,7 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @overload
     @classmethod
@@ -281,8 +277,7 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> asyncio.Task[str]:
-        ...
+    ) -> asyncio.Task[str]: ...
 
     @classmethod
     async def publish(
@@ -386,8 +381,7 @@ class AWSSNSSQSTransport(Invoker):
             type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
         ] = MessageBodyFormatter,
         **kwargs: Any,
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @overload
     @classmethod
@@ -409,8 +403,7 @@ class AWSSNSSQSTransport(Invoker):
             type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
         ] = MessageBodyFormatter,
         **kwargs: Any,
-    ) -> asyncio.Task[str]:
-        ...
+    ) -> asyncio.Task[str]: ...
 
     @classmethod
     async def send_message(
