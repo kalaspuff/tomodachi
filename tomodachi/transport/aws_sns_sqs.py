@@ -2594,7 +2594,6 @@ class AWSSNSSQSTransport(Invoker):
                             continue
 
                         for message in messages:
-                            print(message)
                             receipt_handle = message.get("ReceiptHandle")
                             raw_message_body = message.get("Body")
                             try:
