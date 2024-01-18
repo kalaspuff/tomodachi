@@ -5,9 +5,8 @@ import importlib
 import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
-from tomodachi.__version__ import __build_time__
+from tomodachi.__version__ import __build_time__, __version_info__
 from tomodachi.__version__ import __version__ as __version__
-from tomodachi.__version__ import __version_info__
 from tomodachi.logging import Logger, LoggerProtocol, get_logger
 from tomodachi.options import Options, OptionsInterface
 
@@ -36,6 +35,10 @@ __available_defs: Dict[str, Union[Tuple[str], Tuple[str, Optional[str]]]] = {
     "awssnssqs": ("tomodachi.transport.aws_sns_sqs",),
     "aws_sns_sqs_publish": ("tomodachi.transport.aws_sns_sqs",),
     "awssnssqs_publish": ("tomodachi.transport.aws_sns_sqs",),
+    "sns_publish": ("tomodachi.transport.aws_sns_sqs",),
+    "aws_sns_sqs_send_message": ("tomodachi.transport.aws_sns_sqs",),
+    "awssnssqs_send_message": ("tomodachi.transport.aws_sns_sqs",),
+    "sqs_send_message": ("tomodachi.transport.aws_sns_sqs",),
     "HttpException": ("tomodachi.transport.http",),
     "HttpResponse": ("tomodachi.transport.http", "Response"),
     "get_http_response_status": ("tomodachi.transport.http",),
@@ -293,6 +296,7 @@ __all__ = [
     "amqp_publish",
     "aws_sns_sqs",
     "aws_sns_sqs_publish",
+    "aws_sns_sqs_send_message",
     "http",
     "http_error",
     "http_static",
