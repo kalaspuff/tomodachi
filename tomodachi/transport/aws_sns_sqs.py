@@ -171,7 +171,7 @@ class MessageBodyFormatterProtocol(Protocol):
     async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str: ...
 
 
-@dataclasses.dataclass(unsafe_hash=True)
+@dataclasses.dataclass(frozen=True)
 class MessageBodyFormatterContext:
     data: str
     message_attributes: Dict[str, Any]
@@ -967,6 +967,11 @@ class AWSSNSSQSTransport(Invoker):
                 if len(values.args[1:]) and values.args[1] in kwargs:
                     del kwargs[values.args[1]]
 
+            if not message_topic and "topic" in kwargs:
+                del kwargs["topic"]
+            elif message_topic and "topic" in kwargs and kwargs["topic"] != message_topic:
+                kwargs["topic"] = message_topic
+
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
                 logging.bind_logger(
@@ -1006,10 +1011,10 @@ class AWSSNSSQSTransport(Invoker):
                         func,
                         routine_func,
                         context.get("_awssnssqs_message_pre_middleware", []) + context.get("message_middleware", []),
-                        *(obj, message, topic),
+                        *(obj, message, message_topic),
                         message=message,
                         message_uuid=message_uuid,
-                        topic=topic,
+                        topic=message_topic,
                         receipt_handle=receipt_handle,
                         queue_url=queue_url,
                         message_attributes=message_attributes_values,
@@ -2597,7 +2602,7 @@ class AWSSNSSQSTransport(Invoker):
                                     cls.get_topic_name_without_prefix(
                                         cls.decode_topic(cls.get_topic_from_arn(topic_arn)), context
                                     )
-                                    if topic_arn
+                                    if topic_arn and message_type == "Notification"
                                     else ""
                                 )
                             except ValueError as e:
