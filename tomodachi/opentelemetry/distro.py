@@ -17,9 +17,8 @@ from opentelemetry.environment_variables import (
 from opentelemetry.instrumentation.distro import BaseDistro  # type: ignore
 from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_CONFIGURATOR
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
-from opentelemetry.metrics import Instrument
+from opentelemetry.metrics import Instrument, set_meter_provider
 from opentelemetry.metrics import _internal as metrics_internal
-from opentelemetry.metrics import set_meter_provider
 from opentelemetry.sdk._configuration import (
     _BaseConfigurator,
     _get_exporter_names,
@@ -311,7 +310,7 @@ class DynamicAggregation(Aggregation):
             instrument_names=(
                 "function.duration",
                 "http.server.duration",
-                "messaging.amazonsqs.duration",
+                "messaging.aws_sqs.duration",
                 "messaging.rabbitmq.duration",
             ),
         ): ExplicitBucketHistogramAggregation(

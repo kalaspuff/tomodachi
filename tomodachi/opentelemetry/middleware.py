@@ -350,26 +350,26 @@ class OpenTelemetryAioHTTPMiddleware(OpenTelemetryTomodachiMiddleware):
 
 class OpenTelemetryAWSSQSMiddleware(OpenTelemetryTomodachiMiddleware):
     duration_histogram_options = InstrumentOptions(
-        "messaging.amazonsqs.duration",
+        "messaging.aws_sqs.duration",
         "s",
         "Measures the duration of processing a message by the handler function.",
         (
-            "messaging.source.name",
-            "messaging.source.kind",
             "messaging.destination.name",
             "messaging.destination.kind",
+            "messaging.destination_publish.name",
+            "messaging.destination_publish.kind",
             "code.function",
         ),
     )
     active_tasks_counter_options = InstrumentOptions(
-        "messaging.amazonsqs.active_tasks",
+        "messaging.aws_sqs.active_tasks",
         "{message}",
         "Measures the number of concurrent SQS messages that are currently being processed.",
         (
-            "messaging.source.name",
-            "messaging.source.kind",
             "messaging.destination.name",
             "messaging.destination.kind",
+            "messaging.destination_publish.name",
+            "messaging.destination_publish.kind",
             "code.function",
         ),
     )
@@ -394,13 +394,13 @@ class OpenTelemetryAWSSQSMiddleware(OpenTelemetryTomodachiMiddleware):
         )
 
         attributes: Dict[str, AttributeValue] = {
-            "messaging.system": "AmazonSQS",
+            "messaging.system": "aws_sqs",
             "messaging.operation": "process",
-            "messaging.source.name": queue_name,
-            "messaging.source.kind": "queue",
+            "messaging.destination.name": queue_name,
+            "messaging.destination.kind": "queue",
             "messaging.message.id": sns_message_id or sqs_message_id,
-            "messaging.destination.name": topic if topic else queue_name,
-            "messaging.destination.kind": "topic" if topic else "queue",
+            "messaging.destination_publish.name": topic if topic else queue_name,
+            "messaging.destination_publish.kind": "topic" if topic else "queue",
             "code.function": handler.__name__,
         }
 
