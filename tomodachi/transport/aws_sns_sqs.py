@@ -194,7 +194,7 @@ class MessageBodyFormatter(MessageBodyFormatterProtocol):
     ) -> MessageBodyFormatter:
         try:
             if cls.__singleton is not None and cls.__singleton:
-                return cast(MessageBodyFormatter, cls.__singleton)
+                return cls.__singleton
             return super().__new__(cls)
         except AttributeError:
             instance = super().__new__(cls)
@@ -554,7 +554,7 @@ class AWSSNSSQSTransport(Invoker):
         _message_body_formatter: Optional[MessageBodyFormatterProtocol] = None
         if message_body_formatter and isinstance(message_body_formatter, type):
             _message_body_formatter = message_body_formatter()
-        elif message_body_formatter:
+        elif message_body_formatter and not isinstance(message_body_formatter, type):
             _message_body_formatter = message_body_formatter
 
         formatter_context: Optional[MessageBodyFormatterContext] = None

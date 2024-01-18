@@ -5,8 +5,9 @@ import importlib
 import uuid as uuid_
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
-from tomodachi.__version__ import __build_time__, __version_info__
+from tomodachi.__version__ import __build_time__
 from tomodachi.__version__ import __version__ as __version__
+from tomodachi.__version__ import __version_info__
 from tomodachi.logging import Logger, LoggerProtocol, get_logger
 from tomodachi.options import Options, OptionsInterface
 
