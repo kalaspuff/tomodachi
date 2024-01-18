@@ -960,7 +960,9 @@ AWS SNS+SQS related values - function signature keyword arguments
 |                               | ``SNS.Publish``.                                                                               |
 |                               |                                                                                                |
 |                               | The ``sns_message_id`` is read from within the ``"Body"`` of SQS                               |
-|                               | messages.                                                                                      |
+|                               | messages, if the message body contains a message that comes from an SNS topic subscription.    |
+|                               | If the SQS message doesn't originate from SNS (if the message isn't type ``"Notification"``,   |
+|                               | and holds a ``"TopicArn"`` value), then ``sns_message_id`` will result in an empty string.     |
 +-------------------------------+------------------------------------------------------------------------------------------------+
 | ``sqs_message_id``            | The SQS message identifier, which naturally will differ from the SNS                           |
 |                               | message identifier as one SNS message can be propagated to several                             |
@@ -968,6 +970,12 @@ AWS SNS+SQS related values - function signature keyword arguments
 |                               |                                                                                                |
 |                               | The ``sqs_message_id`` is read from the ``"MessageId"`` value in the                           |
 |                               | top of the SQS message.                                                                        |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``message_type``              | Returns the ``"Type"`` value from the message body. For messages consumed from a queue that    |
+|                               | was sent there from an SNS topic, the ``message_type`` will be ``"Notification"``.             |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``raw_message_body``          | Returns the full contents (as a string) from ``"Body"``, which can be used to implement        |
+|                               | custom listeners, tailored for more advanced workflows, where more flexibility is needed.      |
 +-------------------------------+------------------------------------------------------------------------------------------------+
 | ``message_timestamp``         | A timestamp of when the original SNS message was published.                                    |
 +-------------------------------+------------------------------------------------------------------------------------------------+
