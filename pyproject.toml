@@ -189,6 +189,7 @@ ignore = [
     "I001", # isort
     "PLR0913", # too many arguments
     "UP037", # type annotation with quotes
+    "B008", # function calls in argument defaults
 ]
 src = [
   "tomodachi",
