@@ -365,10 +365,21 @@ class AWSSNSSQSTransport(Invoker):
                 DeprecationWarning,
             )
 
-        message_attributes = {} if not message_attributes else copy.deepcopy(message_attributes)
+        if (group_id is not None and not queue_name.endswith(".fifo")) or (
+            not group_id and queue_name.endswith(".fifo")
+        ):
+            if queue_name.endswith(".fifo"):
+                error_message = "MessageGroupId, 'group_id', cannot be used with non-FIFO queue in 'send_message' call"
+            else:
+                error_message = "MessageGroupId, 'group_id', missing in 'send_message' call for implied FIFO queue"
 
-        if group_id is not None and not queue_name.endswith(".fifo"):
-            queue_name = f"{queue_name}.fifo"
+            logging.getLogger("tomodachi.awssnssqs").warning(
+                f"Bad combination of SQS.SendMessage request parameter - FIFO related arguments ({error_message})",
+                queue_name=queue_name,
+                implied_fifo=bool(queue_name.endswith(".fifo")),
+                group_id=group_id,
+            )
+            raise ValueError(error_message)
 
         queue_url: Optional[str] = None
         queue_key: Tuple[str, Optional[str], Optional[str]] = (queue_name, queue_name_prefix, None)
@@ -392,6 +403,31 @@ class AWSSNSSQSTransport(Invoker):
             )
 
         if not queue_url:
+            _queue_name = f"{queue_name}.fifo" if not bool(queue_name.endswith(".fifo")) else queue_name[:-5]
+            _queue_url = None
+
+            try:
+                _queue_url = await asyncio.create_task(
+                    cls.get_queue_url(
+                        queue_name,
+                        context=service.context,
+                        queue_name_prefix=queue_name_prefix,
+                    )
+                )
+            except Exception:
+                pass
+
+            if _queue_url:
+                if _queue_name.endswith(".fifo"):
+                    error_message = "A FIFO queue exists with the '.fifo' prefixed queue name - verify configuration"
+                else:
+                    error_message = "A standard queue exists without a '.fifo' prefixed name  - verify configuration"
+
+                logging.getLogger("tomodachi.awssnssqs").warning(
+                    f"{error_message} ('{_queue_name}' vs '{_queue_name}')"
+                )
+
+            # @todo improve errors overall with more generic type generation
             botocore_error_type = botocore.exceptions.ClientError
             error_message = "Cannot send message to non-existent (AWS.SimpleQueueService.NonExistentQueue) SQS queue"
             error_value = {
@@ -410,11 +446,11 @@ class AWSSNSSQSTransport(Invoker):
                     botocore_error_type = client.exceptions.QueueDoesNotExist
             except Exception as e:
                 logging.getLogger("exception").exception(
-                    "unexpected exception during error type creation: {}".format(str(e)),
-                    queue_name=queue_name,
-                    queue_url=queue_url,
+                    "unexpected exception during error type creation: {}".format(str(e)), queue_name=queue_name
                 )
 
+            # exception type that's subclasses botocore.exceptions.ClientError, sqs_client.exceptions.QueueDoesNotExist
+            # and tomodachi.transport.awssnssqs.QueueDoesNotExistError, which also extends AWSSNSSQSException.
             error_type: Type[QueueDoesNotExistError] = type(
                 "QueueDoesNotExistError",
                 (botocore_error_type, QueueDoesNotExistError),
@@ -426,8 +462,10 @@ class AWSSNSSQSTransport(Invoker):
                 },
             )
 
-            logging.getLogger("exception").warning(error_message, queue_name=queue_name, queue_url=queue_url)
+            logging.getLogger("tomodachi.awssnssqs").warning(error_message, queue_name=queue_name)
             raise error_type(error_value, "GetQueueUrl")
+
+        message_attributes = {} if not message_attributes else copy.deepcopy(message_attributes)
 
         message = data
         if message_envelope:
@@ -499,10 +537,9 @@ class AWSSNSSQSTransport(Invoker):
             if topic_prefix == MESSAGE_TOPIC_PREFIX
             else (topic_prefix or "")
         )
-        if topic_prefix:
-            if topic.startswith(topic_prefix):
-                prefix_length = len(topic_prefix)
-                return topic[prefix_length:]
+        if topic_prefix and topic.startswith(topic_prefix):
+            prefix_length = len(topic_prefix)
+            return topic[prefix_length:]
         return topic
 
     @classmethod
@@ -1246,7 +1283,9 @@ class AWSSNSSQSTransport(Invoker):
         optional_request_parameters = {}
         if group_id is not None:
             optional_request_parameters["MessageGroupId"] = group_id
-            optional_request_parameters["MessageDeduplicationId"] = deduplication_id or str(uuid.uuid4())
+            optional_request_parameters["MessageDeduplicationId"] = (
+                deduplication_id if deduplication_id else str(uuid.uuid4())
+            )
 
         response = {}
         for retry in range(1, 4):
@@ -1339,7 +1378,9 @@ class AWSSNSSQSTransport(Invoker):
         optional_request_parameters: Dict[str, Union[str, int, None]] = {}
         if group_id is not None:
             optional_request_parameters["MessageGroupId"] = group_id
-            optional_request_parameters["MessageDeduplicationId"] = deduplication_id or str(uuid.uuid4())
+            optional_request_parameters["MessageDeduplicationId"] = (
+                deduplication_id if deduplication_id else str(uuid.uuid4())
+            )
 
         if delay_seconds is not None:
             optional_request_parameters["DelaySeconds"] = delay_seconds
@@ -2433,8 +2474,8 @@ class AWSSNSSQSTransport(Invoker):
                                 str(message.get("Attributes", {}).get("MessageGroupId", "")) or None
                             )
 
-                            message_id = message_body.get("MessageId") or ""
-                            sns_message_id = message_id if message_type == "Notification" and topic_arn else ""
+                            _message_id = message_body.get("MessageId") or ""
+                            sns_message_id = _message_id if message_type == "Notification" and topic_arn else ""
                             sqs_message_id = message.get("MessageId") or ""
                             message_timestamp = message_body.get("Timestamp") or ""
 
