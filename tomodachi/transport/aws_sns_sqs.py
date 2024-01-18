@@ -4,6 +4,7 @@ import asyncio
 import base64
 import binascii
 import copy
+import dataclasses
 import datetime
 import decimal
 import functools
@@ -16,6 +17,7 @@ import time
 import uuid
 import warnings
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Coroutine,
@@ -25,6 +27,7 @@ from typing import (
     Mapping,
     Match,
     Optional,
+    Protocol,
     Sequence,
     Set,
     Tuple,
@@ -54,6 +57,9 @@ from tomodachi.helpers.execution_context import (
 from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 from tomodachi.options import Options
+
+if TYPE_CHECKING:
+    from tomodachi import Service
 
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
@@ -151,6 +157,84 @@ class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
 
 class QueueDoesNotExistError(AWSSNSSQSException):
     pass
+
+
+class MessageEnvelopeProtocol(Protocol):
+    @classmethod
+    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str:
+        ...
+
+    @classmethod
+    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]:
+        ...
+
+
+class MessageBodyFormatterProtocol(Protocol):
+    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str:
+        ...
+
+
+@dataclasses.dataclass(unsafe_hash=True)
+class MessageBodyFormatterContext:
+    data: str
+    message_attributes: Dict[str, Any]
+    queue_name: str
+    queue_url: str
+    service: Any
+    message_envelope: Optional[MessageEnvelopeProtocol]
+    formatter: MessageBodyFormatterProtocol
+    kwargs: Dict[str, Any]
+
+    # hack for import finder, that on module reload breaks the __module__ attribute
+    __module__: str = __name__.rsplit(".", 1)[0].replace("/", ".")
+
+
+class MessageBodyFormatter(MessageBodyFormatterProtocol):
+    __singleton: MessageBodyFormatter
+
+    def __new__(
+        cls,
+    ) -> MessageBodyFormatter:
+        try:
+            if cls.__singleton is not None and cls.__singleton:
+                return cast(MessageBodyFormatter, cls.__singleton)
+            return super().__new__(cls)
+        except AttributeError:
+            instance = super().__new__(cls)
+            cls.__singleton = instance
+            return instance
+
+    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str:
+        message = context.data
+
+        if context.message_envelope:
+            message = await asyncio.create_task(
+                context.message_envelope.build_message(
+                    context.service,
+                    "",
+                    message,
+                    message_attributes=context.message_attributes,
+                    **kwargs,
+                )
+            )
+
+        timestamp = (
+            datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        )
+        _message_attributes = AWSSNSSQSTransport.transform_message_attributes_to_message_body_metadata(
+            context.message_attributes
+        )
+
+        return json.dumps(
+            {
+                "Type": "Message",
+                "QueueUrl": context.queue_url,
+                "Version": "0",
+                "Message": message,
+                "Timestamp": timestamp,
+                "MessageAttributes": _message_attributes,
+            }
+        )
 
 
 class AWSSNSSQSTransport(Invoker):
@@ -298,7 +382,9 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         delay_seconds: Optional[int] = None,
-        raw_message_delivery: bool = False,
+        message_body_formatter: Optional[
+            type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
+        ] = MessageBodyFormatter,
         **kwargs: Any,
     ) -> str:
         ...
@@ -319,7 +405,9 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         delay_seconds: Optional[int] = None,
-        raw_message_delivery: bool = False,
+        message_body_formatter: Optional[
+            type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
+        ] = MessageBodyFormatter,
         **kwargs: Any,
     ) -> asyncio.Task[str]:
         ...
@@ -339,7 +427,9 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         delay_seconds: Optional[int] = None,
-        raw_message_delivery: bool = False,
+        message_body_formatter: Optional[
+            type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
+        ] = MessageBodyFormatter,
         **kwargs: Any,
     ) -> Union[str, asyncio.Task[str]]:
         logging.getLogger("tomodachi.awssnssqs").new(logger="tomodachi.awssnssqs")
@@ -409,7 +499,7 @@ class AWSSNSSQSTransport(Invoker):
             try:
                 _queue_url = await asyncio.create_task(
                     cls.get_queue_url(
-                        queue_name,
+                        _queue_name,
                         context=service.context,
                         queue_name_prefix=queue_name_prefix,
                     )
@@ -467,41 +557,38 @@ class AWSSNSSQSTransport(Invoker):
 
         message_attributes = {} if not message_attributes else copy.deepcopy(message_attributes)
 
-        message = data
-        if message_envelope:
-            build_message_func = getattr(message_envelope, "build_message", None)
-            if build_message_func:
-                message = await asyncio.create_task(
-                    build_message_func(service, "", data, message_attributes=message_attributes, **kwargs)
-                )
+        # @todo proper dependency injections for the enveloping of data and message body formatter
+        _message_body_formatter: Optional[MessageBodyFormatterProtocol] = None
+        if message_body_formatter and isinstance(message_body_formatter, type):
+            _message_body_formatter = message_body_formatter()
+        elif message_body_formatter:
+            _message_body_formatter = message_body_formatter
 
-        if raw_message_delivery:
-            message_body = message
-        else:
-            timestamp = (
-                datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-            )
-            message_body = json.dumps(
-                {
-                    "Type": "Message",
-                    "Version": "0",
-                    "Timestamp": timestamp,
-                    "Message": message,
-                    "QueueUrl": queue_url,
-                }
+        formatter_context: Optional[MessageBodyFormatterContext] = None
+        if _message_body_formatter:
+            formatter_context = MessageBodyFormatterContext(
+                data=data,
+                message_attributes=message_attributes,
+                queue_name=queue_name,
+                queue_url=queue_url,
+                service=service,
+                message_envelope=message_envelope,
+                formatter=_message_body_formatter,
+                kwargs=kwargs,
             )
 
         async def _send_message() -> str:
             logging.getLogger("tomodachi.awssnssqs").bind(queue_name=queue_name)
             return await cls._send_raw_message(
                 queue_url,
-                message_body,
+                data,
                 cast(Dict, message_attributes),
                 service.context,
                 group_id=group_id,
                 deduplication_id=deduplication_id,
                 delay_seconds=delay_seconds,
                 service=service,
+                formatter_context=formatter_context,
             )
 
         if wait:
@@ -1204,17 +1291,49 @@ class AWSSNSSQSTransport(Invoker):
     def transform_message_attributes_from_response(
         message_attributes: Dict,
     ) -> MessageAttributesType:
+        # SQS -> Message attributes on a SQS message are structured with "DataType", "StringValue" and "BinaryValue".
+        # SNS -> Message attributes in the message body as forwarded from an SNS notification uses "Type" and "Value".
+        # Both kinds of structures are parsed, in order to accomodate both 'SNS.Publish' and 'SQS.SendMessage'.
+        # For portability to use this method as part of Lambda functions, we're also supporting camelCase variants.
+
         result: MessageAttributesType = {}
 
         for name, values in message_attributes.items():
-            value = values["Value"]
-            if values["Type"] == "String":
+            if "DataType" in values:
+                type_ = values["DataType"]
+            elif "Type" in values:
+                type_ = values["Type"]
+            elif "dataType" in values:
+                type_ = values["dataType"]
+            elif "type" in values:
+                type_ = values["type"]
+            else:
+                continue
+
+            type_ = values["DataType"] if "DataType" in values else values["Type"]
+
+            if "StringValue" in values:
+                value = values["StringValue"]
+            elif "BinaryValue" in values:
+                value = values["BinaryValue"]
+            elif "Value" in values:
+                value = values["Value"]
+            elif "stringValue" in values:
+                value = values["stringValue"]
+            elif "binaryValue" in values:
+                value = values["binaryValue"]
+            elif "value" in values:
+                value = values["value"]
+            else:
+                continue
+
+            if type_ == "String":
                 result[name] = value
-            elif values["Type"] == "Number":
+            elif type_ == "Number":
                 result[name] = int(value) if "." not in value else float(value)
-            elif values["Type"] == "Binary":
+            elif type_ == "Binary":
                 result[name] = base64.b64decode(value)
-            elif values["Type"] == "String.Array":
+            elif type_ == "String.Array":
                 result[name] = cast(
                     Optional[Union[bool, List[Optional[Union[str, int, float, bool, object]]]]], json.loads(value)
                 )
@@ -1223,6 +1342,9 @@ class AWSSNSSQSTransport(Invoker):
 
     @staticmethod
     def transform_message_attributes_to_botocore(message_attributes: Dict) -> Dict[str, Dict[str, Union[str, bytes]]]:
+        # This function formats message attributes from a key-value dict into the structure expected by botocore,
+        # which then converts it into the request parameters used for SNS.Publish, SQS.SendMessage and the batch APIs.
+
         result: Dict[str, Dict[str, Union[str, bytes]]] = {}
 
         for name, value in message_attributes.items():
@@ -1238,6 +1360,32 @@ class AWSSNSSQSTransport(Invoker):
                 result[name] = {"DataType": "String.Array", "StringValue": json.dumps(value)}
             else:
                 result[name] = {"DataType": "String", "StringValue": str(value)}
+
+        return result
+
+    @staticmethod
+    def transform_message_attributes_to_message_body_metadata(
+        message_attributes: Dict,
+    ) -> Dict[str, Dict[str, Union[str, bytes]]]:
+        # Utility function that formats message attributes from a key-value dict into a similar structure that is
+        # used within the message body of an SNS notification forwarded to SQS, as the result of SNS.Publish.
+        # This uses just "Type" and "Value" keys, and is slightly cleaner than message attributes on outer SQS messages.
+
+        result: Dict[str, Dict[str, Union[str, bytes]]] = {}
+
+        for name, value in message_attributes.items():
+            if isinstance(value, str):
+                result[name] = {"Type": "String", "Value": value}
+            elif value is None or isinstance(value, bool):
+                result[name] = {"Type": "String.Array", "Value": json.dumps(value)}
+            elif isinstance(value, (int, float, decimal.Decimal)):
+                result[name] = {"Type": "Number", "Value": str(value)}
+            elif isinstance(value, bytes):
+                result[name] = {"Type": "Binary", "Value": value}
+            elif isinstance(value, list):
+                result[name] = {"Type": "String.Array", "Value": json.dumps(value)}
+            else:
+                result[name] = {"Type": "String", "Value": str(value)}
 
         return result
 
@@ -1369,9 +1517,15 @@ class AWSSNSSQSTransport(Invoker):
         deduplication_id: Optional[str] = None,
         delay_seconds: Optional[int] = None,
         service: Any = None,
+        formatter_context: Optional[MessageBodyFormatterContext] = None,
     ) -> str:
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
+
+        if formatter_context:
+            message_body = await asyncio.create_task(
+                formatter_context.formatter(formatter_context, **formatter_context.kwargs)
+            )
 
         message_attribute_values = cls.transform_message_attributes_to_botocore(message_attributes)
 
@@ -2357,6 +2511,7 @@ class AWSSNSSQSTransport(Invoker):
                                             "MessageDeduplicationId",
                                             "MessageGroupId",
                                         ],
+                                        MessageAttributeNames=["All"],
                                     ),
                                     timeout=40,
                                 )
@@ -2439,6 +2594,7 @@ class AWSSNSSQSTransport(Invoker):
                             continue
 
                         for message in messages:
+                            print(message)
                             receipt_handle = message.get("ReceiptHandle")
                             raw_message_body = message.get("Body")
                             try:
@@ -2463,7 +2619,11 @@ class AWSSNSSQSTransport(Invoker):
                                 continue
 
                             payload = message_body.get("Message")
-                            message_attributes = message_body.get("MessageAttributes", {})
+                            message_attributes = (
+                                message.get("MessageAttributes", {})
+                                if "MessageAttributes" in message
+                                else message_body.get("MessageAttributes", {})
+                            )
                             approximate_receive_count: Optional[int] = (
                                 int(message.get("Attributes", {}).get("ApproximateReceiveCount", 0)) or None
                             )
@@ -2798,7 +2958,13 @@ __awssnssqs = AWSSNSSQSTransport.decorator(AWSSNSSQSTransport.subscribe_handler)
 
 aws_sns_sqs_publish = AWSSNSSQSTransport.publish
 awssnssqs_publish = AWSSNSSQSTransport.publish
+sns_publish = AWSSNSSQSTransport.publish
 publish = AWSSNSSQSTransport.publish
+
+aws_sns_sqs_send_message = AWSSNSSQSTransport.send_message
+awssnssqs_send_message = AWSSNSSQSTransport.send_message
+sqs_send_message = AWSSNSSQSTransport.send_message
+send_message = AWSSNSSQSTransport.send_message
 
 
 def aws_sns_sqs(
