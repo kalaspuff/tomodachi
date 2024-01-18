@@ -952,7 +952,9 @@ AWS SNS+SQS related values - function signature keyword arguments
 |                               | (for example in order to make it visible for other consumers or in                             |
 |                               | case of errors), will add to this count for each time they received it.                        |
 +-------------------------------+------------------------------------------------------------------------------------------------+
-| ``topic``                     | Simply the name of the SNS topic.                                                              |
+| ``topic``                     | Simply the name of the SNS topic. For messages sent directly to the queue (for example via     |
+|                               | ``SQS.SendMessage`` API calls), instead of via SNS topic subscriptions (``SNS.Publish``), the  |
+|                               | value of ``topic`` will be an empty string.                                                    |
 +-------------------------------+------------------------------------------------------------------------------------------------+
 | ``sns_message_id``            | The message identifier for the SNS message (which is usually embedded                          |
 |                               | in the body of a SQS message). Ths SNS message identifier is the same                          |
