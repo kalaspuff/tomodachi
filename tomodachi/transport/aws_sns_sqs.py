@@ -1330,7 +1330,9 @@ class AWSSNSSQSTransport(Invoker):
             elif type_ == "Number":
                 result[name] = int(value) if "." not in value else float(value)
             elif type_ == "Binary":
-                result[name] = base64.b64decode(value)
+                # a binary message attribute received on the outer sqs message are already base64 decoded by botocore,
+                # but if it's part of an sns notification message, it will instead be a base64 encoded string.
+                result[name] = base64.b64decode(value.encode("ascii")) if isinstance(value, str) else value
             elif type_ == "String.Array":
                 result[name] = cast(
                     Optional[Union[bool, List[Optional[Union[str, int, float, bool, object]]]]], json.loads(value)
@@ -1353,6 +1355,7 @@ class AWSSNSSQSTransport(Invoker):
             elif isinstance(value, (int, float, decimal.Decimal)):
                 result[name] = {"DataType": "Number", "StringValue": str(value)}
             elif isinstance(value, bytes):
+                # botocore handles the binary conversion to base64, so it can't done here (it would be double-encoded)
                 result[name] = {"DataType": "Binary", "BinaryValue": value}
             elif isinstance(value, list):
                 result[name] = {"DataType": "String.Array", "StringValue": json.dumps(value)}
@@ -1379,7 +1382,7 @@ class AWSSNSSQSTransport(Invoker):
             elif isinstance(value, (int, float, decimal.Decimal)):
                 result[name] = {"Type": "Number", "Value": str(value)}
             elif isinstance(value, bytes):
-                result[name] = {"Type": "Binary", "Value": value}
+                result[name] = {"Type": "Binary", "Value": base64.b64encode(value).decode("ascii")}
             elif isinstance(value, list):
                 result[name] = {"Type": "String.Array", "Value": json.dumps(value)}
             else:
