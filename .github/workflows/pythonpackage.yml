@@ -34,7 +34,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
       - name: Set up Poetry cache for Python dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         if: startsWith(runner.os, 'Linux')
         with:
           path: ~/.cache/pypoetry
