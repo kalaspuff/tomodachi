@@ -13,13 +13,15 @@ import aiohttp.client_exceptions
 import botocore
 import botocore.exceptions
 
+from tomodachi.helpers.aws_credentials import Credentials, CredentialsMapping
+
 MAX_POOL_CONNECTIONS = 50
 CONNECT_TIMEOUT = 8
 READ_TIMEOUT = 35
 CLIENT_CREATION_TIME_LOCK = 45
 
 
-class ClientConnector(object):
+class ClientConnector:
     __slots__ = (
         "clients",
         "_clients_context",
@@ -33,7 +35,7 @@ class ClientConnector(object):
 
     clients: Dict[str, Optional[aiobotocore.client.AioBaseClient]]
     _clients_context: Dict[str, AsyncExitStack]
-    credentials: Dict[str, Dict]
+    credentials: Dict[str, Credentials]
     client_creation_lock_time: Dict[str, float]
     aliases: Dict[str, str]
     locks: Dict[str, asyncio.Lock]
@@ -50,7 +52,9 @@ class ClientConnector(object):
         self.conditions = {}
         self.close_waiter = None
 
-    def setup_credentials(self, alias_name: str, credentials: Dict) -> None:
+    def setup_credentials(self, alias_name: str, credentials: CredentialsMapping) -> None:
+        if not isinstance(credentials, Credentials):
+            credentials = Credentials(credentials)
         self.credentials[alias_name] = credentials
 
     def get_client(self, alias_name: str) -> Optional[aiobotocore.client.AioBaseClient]:
@@ -67,8 +71,13 @@ class ClientConnector(object):
         return self.conditions[alias_name]
 
     async def create_client(
-        self, alias_name: Optional[str] = None, credentials: Optional[Dict] = None, service_name: Optional[str] = None
+        self,
+        alias_name: Optional[str] = None,
+        credentials: Optional[CredentialsMapping] = None,
+        service_name: Optional[str] = None,
     ) -> aiobotocore.client.AioBaseClient:
+        if alias_name is None and service_name is None:
+            raise Exception("Required 'alias_name' or 'service_name' is missing to create client")
         if service_name is None and alias_name is not None:
             service_name = alias_name
         if alias_name is None and service_name is not None:
@@ -90,6 +99,9 @@ class ClientConnector(object):
                         raise
                     await asyncio.sleep(0.1)
 
+        if credentials is not None and not isinstance(credentials, Credentials):
+            credentials = Credentials(credentials)
+
         async with self.get_lock(alias_name):
             client = self.get_client(alias_name)
             if self.client_creation_lock_time.get(alias_name, 0) + CLIENT_CREATION_TIME_LOCK > time.time():
@@ -97,12 +109,12 @@ class ClientConnector(object):
                     return client
             self.client_creation_lock_time[alias_name] = time.time() if client else 0
 
-            if not credentials:
-                credentials = self.credentials.get(alias_name, {})
+            if credentials is None:
+                credentials = self.credentials[alias_name] if alias_name in self.credentials else Credentials()
             else:
                 self.credentials[alias_name] = credentials
             if not credentials:
-                credentials = {}
+                credentials = Credentials()
 
             self.aliases[alias_name] = service_name
 
@@ -112,7 +124,7 @@ class ClientConnector(object):
             )
             context_stack = AsyncExitStack()
             client_value = context_stack.enter_async_context(
-                session.create_client(service_name, config=config, **credentials)
+                session.create_client(service_name, config=config, **credentials.dict())
             )
             if inspect.isawaitable(client_value):
                 client = await client_value
@@ -244,7 +256,10 @@ class ClientConnector(object):
 
     @asynccontextmanager
     async def __call__(
-        self, alias_name: Optional[str] = None, credentials: Optional[Dict] = None, service_name: Optional[str] = None
+        self,
+        alias_name: Optional[str] = None,
+        credentials: Optional[CredentialsMapping] = None,
+        service_name: Optional[str] = None,
     ) -> AsyncIterator[Any]:
         exc_iteration_count = 0
         while self.close_waiter and not self.close_waiter.done():

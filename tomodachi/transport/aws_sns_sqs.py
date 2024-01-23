@@ -48,6 +48,7 @@ from botocore.parsers import ResponseParserError
 from tomodachi import get_contextvar, logging
 from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
+from tomodachi.helpers.aws_credentials import Credentials, CredentialsDict
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     get_execution_context,
@@ -161,14 +162,17 @@ class QueueDoesNotExistError(AWSSNSSQSException):
 
 class MessageEnvelopeProtocol(Protocol):
     @classmethod
-    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str: ...
+    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str:
+        ...
 
     @classmethod
-    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]: ...
+    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]:
+        ...
 
 
 class MessageBodyFormatterProtocol(Protocol):
-    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str: ...
+    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str:
+        ...
 
 
 @dataclasses.dataclass(frozen=True)
@@ -257,7 +261,8 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> str: ...
+    ) -> str:
+        ...
 
     @overload
     @classmethod
@@ -277,7 +282,8 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> asyncio.Task[str]: ...
+    ) -> asyncio.Task[str]:
+        ...
 
     @classmethod
     async def publish(
@@ -381,7 +387,8 @@ class AWSSNSSQSTransport(Invoker):
             type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
         ] = MessageBodyFormatter,
         **kwargs: Any,
-    ) -> str: ...
+    ) -> str:
+        ...
 
     @overload
     @classmethod
@@ -403,7 +410,8 @@ class AWSSNSSQSTransport(Invoker):
             type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
         ] = MessageBodyFormatter,
         **kwargs: Any,
-    ) -> asyncio.Task[str]: ...
+    ) -> asyncio.Task[str]:
+        ...
 
     @classmethod
     async def send_message(
@@ -1088,12 +1096,12 @@ class AWSSNSSQSTransport(Invoker):
 
         options: Options = AWSSNSSQSTransport.options(context)
 
-        credentials = {
-            "region_name": options.aws_sns_sqs.region_name,
-            "aws_secret_access_key": options.aws_sns_sqs.aws_secret_access_key,
-            "aws_access_key_id": options.aws_sns_sqs.aws_access_key_id,
-            "endpoint_url": options.aws_endpoint_urls.get(name, None),
-        }
+        credentials = Credentials(
+            region_name=options.aws_sns_sqs.region_name,
+            aws_secret_access_key=options.aws_sns_sqs.aws_secret_access_key,
+            aws_access_key_id=options.aws_sns_sqs.aws_access_key_id,
+            endpoint_url=options.aws_endpoint_urls.get(name, None),
+        )
 
         connector.setup_credentials(alias, credentials)
 
