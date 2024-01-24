@@ -110,6 +110,7 @@ types-protobuf = { version = ">=0.1.13", markers = "sys_platform != \"win32\"" }
 types-pytz = { version = ">=2021.1.0", markers = "sys_platform != \"win32\"" }
 types-tzlocal = { version = ">=0.1.1", markers = "sys_platform != \"win32\"" }
 types-setuptools = { version = ">=16.0", markers = "sys_platform != \"win32\"" }
+types-aiobotocore = { version = ">=1.3.0", markers = "sys_platform != \"win32\"", extras = ["sns", "sqs"] }
 
 [tool.poetry.scripts]
 tomodachi = "tomodachi.cli:cli_entrypoint"

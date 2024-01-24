@@ -1,8 +1,24 @@
 import asyncio
 import inspect
+import sys
 import time
-from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Any, AsyncIterator, Dict, Optional, cast
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncGenerator,
+    AsyncIterable,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Dict,
+    Generator,
+    Optional,
+    Union,
+    cast,
+    overload,
+)
 
 import aiobotocore
 import aiobotocore.client
@@ -14,6 +30,19 @@ import botocore
 import botocore.exceptions
 
 from tomodachi.helpers.aws_credentials import Credentials, CredentialsMapping
+
+if sys.version_info >= (3, 12):
+    from typing import Literal
+else:
+    from typing import Literal
+
+if TYPE_CHECKING:
+    from types_aiobotocore_sns import SNSClient
+    from types_aiobotocore_sqs import SQSClient
+else:
+    SNSClient = aiobotocore.client.AioBaseClient
+    SQSClient = aiobotocore.client.AioBaseClient
+
 
 MAX_POOL_CONNECTIONS = 50
 CONNECT_TIMEOUT = 8
@@ -70,6 +99,33 @@ class ClientConnector:
             self.conditions[alias_name] = asyncio.Condition()
         return self.conditions[alias_name]
 
+    @overload
+    async def create_client(
+        self,
+        alias_name: Optional[str],
+        credentials: Optional[CredentialsMapping],
+        service_name: Literal["sns"],
+    ) -> SNSClient:
+        ...
+
+    @overload
+    async def create_client(
+        self,
+        alias_name: Optional[str],
+        credentials: Optional[CredentialsMapping],
+        service_name: Literal["sqs"],
+    ) -> SQSClient:
+        ...
+
+    @overload
+    async def create_client(
+        self,
+        alias_name: Optional[str] = None,
+        credentials: Optional[CredentialsMapping] = None,
+        service_name: Optional[str] = None,
+    ) -> aiobotocore.client.AioBaseClient:
+        ...
+
     async def create_client(
         self,
         alias_name: Optional[str] = None,
@@ -85,6 +141,9 @@ class ClientConnector:
 
         alias_name = str(alias_name)
         service_name = str(service_name)
+
+        if alias_name in self.aliases and self.aliases[alias_name] != service_name:
+            raise Exception(f"Client with alias '{alias_name}' has already been created for service '{service_name}'")
 
         exc_iteration_count = 0
         while self.close_waiter:
@@ -104,9 +163,8 @@ class ClientConnector:
 
         async with self.get_lock(alias_name):
             client = self.get_client(alias_name)
-            if self.client_creation_lock_time.get(alias_name, 0) + CLIENT_CREATION_TIME_LOCK > time.time():
-                if client:
-                    return client
+            if client and self.client_creation_lock_time.get(alias_name, 0) + CLIENT_CREATION_TIME_LOCK > time.time():
+                return client
             self.client_creation_lock_time[alias_name] = time.time() if client else 0
 
             if credentials is None:
@@ -127,12 +185,12 @@ class ClientConnector:
                 session.create_client(service_name, config=config, **credentials.dict())
             )
             if inspect.isawaitable(client_value):
-                client = await client_value
+                client = cast(aiobotocore.client.AioBaseClient, await client_value)
             else:
-                client = client_value
+                client = cast(aiobotocore.client.AioBaseClient, client_value)
 
             old_client = self.get_client(alias_name)
-            self.clients[alias_name] = cast(aiobotocore.client.AioBaseClient, client)
+            self.clients[alias_name] = client
             self._clients_context[alias_name] = context_stack
 
             if old_client:
@@ -146,7 +204,9 @@ class ClientConnector:
                 except (Exception, RuntimeError, asyncio.CancelledError, BaseException):
                     pass
 
-            return cast(aiobotocore.client.AioBaseClient, self.clients.get(alias_name) or client)
+            if alias_name in self.clients and self.clients[alias_name]:
+                return cast(aiobotocore.client.AioBaseClient, self.clients[alias_name])
+            return client
 
     async def close_client(
         self,
@@ -167,9 +227,8 @@ class ClientConnector:
                         raise
                     await asyncio.sleep(0.1)
 
-        if not alias_name and client:
-            if client in self.clients.values():
-                alias_name = [k for k, v in self.clients.items() if client == v][0]
+        if not alias_name and client and client in self.clients.values():
+            alias_name = [k for k, v in self.clients.items() if client == v][0]
 
         if not alias_name:
             return
@@ -201,9 +260,8 @@ class ClientConnector:
     async def reconnect_client(
         self, alias_name: Optional[str] = None, client: Optional[aiobotocore.client.AioBaseClient] = None
     ) -> aiobotocore.client.AioBaseClient:
-        if not alias_name and client:
-            if client in self.clients.values():
-                alias_name = [k for k, v in self.clients.items() if client == v][0]
+        if not alias_name and client and client in self.clients.values():
+            alias_name = [k for k, v in self.clients.items() if client == v][0]
 
         service_name = self.aliases.get(alias_name or "")
         if not service_name:
@@ -254,13 +312,59 @@ class ClientConnector:
         if self.close_waiter:
             self.close_waiter.set_result(None)
 
-    @asynccontextmanager
-    async def __call__(
+    @overload
+    def __overloaded_call__(
+        self,
+        alias_name: Optional[str],
+        credentials: Optional[CredentialsMapping],
+        service_name: Literal["sns"],
+    ) -> AsyncIterator[SNSClient]:
+        ...
+
+    @overload
+    def __overloaded_call__(
+        self,
+        alias_name: Optional[str] = None,
+        credentials: Optional[CredentialsMapping] = None,
+        *,
+        service_name: Literal["sns"],
+    ) -> AsyncIterator[SNSClient]:
+        ...
+
+    @overload
+    def __overloaded_call__(
+        self,
+        alias_name: Optional[str],
+        credentials: Optional[CredentialsMapping],
+        service_name: Literal["sqs"],
+    ) -> AsyncIterator[SQSClient]:
+        ...
+
+    @overload
+    def __overloaded_call__(
+        self,
+        alias_name: Optional[str] = None,
+        credentials: Optional[CredentialsMapping] = None,
+        *,
+        service_name: Literal["sqs"],
+    ) -> AsyncIterator[SQSClient]:
+        ...
+
+    @overload
+    def __overloaded_call__(
         self,
         alias_name: Optional[str] = None,
         credentials: Optional[CredentialsMapping] = None,
         service_name: Optional[str] = None,
-    ) -> AsyncIterator[Any]:
+    ) -> AsyncIterator[aiobotocore.client.AioBaseClient]:
+        ...
+
+    async def __overloaded_call__(
+        self,
+        alias_name: Optional[str] = None,
+        credentials: Optional[CredentialsMapping] = None,
+        service_name: Optional[str] = None,
+    ) -> AsyncIterator[aiobotocore.client.AioBaseClient]:
         exc_iteration_count = 0
         while self.close_waiter and not self.close_waiter.done():
             try:
@@ -273,9 +377,9 @@ class ClientConnector:
 
         client_name = alias_name or service_name or ""
 
-        if not self.get_client(client_name):
-            await self.create_client(alias_name, credentials, service_name)
         client = self.get_client(client_name)
+        if not client:
+            client = await self.create_client(alias_name, credentials, service_name)
 
         try:
             yield client
@@ -294,6 +398,8 @@ class ClientConnector:
             if "The security token included in the request is invalid" in error_message:
                 await self.close_client(client=client, fast=True)
             raise
+
+    __call__ = asynccontextmanager(__overloaded_call__)
 
 
 connector: ClientConnector = ClientConnector()

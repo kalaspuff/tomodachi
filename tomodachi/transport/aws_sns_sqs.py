@@ -39,6 +39,7 @@ from typing import (
 )
 
 import aiobotocore
+import aiobotocore.client
 import aiohttp
 import aiohttp.client_exceptions
 import botocore
@@ -48,7 +49,7 @@ from botocore.parsers import ResponseParserError
 from tomodachi import get_contextvar, logging
 from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
-from tomodachi.helpers.aws_credentials import Credentials, CredentialsDict
+from tomodachi.helpers.aws_credentials import Credentials
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     get_execution_context,
@@ -60,7 +61,14 @@ from tomodachi.invoker import Invoker
 from tomodachi.options import Options
 
 if TYPE_CHECKING:
+    from types_aiobotocore_sns import SNSClient
+    from types_aiobotocore_sqs import SQSClient
+
     from tomodachi import Service
+else:
+    SNSClient = aiobotocore.client.AioBaseClient
+    SQSClient = aiobotocore.client.AioBaseClient
+
 
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
@@ -181,7 +189,7 @@ class MessageBodyFormatterContext:
     message_attributes: Dict[str, Any]
     queue_name: str
     queue_url: str
-    service: Any
+    service: Service
     message_envelope: Optional[MessageEnvelopeProtocol]
     formatter: MessageBodyFormatterProtocol
     kwargs: Dict[str, Any]
@@ -1088,11 +1096,21 @@ class AWSSNSSQSTransport(Invoker):
         start_func = cls.subscribe(obj, context)
         return (await start_func) if start_func else None
 
+    @overload
     @staticmethod
-    async def create_client(name: str, context: Dict) -> None:
+    async def create_client(name: Literal["sns"], context: Dict) -> SNSClient:
+        ...
+
+    @overload
+    @staticmethod
+    async def create_client(name: Literal["sqs"], context: Dict) -> SQSClient:
+        ...
+
+    @staticmethod
+    async def create_client(name: str, context: Dict) -> aiobotocore.client.AioBaseClient:
         alias = f"tomodachi.{name}"
         if connector.get_client(alias):
-            return
+            return cast(aiobotocore.client.AioBaseClient, connector.get_client(alias))
 
         options: Options = AWSSNSSQSTransport.options(context)
 
@@ -1108,7 +1126,7 @@ class AWSSNSSQSTransport(Invoker):
         logging.getLogger("botocore.vendored.requests.packages.urllib3.connectionpool").setLevel(logging.WARNING)
 
         try:
-            await connector.create_client(alias, service_name=name)
+            return await connector.create_client(alias, service_name=name)
         except (botocore.exceptions.PartialCredentialsError, botocore.exceptions.NoRegionError) as e:
             error_message = str(e)
             logging.getLogger("tomodachi.awssnssqs").warning(
@@ -1204,8 +1222,8 @@ class AWSSNSSQSTransport(Invoker):
 
                 if topic_attributes and topic_attributes.get("KmsMasterKeyId") == "":
                     try:
-                        async with connector("tomodachi.sns", service_name="sqs") as client:
-                            topic_attributes_response = await client.get_topic_attributes(TopicArn=topic_arn)
+                        async with connector("tomodachi.sns", service_name="sns") as client:
+                            topic_attributes_response = await client.get_topic_attributes(TopicArn=cast(str, topic_arn))
                             if not topic_attributes_response.get("Attributes", {}).get("KmsMasterKeyId"):
                                 update_attributes = False
                                 overwrite_attributes = False

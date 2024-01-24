@@ -1,9 +1,10 @@
+import sys
 from typing import (
+    TYPE_CHECKING,
     Any,
     ItemsView,
     Iterator,
     KeysView,
-    Literal,
     Optional,
     TypedDict,
     TypeVar,
@@ -12,6 +13,11 @@ from typing import (
     cast,
     overload,
 )
+
+if sys.version_info >= (3, 12):
+    from typing import Literal
+else:
+    from typing import Literal
 
 T = TypeVar("T")
 
