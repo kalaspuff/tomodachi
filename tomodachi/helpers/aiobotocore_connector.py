@@ -2,23 +2,8 @@ import asyncio
 import inspect
 import sys
 import time
-from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    AsyncGenerator,
-    AsyncIterable,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Coroutine,
-    Dict,
-    Generator,
-    Optional,
-    Union,
-    cast,
-    overload,
-)
+from contextlib import AsyncExitStack, asynccontextmanager
+from typing import TYPE_CHECKING, AsyncIterator, Dict, Optional, cast, overload
 
 import aiobotocore
 import aiobotocore.client
@@ -105,8 +90,7 @@ class ClientConnector:
         alias_name: Optional[str],
         credentials: Optional[CredentialsMapping],
         service_name: Literal["sns"],
-    ) -> SNSClient:
-        ...
+    ) -> SNSClient: ...
 
     @overload
     async def create_client(
@@ -114,8 +98,7 @@ class ClientConnector:
         alias_name: Optional[str],
         credentials: Optional[CredentialsMapping],
         service_name: Literal["sqs"],
-    ) -> SQSClient:
-        ...
+    ) -> SQSClient: ...
 
     @overload
     async def create_client(
@@ -123,8 +106,7 @@ class ClientConnector:
         alias_name: Optional[str] = None,
         credentials: Optional[CredentialsMapping] = None,
         service_name: Optional[str] = None,
-    ) -> aiobotocore.client.AioBaseClient:
-        ...
+    ) -> aiobotocore.client.AioBaseClient: ...
 
     async def create_client(
         self,
@@ -182,7 +164,7 @@ class ClientConnector:
             )
             context_stack = AsyncExitStack()
             client_value = context_stack.enter_async_context(
-                session.create_client(service_name, config=config, **credentials.dict())
+                session.create_client(service_name, config=config, **credentials.dict())  # type: ignore[call-overload]
             )
             if inspect.isawaitable(client_value):
                 client = cast(aiobotocore.client.AioBaseClient, await client_value)
@@ -318,8 +300,7 @@ class ClientConnector:
         alias_name: Optional[str],
         credentials: Optional[CredentialsMapping],
         service_name: Literal["sns"],
-    ) -> AsyncIterator[SNSClient]:
-        ...
+    ) -> AsyncIterator[SNSClient]: ...
 
     @overload
     def __overloaded_call__(
@@ -328,8 +309,7 @@ class ClientConnector:
         credentials: Optional[CredentialsMapping] = None,
         *,
         service_name: Literal["sns"],
-    ) -> AsyncIterator[SNSClient]:
-        ...
+    ) -> AsyncIterator[SNSClient]: ...
 
     @overload
     def __overloaded_call__(
@@ -337,8 +317,7 @@ class ClientConnector:
         alias_name: Optional[str],
         credentials: Optional[CredentialsMapping],
         service_name: Literal["sqs"],
-    ) -> AsyncIterator[SQSClient]:
-        ...
+    ) -> AsyncIterator[SQSClient]: ...
 
     @overload
     def __overloaded_call__(
@@ -347,8 +326,7 @@ class ClientConnector:
         credentials: Optional[CredentialsMapping] = None,
         *,
         service_name: Literal["sqs"],
-    ) -> AsyncIterator[SQSClient]:
-        ...
+    ) -> AsyncIterator[SQSClient]: ...
 
     @overload
     def __overloaded_call__(
@@ -356,8 +334,7 @@ class ClientConnector:
         alias_name: Optional[str] = None,
         credentials: Optional[CredentialsMapping] = None,
         service_name: Optional[str] = None,
-    ) -> AsyncIterator[aiobotocore.client.AioBaseClient]:
-        ...
+    ) -> AsyncIterator[aiobotocore.client.AioBaseClient]: ...
 
     async def __overloaded_call__(
         self,

@@ -140,6 +140,73 @@ MessageAttributesType = Dict[
     str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
 ]
 
+
+if TYPE_CHECKING:
+    try:
+        from botocore.exceptions import _ClientErrorResponseTypeDef, _ResponseMetadataTypeDef
+    except ModuleNotFoundError:
+
+        class _ClientErrorResponseError(TypedDict, total=False):
+            Code: str
+            Message: str
+
+        class _ResponseMetadataTypeDef(TypedDict):  # type: ignore[no-redef]
+            RequestId: str
+            HostId: str
+            HTTPStatusCode: int
+            HTTPHeaders: Dict[str, Any]
+            RetryAttempts: int
+
+        class _AttributeMapTypeDef(TypedDict, total=False):
+            key: str
+            value: Any
+
+        class _CancellationReasonTypeDef(TypedDict, total=False):
+            Code: str
+            Message: str
+            Item: _AttributeMapTypeDef
+
+        class _ClientErrorResponseTypeDef(TypedDict, total=False):  # type: ignore[no-redef]
+            Status: str
+            StatusReason: str
+            Error: _ClientErrorResponseError
+            ResponseMetadata: _ResponseMetadataTypeDef
+            CancellationReasons: List[_CancellationReasonTypeDef]
+
+    class PublishResponseTypeDef(TypedDict):
+        MessageId: str
+        SequenceNumber: str
+        ResponseMetadata: _ResponseMetadataTypeDef
+
+    class EmptyResponseMetadataTypeDef(TypedDict):
+        ResponseMetadata: _ResponseMetadataTypeDef
+
+    class GenericResponseMetadataTypeDef(EmptyResponseMetadataTypeDef, total=False):
+        pass
+
+    class SendMessageResultTypeDef(TypedDict):
+        MD5OfMessageBody: str
+        MD5OfMessageAttributes: str
+        MD5OfMessageSystemAttributes: str
+        MessageId: str
+        SequenceNumber: str
+        ResponseMetadata: _ResponseMetadataTypeDef
+
+
+class _MessageAttributeValueBaseTypeDef(TypedDict):
+    DataType: str
+
+
+class _MessageAttributeValueTypeDef(_MessageAttributeValueBaseTypeDef, total=False):
+    StringValue: str
+    BinaryValue: Any  # SNS wants "Union[str, bytes, IO[Any], aiobotocore.response.StreamingBody]". SQS wants "bytes".
+    StringListValues: List[str]
+    BinaryListValues: List[bytes]
+
+
+MessageAttributesTypeDef = Dict[str, _MessageAttributeValueTypeDef]
+
+
 connector = ClientConnector()
 
 
@@ -170,17 +237,14 @@ class QueueDoesNotExistError(AWSSNSSQSException):
 
 class MessageEnvelopeProtocol(Protocol):
     @classmethod
-    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str:
-        ...
+    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str: ...
 
     @classmethod
-    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]:
-        ...
+    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]: ...
 
 
 class MessageBodyFormatterProtocol(Protocol):
-    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str:
-        ...
+    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str: ...
 
 
 @dataclasses.dataclass(frozen=True)
@@ -269,8 +333,7 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @overload
     @classmethod
@@ -290,8 +353,7 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> asyncio.Task[str]:
-        ...
+    ) -> asyncio.Task[str]: ...
 
     @classmethod
     async def publish(
@@ -395,8 +457,7 @@ class AWSSNSSQSTransport(Invoker):
             type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
         ] = MessageBodyFormatter,
         **kwargs: Any,
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @overload
     @classmethod
@@ -418,8 +479,7 @@ class AWSSNSSQSTransport(Invoker):
             type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
         ] = MessageBodyFormatter,
         **kwargs: Any,
-    ) -> asyncio.Task[str]:
-        ...
+    ) -> asyncio.Task[str]: ...
 
     @classmethod
     async def send_message(
@@ -527,13 +587,12 @@ class AWSSNSSQSTransport(Invoker):
                 )
 
             # @todo improve errors overall with more generic type generation
-            botocore_error_type = botocore.exceptions.ClientError
+            botocore_error_type: Type[botocore.exceptions.ClientError] = botocore.exceptions.ClientError
             error_message = "Cannot send message to non-existent (AWS.SimpleQueueService.NonExistentQueue) SQS queue"
-            error_value = {
+            error_value: _ClientErrorResponseTypeDef = {
                 "Error": {
                     "Code": "AWS.SimpleQueueService.NonExistentQueue",
                     "Message": error_message,
-                    "Type": "Sender",
                 }
             }
 
@@ -542,7 +601,9 @@ class AWSSNSSQSTransport(Invoker):
                     await cls.create_client("sqs", service.context)
 
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
-                    botocore_error_type = client.exceptions.QueueDoesNotExist
+                    botocore_error_type = cast(
+                        Type[botocore.exceptions.ClientError], client.exceptions.QueueDoesNotExist
+                    )
             except Exception as e:
                 logging.getLogger("exception").exception(
                     "unexpected exception during error type creation: {}".format(str(e)), queue_name=queue_name
@@ -1098,13 +1159,11 @@ class AWSSNSSQSTransport(Invoker):
 
     @overload
     @staticmethod
-    async def create_client(name: Literal["sns"], context: Dict) -> SNSClient:
-        ...
+    async def create_client(name: Literal["sns"], context: Dict) -> SNSClient: ...
 
     @overload
     @staticmethod
-    async def create_client(name: Literal["sqs"], context: Dict) -> SQSClient:
-        ...
+    async def create_client(name: Literal["sqs"], context: Dict) -> SQSClient: ...
 
     @staticmethod
     async def create_client(name: str, context: Dict) -> aiobotocore.client.AioBaseClient:
@@ -1367,11 +1426,13 @@ class AWSSNSSQSTransport(Invoker):
         return result
 
     @staticmethod
-    def transform_message_attributes_to_botocore(message_attributes: Dict) -> Dict[str, Dict[str, Union[str, bytes]]]:
+    def transform_message_attributes_to_botocore(
+        message_attributes: Dict,
+    ) -> MessageAttributesTypeDef:
         # This function formats message attributes from a key-value dict into the structure expected by botocore,
         # which then converts it into the request parameters used for SNS.Publish, SQS.SendMessage and the batch APIs.
 
-        result: Dict[str, Dict[str, Union[str, bytes]]] = {}
+        result: MessageAttributesTypeDef = {}
 
         for name, value in message_attributes.items():
             if isinstance(value, str):
@@ -1393,12 +1454,12 @@ class AWSSNSSQSTransport(Invoker):
     @staticmethod
     def transform_message_attributes_to_message_body_metadata(
         message_attributes: Dict,
-    ) -> Dict[str, Dict[str, Union[str, bytes]]]:
+    ) -> Dict[str, Dict[str, str]]:
         # Utility function that formats message attributes from a key-value dict into a similar structure that is
         # used within the message body of an SNS notification forwarded to SQS, as the result of SNS.Publish.
         # This uses just "Type" and "Value" keys, and is slightly cleaner than message attributes on outer SQS messages.
 
-        result: Dict[str, Dict[str, Union[str, bytes]]] = {}
+        result: Dict[str, Dict[str, str]] = {}
 
         for name, value in message_attributes.items():
             if isinstance(value, str):
@@ -1462,7 +1523,7 @@ class AWSSNSSQSTransport(Invoker):
                 deduplication_id if deduplication_id else str(uuid.uuid4())
             )
 
-        response = {}
+        response: Union[PublishResponseTypeDef, Dict[str, Any]] = {}
         for retry in range(1, 4):
             try:
                 async with connector("tomodachi.sns", service_name="sns") as client:
@@ -1556,7 +1617,7 @@ class AWSSNSSQSTransport(Invoker):
 
         message_attribute_values = cls.transform_message_attributes_to_botocore(message_attributes)
 
-        optional_request_parameters: Dict[str, Union[str, int, None]] = {}
+        optional_request_parameters: Dict[str, Any] = {}
         if group_id is not None:
             optional_request_parameters["MessageGroupId"] = group_id
             optional_request_parameters["MessageDeduplicationId"] = (
@@ -1566,7 +1627,7 @@ class AWSSNSSQSTransport(Invoker):
         if delay_seconds is not None:
             optional_request_parameters["DelaySeconds"] = delay_seconds
 
-        response = {}
+        response: Union[SendMessageResultTypeDef, Dict[str, Any]] = {}
         for retry in range(1, 4):
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
@@ -2276,7 +2337,7 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
-                response = await sqs_client.get_queue_attributes(
+                queue_attributes_response = await sqs_client.get_queue_attributes(
                     QueueUrl=queue_url,
                     AttributeNames=[
                         "Policy",
@@ -2287,13 +2348,12 @@ class AWSSNSSQSTransport(Invoker):
                         "KmsDataKeyReusePeriodSeconds",
                     ],
                 )
-                current_queue_attributes = response.get("Attributes", {})
+                current_queue_attributes = queue_attributes_response.get("Attributes", {})
                 current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
-                current_visibility_timeout = current_queue_attributes.get("VisibilityTimeout")
+                current_visibility_timeout_ = current_queue_attributes.get("VisibilityTimeout")
                 if current_queue_attributes:
                     current_redrive_policy = json.loads(current_queue_attributes.get("RedrivePolicy") or "{}")
-                if current_visibility_timeout:
-                    current_visibility_timeout = int(current_visibility_timeout)
+                current_visibility_timeout = int(current_visibility_timeout_) if current_visibility_timeout_ else None
                 current_message_retention_period = current_queue_attributes.get("MessageRetentionPeriod")
                 if current_message_retention_period:
                     try:
@@ -2360,7 +2420,7 @@ class AWSSNSSQSTransport(Invoker):
 
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
-                    response = await sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes=queue_attributes)
+                    await sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes=queue_attributes)
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
                 logging.getLogger("tomodachi.awssnssqs").warning(
