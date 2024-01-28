@@ -876,8 +876,8 @@ class AWSSNSSQSTransport(Invoker):
 
         async def handler(
             payload: Optional[str],
-            receipt_handle: Optional[str] = None,
-            queue_url: Optional[str] = None,
+            receipt_handle: str,
+            queue_url: str,
             message_topic: str = "",
             message_attributes: Optional[Dict] = None,
             approximate_receive_count: Optional[int] = None,
@@ -1128,7 +1128,7 @@ class AWSSNSSQSTransport(Invoker):
 
             return return_value
 
-        attributes: Dict[str, Union[str, bool]] = {}
+        attributes: Dict[str, str] = {}
 
         if filter_policy != FILTER_POLICY_DEFAULT:
             if filter_policy is None:
@@ -1674,8 +1674,11 @@ class AWSSNSSQSTransport(Invoker):
         return message_id
 
     @classmethod
-    async def delete_message(cls, receipt_handle: Optional[str], queue_url: Optional[str], context: Dict) -> None:
+    async def delete_message(cls, receipt_handle: str, queue_url: str, context: Dict) -> None:
         if not receipt_handle:
+            logging.getLogger("tomodachi.awssnssqs").warning(
+                "Unable to delete message [sqs] from queue without receipt handle", queue_url=queue_url
+            )
             return
 
         if not connector.get_client("tomodachi.sqs"):
@@ -1877,7 +1880,7 @@ class AWSSNSSQSTransport(Invoker):
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
                     response = await client.get_queue_url(QueueName=_queue_name, **optional_request_parameters)
-                    queue_url = cast(Optional[str], response.get("QueueUrl"))
+                    queue_url = response.get("QueueUrl")
             except (
                 botocore.exceptions.NoCredentialsError,
                 botocore.exceptions.PartialCredentialsError,
@@ -2065,7 +2068,7 @@ class AWSSNSSQSTransport(Invoker):
             queue_name=logging.getLogger("tomodachi.awssnssqs")._context.get("queue_name", queue_name),
         )
 
-        queue_url = ""
+        queue_url: Optional[str] = None
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as client:
                 response = await client.get_queue_url(QueueName=queue_name)
@@ -2098,7 +2101,9 @@ class AWSSNSSQSTransport(Invoker):
                 queue_attrs["MessageRetentionPeriod"] = str(message_retention_period)
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
-                    response = await client.create_queue(QueueName=queue_name, Attributes=queue_attrs)
+                    response = await client.create_queue(
+                        QueueName=queue_name, Attributes=cast(Mapping[Any, str], queue_attrs)
+                    )
                     queue_url = response.get("QueueUrl")
             except (
                 botocore.exceptions.NoCredentialsError,
@@ -2120,13 +2125,15 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as client:
-                response = await client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])
+                queue_attributes_response = await client.get_queue_attributes(
+                    QueueUrl=queue_url, AttributeNames=["QueueArn"]
+                )
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logger.warning("Unable to get queue attributes [sqs] on AWS ({})".format(error_message))
             raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
 
-        queue_arn = response.get("Attributes", {}).get("QueueArn")
+        queue_arn: Optional[str] = queue_attributes_response.get("Attributes", {}).get("QueueArn")
         if not queue_arn:
             error_message = "Missing ARN in response"
             logger.warning("Unable to get queue attributes [sqs] on AWS ({})".format(error_message))
@@ -2194,7 +2201,7 @@ class AWSSNSSQSTransport(Invoker):
         queue_url: str,
         context: Dict,
         fifo: bool,
-        attributes: Optional[Dict[str, Union[str, bool]]] = None,
+        attributes: Optional[Dict[str, str]] = None,
         visibility_timeout: Optional[int] = None,
         redrive_policy: Optional[Dict[str, Union[str, int]]] = None,
     ) -> Optional[List]:
@@ -2230,7 +2237,9 @@ class AWSSNSSQSTransport(Invoker):
             next_token = response.get("NextToken")
             topics = response.get("Topics", [])
             topic_arn_list = [
-                t.get("TopicArn") for t in topics if t.get("TopicArn") and compiled_pattern.match(t.get("TopicArn"))
+                cast(str, t.get("TopicArn"))
+                for t in topics
+                if t.get("TopicArn") and compiled_pattern.match(cast(str, t.get("TopicArn")))
             ]
 
         if topic_arn_list:
@@ -2257,7 +2266,7 @@ class AWSSNSSQSTransport(Invoker):
         queue_url: str,
         context: Dict,
         queue_policy: Optional[Dict] = None,
-        attributes: Optional[Dict[str, Union[str, bool]]] = None,
+        attributes: Optional[Dict[str, str]] = None,
         visibility_timeout: Optional[int] = None,
         redrive_policy: Optional[Dict[str, Union[str, int]]] = None,
     ) -> List:
@@ -2351,19 +2360,21 @@ class AWSSNSSQSTransport(Invoker):
                 current_queue_attributes = queue_attributes_response.get("Attributes", {})
                 current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
                 current_visibility_timeout_ = current_queue_attributes.get("VisibilityTimeout")
+                current_visibility_timeout = int(current_visibility_timeout_) if current_visibility_timeout_ else None
                 if current_queue_attributes:
                     current_redrive_policy = json.loads(current_queue_attributes.get("RedrivePolicy") or "{}")
-                current_visibility_timeout = int(current_visibility_timeout_) if current_visibility_timeout_ else None
-                current_message_retention_period = current_queue_attributes.get("MessageRetentionPeriod")
-                if current_message_retention_period:
+                current_message_retention_period_ = current_queue_attributes.get("MessageRetentionPeriod")
+                if current_message_retention_period_:
                     try:
-                        current_message_retention_period = int(current_message_retention_period)
+                        current_message_retention_period = int(current_message_retention_period_)
                     except ValueError:
                         current_message_retention_period = None
                 current_kms_master_key_id = current_queue_attributes.get("KmsMasterKeyId")
-                current_kms_data_key_reuse_period_seconds = current_queue_attributes.get("KmsDataKeyReusePeriodSeconds")
-                if current_kms_data_key_reuse_period_seconds:
-                    current_kms_data_key_reuse_period_seconds = int(current_kms_data_key_reuse_period_seconds)
+                current_kms_data_key_reuse_period_seconds_ = current_queue_attributes.get(
+                    "KmsDataKeyReusePeriodSeconds"
+                )
+                if current_kms_data_key_reuse_period_seconds_:
+                    current_kms_data_key_reuse_period_seconds = int(current_kms_data_key_reuse_period_seconds_)
         except botocore.exceptions.ClientError:
             pass
 
@@ -2420,7 +2431,9 @@ class AWSSNSSQSTransport(Invoker):
 
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
-                    await sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes=queue_attributes)
+                    await sqs_client.set_queue_attributes(
+                        QueueUrl=queue_url, Attributes=cast(Mapping[Any, str], queue_attributes)
+                    )
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
                 logging.getLogger("tomodachi.awssnssqs").warning(
@@ -2543,8 +2556,8 @@ class AWSSNSSQSTransport(Invoker):
             async def _receive_wrapper() -> None:
                 def callback(
                     payload: Optional[str],
-                    receipt_handle: Optional[str],
-                    queue_url: Optional[str],
+                    receipt_handle: str,
+                    queue_url: str,
                     message_topic: str,
                     message_attributes: Dict,
                     approximate_receive_count: Optional[int],
@@ -2681,8 +2694,8 @@ class AWSSNSSQSTransport(Invoker):
                             continue
 
                         for message in messages:
-                            receipt_handle = message.get("ReceiptHandle")
-                            raw_message_body = message.get("Body")
+                            receipt_handle: str = message.get("ReceiptHandle", "")
+                            raw_message_body = message.get("Body", "")
                             try:
                                 message_body = json.loads(raw_message_body)
                                 topic_arn = message_body.get("TopicArn")
@@ -2872,7 +2885,7 @@ class AWSSNSSQSTransport(Invoker):
                 topic: Optional[str] = None,
                 queue_name: Optional[str] = None,
                 competing_consumer: Optional[bool] = None,
-                attributes: Optional[Dict[str, Union[str, bool]]] = None,
+                attributes: Optional[Dict[str, str]] = None,
                 visibility_timeout: Optional[int] = None,
                 dead_letter_queue_name: Optional[str] = DEAD_LETTER_QUEUE_DEFAULT,
                 max_receive_count: Optional[int] = MAX_RECEIVE_COUNT_DEFAULT,
