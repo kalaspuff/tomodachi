@@ -41,7 +41,7 @@ class Credentials:
         self,
     ) -> KeysView[CredentialsTypeKeys]:
         result = {}
-        for key in CredentialsDict.__optional_keys__ | CredentialsDict.__required_keys__:
+        for key in ("region_name", "aws_access_key_id", "aws_secret_access_key", "aws_session_token", "endpoint_url"):
             result[key] = ...
         return cast(dict[CredentialsTypeKeys, Optional[str]], result).keys()
 
@@ -102,7 +102,13 @@ class Credentials:
                 for key, value in __map.items():
                     setattr(self, key, value)
         for key in kwargs:
-            if key not in CredentialsDict.__optional_keys__ | CredentialsDict.__required_keys__:
+            if key not in (
+                "region_name",
+                "aws_access_key_id",
+                "aws_secret_access_key",
+                "aws_session_token",
+                "endpoint_url",
+            ):
                 raise TypeError(f"__init__() got an unexpected keyword argument '{key}'")
             setattr(self, key, kwargs[key])
 
