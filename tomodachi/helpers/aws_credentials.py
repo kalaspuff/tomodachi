@@ -1,5 +1,18 @@
 import sys
-from typing import Any, ItemsView, Iterator, KeysView, Optional, TypedDict, TypeVar, Union, ValuesView, cast, overload
+from typing import (
+    Any,
+    Dict,
+    ItemsView,
+    Iterator,
+    KeysView,
+    Optional,
+    TypedDict,
+    TypeVar,
+    Union,
+    ValuesView,
+    cast,
+    overload,
+)
 
 if sys.version_info >= (3, 12):
     from typing import Literal
@@ -43,7 +56,7 @@ class Credentials:
         result = {}
         for key in ("region_name", "aws_access_key_id", "aws_secret_access_key", "aws_session_token", "endpoint_url"):
             result[key] = ...
-        return cast(dict[CredentialsTypeKeys, Optional[str]], result).keys()
+        return cast(Dict[CredentialsTypeKeys, Optional[str]], result).keys()
 
     def dict(self) -> CredentialsDict:
         result: CredentialsDict = {}
@@ -54,12 +67,12 @@ class Credentials:
     def values(
         self,
     ) -> ValuesView[Optional[str]]:
-        return cast(dict[CredentialsTypeKeys, Optional[str]], self.dict()).values()
+        return cast(Dict[CredentialsTypeKeys, Optional[str]], self.dict()).values()
 
     def items(
         self,
     ) -> ItemsView[CredentialsTypeKeys, Optional[str]]:
-        return cast(dict[CredentialsTypeKeys, Optional[str]], self.items()).items()
+        return cast(Dict[CredentialsTypeKeys, Optional[str]], self.items()).items()
 
     @overload
     def __init__(
