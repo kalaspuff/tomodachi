@@ -535,8 +535,7 @@ class AWSSNSSQSTransport(Invoker):
             logging.getLogger("tomodachi.awssnssqs").warning(
                 f"Bad combination of SQS.SendMessage request parameter - FIFO related arguments ({error_message})",
                 queue_name=queue_name,
-                implied_fifo=bool(queue_name.endswith(".fifo")),
-                group_id=group_id,
+                group_id=(group_id or ""),
             )
             raise ValueError(error_message)
 
