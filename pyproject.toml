@@ -237,7 +237,7 @@ warn_return_any = true
 warn_unreachable = true
 
 [tool.flake8]
-ignore = ["E203", "E501", "W503", "E231", "E202", "E704"]
+ignore = ["E203", "E501", "W503", "E231", "E202", "E704", "E225"]
 exclude = ["tomodachi.egg-info", ".git", ".mypy_cache", ".pytest_cache", ".venv", ".vscode", "__pycache__", "build", "dist", "proto_build", "tmp"]
 
 [tool.pytest.ini_options]
