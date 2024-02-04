@@ -1,9 +1,8 @@
 import asyncio
 import inspect
-import sys
 import time
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import TYPE_CHECKING, AsyncIterator, Dict, Optional, cast, overload
+from typing import TYPE_CHECKING, AsyncIterator, Dict, Literal, Optional, cast, overload
 
 import aiobotocore
 import aiobotocore.client
@@ -15,11 +14,6 @@ import botocore
 import botocore.exceptions
 
 from tomodachi.helpers.aws_credentials import Credentials, CredentialsMapping
-
-if sys.version_info >= (3, 12):
-    from typing import Literal
-else:
-    from typing import Literal
 
 if TYPE_CHECKING:
     from types_aiobotocore_sns import SNSClient
