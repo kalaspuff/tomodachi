@@ -1,10 +1,10 @@
-import sys
 from typing import (
     Any,
     Dict,
     ItemsView,
     Iterator,
     KeysView,
+    Literal,
     Optional,
     TypedDict,
     TypeVar,
@@ -14,10 +14,8 @@ from typing import (
     overload,
 )
 
-if sys.version_info >= (3, 12):
-    from typing import Literal
-else:
-    from typing import Literal
+from botocore.credentials import Credentials as BotocoreCredentials
+from botocore.credentials import ReadOnlyCredentials as BotocoreReadOnlyCredentials
 
 T = TypeVar("T")
 
@@ -77,7 +75,7 @@ class Credentials:
     @overload
     def __init__(
         self,
-        __map: Union[CredentialsDict, CredentialsTypeProtocol],
+        __map: Union[CredentialsDict, CredentialsTypeProtocol, BotocoreCredentials, BotocoreReadOnlyCredentials],
         /,
         *,
         region_name: Optional[str] = ...,
@@ -101,11 +99,21 @@ class Credentials:
 
     def __init__(
         self,
-        __map: Optional[Union[CredentialsDict, CredentialsTypeProtocol]] = None,
+        __map: Optional[
+            Union[CredentialsDict, CredentialsTypeProtocol, BotocoreCredentials, BotocoreReadOnlyCredentials]
+        ] = None,
         /,
         **kwargs: Any,
     ) -> None:
         if __map is not None:
+            if isinstance(__map, BotocoreCredentials):
+                __map = __map.get_frozen_credentials()
+            if isinstance(__map, BotocoreReadOnlyCredentials):
+                __map = {
+                    "aws_access_key_id": __map.access_key,
+                    "aws_secret_access_key": __map.secret_key,
+                    "aws_session_token": __map.token,
+                }
             if not isinstance(__map, dict):
                 try:
                     __map = cast(CredentialsDict, dict(__map))  # type: ignore[call-overload]
@@ -166,4 +174,6 @@ class Credentials:
         return getattr(self, key, default)
 
 
-CredentialsMapping = Union[Credentials, CredentialsDict, CredentialsTypeProtocol]
+CredentialsMapping = Union[
+    Credentials, CredentialsDict, CredentialsTypeProtocol, BotocoreCredentials, BotocoreReadOnlyCredentials
+]
