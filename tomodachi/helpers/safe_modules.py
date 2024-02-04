@@ -509,6 +509,7 @@ SAFE_MODULES = {
     "tomodachi.envelope.protobuf_base",
     "tomodachi.helpers",
     "tomodachi.helpers.aiobotocore_connector",
+    "tomodachi.helpers.aws_credentials",
     "tomodachi.helpers.banner",
     "tomodachi.helpers.build_time",
     "tomodachi.helpers.crontab",
