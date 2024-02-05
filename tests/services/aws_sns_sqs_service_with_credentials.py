@@ -158,7 +158,13 @@ class AWSSNSSQSService(tomodachi.Service):
 
     @aws_sns_sqs(queue_name="test-standalone-queue-{}".format(data_uuid))
     async def test_standalone_queue(
-        self, data: Any, message_type: str, raw_message_body: str, sns_message_id: str, sqs_message_id: str
+        self,
+        data: Any,
+        message_type: str,
+        message_attributes: Dict[str, str],
+        raw_message_body: str,
+        sns_message_id: str,
+        sqs_message_id: str,
     ) -> None:
         if data == self.data_uuid:
             if message_type != "Message":
@@ -174,6 +180,12 @@ class AWSSNSSQSService(tomodachi.Service):
             raw_message_dict = json.loads(raw_message_body)
             if (await JsonBase.parse_message(raw_message_dict.get("Message")))[0].get("data") != data:
                 raise Exception("Invalid message body, does not match data argument")
+            if message_attributes != {
+                "this-is-a-numeric-attribute": 4711,
+                "this-is-a-string-attribute": "XYZ",
+                "this-is-a-binary-attribute": b"abcdef\x00\x01 12345",
+            }:
+                raise Exception("Invalid message attributes")
             self.test_standalone_queue_data_received = True
 
             self.check_closer()
@@ -201,7 +213,15 @@ class AWSSNSSQSService(tomodachi.Service):
 
         async def _async_publisher() -> None:
             self._expected_sqs_message_id = await tomodachi.sqs_send_message(
-                self, self.data_uuid, queue_name="test-standalone-queue-{}".format(self.data_uuid), wait=True
+                self,
+                self.data_uuid,
+                queue_name="test-standalone-queue-{}".format(self.data_uuid),
+                message_attributes={
+                    "this-is-a-numeric-attribute": 4711,
+                    "this-is-a-string-attribute": "XYZ",
+                    "this-is-a-binary-attribute": b"abcdef\x00\x01 12345",
+                },
+                wait=True,
             )
 
             await publish(self.data_uuid, "test-topic")
