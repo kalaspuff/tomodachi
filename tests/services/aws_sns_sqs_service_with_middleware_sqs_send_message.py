@@ -11,7 +11,7 @@ import tomodachi
 from tomodachi import Options
 from tomodachi.envelope import JsonBase
 from tomodachi.opentelemetry import TomodachiInstrumentor
-from tomodachi.transport.aws_sns_sqs import MessageAttributesType, aws_sns_sqs, aws_sns_sqs_publish
+from tomodachi.transport.aws_sns_sqs import MessageAttributesType, aws_sns_sqs
 
 TomodachiInstrumentor().instrument(tracer_provider=TracerProvider())
 
