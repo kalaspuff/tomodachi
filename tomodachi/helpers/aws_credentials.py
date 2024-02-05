@@ -6,6 +6,7 @@ from typing import (
     KeysView,
     Literal,
     Optional,
+    Set,
     TypedDict,
     TypeVar,
     Union,
@@ -47,6 +48,7 @@ class Credentials:
     aws_secret_access_key: Optional[str]
     aws_session_token: Optional[str]
     endpoint_url: Optional[str]
+    __unset: Set[str]
 
     def keys(
         self,
@@ -59,7 +61,10 @@ class Credentials:
     def dict(self) -> CredentialsDict:
         result: CredentialsDict = {}
         for key in self.keys():
-            result[key] = getattr(self, key, None)
+            value = getattr(self, key, None)
+            if value is Ellipsis:
+                value = None
+            result[key] = value
         return result
 
     def values(
@@ -70,12 +75,24 @@ class Credentials:
     def items(
         self,
     ) -> ItemsView[CredentialsTypeKeys, Optional[str]]:
-        return cast(Dict[CredentialsTypeKeys, Optional[str]], self.items()).items()
+        return cast(Dict[CredentialsTypeKeys, Optional[str]], self.dict()).items()
 
     @overload
     def __init__(
         self,
-        __map: Union[CredentialsDict, CredentialsTypeProtocol, BotocoreCredentials, BotocoreReadOnlyCredentials],
+        __map: Union[
+            CredentialsDict,
+            CredentialsTypeProtocol,
+            "Credentials",
+            BotocoreCredentials,
+            BotocoreReadOnlyCredentials,
+            Dict[
+                Literal[
+                    "region_name", "aws_access_key_id", "aws_secret_access_key", "aws_session_token", "endpoint_url"
+                ],
+                Optional[str],
+            ],
+        ],
         /,
         *,
         region_name: Optional[str] = ...,
@@ -100,7 +117,19 @@ class Credentials:
     def __init__(
         self,
         __map: Optional[
-            Union[CredentialsDict, CredentialsTypeProtocol, BotocoreCredentials, BotocoreReadOnlyCredentials]
+            Union[
+                CredentialsDict,
+                CredentialsTypeProtocol,
+                "Credentials",
+                BotocoreCredentials,
+                BotocoreReadOnlyCredentials,
+                Dict[
+                    Literal[
+                        "region_name", "aws_access_key_id", "aws_secret_access_key", "aws_session_token", "endpoint_url"
+                    ],
+                    Optional[str],
+                ],
+            ]
         ] = None,
         /,
         **kwargs: Any,
@@ -116,22 +145,24 @@ class Credentials:
                 }
             if not isinstance(__map, dict):
                 try:
-                    __map = cast(CredentialsDict, dict(__map))  # type: ignore[call-overload]
+                    __map = cast(CredentialsDict, dict(__map))  # type: ignore[arg-type]
                 except TypeError:
                     __map = cast(CredentialsDict, dict(__map.__dict__))
             if __map and isinstance(__map, dict):
                 for key, value in __map.items():
                     setattr(self, key, value)
         for key in kwargs:
-            if key not in (
-                "region_name",
-                "aws_access_key_id",
-                "aws_secret_access_key",
-                "aws_session_token",
-                "endpoint_url",
-            ):
+            if key not in self.keys():
                 raise TypeError(f"__init__() got an unexpected keyword argument '{key}'")
             setattr(self, key, kwargs[key])
+
+        self.__unset = set()
+        for key in self.keys():
+            try:
+                self.get(key, default=Ellipsis)
+            except AttributeError:
+                setattr(self, key, None)
+                self.__unset.add(key)
 
     def __iter__(
         self,
@@ -142,7 +173,7 @@ class Credentials:
         self,
         key: CredentialsTypeKeys,
     ) -> Optional[str]:
-        return self.get(key)
+        return self.get(key, default=Ellipsis) if key not in self.__unset else None
 
     def __contains__(
         self,
@@ -167,11 +198,11 @@ class Credentials:
     def get(
         self,
         key: str,
-        default: Any = ...,
+        default: Any = None,
     ) -> Any:
         if default is Ellipsis:
-            return getattr(self, key)
-        return getattr(self, key, default)
+            return getattr(self, key) if key not in self.__unset else None
+        return getattr(self, key, default) if key not in self.__unset else default
 
 
 CredentialsMapping = Union[
