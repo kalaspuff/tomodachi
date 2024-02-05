@@ -160,8 +160,8 @@ class AWSSNSSQSService(tomodachi.Service):
 
     uuid = os.environ.get("TOMODACHI_TEST_SERVICE_UUID") or ""
     closer: asyncio.Future
-    test_topic_data_received = False
-    test_topic_name: str = ""
+    test_queue_data_received = False
+    test_topic_name: Optional[str] = None
     test_queue_url: str = ""
     test_receipt_handle: str = ""
     test_message_attributes: Optional[Dict] = None
@@ -173,12 +173,12 @@ class AWSSNSSQSService(tomodachi.Service):
     data_uuid = data_uuid
 
     def check_closer(self) -> None:
-        if self.test_topic_data_received and self.test_message_attributes:
+        if self.test_queue_data_received and self.test_message_attributes:
             if not self.closer.done():
                 self.closer.set_result(None)
 
-    @aws_sns_sqs("test-middleware-topic", queue_name="test-middleware-{}".format(data_uuid))
-    async def test_middleware_kwargs(
+    @aws_sns_sqs(queue_name="test-standalone-middleware-{}".format(data_uuid))
+    async def test_standalone_middleware_kwargs(
         self,
         data: Any,
         kwarg_abc: int,
@@ -198,12 +198,13 @@ class AWSSNSSQSService(tomodachi.Service):
         *,
         middlewares_called: List[str],
     ) -> None:
-        if not self.test_topic_data_received and data == self.data_uuid:
-            if not sns_message_id:
-                raise Exception("SNS message id is missing")
+        if not self.test_queue_data_received and data == self.data_uuid:
+            if sns_message_id:
+                raise Exception("SNS message id should not be set")
             if not sqs_message_id:
                 raise Exception("SQS message id is missing")
-            self.test_topic_data_received = True
+
+            self.test_queue_data_received = True
             self.test_topic_name = topic
             self.test_queue_url = queue_url
             self.test_receipt_handle = receipt_handle
@@ -226,8 +227,8 @@ class AWSSNSSQSService(tomodachi.Service):
         self.closer = asyncio.Future()
 
     async def _started_service(self) -> None:
-        async def publish(data: Any, topic: str, **kwargs: Any) -> None:
-            await aws_sns_sqs_publish(self, data, topic=topic, wait=False, **kwargs)
+        async def send_message(data: Any, queue_name: str, **kwargs: Any) -> None:
+            await tomodachi.sqs_send_message(self, data, queue_name=queue_name, wait=False, **kwargs)
 
         async def _async() -> None:
             async def sleep_and_kill() -> None:
@@ -245,12 +246,12 @@ class AWSSNSSQSService(tomodachi.Service):
 
         async def _async_publisher() -> None:
             for _ in range(10):
-                if self.test_topic_data_received:
+                if self.test_queue_data_received:
                     break
 
-                await publish(
+                await send_message(
                     self.data_uuid,
-                    "test-middleware-topic",
+                    "test-standalone-middleware-{}".format(data_uuid),
                     message_attributes={"attr_1": "value_1", "attr_2": "value_2", "initial_a_value": 5},
                 )
                 await asyncio.sleep(0.5)
