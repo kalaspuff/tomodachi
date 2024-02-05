@@ -17,6 +17,7 @@ Changes
 - Refactoring of ``tomodachi.aws_sns_sqs.get_queue_url`` and ``tomodachi.aws_sns_sqs.get_queue_url_from_arn`` with better support for additional types of input and/or potentially prefixing of queues. The function also now caches the queue URL to avoid unnecessary calls to the AWS API.
 - Added ``message_type`` (``str | None``) to the list of keyword argument provided transport values that can be used in function signatures for AWS SNS+SQS handlers. Holds the value ``"Notification"`` for messages received as part of an SNS notification, unless the queue uses raw message delivery. In other cases the value is set to the value from a message body's JSON property ``"Type"`` if it exists.
 - Tailored for more advanced workflows, where more flexibility is needed, ``raw_message_body`` (``str``) has also been added to the list of keyword argument provided transport values for AWS SNS+SQS handlers. The ``raw_message_body`` value is set to the full content (non-decoded, as a string) from a received message' ``"Body"``, which can be used to implement custom listener with greater access to the raw message data.
+- Support for ``aiobotocore`` 2.10.x releases and 2.11.x releases.
 
 
 0.26.4 (2024-01-14)
