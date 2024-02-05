@@ -224,6 +224,17 @@ class AWSSNSSQSService(tomodachi.Service):
                 wait=True,
             )
 
+            try:
+                await tomodachi.sqs_send_message(
+                    self,
+                    self.data_uuid,
+                    queue_name="test-non-existing-queue-{}".format(self.data_uuid),
+                    wait=True,
+                )
+                raise Exception("Should not be able to send message to non-existing queue")
+            except tomodachi.transport.awssnssqs.QueueDoesNotExistError:
+                pass
+
             await publish(self.data_uuid, "test-topic")
             await publish(self.data_uuid, "test-topic-unique")
 
