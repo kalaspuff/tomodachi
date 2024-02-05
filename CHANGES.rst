@@ -18,6 +18,7 @@ Changes
 - Added ``message_type`` (``str | None``) to the list of keyword argument provided transport values that can be used in function signatures for AWS SNS+SQS handlers. Holds the value ``"Notification"`` for messages received as part of an SNS notification, unless the queue uses raw message delivery. In other cases the value is set to the value from a message body's JSON property ``"Type"`` if it exists.
 - Tailored for more advanced workflows, where more flexibility is needed, ``raw_message_body`` (``str``) has also been added to the list of keyword argument provided transport values for AWS SNS+SQS handlers. The ``raw_message_body`` value is set to the full content (non-decoded, as a string) from a received message' ``"Body"``, which can be used to implement custom listener with greater access to the raw message data.
 - Support for ``aiobotocore`` 2.10.x releases and 2.11.x releases.
+- Fixes an issue where the ``topic`` argument to message handlers in functions was always populated with the value of the ``topic`` argument to the ``@tomodachi.aws_sns_sqs`` decorator, even if the message was sent to a different topic. The ``topic`` argument to message handlers in functions will now be populated with the actual topic name destination to where the message was published, if published via SNS. If the message was not published to a topic, the value is set to empty string.
 
 
 0.26.4 (2024-01-14)
