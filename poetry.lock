@@ -16,24 +16,24 @@ pamqp = ">=3.1.0"
 
 [[package]]
 name = "aiobotocore"
-version = "2.9.1"
+version = "2.11.1"
 description = "Async client for aws services using botocore and aiohttp"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "aiobotocore-2.9.1-py3-none-any.whl", hash = "sha256:4f8f4074069c115c7558edf1c6e4f78c997fcfb805974e3fe1a8a8442cb923b3"},
-    {file = "aiobotocore-2.9.1.tar.gz", hash = "sha256:24daf4f1ce86e2fb5aee146cdc944736ef76791635ec3a9b6f3d5755b1ac3c46"},
+    {file = "aiobotocore-2.11.1-py3-none-any.whl", hash = "sha256:904a7ad7cc8671d662cfd596906dafe839118ea2a66332c37908e3dcfdee1e45"},
+    {file = "aiobotocore-2.11.1.tar.gz", hash = "sha256:0b095af50da2d6f94e93ca959e2a4876f0f0d84d534b61b21d8e050832d04ab6"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.7.4.post0,<4.0.0"
 aioitertools = ">=0.5.1,<1.0.0"
-botocore = ">=1.33.2,<1.33.14"
+botocore = ">=1.33.2,<1.34.28"
 wrapt = ">=1.10.10,<2.0.0"
 
 [package.extras]
-awscli = ["awscli (>=1.31.2,<1.31.14)"]
-boto3 = ["boto3 (>=1.33.2,<1.33.14)"]
+awscli = ["awscli (>=1.31.2,<1.32.28)"]
+boto3 = ["boto3 (>=1.33.2,<1.34.28)"]
 
 [[package]]
 name = "aiodns"
@@ -2181,4 +2181,4 @@ uvloop = ["uvloop"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "58f9263a1d3b8bf54462703800e3b8475c16df065987b8b1773fe15c9d093928"
+content-hash = "a1165207c2997e963c5955108056517d5ec480c88ca6993b4c17d96354ee24e6"
