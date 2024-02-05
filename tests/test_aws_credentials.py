@@ -1,9 +1,10 @@
-from typing import cast
+from dataclasses import dataclass
+from typing import Optional, cast
 
 import pytest
 from botocore.credentials import Credentials as BotocoreCredentials
 
-from tomodachi.helpers.aws_credentials import Credentials, CredentialsDict
+from tomodachi.helpers.aws_credentials import Credentials, CredentialsDict, CredentialsTypeProtocol
 
 TEST_AWS_ACCESS_KEY_ID = "AKIAXXXXXXXXXXXXXXXX"  # example, not real access key
 TEST_AWS_SECRET_ACCESS_KEY = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"  # example, not real secret key
@@ -132,6 +133,36 @@ def test_dict_credentials() -> None:
         "aws_secret_access_key": None,
         "aws_session_token": TEST_AWS_SESSION_TOKEN,
         "endpoint_url": None,
+    }
+
+
+def test_compatible_credentials() -> None:
+    @dataclass()
+    class CompatibleCredentials(CredentialsTypeProtocol):
+        region_name: str = "eu-west-1"
+        aws_access_key_id: Optional[str] = None
+        aws_secret_access_key: Optional[str] = None
+        endpoint_url: Optional[str] = None
+
+    credentials = Credentials(
+        CompatibleCredentials(
+            aws_access_key_id=TEST_AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=TEST_AWS_SECRET_ACCESS_KEY,
+            endpoint_url="http://localhost:4567",
+        )
+    )
+
+    assert credentials.region_name == "eu-west-1"
+    assert credentials.aws_access_key_id == TEST_AWS_ACCESS_KEY_ID
+    assert credentials.aws_secret_access_key == TEST_AWS_SECRET_ACCESS_KEY
+    assert credentials.endpoint_url == "http://localhost:4567"
+
+    assert credentials.dict() == {
+        "region_name": "eu-west-1",
+        "aws_access_key_id": TEST_AWS_ACCESS_KEY_ID,
+        "aws_secret_access_key": TEST_AWS_SECRET_ACCESS_KEY,
+        "aws_session_token": None,
+        "endpoint_url": "http://localhost:4567",
     }
 
 
