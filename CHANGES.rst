@@ -34,6 +34,8 @@ Changes
 
 - OTEL attributes for AWS SNS+SQS messaging have been updated according to the latest OTEL semantic conventions, where the original publish destination is recorded as ``messaging.destination_publish.name``.
 
+- OTEL metrics for AWS SNS+SQS messaging uses the new metric instrument name ``messaging.aws_sqs.duration``, which was previously named ``messaging.amazonsqs.duration``.
+
 **Type hints and input validation**
 
 - Additional support for the ``types-aiobotocore-*`` packages to provide improved type hints internally.
