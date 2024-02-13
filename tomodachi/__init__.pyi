@@ -41,8 +41,12 @@ from tomodachi.transport.amqp import amqp as amqp
 from tomodachi.transport.amqp import amqp_publish as amqp_publish
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs as aws_sns_sqs
 from tomodachi.transport.aws_sns_sqs import aws_sns_sqs_publish as aws_sns_sqs_publish
+from tomodachi.transport.aws_sns_sqs import aws_sns_sqs_send_message as aws_sns_sqs_send_message
 from tomodachi.transport.aws_sns_sqs import awssnssqs as awssnssqs
 from tomodachi.transport.aws_sns_sqs import awssnssqs_publish as awssnssqs_publish
+from tomodachi.transport.aws_sns_sqs import awssnssqs_send_message as awssnssqs_send_message
+from tomodachi.transport.aws_sns_sqs import sns_publish as sns_publish
+from tomodachi.transport.aws_sns_sqs import sqs_send_message as sqs_send_message
 from tomodachi.transport.http import HttpException as HttpException
 from tomodachi.transport.http import Response as _HttpResponse
 from tomodachi.transport.http import get_forwarded_remote_ip as get_forwarded_remote_ip

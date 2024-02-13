@@ -331,8 +331,9 @@ class TomodachiInstrumentor(BaseInstrumentor):
             for attr in INSTRUMENTATION_CLASS_ATTRIBUTES:
                 setattr(cls, attr, getattr(_InstrumentedTomodachiService, attr, None))
 
-        # this wrapping functionality for the publish methods of aws_sns_sqs and amqp could use some refactoring
+        # @todo this wrapping functionality for the publish methods of aws_sns_sqs and amqp could use some refactoring
 
+        # aws_sns_sqs: _publish_message
         if getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message, "__wrapped__", None):
             setattr(
                 tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
@@ -369,7 +370,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             )
 
             attributes: Dict[str, AttributeValue] = {
-                "messaging.system": "AmazonSQS",
+                "messaging.system": "aws_sqs",
                 "messaging.operation": "publish",
                 "messaging.destination.name": topic,
                 "messaging.destination.kind": "topic",
@@ -395,6 +396,70 @@ class TomodachiInstrumentor(BaseInstrumentor):
             _traced_publish_awssnssqs_message.__get__(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport),
         )
 
+        # aws_sns_sqs: _send_raw_message
+        if getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._send_raw_message, "__wrapped__", None):
+            setattr(
+                tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
+                "_send_raw_message",
+                getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._send_raw_message, "__wrapped__", None),
+            )
+
+        aws_sns_sqs_send_raw_message = tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._send_raw_message
+
+        @functools.wraps(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._send_raw_message)
+        async def _traced_send_raw_awssqs_message(
+            cls: tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
+            queue_url: str,
+            message_body: Any,
+            message_attributes: Dict,
+            context: Dict,
+            *args: Any,
+            service: Any = None,
+            **kwargs: Any,
+        ) -> str:
+            tracer = (
+                cast(Tracer, getattr(service, "_opentelemetry_tracer", None) or context.get("_opentelemetry_tracer"))
+                or None
+            )
+            if not tracer:
+                return await aws_sns_sqs_send_raw_message(
+                    queue_url, message_body, message_attributes, context, *args, service=service, **kwargs
+                )
+
+            queue_name: str = (
+                cls.get_queue_name_without_prefix(cls.get_queue_name_from_queue_url(queue_url), context)
+                if queue_url
+                else ""
+            )
+
+            attributes: Dict[str, AttributeValue] = {
+                "messaging.system": "aws_sqs",
+                "messaging.operation": "publish",
+                "messaging.destination.name": queue_name,
+                "messaging.destination.kind": "queue",
+            }
+
+            with tracer.start_as_current_span(
+                f"{queue_name} publish",
+                kind=SpanKind.PRODUCER,
+                attributes=attributes,
+            ) as span:
+                TraceContextTextMapPropagator().inject(carrier=message_attributes)
+                sqs_message_id = await aws_sns_sqs_send_raw_message(
+                    queue_url, message_body, message_attributes, context, *args, service=service, **kwargs
+                )
+                span.set_attribute("messaging.message.id", sqs_message_id)
+                span.set_status(StatusCode.OK)
+
+            return sqs_message_id
+
+        setattr(
+            tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
+            "_send_raw_message",
+            _traced_send_raw_awssqs_message.__get__(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport),
+        )
+
+        # amqp: _publish_message
         if getattr(tomodachi.transport.amqp.AmqpTransport._publish_message, "__wrapped__", None):
             setattr(
                 tomodachi.transport.amqp.AmqpTransport,
@@ -513,6 +578,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 if hasattr(cls, attr):
                     delattr(cls, attr)
 
+        # aws_sns_sqs: _publish_message
         if getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message, "__wrapped__", None):
             setattr(
                 tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
@@ -520,6 +586,15 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._publish_message, "__wrapped__", None),
             )
 
+        # aws_sns_sqs: _send_raw_message
+        if getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._send_raw_message, "__wrapped__", None):
+            setattr(
+                tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
+                "_send_raw_message",
+                getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._send_raw_message, "__wrapped__", None),
+            )
+
+        # amqp: _publish_message
         if getattr(tomodachi.transport.amqp.AmqpTransport._publish_message, "__wrapped__", None):
             setattr(
                 tomodachi.transport.amqp.AmqpTransport,

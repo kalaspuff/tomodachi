@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tomodachi"
-version = "0.26.5dev0"
+version = "0.27.0"
 description = "Microservice library on asyncio - HTTP server, websockets, pub/sub messaging for AWS SNS+SQS and RabbitMQ"
 authors = ["Carl Oscar Aaro <hello@carloscar.com>"]
 keywords = ["tomodachi", "microservice", "microservices", "framework", "library", "asyncio", "aws", "sns", "sqs", "amqp", "rabbitmq", "http", "websockets", "easy", "fast", "pubsub", "events", "event based messaging", "messages", "protocol buffers", "protobuf", "async", "message attributes", "filter policy", "distributed architecture", "scalable", "python 3"]
@@ -110,6 +110,7 @@ types-protobuf = { version = ">=0.1.13", markers = "sys_platform != \"win32\"" }
 types-pytz = { version = ">=2021.1.0", markers = "sys_platform != \"win32\"" }
 types-tzlocal = { version = ">=0.1.1", markers = "sys_platform != \"win32\"" }
 types-setuptools = { version = ">=16.0", markers = "sys_platform != \"win32\"" }
+types-aiobotocore = { version = ">=1.3.0", markers = "sys_platform != \"win32\"", extras = ["sns", "sqs"] }
 
 [tool.poetry.scripts]
 tomodachi = "tomodachi.cli:cli_entrypoint"
@@ -189,6 +190,7 @@ ignore = [
     "I001", # isort
     "PLR0913", # too many arguments
     "UP037", # type annotation with quotes
+    "B008", # function calls in argument defaults
 ]
 src = [
   "tomodachi",
@@ -235,7 +237,7 @@ warn_return_any = true
 warn_unreachable = true
 
 [tool.flake8]
-ignore = ["E203", "E501", "W503", "E231", "E202", "E704"]
+ignore = ["E203", "E501", "W503", "E231", "E202", "E704", "E225"]
 exclude = ["tomodachi.egg-info", ".git", ".mypy_cache", ".pytest_cache", ".venv", ".vscode", "__pycache__", "build", "dist", "proto_build", "tmp"]
 
 [tool.pytest.ini_options]

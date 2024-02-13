@@ -311,7 +311,7 @@ class DynamicAggregation(Aggregation):
             instrument_names=(
                 "function.duration",
                 "http.server.duration",
-                "messaging.amazonsqs.duration",
+                "messaging.aws_sqs.duration",
                 "messaging.rabbitmq.duration",
             ),
         ): ExplicitBucketHistogramAggregation(

@@ -4,6 +4,8 @@ import asyncio
 import base64
 import binascii
 import copy
+import dataclasses
+import datetime
 import decimal
 import functools
 import hashlib
@@ -15,6 +17,7 @@ import time
 import uuid
 import warnings
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Coroutine,
@@ -24,9 +27,11 @@ from typing import (
     Mapping,
     Match,
     Optional,
+    Protocol,
     Sequence,
     Set,
     Tuple,
+    Type,
     TypedDict,
     Union,
     cast,
@@ -34,6 +39,7 @@ from typing import (
 )
 
 import aiobotocore
+import aiobotocore.client
 import aiohttp
 import aiohttp.client_exceptions
 import botocore
@@ -43,6 +49,7 @@ from botocore.parsers import ResponseParserError
 from tomodachi import get_contextvar, logging
 from tomodachi._exception import limit_exception_traceback
 from tomodachi.helpers.aiobotocore_connector import ClientConnector
+from tomodachi.helpers.aws_credentials import Credentials
 from tomodachi.helpers.execution_context import (
     decrease_execution_context_value,
     get_execution_context,
@@ -53,11 +60,22 @@ from tomodachi.helpers.middleware import execute_middlewares
 from tomodachi.invoker import Invoker
 from tomodachi.options import Options
 
+if TYPE_CHECKING:  # pragma: no cover
+    from types_aiobotocore_sns import SNSClient
+    from types_aiobotocore_sqs import SQSClient
+
+    from tomodachi import Service
+else:
+    SNSClient = aiobotocore.client.AioBaseClient
+    SQSClient = aiobotocore.client.AioBaseClient
+
+
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
 MESSAGE_ENVELOPE_DEFAULT = "e6fb6007-cf15-4cfd-af2e-1d1683374e70"
 MESSAGE_PROTOCOL_DEFAULT = MESSAGE_ENVELOPE_DEFAULT  # deprecated
 MESSAGE_TOPIC_PREFIX = "09698c75-832b-470f-8e05-96d2dd8c4853"
 MESSAGE_TOPIC_ATTRIBUTES = "dc6c667f-4c22-4a63-85f6-3ea0c7e2db49"
+QUEUE_NAME_PREFIX = "5594e916-08cf-4f6b-a247-4f7119b61b9f"
 FILTER_POLICY_DEFAULT = "7e68632f-3b39-4293-b5a9-16644cf857a5"
 DEAD_LETTER_QUEUE_DEFAULT = "22ebae61-1aab-4b2e-840f-008da1f45472"
 DLQ_MESSAGE_RETENTION_PERIOD_DEFAULT = 1209600  # 14 days
@@ -122,6 +140,73 @@ MessageAttributesType = Dict[
     str, Optional[Union[str, bytes, int, float, bool, List[Optional[Union[str, int, float, bool, object]]]]]
 ]
 
+
+if TYPE_CHECKING:  # pragma: no cover
+    try:
+        from botocore.exceptions import _ClientErrorResponseTypeDef, _ResponseMetadataTypeDef
+    except ModuleNotFoundError:
+
+        class _ClientErrorResponseError(TypedDict, total=False):
+            Code: str
+            Message: str
+
+        class _ResponseMetadataTypeDef(TypedDict):  # type: ignore[no-redef]
+            RequestId: str
+            HostId: str
+            HTTPStatusCode: int
+            HTTPHeaders: Dict[str, Any]
+            RetryAttempts: int
+
+        class _AttributeMapTypeDef(TypedDict, total=False):
+            key: str
+            value: Any
+
+        class _CancellationReasonTypeDef(TypedDict, total=False):
+            Code: str
+            Message: str
+            Item: _AttributeMapTypeDef
+
+        class _ClientErrorResponseTypeDef(TypedDict, total=False):  # type: ignore[no-redef]
+            Status: str
+            StatusReason: str
+            Error: _ClientErrorResponseError
+            ResponseMetadata: _ResponseMetadataTypeDef
+            CancellationReasons: List[_CancellationReasonTypeDef]
+
+    class PublishResponseTypeDef(TypedDict):
+        MessageId: str
+        SequenceNumber: str
+        ResponseMetadata: _ResponseMetadataTypeDef
+
+    class EmptyResponseMetadataTypeDef(TypedDict):
+        ResponseMetadata: _ResponseMetadataTypeDef
+
+    class GenericResponseMetadataTypeDef(EmptyResponseMetadataTypeDef, total=False):
+        pass
+
+    class SendMessageResultTypeDef(TypedDict):
+        MD5OfMessageBody: str
+        MD5OfMessageAttributes: str
+        MD5OfMessageSystemAttributes: str
+        MessageId: str
+        SequenceNumber: str
+        ResponseMetadata: _ResponseMetadataTypeDef
+
+
+class _MessageAttributeValueBaseTypeDef(TypedDict):
+    DataType: str
+
+
+class _MessageAttributeValueTypeDef(_MessageAttributeValueBaseTypeDef, total=False):
+    StringValue: str
+    BinaryValue: Any  # SNS wants "Union[str, bytes, IO[Any], aiobotocore.response.StreamingBody]". SQS wants "bytes".
+    StringListValues: List[str]
+    BinaryListValues: List[bytes]
+
+
+MessageAttributesTypeDef = Dict[str, _MessageAttributeValueTypeDef]
+
+
 connector = ClientConnector()
 
 
@@ -146,8 +231,88 @@ class AWSSNSSQSInternalServiceException(AWSSNSSQSInternalServiceError):
     pass
 
 
+class QueueDoesNotExistError(AWSSNSSQSException):
+    pass
+
+
+class MessageEnvelopeProtocol(Protocol):
+    @classmethod
+    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str: ...
+
+    @classmethod
+    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]: ...
+
+
+class MessageBodyFormatterProtocol(Protocol):
+    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str: ...
+
+
+@dataclasses.dataclass(frozen=True)
+class MessageBodyFormatterContext:
+    data: str
+    message_attributes: Dict[str, Any]
+    queue_name: str
+    queue_url: str
+    service: Service
+    message_envelope: Optional[MessageEnvelopeProtocol]
+    formatter: MessageBodyFormatterProtocol
+    kwargs: Dict[str, Any]
+
+    # hack for import finder, that on module reload breaks the __module__ attribute
+    __module__: str = __name__.rsplit(".", 1)[0].replace("/", ".")
+
+
+class MessageBodyFormatter(MessageBodyFormatterProtocol):
+    __singleton: MessageBodyFormatter
+
+    def __new__(
+        cls,
+    ) -> MessageBodyFormatter:
+        try:
+            if cls.__singleton is not None and cls.__singleton:
+                return cls.__singleton
+            return super().__new__(cls)
+        except AttributeError:
+            instance = super().__new__(cls)
+            cls.__singleton = instance
+            return instance
+
+    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str:
+        message = context.data
+
+        if context.message_envelope:
+            message = await asyncio.create_task(
+                context.message_envelope.build_message(
+                    context.service,
+                    "",
+                    message,
+                    message_attributes=context.message_attributes,
+                    **kwargs,
+                )
+            )
+
+        timestamp = (
+            datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        )
+        _message_attributes = AWSSNSSQSTransport.transform_message_attributes_to_message_body_metadata(
+            context.message_attributes
+        )
+
+        return json.dumps(
+            {
+                "Type": "Message",
+                "QueueUrl": context.queue_url,
+                "Version": "0",
+                "Message": message,
+                "Timestamp": timestamp,
+                "MessageAttributes": _message_attributes,
+            }
+        )
+
+
 class AWSSNSSQSTransport(Invoker):
     topics: Optional[Dict[str, str]] = None
+    queues: Optional[Dict[Tuple[str, Optional[str], Optional[str]], str]] = None
     close_waiter: Optional[asyncio.Future] = None
 
     @overload
@@ -231,10 +396,7 @@ class AWSSNSSQSTransport(Invoker):
                 DeprecationWarning,
             )
 
-        if not message_attributes:
-            message_attributes = {}
-        else:
-            message_attributes = copy.deepcopy(message_attributes)
+        message_attributes = {} if not message_attributes else copy.deepcopy(message_attributes)
 
         payload = data
         if message_envelope:
@@ -244,11 +406,7 @@ class AWSSNSSQSTransport(Invoker):
                     build_message_func(service, topic, data, message_attributes=message_attributes, **kwargs)
                 )
 
-        topic_arn: str
-        if cls.topics and cls.topics.get(topic):
-            topic_arn = cls.topics.get(topic, "")
-        else:
-            topic_arn = ""
+        topic_arn: str = cls.topics[topic] if cls.topics and topic in cls.topics and cls.topics[topic] else ""
 
         if not topic_arn or not isinstance(topic_arn, str):
             topic_arn = await asyncio.create_task(
@@ -276,8 +434,236 @@ class AWSSNSSQSTransport(Invoker):
 
         if wait:
             return await asyncio.create_task(_publish_message())
+
+        return asyncio.create_task(_publish_message())
+
+    @overload
+    @classmethod
+    async def send_message(
+        cls,
+        service: Any,
+        data: Any,
+        queue_name: str,
+        wait: Literal[True] = True,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        message_attributes: Optional[Dict[str, Any]] = None,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+        delay_seconds: Optional[int] = None,
+        message_body_formatter: Optional[
+            type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
+        ] = MessageBodyFormatter,
+        **kwargs: Any,
+    ) -> str: ...
+
+    @overload
+    @classmethod
+    async def send_message(
+        cls,
+        service: Any,
+        data: Any,
+        queue_name: str,
+        wait: Literal[False],
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        message_attributes: Optional[Dict[str, Any]] = None,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+        delay_seconds: Optional[int] = None,
+        message_body_formatter: Optional[
+            type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
+        ] = MessageBodyFormatter,
+        **kwargs: Any,
+    ) -> asyncio.Task[str]: ...
+
+    @classmethod
+    async def send_message(
+        cls,
+        service: Any,
+        data: Any,
+        queue_name: str,
+        wait: bool = True,
+        *,
+        message_envelope: Any = MESSAGE_ENVELOPE_DEFAULT,
+        message_protocol: Any = MESSAGE_ENVELOPE_DEFAULT,  # deprecated
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        message_attributes: Optional[Dict[str, Any]] = None,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+        delay_seconds: Optional[int] = None,
+        message_body_formatter: Optional[
+            type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
+        ] = MessageBodyFormatter,
+        **kwargs: Any,
+    ) -> Union[str, asyncio.Task[str]]:
+        logging.getLogger("tomodachi.awssnssqs").new(logger="tomodachi.awssnssqs")
+
+        if message_envelope == MESSAGE_ENVELOPE_DEFAULT and message_protocol != MESSAGE_ENVELOPE_DEFAULT:
+            # Fallback if deprecated message_protocol keyword is used
+            message_envelope = message_protocol
+
+            warnings.warn(
+                "Using the 'message_protocol' keyword argument is deprecated. Use 'message_envelope' instead.",
+                DeprecationWarning,
+            )
+
+        message_envelope = (
+            getattr(service, "message_envelope", getattr(service, "message_protocol", None))
+            if message_envelope == MESSAGE_ENVELOPE_DEFAULT
+            else message_envelope
+        )
+
+        if getattr(service, "message_protocol", None):
+            warnings.warn(
+                "Using the 'message_protocol' attribute on a service is deprecated. Use 'message_envelope' instead.",
+                DeprecationWarning,
+            )
+
+        if (group_id is not None and not queue_name.endswith(".fifo")) or (
+            not group_id and queue_name.endswith(".fifo")
+        ):
+            if queue_name.endswith(".fifo"):
+                error_message = "MessageGroupId, 'group_id', cannot be used with non-FIFO queue in 'send_message' call"
+            else:
+                error_message = "MessageGroupId, 'group_id', missing in 'send_message' call for implied FIFO queue"
+
+            logging.getLogger("tomodachi.awssnssqs").warning(
+                f"Bad combination of SQS.SendMessage request parameter - FIFO related arguments ({error_message})",
+                queue_name=queue_name,
+                group_id=(group_id or ""),
+            )
+            raise ValueError(error_message)
+
+        queue_url: Optional[str] = None
+        queue_key: Tuple[str, Optional[str], Optional[str]] = (queue_name, queue_name_prefix, None)
+
+        if cls.queues and queue_key in cls.queues and cls.queues[queue_key]:
+            queue_url = cls.queues[queue_key]
         else:
-            return asyncio.create_task(_publish_message())
+            queue_url = cls._get_cached_queue_url(
+                queue_name=queue_name,
+                context=service.context,
+                queue_name_prefix=queue_name_prefix,
+            )
+
+        if not queue_url:
+            queue_url = await asyncio.create_task(
+                cls.get_queue_url(
+                    queue_name,
+                    context=service.context,
+                    queue_name_prefix=queue_name_prefix,
+                )
+            )
+
+        if not queue_url:
+            _queue_name = f"{queue_name}.fifo" if not bool(queue_name.endswith(".fifo")) else queue_name[:-5]
+            _queue_url = None
+
+            try:
+                _queue_url = await asyncio.create_task(
+                    cls.get_queue_url(
+                        _queue_name,
+                        context=service.context,
+                        queue_name_prefix=queue_name_prefix,
+                    )
+                )
+            except Exception:
+                pass
+
+            if _queue_url:
+                if _queue_name.endswith(".fifo"):
+                    error_message = "A FIFO queue exists with the '.fifo' prefixed queue name - verify configuration"
+                else:
+                    error_message = "A standard queue exists without a '.fifo' prefixed name  - verify configuration"
+
+                logging.getLogger("tomodachi.awssnssqs").warning(
+                    f"{error_message} ('{_queue_name}' vs '{_queue_name}')"
+                )
+
+            # @todo improve errors overall with more generic type generation
+            botocore_error_type: Type[botocore.exceptions.ClientError] = botocore.exceptions.ClientError
+            error_message = "Cannot send message to non-existent (AWS.SimpleQueueService.NonExistentQueue) SQS queue"
+            error_value: _ClientErrorResponseTypeDef = {
+                "Error": {
+                    "Code": "AWS.SimpleQueueService.NonExistentQueue",
+                    "Message": error_message,
+                }
+            }
+
+            try:
+                if not connector.get_client("tomodachi.sqs"):
+                    await cls.create_client("sqs", service.context)
+
+                async with connector("tomodachi.sqs", service_name="sqs") as client:
+                    botocore_error_type = cast(
+                        Type[botocore.exceptions.ClientError], client.exceptions.QueueDoesNotExist
+                    )
+            except Exception as e:
+                logging.getLogger("exception").exception(
+                    "unexpected exception during error type creation: {}".format(str(e)), queue_name=queue_name
+                )
+
+            # exception type that's subclasses botocore.exceptions.ClientError, sqs_client.exceptions.QueueDoesNotExist
+            # and tomodachi.transport.awssnssqs.QueueDoesNotExistError, which also extends AWSSNSSQSException.
+            error_type: Type[QueueDoesNotExistError] = type(
+                "QueueDoesNotExistError",
+                (botocore_error_type, QueueDoesNotExistError),
+                {
+                    "message": error_message,
+                    "_log_level": service.context.get("log_level"),
+                    "__repr__": lambda s: error_message,
+                    "__str__": lambda s: error_message,
+                },
+            )
+
+            logging.getLogger("tomodachi.awssnssqs").warning(error_message, queue_name=queue_name)
+            raise error_type(error_value, "GetQueueUrl")
+
+        message_attributes = {} if not message_attributes else copy.deepcopy(message_attributes)
+
+        # @todo proper dependency injections for the enveloping of data and message body formatter
+        _message_body_formatter: Optional[MessageBodyFormatterProtocol] = None
+        if message_body_formatter and isinstance(message_body_formatter, type):
+            _message_body_formatter = message_body_formatter()
+        elif message_body_formatter and not isinstance(message_body_formatter, type):
+            _message_body_formatter = message_body_formatter
+
+        formatter_context: Optional[MessageBodyFormatterContext] = None
+        if _message_body_formatter:
+            formatter_context = MessageBodyFormatterContext(
+                data=data,
+                message_attributes=message_attributes,
+                queue_name=queue_name,
+                queue_url=queue_url,
+                service=service,
+                message_envelope=message_envelope,
+                formatter=_message_body_formatter,
+                kwargs=kwargs,
+            )
+
+        async def _send_message() -> str:
+            logging.getLogger("tomodachi.awssnssqs").bind(queue_name=queue_name)
+            return await cls._send_raw_message(
+                queue_url,
+                data,
+                cast(Dict, message_attributes),
+                service.context,
+                group_id=group_id,
+                deduplication_id=deduplication_id,
+                delay_seconds=delay_seconds,
+                service=service,
+                formatter_context=formatter_context,
+            )
+
+        if wait:
+            return await asyncio.create_task(_send_message())
+
+        return asyncio.create_task(_send_message())
 
     @classmethod
     def get_topic_name(
@@ -307,10 +693,9 @@ class AWSSNSSQSTransport(Invoker):
             if topic_prefix == MESSAGE_TOPIC_PREFIX
             else (topic_prefix or "")
         )
-        if topic_prefix:
-            if topic.startswith(topic_prefix):
-                prefix_length = len(topic_prefix)
-                return topic[prefix_length:]
+        if topic_prefix and topic.startswith(topic_prefix):
+            prefix_length = len(topic_prefix)
+            return topic[prefix_length:]
         return topic
 
     @classmethod
@@ -356,19 +741,40 @@ class AWSSNSSQSTransport(Invoker):
         return queue_name
 
     @classmethod
-    def prefix_queue_name(cls, queue_name: str, context: Dict) -> str:
-        queue_name_prefix: Optional[str] = cls.options(context).aws_sns_sqs.queue_name_prefix
+    def prefix_queue_name(
+        cls,
+        queue_name: str,
+        context: Optional[Dict] = None,
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        default_queue_name_prefix: Optional[str] = None,
+    ) -> str:
+        if queue_name_prefix and queue_name_prefix == QUEUE_NAME_PREFIX:
+            if default_queue_name_prefix is None and context:
+                default_queue_name_prefix = cls.options(context).aws_sns_sqs.queue_name_prefix
+            queue_name_prefix = default_queue_name_prefix
+
         if queue_name_prefix:
             return "{}{}".format(queue_name_prefix, queue_name)
+
         return queue_name
 
     @classmethod
-    def get_queue_name_without_prefix(cls, queue_name: str, context: Dict) -> str:
-        queue_name_prefix: Optional[str] = cls.options(context).aws_sns_sqs.queue_name_prefix
-        if queue_name_prefix:
-            if queue_name.startswith(queue_name_prefix):
-                prefix_length = len(queue_name_prefix)
-                return queue_name[prefix_length:]
+    def get_queue_name_without_prefix(
+        cls,
+        queue_name: str,
+        context: Optional[Dict] = None,
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        default_queue_name_prefix: Optional[str] = None,
+    ) -> str:
+        if queue_name_prefix and queue_name_prefix == QUEUE_NAME_PREFIX:
+            if default_queue_name_prefix is None and context:
+                default_queue_name_prefix = cls.options(context).aws_sns_sqs.queue_name_prefix
+            queue_name_prefix = default_queue_name_prefix
+
+        if queue_name_prefix and queue_name.startswith(queue_name_prefix):
+            prefix_length = len(queue_name_prefix)
+            return queue_name[prefix_length:]
+
         return queue_name
 
     @classmethod
@@ -469,13 +875,15 @@ class AWSSNSSQSTransport(Invoker):
 
         async def handler(
             payload: Optional[str],
-            receipt_handle: Optional[str] = None,
-            queue_url: Optional[str] = None,
+            receipt_handle: str,
+            queue_url: str,
             message_topic: str = "",
             message_attributes: Optional[Dict] = None,
             approximate_receive_count: Optional[int] = None,
             sns_message_id: Optional[str] = None,
             sqs_message_id: Optional[str] = None,
+            message_type: Optional[str] = None,
+            raw_message_body: Optional[str] = None,
             message_timestamp: Optional[str] = None,
             message_deduplication_id: Optional[str] = None,
             message_group_id: Optional[str] = None,
@@ -570,6 +978,14 @@ class AWSSNSSQSTransport(Invoker):
                             not isinstance(message, dict) or "sqs_message_id" not in message
                         ):
                             kwargs["sqs_message_id"] = sqs_message_id
+                        if "message_type" in args_set and (
+                            not isinstance(message, dict) or "message_type" not in message
+                        ):
+                            kwargs["message_type"] = message_type
+                        if "raw_message_body" in args_set and (
+                            not isinstance(message, dict) or "raw_message_body" not in message
+                        ):
+                            kwargs["raw_message_body"] = raw_message_body
                         if "message_timestamp" in args_set and (
                             not isinstance(message, dict) or "message_timestamp" not in message
                         ):
@@ -613,6 +1029,10 @@ class AWSSNSSQSTransport(Invoker):
                         kwargs["sns_message_id"] = sns_message_id
                     if "sqs_message_id" in args_set:
                         kwargs["sqs_message_id"] = sqs_message_id
+                    if "message_type" in args_set:
+                        kwargs["message_type"] = message_type
+                    if "raw_message_body" in args_set:
+                        kwargs["raw_message_body"] = raw_message_body
                     if "message_timestamp" in args_set:
                         kwargs["message_timestamp"] = message_timestamp
                     if "message_deduplication_id" in args_set:
@@ -622,6 +1042,11 @@ class AWSSNSSQSTransport(Invoker):
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
                     del kwargs[values.args[1]]
+
+            if not message_topic and "topic" in kwargs:
+                del kwargs["topic"]
+            elif message_topic and "topic" in kwargs and kwargs["topic"] != message_topic:
+                kwargs["topic"] = message_topic
 
             @functools.wraps(func)
             async def routine_func(*a: Any, **kw: Any) -> Any:
@@ -662,16 +1087,18 @@ class AWSSNSSQSTransport(Invoker):
                         func,
                         routine_func,
                         context.get("_awssnssqs_message_pre_middleware", []) + context.get("message_middleware", []),
-                        *(obj, message, topic),
+                        *(obj, message, message_topic),
                         message=message,
                         message_uuid=message_uuid,
-                        topic=topic,
+                        topic=message_topic,
                         receipt_handle=receipt_handle,
                         queue_url=queue_url,
                         message_attributes=message_attributes_values,
                         approximate_receive_count=approximate_receive_count,
                         sns_message_id=sns_message_id,
                         sqs_message_id=sqs_message_id,
+                        message_type=message_type,
+                        raw_message_body=raw_message_body,
                         message_timestamp=message_timestamp,
                         message_deduplication_id=message_deduplication_id,
                         message_group_id=message_group_id,
@@ -700,7 +1127,7 @@ class AWSSNSSQSTransport(Invoker):
 
             return return_value
 
-        attributes: Dict[str, Union[str, bool]] = {}
+        attributes: Dict[str, str] = {}
 
         if filter_policy != FILTER_POLICY_DEFAULT:
             if filter_policy is None:
@@ -729,27 +1156,35 @@ class AWSSNSSQSTransport(Invoker):
         start_func = cls.subscribe(obj, context)
         return (await start_func) if start_func else None
 
+    @overload
     @staticmethod
-    async def create_client(name: str, context: Dict) -> None:
+    async def create_client(name: Literal["sns"], context: Dict) -> SNSClient: ...
+
+    @overload
+    @staticmethod
+    async def create_client(name: Literal["sqs"], context: Dict) -> SQSClient: ...
+
+    @staticmethod
+    async def create_client(name: str, context: Dict) -> aiobotocore.client.AioBaseClient:
         alias = f"tomodachi.{name}"
         if connector.get_client(alias):
-            return
+            return cast(aiobotocore.client.AioBaseClient, connector.get_client(alias))
 
         options: Options = AWSSNSSQSTransport.options(context)
 
-        credentials = {
-            "region_name": options.aws_sns_sqs.region_name,
-            "aws_secret_access_key": options.aws_sns_sqs.aws_secret_access_key,
-            "aws_access_key_id": options.aws_sns_sqs.aws_access_key_id,
-            "endpoint_url": options.aws_endpoint_urls.get(name, None),
-        }
+        credentials = Credentials(
+            region_name=options.aws_sns_sqs.region_name,
+            aws_secret_access_key=options.aws_sns_sqs.aws_secret_access_key,
+            aws_access_key_id=options.aws_sns_sqs.aws_access_key_id,
+            endpoint_url=options.aws_endpoint_urls.get(name, None),
+        )
 
         connector.setup_credentials(alias, credentials)
 
         logging.getLogger("botocore.vendored.requests.packages.urllib3.connectionpool").setLevel(logging.WARNING)
 
         try:
-            await connector.create_client(alias, service_name=name)
+            return await connector.create_client(alias, service_name=name)
         except (botocore.exceptions.PartialCredentialsError, botocore.exceptions.NoRegionError) as e:
             error_message = str(e)
             logging.getLogger("tomodachi.awssnssqs").warning(
@@ -845,8 +1280,8 @@ class AWSSNSSQSTransport(Invoker):
 
                 if topic_attributes and topic_attributes.get("KmsMasterKeyId") == "":
                     try:
-                        async with connector("tomodachi.sns", service_name="sqs") as client:
-                            topic_attributes_response = await client.get_topic_attributes(TopicArn=topic_arn)
+                        async with connector("tomodachi.sns", service_name="sns") as client:
+                            topic_attributes_response = await client.get_topic_attributes(TopicArn=cast(str, topic_arn))
                             if not topic_attributes_response.get("Attributes", {}).get("KmsMasterKeyId"):
                                 update_attributes = False
                                 overwrite_attributes = False
@@ -938,17 +1373,49 @@ class AWSSNSSQSTransport(Invoker):
     def transform_message_attributes_from_response(
         message_attributes: Dict,
     ) -> MessageAttributesType:
+        # SQS -> Message attributes on a SQS message are structured with "DataType", "StringValue" and "BinaryValue".
+        # SNS -> Message attributes in the message body as forwarded from an SNS notification uses "Type" and "Value".
+        # Both kinds of structures are parsed, in order to accomodate both 'SNS.Publish' and 'SQS.SendMessage'.
+        # For portability to use this method as part of Lambda functions, we're also supporting camelCase variants.
+
         result: MessageAttributesType = {}
 
         for name, values in message_attributes.items():
-            value = values["Value"]
-            if values["Type"] == "String":
+            if "DataType" in values:
+                type_ = values["DataType"]
+            elif "Type" in values:
+                type_ = values["Type"]
+            elif "dataType" in values:
+                type_ = values["dataType"]
+            elif "type" in values:
+                type_ = values["type"]
+            else:
+                continue
+
+            if "StringValue" in values:
+                value = values["StringValue"]
+            elif "BinaryValue" in values:
+                value = values["BinaryValue"]
+            elif "Value" in values:
+                value = values["Value"]
+            elif "stringValue" in values:
+                value = values["stringValue"]
+            elif "binaryValue" in values:
+                value = values["binaryValue"]
+            elif "value" in values:
+                value = values["value"]
+            else:
+                continue
+
+            if type_ == "String":
                 result[name] = value
-            elif values["Type"] == "Number":
+            elif type_ == "Number":
                 result[name] = int(value) if "." not in value else float(value)
-            elif values["Type"] == "Binary":
-                result[name] = base64.b64decode(value)
-            elif values["Type"] == "String.Array":
+            elif type_ == "Binary":
+                # a binary message attribute received on the outer sqs message are already base64 decoded by botocore,
+                # but if it's part of an sns notification message, it will instead be a base64 encoded string.
+                result[name] = base64.b64decode(value.encode("ascii")) if isinstance(value, str) else value
+            elif type_ == "String.Array":
                 result[name] = cast(
                     Optional[Union[bool, List[Optional[Union[str, int, float, bool, object]]]]], json.loads(value)
                 )
@@ -956,8 +1423,13 @@ class AWSSNSSQSTransport(Invoker):
         return result
 
     @staticmethod
-    def transform_message_attributes_to_botocore(message_attributes: Dict) -> Dict[str, Dict[str, Union[str, bytes]]]:
-        result: Dict[str, Dict[str, Union[str, bytes]]] = {}
+    def transform_message_attributes_to_botocore(
+        message_attributes: Dict,
+    ) -> MessageAttributesTypeDef:
+        # This function formats message attributes from a key-value dict into the structure expected by botocore,
+        # which then converts it into the request parameters used for SNS.Publish, SQS.SendMessage and the batch APIs.
+
+        result: MessageAttributesTypeDef = {}
 
         for name, value in message_attributes.items():
             if isinstance(value, str):
@@ -967,11 +1439,38 @@ class AWSSNSSQSTransport(Invoker):
             elif isinstance(value, (int, float, decimal.Decimal)):
                 result[name] = {"DataType": "Number", "StringValue": str(value)}
             elif isinstance(value, bytes):
+                # botocore handles the binary conversion to base64, so it can't done here (it would be double-encoded)
                 result[name] = {"DataType": "Binary", "BinaryValue": value}
             elif isinstance(value, list):
                 result[name] = {"DataType": "String.Array", "StringValue": json.dumps(value)}
             else:
                 result[name] = {"DataType": "String", "StringValue": str(value)}
+
+        return result
+
+    @staticmethod
+    def transform_message_attributes_to_message_body_metadata(
+        message_attributes: Dict,
+    ) -> Dict[str, Dict[str, str]]:
+        # Utility function that formats message attributes from a key-value dict into a similar structure that is
+        # used within the message body of an SNS notification forwarded to SQS, as the result of SNS.Publish.
+        # This uses just "Type" and "Value" keys, and is slightly cleaner than message attributes on outer SQS messages.
+
+        result: Dict[str, Dict[str, str]] = {}
+
+        for name, value in message_attributes.items():
+            if isinstance(value, str):
+                result[name] = {"Type": "String", "Value": value}
+            elif value is None or isinstance(value, bool):
+                result[name] = {"Type": "String.Array", "Value": json.dumps(value)}
+            elif isinstance(value, (int, float, decimal.Decimal)):
+                result[name] = {"Type": "Number", "Value": str(value)}
+            elif isinstance(value, bytes):
+                result[name] = {"Type": "Binary", "Value": base64.b64encode(value).decode("ascii")}
+            elif isinstance(value, list):
+                result[name] = {"Type": "String.Array", "Value": json.dumps(value)}
+            else:
+                result[name] = {"Type": "String", "Value": str(value)}
 
         return result
 
@@ -1014,14 +1513,14 @@ class AWSSNSSQSTransport(Invoker):
 
         message_attribute_values = cls.transform_message_attributes_to_botocore(message_attributes)
 
-        fifo_attrs = {}
+        optional_request_parameters = {}
         if group_id is not None:
-            fifo_attrs = {
-                "MessageGroupId": group_id,
-                "MessageDeduplicationId": deduplication_id or str(uuid.uuid4()),
-            }
+            optional_request_parameters["MessageGroupId"] = group_id
+            optional_request_parameters["MessageDeduplicationId"] = (
+                deduplication_id if deduplication_id else str(uuid.uuid4())
+            )
 
-        response = {}
+        response: Union[PublishResponseTypeDef, Dict[str, Any]] = {}
         for retry in range(1, 4):
             try:
                 async with connector("tomodachi.sns", service_name="sns") as client:
@@ -1030,7 +1529,7 @@ class AWSSNSSQSTransport(Invoker):
                             TopicArn=topic_arn,
                             Message=message,
                             MessageAttributes=message_attribute_values,
-                            **fifo_attrs,
+                            **optional_request_parameters,
                         ),
                         timeout=40,
                     )
@@ -1068,8 +1567,115 @@ class AWSSNSSQSTransport(Invoker):
         return message_id
 
     @classmethod
-    async def delete_message(cls, receipt_handle: Optional[str], queue_url: Optional[str], context: Dict) -> None:
+    async def send_raw_message(
+        cls,
+        queue_url: str,
+        message_body: Any,
+        message_attributes: Dict,
+        context: Dict,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+        delay_seconds: Optional[int] = None,
+        service: Any = None,
+    ) -> str:
+        return await cls._send_raw_message(
+            queue_url,
+            message_body,
+            message_attributes,
+            context,
+            group_id=group_id,
+            deduplication_id=deduplication_id,
+            delay_seconds=delay_seconds,
+            service=service,
+        )
+
+    @classmethod
+    async def _send_raw_message(
+        cls,
+        /,
+        queue_url: str,
+        message_body: Any,
+        message_attributes: Dict,
+        context: Dict,
+        *,
+        group_id: Optional[str] = None,
+        deduplication_id: Optional[str] = None,
+        delay_seconds: Optional[int] = None,
+        service: Any = None,
+        formatter_context: Optional[MessageBodyFormatterContext] = None,
+    ) -> str:
+        if not connector.get_client("tomodachi.sqs"):
+            await cls.create_client("sqs", context)
+
+        if formatter_context:
+            message_body = await asyncio.create_task(
+                formatter_context.formatter(formatter_context, **formatter_context.kwargs)
+            )
+
+        message_attribute_values = cls.transform_message_attributes_to_botocore(message_attributes)
+
+        optional_request_parameters: Dict[str, Any] = {}
+        if group_id is not None:
+            optional_request_parameters["MessageGroupId"] = group_id
+            optional_request_parameters["MessageDeduplicationId"] = (
+                deduplication_id if deduplication_id else str(uuid.uuid4())
+            )
+
+        if delay_seconds is not None:
+            optional_request_parameters["DelaySeconds"] = delay_seconds
+
+        response: Union[SendMessageResultTypeDef, Dict[str, Any]] = {}
+        for retry in range(1, 4):
+            try:
+                async with connector("tomodachi.sqs", service_name="sqs") as client:
+                    response = await asyncio.wait_for(
+                        client.send_message(
+                            QueueUrl=queue_url,
+                            MessageBody=message_body,
+                            MessageAttributes=message_attribute_values,
+                            **optional_request_parameters,
+                        ),
+                        timeout=40,
+                    )
+            except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError, asyncio.CancelledError) as e:
+                if retry >= 3:
+                    raise e
+                continue
+            except (
+                botocore.exceptions.ClientError,
+                aiohttp.client_exceptions.ClientConnectorError,
+                asyncio.TimeoutError,
+            ) as e:
+                if retry >= 3:
+                    error_message = str(e) if not isinstance(e, asyncio.TimeoutError) else "Network timeout"
+                    logging.getLogger("tomodachi.awssnssqs").warning(
+                        "Unable to send message [sqs] on AWS ({})".format(error_message)
+                    )
+                    raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
+                continue
+            # AWS API can respond with empty body as 408 error - botocore adds "Further retries may succeed"
+            except ResponseParserError as e:
+                if retry >= 3 or "Further retries may succeed" not in str(e):
+                    raise e
+                continue
+            break
+
+        message_id: Optional[str] = response.get("MessageId")
+        if not message_id or not isinstance(message_id, str):
+            error_message = "Missing MessageId in response"
+            logging.getLogger("tomodachi.awssnssqs").warning(
+                "Unable to send message [sqs] on AWS ({})".format(error_message)
+            )
+            raise AWSSNSSQSException(error_message, log_level=context.get("log_level"))
+
+        return message_id
+
+    @classmethod
+    async def delete_message(cls, receipt_handle: str, queue_url: str, context: Dict) -> None:
         if not receipt_handle:
+            logging.getLogger("tomodachi.awssnssqs").warning(
+                "Unable to delete message [sqs] from queue without receipt handle", queue_url=queue_url
+            )
             return
 
         if not connector.get_client("tomodachi.sqs"):
@@ -1115,31 +1721,329 @@ class AWSSNSSQSTransport(Invoker):
 
     @classmethod
     async def get_queue_url_from_arn(cls, queue_arn: str, context: Dict) -> Optional[str]:
-        if not connector.get_client("tomodachi.sqs"):
-            await cls.create_client("sqs", context)
+        if not queue_arn.startswith("arn:aws:sqs:"):
+            raise ValueError(f"Invalid SQS ARN ({queue_arn})")
+
+        queue_key: Tuple[str, Optional[str], Optional[str]] = (queue_arn, QUEUE_NAME_PREFIX, None)
+        if cls.queues and queue_key in cls.queues and cls.queues[queue_key]:
+            return cls.queues[queue_key]
 
         queue_name = queue_arn.split(":")[-1]
         account_id = queue_arn.split(":")[-2]
 
-        queue_url = None
-        try:
-            async with connector("tomodachi.sqs", service_name="sqs") as client:
-                response = await client.get_queue_url(QueueName=queue_name, QueueOwnerAWSAccountId=account_id)
-                queue_url = response.get("QueueUrl")
-        except (
-            botocore.exceptions.NoCredentialsError,
-            botocore.exceptions.PartialCredentialsError,
-            aiohttp.client_exceptions.ClientOSError,
-        ) as e:
-            error_message = str(e)
-            logging.getLogger("tomodachi.awssnssqs").warning(
-                "Unable to connect [sqs] to AWS ({})".format(error_message)
-            )
-            raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
-        except botocore.exceptions.ClientError:
-            pass
+        return await cls._get_queue_url(
+            queue_name=queue_name,
+            context=context,
+            queue_name_prefix=None,
+            account_id=account_id,
+            queue_key=queue_key,
+        )
 
-        return queue_url
+    @classmethod
+    async def get_queue_url(
+        cls,
+        queue_name: str,
+        context: Dict,
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        default_queue_name_prefix: Optional[str] = None,
+    ) -> Optional[str]:
+        queue_key: Tuple[str, Optional[str], Optional[str]] = (queue_name, queue_name_prefix, None)
+        if cls.queues and queue_key in cls.queues and cls.queues[queue_key]:
+            return cls.queues[queue_key]
+
+        account_id: Optional[str] = None
+
+        if queue_name.startswith("arn:aws:sqs:"):
+            # example queue arn format: "arn:aws:sqs:region:account-id:queue-name"
+            queue_arn = queue_name
+            queue_name = queue_arn.split(":")[-1]
+            account_id = queue_arn.split(":")[-2]
+            if not account_id or not account_id.isdigit() or not queue_name:
+                logging.getLogger("tomodachi.awssnssqs").warning(
+                    "Specified Queue ARN [sqs] has unexpected format", queue_arn=queue_arn
+                )
+                raise ValueError(f"Invalid SQS ARN ({queue_arn})")
+            if account_id and not account_id.strip("0"):
+                account_id = None
+            if (
+                queue_name_prefix
+                and queue_name_prefix != QUEUE_NAME_PREFIX
+                and not queue_name.startswith(queue_name_prefix)
+            ):
+                raise ValueError(f"Mismatched queue ({queue_arn}) with queue_name_prefix ({queue_name_prefix})")
+        elif queue_name.startswith(("http://", "https://")):
+            # example queue url format: "https://sqs.us-east-2.amazonaws.com/account-id/queue-name"
+            queue_url = queue_name
+            endpoint_parts = queue_url.rsplit("/", 2)
+            if len(endpoint_parts) == 3:
+                _, account_id, queue_name = endpoint_parts
+                if not account_id or not account_id.isdigit():
+                    account_id = None
+                elif (
+                    queue_name_prefix
+                    and queue_name_prefix != QUEUE_NAME_PREFIX
+                    and not queue_name.startswith(queue_name_prefix)
+                ):
+                    raise ValueError(f"Mismatched queue ({queue_url}) with queue_name_prefix ({queue_name_prefix})")
+            if not account_id:
+                logging.getLogger("tomodachi.awssnssqs").warning(
+                    "Specified Queue URL [sqs] has unexpected format", queue_url=queue_url
+                )
+                cls._set_cached_queue_url(
+                    queue_url=queue_url,
+                    queue_name=queue_url,
+                    context=context,
+                    default_queue_name_prefix=default_queue_name_prefix,
+                    queue_key=queue_key,
+                )
+            else:
+                cls._set_cached_queue_url(
+                    queue_url=queue_url,
+                    queue_name=queue_name,
+                    context=context,
+                    queue_name_prefix=queue_name_prefix,
+                    account_id=account_id if account_id and account_id.strip("0") else None,
+                    default_queue_name_prefix=default_queue_name_prefix,
+                    queue_key=queue_key,
+                )
+            return queue_url
+
+        return await cls._get_queue_url(
+            queue_name=queue_name,
+            context=context,
+            queue_name_prefix=queue_name_prefix,
+            account_id=account_id,
+            default_queue_name_prefix=default_queue_name_prefix,
+            queue_key=queue_key,
+        )
+
+    @classmethod
+    async def _get_queue_url(
+        cls,
+        queue_name: str,
+        context: Dict,
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        account_id: Optional[str] = None,
+        default_queue_name_prefix: Optional[str] = None,
+        queue_key: Optional[Tuple[str, Optional[str], Optional[str]]] = None,
+    ) -> Optional[str]:
+        queue_key = queue_key if queue_key is not None else (queue_name, queue_name_prefix, account_id)
+
+        if cls.queues and queue_key in cls.queues and cls.queues[queue_key]:
+            return cls.queues[queue_key]
+
+        queue_url = cls._get_cached_queue_url(
+            queue_name=queue_name,
+            context=context,
+            queue_name_prefix=queue_name_prefix,
+            account_id=account_id,
+            default_queue_name_prefix=default_queue_name_prefix,
+            queue_key=queue_key,
+        )
+        if queue_url:
+            return queue_url
+
+        _queue_name = queue_name
+        if queue_name_prefix and not queue_name.startswith(("arn:aws:sqs:", "http://", "https://")):
+            _queue_name = cls.prefix_queue_name(
+                queue_name,
+                context=context,
+                queue_name_prefix=queue_name_prefix,
+                default_queue_name_prefix=default_queue_name_prefix,
+            )
+
+        cls.validate_queue_name(_queue_name)
+
+        condition = await connector.get_condition("tomodachi.sqs.get_queue_url")
+        lock = connector.get_lock("tomodachi.sqs.get_queue_url_lock")
+
+        async with condition:
+            if lock.locked() and not (cls.queues and queue_key in cls.queues and cls.queues[queue_key]):
+                await condition.wait()
+
+            if cls.queues and queue_key in cls.queues and cls.queues[queue_key]:
+                return cls.queues[queue_key]
+
+            await lock.acquire()
+
+        try:
+            if not connector.get_client("tomodachi.sqs"):
+                await cls.create_client("sqs", context)
+
+            optional_request_parameters = {}
+            if account_id is not None:
+                optional_request_parameters["QueueOwnerAWSAccountId"] = account_id
+
+            try:
+                async with connector("tomodachi.sqs", service_name="sqs") as client:
+                    response = await client.get_queue_url(QueueName=_queue_name, **optional_request_parameters)
+                    queue_url = response.get("QueueUrl")
+            except (
+                botocore.exceptions.NoCredentialsError,
+                botocore.exceptions.PartialCredentialsError,
+                aiohttp.client_exceptions.ClientOSError,
+            ) as e:
+                error_message = str(e)
+                logging.getLogger("tomodachi.awssnssqs").warning(
+                    "Unable to connect [sqs] to AWS ({})".format(error_message)
+                )
+                raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
+            except botocore.exceptions.ClientError as e:
+                error_message = str(e)
+                if "AWS.SimpleQueueService.NonExistentQueue" not in error_message:
+                    logging.getLogger("tomodachi.awssnssqs").warning(
+                        "Unable to get queue url [sqs] on AWS ({})".format(error_message)
+                    )
+                    raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
+
+            if queue_url:
+                cls._set_cached_queue_url(
+                    queue_url=queue_url,
+                    queue_name=queue_name,
+                    context=context,
+                    queue_name_prefix=queue_name_prefix,
+                    account_id=account_id,
+                    default_queue_name_prefix=default_queue_name_prefix,
+                    queue_key=queue_key,
+                )
+        finally:
+            lock.release()
+            async with condition:
+                condition.notify()
+
+        async with condition:
+            condition.notify_all()
+
+        return queue_url or None
+
+    @classmethod
+    def _get_queue_url_cache_keys(
+        cls,
+        queue_name: str,
+        context: Optional[Dict] = None,
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        account_id: Optional[str] = None,
+        default_queue_name_prefix: Optional[str] = None,
+        queue_key: Optional[Tuple[str, Optional[str], Optional[str]]] = None,
+    ) -> set[Tuple[str, Optional[str], Optional[str]]]:
+        if (
+            default_queue_name_prefix is None
+            and context
+            and not queue_name.startswith(("arn:aws:sqs:", "http://", "https://"))
+        ):
+            default_queue_name_prefix = cls.options(context).aws_sns_sqs.queue_name_prefix
+
+        _queue_name = queue_name
+        if queue_name_prefix and not queue_name.startswith(("arn:aws:sqs:", "http://", "https://")):
+            _queue_name = cls.prefix_queue_name(
+                queue_name,
+                context=context,
+                queue_name_prefix=queue_name_prefix,
+                default_queue_name_prefix=default_queue_name_prefix,
+            )
+
+        cache_keys: set[Tuple[str, Optional[str], Optional[str]]] = {
+            (_queue_name, None, account_id),
+            (_queue_name, "", account_id),
+            (queue_name, queue_name_prefix, account_id),
+        }
+
+        if queue_name.startswith(("arn:aws:sqs:", "http://", "https://")):
+            cache_keys.add((queue_name, None, None))
+            cache_keys.add((queue_name, "", None))
+            cache_keys.add((queue_name, QUEUE_NAME_PREFIX, None))
+            if queue_name_prefix != QUEUE_NAME_PREFIX:
+                cache_keys.add((queue_name, queue_name_prefix, None))
+
+        if default_queue_name_prefix == "":
+            cache_keys.add((_queue_name, QUEUE_NAME_PREFIX, account_id))
+
+        if queue_key:
+            cache_keys.add(queue_key)
+            _queue_name_prefix = queue_key[1]
+            if _queue_name_prefix and _queue_name_prefix == QUEUE_NAME_PREFIX and default_queue_name_prefix:
+                cache_keys.add((queue_key[0], default_queue_name_prefix, queue_key[2]))
+                if default_queue_name_prefix == "":
+                    cache_keys.add((queue_key[0], "", queue_key[2]))
+                    cache_keys.add((queue_key[0], None, queue_key[2]))
+            if (_queue_name_prefix and _queue_name_prefix == default_queue_name_prefix) or (
+                not _queue_name_prefix and default_queue_name_prefix == ""
+            ):
+                cache_keys.add((queue_key[0], QUEUE_NAME_PREFIX, queue_key[2]))
+
+        return cache_keys
+
+    @classmethod
+    def _get_cached_queue_url(
+        cls,
+        queue_name: str,
+        context: Optional[Dict] = None,
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        account_id: Optional[str] = None,
+        default_queue_name_prefix: Optional[str] = None,
+        queue_key: Optional[Tuple[str, Optional[str], Optional[str]]] = None,
+    ) -> Optional[str]:
+        if not cls.queues:
+            return None
+
+        queue_keys = cls._get_queue_url_cache_keys(
+            queue_name=queue_name,
+            context=context,
+            queue_name_prefix=queue_name_prefix,
+            account_id=account_id,
+            default_queue_name_prefix=default_queue_name_prefix,
+            queue_key=queue_key,
+        )
+
+        found_keys = cls.queues.keys() & queue_keys
+        if found_keys:
+            missing_keys = queue_keys - found_keys
+            queue_url = cls.queues[found_keys.pop()]
+            for _queue_key in missing_keys:
+                cls.queues[_queue_key] = queue_url
+            return queue_url
+
+        return None
+
+    @classmethod
+    def _set_cached_queue_url(
+        cls,
+        queue_url: str,
+        queue_name: str,
+        context: Optional[Dict] = None,
+        queue_name_prefix: Optional[str] = QUEUE_NAME_PREFIX,
+        account_id: Optional[str] = None,
+        default_queue_name_prefix: Optional[str] = None,
+        queue_key: Optional[Tuple[str, Optional[str], Optional[str]]] = None,
+    ) -> None:
+        if cls.queues is None:
+            cls.queues = {}
+
+        if default_queue_name_prefix is None and context:
+            default_queue_name_prefix = cls.options(context).aws_sns_sqs.queue_name_prefix
+
+        queue_keys = cls._get_queue_url_cache_keys(
+            queue_name=queue_name,
+            context=context,
+            queue_name_prefix=queue_name_prefix,
+            account_id=account_id,
+            default_queue_name_prefix=default_queue_name_prefix,
+            queue_key=queue_key,
+        )
+
+        queue_keys.add((queue_url, None, account_id))
+        queue_keys.add((queue_url, "", account_id))
+        queue_keys.add((queue_url, None, None))
+        queue_keys.add((queue_url, "", None))
+        queue_keys.add((queue_url, QUEUE_NAME_PREFIX, account_id))
+        queue_keys.add((queue_url, QUEUE_NAME_PREFIX, None))
+
+        if default_queue_name_prefix:
+            queue_keys.add((queue_url, default_queue_name_prefix, account_id))
+            queue_keys.add((queue_url, default_queue_name_prefix, None))
+
+        for _queue_key in queue_keys:
+            cls.queues[_queue_key] = queue_url
 
     @classmethod
     async def create_queue(
@@ -1149,6 +2053,9 @@ class AWSSNSSQSTransport(Invoker):
         fifo: bool,
         message_retention_period: Union[int, str] = MESSAGE_RETENTION_PERIOD_DEFAULT,
     ) -> Tuple[str, str]:
+        if cls.queues is None:
+            cls.queues = {}
+
         cls.validate_queue_name(queue_name)
         if not connector.get_client("tomodachi.sqs"):
             await cls.create_client("sqs", context)
@@ -1158,7 +2065,7 @@ class AWSSNSSQSTransport(Invoker):
             queue_name=logging.getLogger("tomodachi.awssnssqs")._context.get("queue_name", queue_name),
         )
 
-        queue_url = ""
+        queue_url: Optional[str] = None
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as client:
                 response = await client.get_queue_url(QueueName=queue_name)
@@ -1191,7 +2098,9 @@ class AWSSNSSQSTransport(Invoker):
                 queue_attrs["MessageRetentionPeriod"] = str(message_retention_period)
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
-                    response = await client.create_queue(QueueName=queue_name, Attributes=queue_attrs)
+                    response = await client.create_queue(
+                        QueueName=queue_name, Attributes=cast(Mapping[Any, str], queue_attrs)
+                    )
                     queue_url = response.get("QueueUrl")
             except (
                 botocore.exceptions.NoCredentialsError,
@@ -1213,13 +2122,15 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as client:
-                response = await client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])
+                queue_attributes_response = await client.get_queue_attributes(
+                    QueueUrl=queue_url, AttributeNames=["QueueArn"]
+                )
         except botocore.exceptions.ClientError as e:
             error_message = str(e)
             logger.warning("Unable to get queue attributes [sqs] on AWS ({})".format(error_message))
             raise AWSSNSSQSException(error_message, log_level=context.get("log_level")) from e
 
-        queue_arn = response.get("Attributes", {}).get("QueueArn")
+        queue_arn: Optional[str] = queue_attributes_response.get("Attributes", {}).get("QueueArn")
         if not queue_arn:
             error_message = "Missing ARN in response"
             logger.warning("Unable to get queue attributes [sqs] on AWS ({})".format(error_message))
@@ -1287,7 +2198,7 @@ class AWSSNSSQSTransport(Invoker):
         queue_url: str,
         context: Dict,
         fifo: bool,
-        attributes: Optional[Dict[str, Union[str, bool]]] = None,
+        attributes: Optional[Dict[str, str]] = None,
         visibility_timeout: Optional[int] = None,
         redrive_policy: Optional[Dict[str, Union[str, int]]] = None,
     ) -> Optional[List]:
@@ -1323,7 +2234,9 @@ class AWSSNSSQSTransport(Invoker):
             next_token = response.get("NextToken")
             topics = response.get("Topics", [])
             topic_arn_list = [
-                t.get("TopicArn") for t in topics if t.get("TopicArn") and compiled_pattern.match(t.get("TopicArn"))
+                cast(str, t.get("TopicArn"))
+                for t in topics
+                if t.get("TopicArn") and compiled_pattern.match(cast(str, t.get("TopicArn")))
             ]
 
         if topic_arn_list:
@@ -1350,7 +2263,7 @@ class AWSSNSSQSTransport(Invoker):
         queue_url: str,
         context: Dict,
         queue_policy: Optional[Dict] = None,
-        attributes: Optional[Dict[str, Union[str, bool]]] = None,
+        attributes: Optional[Dict[str, str]] = None,
         visibility_timeout: Optional[int] = None,
         redrive_policy: Optional[Dict[str, Union[str, int]]] = None,
     ) -> List:
@@ -1430,7 +2343,7 @@ class AWSSNSSQSTransport(Invoker):
 
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
-                response = await sqs_client.get_queue_attributes(
+                queue_attributes_response = await sqs_client.get_queue_attributes(
                     QueueUrl=queue_url,
                     AttributeNames=[
                         "Policy",
@@ -1441,23 +2354,24 @@ class AWSSNSSQSTransport(Invoker):
                         "KmsDataKeyReusePeriodSeconds",
                     ],
                 )
-                current_queue_attributes = response.get("Attributes", {})
+                current_queue_attributes = queue_attributes_response.get("Attributes", {})
                 current_queue_policy = json.loads(current_queue_attributes.get("Policy") or "{}")
-                current_visibility_timeout = current_queue_attributes.get("VisibilityTimeout")
+                current_visibility_timeout_ = current_queue_attributes.get("VisibilityTimeout")
+                current_visibility_timeout = int(current_visibility_timeout_) if current_visibility_timeout_ else None
                 if current_queue_attributes:
                     current_redrive_policy = json.loads(current_queue_attributes.get("RedrivePolicy") or "{}")
-                if current_visibility_timeout:
-                    current_visibility_timeout = int(current_visibility_timeout)
-                current_message_retention_period = current_queue_attributes.get("MessageRetentionPeriod")
-                if current_message_retention_period:
+                current_message_retention_period_ = current_queue_attributes.get("MessageRetentionPeriod")
+                if current_message_retention_period_:
                     try:
-                        current_message_retention_period = int(current_message_retention_period)
+                        current_message_retention_period = int(current_message_retention_period_)
                     except ValueError:
                         current_message_retention_period = None
                 current_kms_master_key_id = current_queue_attributes.get("KmsMasterKeyId")
-                current_kms_data_key_reuse_period_seconds = current_queue_attributes.get("KmsDataKeyReusePeriodSeconds")
-                if current_kms_data_key_reuse_period_seconds:
-                    current_kms_data_key_reuse_period_seconds = int(current_kms_data_key_reuse_period_seconds)
+                current_kms_data_key_reuse_period_seconds_ = current_queue_attributes.get(
+                    "KmsDataKeyReusePeriodSeconds"
+                )
+                if current_kms_data_key_reuse_period_seconds_:
+                    current_kms_data_key_reuse_period_seconds = int(current_kms_data_key_reuse_period_seconds_)
         except botocore.exceptions.ClientError:
             pass
 
@@ -1514,7 +2428,9 @@ class AWSSNSSQSTransport(Invoker):
 
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
-                    response = await sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes=queue_attributes)
+                    await sqs_client.set_queue_attributes(
+                        QueueUrl=queue_url, Attributes=cast(Mapping[Any, str], queue_attributes)
+                    )
             except botocore.exceptions.ClientError as e:
                 error_message = str(e)
                 logging.getLogger("tomodachi.awssnssqs").warning(
@@ -1637,13 +2553,15 @@ class AWSSNSSQSTransport(Invoker):
             async def _receive_wrapper() -> None:
                 def callback(
                     payload: Optional[str],
-                    receipt_handle: Optional[str],
-                    queue_url: Optional[str],
+                    receipt_handle: str,
+                    queue_url: str,
                     message_topic: str,
                     message_attributes: Dict,
                     approximate_receive_count: Optional[int],
                     sns_message_id: Optional[str],
                     sqs_message_id: Optional[str],
+                    message_type: Optional[str],
+                    raw_message_body: Optional[str],
                     message_timestamp: Optional[str],
                     message_deduplication_id: Optional[str],
                     message_group_id: Optional[str],
@@ -1658,6 +2576,8 @@ class AWSSNSSQSTransport(Invoker):
                             approximate_receive_count,
                             sns_message_id,
                             sqs_message_id,
+                            message_type,
+                            raw_message_body,
                             message_timestamp,
                             message_deduplication_id,
                             message_group_id,
@@ -1688,6 +2608,7 @@ class AWSSNSSQSTransport(Invoker):
                                             "MessageDeduplicationId",
                                             "MessageGroupId",
                                         ],
+                                        MessageAttributeNames=["All"],
                                     ),
                                     timeout=40,
                                 )
@@ -1730,6 +2651,7 @@ class AWSSNSSQSTransport(Invoker):
                                 try:
                                     context["_aws_sns_sqs_subscribed"] = False
                                     cls.topics = {}
+                                    cls.queues = {}
                                     sub_func = await asyncio.create_task(cls.subscribe(obj, context))
                                     if sub_func:
                                         await asyncio.create_task(sub_func())
@@ -1769,25 +2691,35 @@ class AWSSNSSQSTransport(Invoker):
                             continue
 
                         for message in messages:
-                            receipt_handle = message.get("ReceiptHandle")
+                            receipt_handle: str = message.get("ReceiptHandle", "")
+                            raw_message_body = message.get("Body", "")
                             try:
-                                message_body = json.loads(message.get("Body"))
+                                message_body = json.loads(raw_message_body)
                                 topic_arn = message_body.get("TopicArn")
+                                message_type = message_body.get("Type")
                                 message_topic = (
                                     cls.get_topic_name_without_prefix(
                                         cls.decode_topic(cls.get_topic_from_arn(topic_arn)), context
                                     )
-                                    if topic_arn
+                                    if topic_arn and message_type == "Notification"
                                     else ""
                                 )
-                            except ValueError:
-                                # Malformed SQS message, not in SNS format and should be discarded
+                            except ValueError as e:
+                                # malformed message, not in json format and will be discarded
+                                # todo: add support for arbitrary message body
                                 await cls.delete_message(receipt_handle, queue_url, context)
-                                logger.warning("Discarded malformed message")
+                                logger.warning(
+                                    "unsupported format of message body", message_body=raw_message_body[:1000]
+                                )
+                                logger.exception("discarded message due to exception: {}".format(str(e)))
                                 continue
 
                             payload = message_body.get("Message")
-                            message_attributes = message_body.get("MessageAttributes", {})
+                            message_attributes = (
+                                message.get("MessageAttributes", {})
+                                if "MessageAttributes" in message
+                                else message_body.get("MessageAttributes", {})
+                            )
                             approximate_receive_count: Optional[int] = (
                                 int(message.get("Attributes", {}).get("ApproximateReceiveCount", 0)) or None
                             )
@@ -1798,7 +2730,8 @@ class AWSSNSSQSTransport(Invoker):
                                 str(message.get("Attributes", {}).get("MessageGroupId", "")) or None
                             )
 
-                            sns_message_id = message_body.get("MessageId") or ""
+                            _message_id = message_body.get("MessageId") or ""
+                            sns_message_id = _message_id if message_type == "Notification" and topic_arn else ""
                             sqs_message_id = message.get("MessageId") or ""
                             message_timestamp = message_body.get("Timestamp") or ""
 
@@ -1812,6 +2745,8 @@ class AWSSNSSQSTransport(Invoker):
                                     approximate_receive_count,
                                     sns_message_id,
                                     sqs_message_id,
+                                    message_type,
+                                    raw_message_body,
                                     message_timestamp,
                                     message_deduplication_id,
                                     message_group_id,
@@ -1947,7 +2882,7 @@ class AWSSNSSQSTransport(Invoker):
                 topic: Optional[str] = None,
                 queue_name: Optional[str] = None,
                 competing_consumer: Optional[bool] = None,
-                attributes: Optional[Dict[str, Union[str, bool]]] = None,
+                attributes: Optional[Dict[str, str]] = None,
                 visibility_timeout: Optional[int] = None,
                 dead_letter_queue_name: Optional[str] = DEAD_LETTER_QUEUE_DEFAULT,
                 max_receive_count: Optional[int] = MAX_RECEIVE_COUNT_DEFAULT,
@@ -2119,7 +3054,13 @@ __awssnssqs = AWSSNSSQSTransport.decorator(AWSSNSSQSTransport.subscribe_handler)
 
 aws_sns_sqs_publish = AWSSNSSQSTransport.publish
 awssnssqs_publish = AWSSNSSQSTransport.publish
+sns_publish = AWSSNSSQSTransport.publish
 publish = AWSSNSSQSTransport.publish
+
+aws_sns_sqs_send_message = AWSSNSSQSTransport.send_message
+awssnssqs_send_message = AWSSNSSQSTransport.send_message
+sqs_send_message = AWSSNSSQSTransport.send_message
+send_message = AWSSNSSQSTransport.send_message
 
 
 def aws_sns_sqs(

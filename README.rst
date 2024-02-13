@@ -952,7 +952,9 @@ AWS SNS+SQS related values - function signature keyword arguments
 |                               | (for example in order to make it visible for other consumers or in                             |
 |                               | case of errors), will add to this count for each time they received it.                        |
 +-------------------------------+------------------------------------------------------------------------------------------------+
-| ``topic``                     | Simply the name of the SNS topic.                                                              |
+| ``topic``                     | Simply the name of the SNS topic. For messages sent directly to the queue (for example via     |
+|                               | ``SQS.SendMessage`` API calls), instead of via SNS topic subscriptions (``SNS.Publish``), the  |
+|                               | value of ``topic`` will be an empty string.                                                    |
 +-------------------------------+------------------------------------------------------------------------------------------------+
 | ``sns_message_id``            | The message identifier for the SNS message (which is usually embedded                          |
 |                               | in the body of a SQS message). Ths SNS message identifier is the same                          |
@@ -960,7 +962,9 @@ AWS SNS+SQS related values - function signature keyword arguments
 |                               | ``SNS.Publish``.                                                                               |
 |                               |                                                                                                |
 |                               | The ``sns_message_id`` is read from within the ``"Body"`` of SQS                               |
-|                               | messages.                                                                                      |
+|                               | messages, if the message body contains a message that comes from an SNS topic subscription.    |
+|                               | If the SQS message doesn't originate from SNS (if the message isn't type ``"Notification"``,   |
+|                               | and holds a ``"TopicArn"`` value), then ``sns_message_id`` will result in an empty string.     |
 +-------------------------------+------------------------------------------------------------------------------------------------+
 | ``sqs_message_id``            | The SQS message identifier, which naturally will differ from the SNS                           |
 |                               | message identifier as one SNS message can be propagated to several                             |
@@ -968,6 +972,12 @@ AWS SNS+SQS related values - function signature keyword arguments
 |                               |                                                                                                |
 |                               | The ``sqs_message_id`` is read from the ``"MessageId"`` value in the                           |
 |                               | top of the SQS message.                                                                        |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``message_type``              | Returns the ``"Type"`` value from the message body. For messages consumed from a queue that    |
+|                               | was sent there from an SNS topic, the ``message_type`` will be ``"Notification"``.             |
++-------------------------------+------------------------------------------------------------------------------------------------+
+| ``raw_message_body``          | Returns the full contents (as a string) from ``"Body"``, which can be used to implement        |
+|                               | custom listeners, tailored for more advanced workflows, where more flexibility is needed.      |
 +-------------------------------+------------------------------------------------------------------------------------------------+
 | ``message_timestamp``         | A timestamp of when the original SNS message was published.                                    |
 +-------------------------------+------------------------------------------------------------------------------------------------+
@@ -1060,17 +1070,20 @@ This example portrays a middleware function which adds trace spans around the fu
     async def trace_middleware(
         func: Callable[..., Awaitable],
         *,
+        queue_url: str,
         topic: str,
         message_attributes: dict,
         sns_message_id: str,
+        sqs_message_id: str,
     ) -> None:
         ctx = TraceContextTextMapPropagator().extract(carrier=message_attributes)
 
         with tracer.start_as_current_span(f"SNSSQS handler '{func.__name__}'", context=ctx) as span:
-            span.set_attribute("messaging.system", "AmazonSQS")
+            span.set_attribute("messaging.system", "aws_sqs")
             span.set_attribute("messaging.operation", "process")
-            span.set_attribute("messaging.source.name", topic)
-            span.set_attribute("messaging.message.id", sns_message_id)
+            span.set_attribute("messaging.destination.name", queue_url.rsplit("/")[-1])
+            span.set_attribute("messaging.destination_publish.name", topic or queue_url.rsplit("/")[-1])
+            span.set_attribute("messaging.message.id", sns_message_id or sqs_message_id)
 
             try:
                 # Calls the handler function (or next middleware in the chain)

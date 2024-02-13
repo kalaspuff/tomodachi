@@ -1,10 +1,62 @@
 Changes
 =======
 
-0.26.5 (2024-xx-xx)
+0.27.0 (2024-02-xx)
 -------------------
 
-- ...
+**Send messages directly to SQS queues (SQS.SendMessage)**
+
+- Added the function ``tomodachi.sqs_send_message`` (``tomodachi.aws_sns_sqs_send_message``) to send a message directly to an SQS queue. It mostly works the same way as the ``tomodachi.sns_publish`` (``tomodachi.aws_sns_sqs_publish``) function, but sends a message directly to the specified SQS queue.
+
+  This is useful when you know the recipient queue of a message, for example when manually sending messages to a dead-letter queue or to do command-like messaging instead of event-based messaging.
+
+- The message body of ``tomodachi.sqs_send_message`` calls is by default built using the ``tomodachi.transport.aws_sns_sqs.MessageBodyFormatter`` implementation, which will encode the message body as JSON and embed it within the ``"Message"`` property also using the service specified message envelope functionality.
+
+  The message includes some additional properties, mimicing how SNS notifications are represented when they are sent to subscribed SQS queues (with the exception that these messages are of type ``"Message"`` to differentiate from SNS notifications that are by AWS typed ``"Notification"``.
+
+  For custom or more advanced setups requiring more flexibility, the implementation can be overridden by providing a callable to the ``message_body_formatter`` keyword argument of ``sqs_send_message`` calls. The callable receives a message context object and returns the raw message (as a string) that will be sent to SQS as the message body.
+
+  Setting ``message_body_formatter`` to ``None`` will disable default message body formatting (and incidentally also the message envelope builder), causing the message body to be as is specified within the ``data`` argument to the ``sqs_send_message`` call.
+
+- Trying to send messages to an SQS queue that does not exist will result in a ``tomodachi.transport.aws_sns_sqs.QueueDoesNotExistError`` exception being raised, which can be caught also by ``tomodachi.transport.aws_sns_sqs.AWSSNSSQSException``, ``botocore.exceptions.ClientError`` or ``<botocore_sqs_client>.exceptions.QueueDoesNotExist``.
+
+**Message Attribute improvements and fixes**
+
+- Receives and propagates message attributes for all messages received on a queue, which means message attribute propagation will work for messages published to SNS, using either raw message delivery or not, and/or messages that were directly sent to SQS via SQS.SendMessage calls.
+
+  Currently, messages on SQS queues consumed and parsed by tomodachi services still need to be JSON formatted and be embedded within the ``"Message"`` property (which is how SNS notification messages are represented by default, unless a queue is setup for raw message delivery).
+
+- Fixes a bug that was causing message attributes in binary form to be invalidly processed.
+
+**OTEL updates**
+
+- OTEL auto instrumentation for the new ``tomodachi.sqs_send_message`` functionality.
+
+- OTEL attributes for AWS SNS+SQS messaging have been updated according to the latest OTEL semantic conventions, where the original publish destination is recorded as ``messaging.destination_publish.name``.
+
+- OTEL metrics for AWS SNS+SQS messaging uses the new metric instrument name ``messaging.aws_sqs.duration``, which was previously named ``messaging.amazonsqs.duration``.
+
+**Type hints and input validation**
+
+- Additional support for the ``types-aiobotocore-*`` packages to provide improved type hints internally.
+
+- AWS credentials provided to the aiobotocore connector are using stricter type hint annotations.
+
+- Stricter argument validation when requesting aiobotocore connector clients to prevent issues caused by a mistyped AWS service, protecting against accidental use of wrong client for a specific service.
+
+**Handler arguments**
+
+- Added ``message_type`` (``str | None``) to the list of keyword argument provided transport values that can be used in function signatures for AWS SNS+SQS handlers. Holds the value ``"Notification"`` for messages received as part of an SNS notification, unless the queue uses raw message delivery. In other cases the value is set to the value from a message body's JSON property ``"Type"`` if it exists.
+
+- Tailored for more advanced workflows, where more flexibility is needed, ``raw_message_body`` (``str``) has also been added to the list of keyword argument provided transport values for AWS SNS+SQS handlers. The ``raw_message_body`` value is set to the full content (non-decoded, as a string) from a received message' ``"Body"``, which can be used to implement custom listener with greater access to the raw message data.
+
+- Fixes an issue where the ``topic`` argument to message handlers in functions was always populated with the value of the ``topic`` argument to the ``@tomodachi.aws_sns_sqs`` decorator, even if the message was sent to a different topic. The ``topic`` argument to message handlers in functions will now be populated with the actual topic name destination to where the message was published, if published via SNS. If the message was not published to a topic, the value is set to empty string.
+
+**Other**
+
+- Refactoring of ``tomodachi.aws_sns_sqs.get_queue_url`` and ``tomodachi.aws_sns_sqs.get_queue_url_from_arn`` with better support for additional types of input and/or potentially prefixing of queues. The function also now caches the queue URL to avoid unnecessary calls to the AWS API.
+
+- Support for ``aiobotocore`` 2.10.x releases and 2.11.x releases.
 
 
 0.26.4 (2024-01-14)

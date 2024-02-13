@@ -37,6 +37,7 @@ class AWSSNSSQSService(tomodachi.Service):
     closer: asyncio.Future
     test_topic_data_received = False
     test_topic_specified_queue_name_data_received = False
+    test_standalone_queue_data_received = False
     test_topic_metadata_topic = None
     test_topic_service_uuid = None
     test_message_attribute_currencies: Set = set()
@@ -44,10 +45,12 @@ class AWSSNSSQSService(tomodachi.Service):
     test_fifo_failed = False
     test_fifo_messages: List[str] = []
     data_uuid = data_uuid
+    _expected_sqs_message_id = None
 
     def check_closer(self) -> None:
         if (
             self.test_topic_data_received
+            and self.test_standalone_queue_data_received
             and self.test_topic_specified_queue_name_data_received
             and len(self.test_message_attribute_currencies) == 7
             and len(self.test_message_attribute_amounts) == 2
@@ -153,6 +156,40 @@ class AWSSNSSQSService(tomodachi.Service):
 
             self.check_closer()
 
+    @aws_sns_sqs(queue_name="test-standalone-queue-{}".format(data_uuid))
+    async def test_standalone_queue(
+        self,
+        data: Any,
+        message_type: str,
+        message_attributes: Dict[str, str],
+        raw_message_body: str,
+        sns_message_id: str,
+        sqs_message_id: str,
+    ) -> None:
+        if data == self.data_uuid:
+            if message_type != "Message":
+                raise Exception("Invalid message type")
+            if sns_message_id:
+                raise Exception("SNS message id should not be set")
+            if not sqs_message_id:
+                raise Exception("SQS message id is missing")
+            if not self._expected_sqs_message_id:
+                await asyncio.sleep(1.0)
+            if self._expected_sqs_message_id != sqs_message_id:
+                raise Exception("Unexpected SQS message id")
+            raw_message_dict = json.loads(raw_message_body)
+            if (await JsonBase.parse_message(raw_message_dict.get("Message")))[0].get("data") != data:
+                raise Exception("Invalid message body, does not match data argument")
+            if message_attributes != {
+                "this-is-a-numeric-attribute": 4711,
+                "this-is-a-string-attribute": "XYZ",
+                "this-is-a-binary-attribute": b"abcdef\x00\x01 12345",
+            }:
+                raise Exception("Invalid message attributes")
+            self.test_standalone_queue_data_received = True
+
+            self.check_closer()
+
     async def _start_service(self) -> None:
         self.closer = asyncio.Future()
 
@@ -175,6 +212,29 @@ class AWSSNSSQSService(tomodachi.Service):
         asyncio.ensure_future(_async())
 
         async def _async_publisher() -> None:
+            self._expected_sqs_message_id = await tomodachi.sqs_send_message(
+                self,
+                self.data_uuid,
+                queue_name="test-standalone-queue-{}".format(self.data_uuid),
+                message_attributes={
+                    "this-is-a-numeric-attribute": 4711,
+                    "this-is-a-string-attribute": "XYZ",
+                    "this-is-a-binary-attribute": b"abcdef\x00\x01 12345",
+                },
+                wait=True,
+            )
+
+            try:
+                await tomodachi.sqs_send_message(
+                    self,
+                    self.data_uuid,
+                    queue_name="test-non-existing-queue-{}".format(self.data_uuid),
+                    wait=True,
+                )
+                raise Exception("Should not be able to send message to non-existing queue")
+            except tomodachi.transport.awssnssqs.QueueDoesNotExistError:
+                pass
+
             await publish(self.data_uuid, "test-topic")
             await publish(self.data_uuid, "test-topic-unique")
 

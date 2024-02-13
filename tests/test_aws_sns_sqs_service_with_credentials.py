@@ -28,6 +28,7 @@ def test_start_aws_sns_sqs_service_with_credentials(capsys: Any, loop: Any) -> N
         while loop_until > time.time():
             if (
                 instance.test_topic_data_received
+                and instance.test_standalone_queue_data_received
                 and instance.test_topic_metadata_topic
                 and instance.test_topic_service_uuid
                 and instance.test_topic_specified_queue_name_data_received
@@ -39,6 +40,7 @@ def test_start_aws_sns_sqs_service_with_credentials(capsys: Any, loop: Any) -> N
             await asyncio.sleep(0.5)
 
         assert instance.test_topic_data_received
+        assert instance.test_standalone_queue_data_received
         assert instance.test_topic_metadata_topic == "test-topic"
         assert instance.test_topic_service_uuid == instance.uuid
         assert instance.test_topic_specified_queue_name_data_received
