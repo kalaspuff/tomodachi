@@ -829,7 +829,7 @@ Usage:
 
   If ``filter_policy`` is not specified as an argument (default), the queue will receive messages on the topic as per already specified if using an existing subscription, or receive all messages on the topic if a new subscription is set up (default). Changing the ``filter_policy`` on an existing subscription may take several minutes to propagate. Read more about the filter policy format on AWS. https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html
 
-  Related to the above mentioned filter policy, the ``aws_sns_sqs_publish`` function (which is used for publishing messages) can specify "message attributes" using the ``message_attributes`` keyword argument. Values should be specified as a simple ``dict`` with keys and values. Example: ``{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}``.
+  Related to the above mentioned filter policy, the ``tomodachi.aws_sns_sqs_publish`` (which is used for publishing messages to SNS) and ``tomodachi.sqs_send_message`` (which sends messages directly to SQS) functions, can specify "message attributes" using the ``message_attributes`` keyword argument. Values should be specified as a simple ``dict`` with keys and values. Example: ``{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}``.
 
   The ``visibility_timeout`` value will set the queue attribute ``VisibilityTimeout`` if specified.  To use already defined values for a queue (default), do not supply any value to the ``visibility_timeout`` keyword – ``tomodachi`` will then not modify the visibility timeout.
 
