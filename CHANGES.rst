@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.27.0 (2024-02-13)
+0.27.0 (2024-02-14)
 -------------------
 
 **Send messages directly to SQS queues (SQS.SendMessage)**
