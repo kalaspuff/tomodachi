@@ -1,4 +1,3 @@
-import copy
 import functools
 import logging
 from os import environ
@@ -99,9 +98,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 resource = tracer_provider.resource.merge(
                     Resource.create({**tracer_provider.resource._attributes, **additional_resource_attributes})
                 )
-                tracer_provider = copy.copy(tracer_provider)
-                tracer_provider._resource = resource  # type: ignore[has-type]
-                setattr(service, "_opentelemetry_tracer_provider", tracer_provider)
+                tracer_provider.resource._attributes = resource._attributes
 
         if getattr(meter_provider._sdk_config, "resource", None):
             additional_resource_attributes = {}
@@ -118,7 +115,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                         {**meter_provider._sdk_config.resource._attributes, **additional_resource_attributes}
                     )
                 )
-                meter_provider._sdk_config.resource = resource
+                meter_provider._sdk_config.resource._attributes = resource._attributes
 
         if cls._logging_handlers:
             for handler in cls._logging_handlers:
@@ -136,7 +133,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                         resource = logger_provider.resource.merge(
                             Resource.create({**logger_provider.resource._attributes, **additional_resource_attributes})
                         )
-                        logger_provider._resource = resource  # type: ignore[has-type]
+                        logger_provider.resource._attributes = resource._attributes
                         setattr(handler._logger, "_resource", logger_provider.resource)
 
         tracer = get_tracer("tomodachi", tomodachi_version, tracer_provider)
