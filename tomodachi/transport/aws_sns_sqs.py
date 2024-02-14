@@ -237,14 +237,17 @@ class QueueDoesNotExistError(AWSSNSSQSException):
 
 class MessageEnvelopeProtocol(Protocol):
     @classmethod
-    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str: ...
+    async def build_message(cls, service: Service, topic: str, data: Any, **kwargs: Any) -> str:
+        ...
 
     @classmethod
-    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]: ...
+    async def parse_message(cls, payload: str, **kwargs: Any) -> Tuple[Any, str, Union[str, int, float]]:
+        ...
 
 
 class MessageBodyFormatterProtocol(Protocol):
-    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str: ...
+    async def __call__(self, context: MessageBodyFormatterContext, **kwargs: Any) -> str:
+        ...
 
 
 @dataclasses.dataclass(frozen=True)
@@ -333,7 +336,8 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> str: ...
+    ) -> str:
+        ...
 
     @overload
     @classmethod
@@ -353,7 +357,8 @@ class AWSSNSSQSTransport(Invoker):
         group_id: Optional[str] = None,
         deduplication_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> asyncio.Task[str]: ...
+    ) -> asyncio.Task[str]:
+        ...
 
     @classmethod
     async def publish(
@@ -457,7 +462,8 @@ class AWSSNSSQSTransport(Invoker):
             type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
         ] = MessageBodyFormatter,
         **kwargs: Any,
-    ) -> str: ...
+    ) -> str:
+        ...
 
     @overload
     @classmethod
@@ -479,7 +485,8 @@ class AWSSNSSQSTransport(Invoker):
             type[MessageBodyFormatterProtocol] | MessageBodyFormatterProtocol
         ] = MessageBodyFormatter,
         **kwargs: Any,
-    ) -> asyncio.Task[str]: ...
+    ) -> asyncio.Task[str]:
+        ...
 
     @classmethod
     async def send_message(
@@ -900,7 +907,12 @@ class AWSSNSSQSTransport(Invoker):
             kwargs = dict(original_kwargs)
 
             if SET_CONTEXTVAR_VALUES:
-                # experimental featureset - set values to contextvars
+                # deprecated experimental featureset
+                warnings.warn(
+                    "Using the 'SET_CONTEXTVAR_VALUES' featureset is deprecated. Instead use keyword argument "
+                    "provided transport values within handler function signatures.",
+                    DeprecationWarning,
+                )
                 get_contextvar("aws_sns_sqs.receipt_handle").set(receipt_handle)
                 get_contextvar("aws_sns_sqs.queue_url").set(queue_url)
                 get_contextvar("aws_sns_sqs.approximate_receive_count").set(approximate_receive_count)
@@ -1158,11 +1170,13 @@ class AWSSNSSQSTransport(Invoker):
 
     @overload
     @staticmethod
-    async def create_client(name: Literal["sns"], context: Dict) -> SNSClient: ...
+    async def create_client(name: Literal["sns"], context: Dict) -> SNSClient:
+        ...
 
     @overload
     @staticmethod
-    async def create_client(name: Literal["sqs"], context: Dict) -> SQSClient: ...
+    async def create_client(name: Literal["sqs"], context: Dict) -> SQSClient:
+        ...
 
     @staticmethod
     async def create_client(name: str, context: Dict) -> aiobotocore.client.AioBaseClient:
