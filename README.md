@@ -656,6 +656,25 @@ class Service(tomodachi.Service):
 Exceptions raised in `_start_service` or `_started_service` will
 gracefully terminate the service.
 
+## Graceful termination of a service (`SIGINT` / `SIGTERM`)
+
+When the service process receives a `SIGINT` or `SIGTERM` signal (or `tomodachi.exit()` is called) the service begins the process for graceful termination, which in practice means:
+
+- The service' `_stopping_service` method, if implemented, is called immediately upon the received signal.
+- The service stops accepting new HTTP connections and closes keep-alive HTTP connections at the earliest.
+- Already established HTTP connections for which a handler call is awaited called are allowed to finish their work before the service stops (up to `options.http.termination_grace_period_seconds` seconds, after which the open TCP connections for those HTTP connections will be forcefully closed if still not completed).
+- Any AWS SQS / AMQP handlers (decorated with `@aws_sns_sqs` or `@amqp`) will stop receiving new messages. However handlers already processing a received message will be awaited to return their result. Unlike the HTTP handler connections there is no grace period for these queue consuming handlers.
+- Currently running scheduled handlers will also be awaited to fully complete their execution before the service will terminates. No new scheduled handlers will be started.
+- When all HTTP connections are closed, all scheduled handlers has completed and all pub-sub handlers have been awaited, the service' `_stop_service` method is finally called (if implemented), where for example database connections can be closed. When the `_stop_service` method returns (or immediately after completion of handler invocations if any `_stop_service` isn't implemented), the service will finally terminate.
+
+It's recommended to use a `http.termination_grace_period_seconds` options value of around 30 seconds to allow for the graceful termination of HTTP connections. This value can be adjusted based on the expected time it takes for the service to complete the processing of incoming request.
+
+Make sure that the orchestration engine (such as Kubernetes) waits at least 30 seconds from sending the `SIGTERM` to remove the pod. For extra compatibility when operating services in k8s and to get around most kind of edge-cases of intermittent timeouts and problems with ingress connections, (and unless your setup includes long running queue consuming handler calls which requires an even longer grace period), set the pod spec `terminationGracePeriodSeconds` to `90` seconds and use a `preStop` lifecycle hook of 20 seconds.
+
+Keep the `http.termination_grace_period_seconds` value lower than the `terminationGracePeriodSeconds` value, as the latter is a hard limit for how long the pod will be allowed to run after receiving a `SIGTERM` signal.
+
+In a setup where long running queue consuming handler calls commonly occurs, any grace period the orchestration engine uses will have to take that into account. It's generally advised to split work up into sizeable chunks that can quickly complete or if handlers are idempotent, apply the possibility to cancel long running handlers as part of the `_stopping_service` implementation.
+
 ## Example of a microservice containerized in Docker 🐳
 
 A great way to distribute and operate microservices are usually to run
