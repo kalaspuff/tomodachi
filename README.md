@@ -912,9 +912,13 @@ def handler(self, data, *args, **kwargs):
     ...
 ```
 
+#### Topic and Queue
+
 This would set up an **AWS SQS queue**, subscribing to messages on
 the **AWS SNS topic** `topic` (if a `topic` is specified),
-whereafter it will start consuming messages from the queue.
+whereafter it will start consuming messages from the queue. The value
+can be omitted in order to make the service consume messages from an existing
+queue, without setting up an SNS topic subscription.
 
 The `competing` value is used when the same queue name should be
 used for several services of the same type and thus \"compete\" for
@@ -927,6 +931,8 @@ Unless `queue_name` is specified an auto generated queue name will
 be used. Additional prefixes to both `topic` and `queue_name` can be
 assigned by setting the `options.aws_sns_sqs.topic_prefix` and
 `options.aws_sns_sqs.queue_name_prefix` dict values.
+
+#### FIFO queues + max number of consumed messages
 
 AWS supports two types of queues and topics, namely `standard` and
 `FIFO`. The major difference between these is that the latter
@@ -941,6 +947,8 @@ messages to compete for. The default value is 10 for `standard`
 queues and 1 for `FIFO` queues. The minimum value is 1, and the
 maximum value is 10.
 
+#### Filter policy
+
 The `filter_policy` value of specified as a keyword argument will be
 applied on the SNS subscription (for the specified topic and queue)
 as the `"FilterPolicy` attribute. This will apply a filter on SNS
@@ -948,7 +956,9 @@ messages using the chosen \"message attributes\" and/or their values
 specified in the filter. Make note that the filter policy dict
 structure differs somewhat from the actual message attributes, as
 values to the keys in the filter policy must be a dict (object) or
-list (array). Example: A filter policy value of
+list (array).
+
+Example: A filter policy value of
 `{"event": ["order_paid"], "currency": ["EUR", "USD"]}` would set up
 the SNS subscription to receive messages on the topic only where the
 message attribute `"event"` is `"order_paid"` and the `"currency"`
@@ -959,8 +969,11 @@ queue will receive messages on the topic as per already specified if
 using an existing subscription, or receive all messages on the topic
 if a new subscription is set up (default). Changing the
 `filter_policy` on an existing subscription may take several minutes
-to propagate. Read more about the filter policy format on AWS.
-<https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html>
+to propagate.
+
+Read more about the filter policy format on AWS:
+
+- <https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html>
 
 Related to the above mentioned filter policy, the
 `tomodachi.aws_sns_sqs_publish` (which is used for publishing
@@ -971,30 +984,41 @@ should be specified as a simple `dict` with keys and values.
 
 Example: `{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}`.
 
+#### Visibility timeout
+
 The `visibility_timeout` value will set the queue attribute
 `VisibilityTimeout` if specified. To use already defined values for
 a queue (default), do not supply any value to the
 `visibility_timeout` keyword -- `tomodachi` will then not modify the
 visibility timeout.
 
+#### DLQ: Dead-letter queue
+
 Similarly the values for `dead_letter_queue_name` in tandem with the
 `max_receive_count` value will modify the queue attribute
 `RedrivePolicy` in regards to the potential use of a dead-letter
 queue to which messages will be delivered if they have been picked
 up by consumers `max_receive_count` number of times but haven\'t
-been deleted from the queue. The value for `dead_letter_queue_name`
+been deleted from the queue.
+
+The value for `dead_letter_queue_name`
 should either be a ARN for an SQS queue, which in that case requires
 the queue to have been created in advance, or a alphanumeric queue
 name, which in that case will be set up similar to the queue name
-you specify in regards to prefixes, etc. Both
-`dead_letter_queue_name` and `max_receive_count` needs to be
+you specify in regards to prefixes, etc.
+
+Both `dead_letter_queue_name` and `max_receive_count` needs to be
 specified together, as they both affect the redrive policy. To
 disable the use of DLQ, use a `None` value for the
 `dead_letter_queue_name` keyword and the `RedrivePolicy` will be
-removed from the queue attribute. To use the already defined values
+removed from the queue attribute.
+
+To use the already defined values
 for a queue, do not supply any values to the keyword arguments in
 the decorator. `tomodachi` will then not modify the queue attribute
 and leave it as is.
+
+#### Message envelope
 
 Depending on the service `message_envelope` (previously named
 `message_protocol`) attribute if used, parts of the enveloped data
@@ -1013,6 +1037,8 @@ enveloping classes can be built to fit your existing architecture or
 for even more control of tracing and shared metadata between
 services.
 
+#### Encryption at rest via AWS KMS
+
 Encryption at rest for AWS SNS and/or AWS SQS can optionally be
 configured by specifying the KMS key alias or KMS key id as
 tomodachi service options
@@ -1020,22 +1046,30 @@ tomodachi service options
 at rest on the SNS topics for which the tomodachi service handles
 the SNS -\> SQS subscriptions) and
 `options.aws_sns_sqs.sqs_kms_master_key_id` (to configure encryption
-at rest for the SQS queues which the service is consuming). Note
-that an option value set to an empty string (`""`) or `False` will
+at rest for the SQS queues which the service is consuming).
+
+Note that an option value set to an empty string (`""`) or `False` will
 unset the KMS master key id and thus disable encryption at rest. If
 instead an option is completely unset or set to `None` value no
 changes will be done to the KMS related attributes on an existing
-topic or queue. It\'s generally not advised to change the KMS master
-key id/alias values for resources currently in use. If it\'s
-expected that the services themselves, via their IAM credentials or
+topic or queue.
+
+It\'s generally not advised to change the KMS master
+key id/alias values for resources currently in use.
+
+If it\'s expected that the services themselves, via their IAM credentials or
 assumed role, are responsible for creating queues and topics, these
-options could be desirable to use. Do not use these options if you
+options could be desirable to use.
+
+Do not use these options if you
 instead are using IaC tooling to handle the topics, queues and
 subscriptions or that they for example are created / updated as a
-part of deployments. Read more at
-<https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-server-side-encryption.html>
-and
-<https://docs.aws.amazon.com/sns/latest/dg/sns-server-side-encryption.html#sse-key-terms>.
+part of deployments.
+
+See further details about AWS KMS for AWS SNS+SQS at:
+
+- <https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-server-side-encryption.html>
+- <https://docs.aws.amazon.com/sns/latest/dg/sns-server-side-encryption.html#sse-key-terms>.
 
 ------------------------------------------------------------------------
 
@@ -1055,6 +1089,8 @@ def handler(self, data, *args, **kwargs):
     ...
 ```
 
+#### Routing key, Exchange and Queue
+
 Sets up the method to be called whenever a **AMQP / RabbitMQ message
 is received** for the specified `routing_key`. By default the
 `'amq.topic'` topic exchange would be used, it may also be
@@ -1072,6 +1108,8 @@ Unless `queue_name` is specified an auto generated queue name will
 be used. Additional prefixes to both `routing_key` and `queue_name`
 can be assigned by setting the `options.amqp.routing_key_prefix` and
 `options.amqp.queue_name_prefix` dict values.
+
+#### Message envelope
 
 Depending on the service `message_envelope` (previously named
 `message_protocol`) attribute if used, parts of the enveloped data
