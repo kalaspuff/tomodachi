@@ -27,11 +27,7 @@ default:
 .PHONY: build
 build:
 	rm -rf build dist
-	cp README.rst README.rst.tmp
-	cat README.rst.tmp | tr '\n' '\r' | sed -e $$'s/.. raw:: html\r*\(    [^\r]*\r\)*\r//g' | tr '\r' '\n' > README.rst
 	poetry build
-	cp README.rst.tmp README.rst
-	rm README.rst.tmp
 
 .PHONY: install
 install:
@@ -110,7 +106,7 @@ _post_release_commit_dev_version:
 
 .PHONY: _git_release
 _git_release: _check_release _check_build_time
-	git commit -m "`python tomodachi/__version__.py`" --allow-empty pyproject.toml poetry.lock tomodachi/__version__.py CHANGES.rst
+	git commit -m "`python tomodachi/__version__.py`" --allow-empty pyproject.toml poetry.lock tomodachi/__version__.py CHANGES.md
 	git tag -a `python tomodachi/__version__.py` -m `python tomodachi/__version__.py`
 	git push
 	git push --tags
