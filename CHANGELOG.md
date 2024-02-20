@@ -50,6 +50,7 @@
 - Multi-service execution won\'t accurately distinguish the service name of OTEL tracers, OTEL meters and OTEL loggers. In the rare case where there\'s multiple `tomodachi` services started within the same Python process, the name from the *first* instrumented service class will now be used as the `service.name` OTEL resource attribute for *all* tracers derived from the same tracer provider. The recommended solution if this is an issue, is to split the services into separate processes instead.
 - Refactoring of `tomodachi.aws_sns_sqs.get_queue_url` and `tomodachi.aws_sns_sqs.get_queue_url_from_arn` with better support for additional types of input and/or potentially prefixing of queues. The function also now caches the queue URL to avoid unnecessary calls to the AWS API.
 - Support for `aiobotocore` 2.10.x releases and 2.11.x releases.
+- Documented the lifecycle termination process for services, for example when they receive a `SIGINT` or `SIGTERM` signal. Added details describing how handlers are awaited and for how long as part of the graceful termination sequence.
 - Converted repo documentation from RST format to Markdown. It finally happened.
 
 ## 0.26.4 (2024-01-14)
