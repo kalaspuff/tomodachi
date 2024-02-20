@@ -671,7 +671,7 @@ It's recommended to use a `http.termination_grace_period_seconds` options value 
 
 Make sure that the orchestration engine (such as Kubernetes) waits at least 30 seconds from sending the `SIGTERM` to remove the pod. For extra compatibility when operating services in k8s and to get around most kind of edge-cases of intermittent timeouts and problems with ingress connections, (and unless your setup includes long running queue consuming handler calls which requires an even longer grace period), set the pod spec `terminationGracePeriodSeconds` to `90` seconds and use a `preStop` lifecycle hook of 20 seconds.
 
-Keep the `http.termination_grace_period_seconds` value lower than the `terminationGracePeriodSeconds` value, as the latter is a hard limit for how long the pod will be allowed to run after receiving a `SIGTERM` signal.
+Keep the `http.termination_grace_period_seconds` options value lower than the pod spec's `terminationGracePeriodSeconds` value, as the latter is a hard limit for how long the pod will be allowed to run after receiving a `SIGTERM` signal.
 
 In a setup where long running queue consuming handler calls commonly occurs, any grace period the orchestration engine uses will have to take that into account. It's generally advised to split work up into sizeable chunks that can quickly complete or if handlers are idempotent, apply the possibility to cancel long running handlers as part of the `_stopping_service` implementation.
 
