@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import importlib.metadata
 import json
 import logging
 import os
@@ -972,7 +973,13 @@ class LoggerProtocol(Protocol):
 
 
 ConsoleRenderer: type[structlog.dev.ConsoleRenderer]
-_structlog_version = tuple(map(lambda v: int(v) if v.isdigit() else v, structlog.__version__.split(".")))
+try:
+    _structlog_version = tuple(
+        map(lambda v: int(v) if v.isdigit() else v, importlib.metadata.version("structlog").split("."))
+    )
+except Exception:  # pragma: no cover
+    _structlog_version = tuple(map(lambda v: int(v) if v.isdigit() else v, structlog.__version__.split(".")))
+
 if _structlog_version < (23, 3, 0):  # pragma: no cover
     # backport of structlog 23.x ConsoleRenderer to be usable with structlog 21.x+.
 
