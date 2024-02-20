@@ -4,7 +4,7 @@ version = "0.27.0"
 description = "Microservice library on asyncio - HTTP server, websockets, pub/sub messaging for AWS SNS+SQS and RabbitMQ"
 authors = ["Carl Oscar Aaro <hello@carloscar.com>"]
 keywords = ["tomodachi", "microservice", "microservices", "framework", "library", "asyncio", "aws", "sns", "sqs", "amqp", "rabbitmq", "http", "websockets", "easy", "fast", "pubsub", "events", "event based messaging", "messages", "protocol buffers", "protobuf", "async", "message attributes", "filter policy", "distributed architecture", "scalable", "python 3"]
-readme = "README.rst"
+readme = "README.md"
 license = "MIT"
 
 homepage = "https://github.com/kalaspuff/tomodachi"
@@ -40,7 +40,7 @@ packages = [
 ]
 
 [tool.poetry.urls]
-Changelog = "https://github.com/kalaspuff/tomodachi/blob/master/CHANGES.rst"
+Changelog = "https://github.com/kalaspuff/tomodachi/blob/master/CHANGELOG.md"
 
 [tool.poetry.dependencies]
 python = "^3.8"
