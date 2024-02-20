@@ -106,7 +106,7 @@ _post_release_commit_dev_version:
 
 .PHONY: _git_release
 _git_release: _check_release _check_build_time
-	git commit -m "`python tomodachi/__version__.py`" --allow-empty pyproject.toml poetry.lock tomodachi/__version__.py CHANGES.md
+	git commit -m "`python tomodachi/__version__.py`" --allow-empty pyproject.toml poetry.lock tomodachi/__version__.py CHANGELOG.md
 	git tag -a `python tomodachi/__version__.py` -m `python tomodachi/__version__.py`
 	git push
 	git push --tags
