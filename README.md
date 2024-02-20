@@ -1,4 +1,4 @@
-# `tomodachi` ⌁ *a lightweight microservice lib* ⌁ *for Python 3*
+# `tomodachi` ⌁ *a lightweight µservice lib* ⌁ *for Python 3*
 
 <p align="left">
     <sup><i>tomodachi</i> [<b>友達</b>] <i>means friends — 🦊🐶🐻🐯🐮🐸🐍 — a suitable name for microservices working together.</i> ✨✨</sup>
