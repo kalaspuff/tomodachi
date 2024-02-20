@@ -40,14 +40,14 @@
 
 **Handler arguments**
 
-- Added `message_type` (`str | None`) to the list of keyword argument provided transport values that can be used in function signatures for AWS SNS+SQS handlers. Holds the value `"Notification"` for messages received as part of an SNS notification, unless the queue uses raw message delivery. In other cases the value is set to the value from a message body\'s JSON property `"Type"` if it exists.
-- Tailored for more advanced workflows, where more flexibility is needed, `raw_message_body` (`str`) has also been added to the list of keyword argument provided transport values for AWS SNS+SQS handlers. The `raw_message_body` value is set to the full content (non-decoded, as a string) from a received message\' `"Body"`, which can be used to implement custom listener with greater access to the raw message data.
+- Added `message_type` (`str | None`) to the list of keyword argument provided transport values that can be used in function signatures for AWS SNS+SQS handlers. Holds the value `"Notification"` for messages received as part of an SNS notification, unless the queue uses raw message delivery. In other cases the value is set to the value from a message body's JSON property `"Type"` if it exists.
+- Tailored for more advanced workflows, where more flexibility is needed, `raw_message_body` (`str`) has also been added to the list of keyword argument provided transport values for AWS SNS+SQS handlers. The `raw_message_body` value is set to the full content (non-decoded, as a string) from a received message' `"Body"`, which can be used to implement custom listener with greater access to the raw message data.
 - Fixes an issue where the `topic` argument to message handlers in functions was always populated with the value of the `topic` argument to the `@tomodachi.aws_sns_sqs` decorator, even if the message was sent to a different topic. The `topic` argument to message handlers in functions will now be populated with the actual topic name destination to where the message was published, if published via SNS. If the message was not published to a topic, the value is set to empty string.
 
 **Other**
 
-- Fixes issue where different OTEL tracers for the same `TracerProvider` could end up with different resource attributes, iff a service class\' `name` attribute\'s value were to be used as the `service.name` OTEL resource attribute (instead set to `"unknown_service"` for tracers that were created before the service initialized).
-- Multi-service execution won\'t accurately distinguish the service name of OTEL tracers, OTEL meters and OTEL loggers. In the rare case where there\'s multiple `tomodachi` services started within the same Python process, the name from the *first* instrumented service class will now be used as the `service.name` OTEL resource attribute for *all* tracers derived from the same tracer provider. The recommended solution if this is an issue, is to split the services into separate processes instead.
+- Fixes issue where different OTEL tracers for the same `TracerProvider` could end up with different resource attributes, iff a service class' `name` attribute's value were to be used as the `service.name` OTEL resource attribute (instead set to `"unknown_service"` for tracers that were created before the service initialized).
+- Multi-service execution won't accurately distinguish the service name of OTEL tracers, OTEL meters and OTEL loggers. In the rare case where there's multiple `tomodachi` services started within the same Python process, the name from the *first* instrumented service class will now be used as the `service.name` OTEL resource attribute for *all* tracers derived from the same tracer provider. The recommended solution if this is an issue, is to split the services into separate processes instead.
 - Refactoring of `tomodachi.aws_sns_sqs.get_queue_url` and `tomodachi.aws_sns_sqs.get_queue_url_from_arn` with better support for additional types of input and/or potentially prefixing of queues. The function also now caches the queue URL to avoid unnecessary calls to the AWS API.
 - Support for `aiobotocore` 2.10.x releases and 2.11.x releases.
 - Documented the lifecycle termination process for services, for example when they receive a `SIGINT` or `SIGTERM` signal. Added details describing how handlers are awaited and for how long as part of the graceful termination sequence.
@@ -120,7 +120,7 @@
 
 ## 0.25.1 (2023-08-11)
 
-- Fix for an issue where a wrapped function is used as a handler function, which would then cause the keyword argument provided transport values to rely on the keyword arguments from the *wrapped function\'s* signature to be used instead of the keyword arguments from the *wrapper function\'s* signature.
+- Fix for an issue where a wrapped function is used as a handler function, which would then cause the keyword argument provided transport values to rely on the keyword arguments from the *wrapped function's* signature to be used instead of the keyword arguments from the *wrapper function's* signature.
 
   The bug was found to be present since the last release, which included major refactoring of the *keyword argument provided transport values* functionality.
 
@@ -145,7 +145,7 @@
   | `message_attributes`         | Values specified as message attributes that accompanies the message body and that are among other things used for SNS queue subscription filter policies and for distributed tracing.
   | `queue_url`                  | Can be used to modify visibility of messages, provide exponential backoffs, move to DLQs, etc.
   | `receipt_handle`             | Can be used to modify visibility of messages, provide exponential backoffs, move to DLQs, etc.
-  | `approximate_receive_count`  | A value that specifies approximately how many times this message has been received from consumers on `SQS.ReceiveMessage` calls. Handlers that received a message, but that doesn\'t delete it from the queue (for example in order to make it visible for other consumers or in case of errors), will add to this count for each time they received it.
+  | `approximate_receive_count`  | A value that specifies approximately how many times this message has been received from consumers on `SQS.ReceiveMessage` calls. Handlers that received a message, but that doesn't delete it from the queue (for example in order to make it visible for other consumers or in case of errors), will add to this count for each time they received it.
   | `topic`                      | Simply the name of the SNS topic. For messages sent directly to the queue (for example via `SQS.SendMessage` API calls), instead of via SNS topic subscriptions (`SNS.Publish`), the value of `topic` will be an empty string.
   | `sns_message_id`             | The message identifier for the SNS message (which is usually embedded in the body of a SQS message). Ths SNS message identifier is the same that is returned in the response when publishing a message with `SNS.Publish`. The `sns_message_id` is read from within the `"Body"` of SQS messages, if the message body contains a message that comes from an SNS topic subscription.
   | `sqs_message_id`             | The SQS message identifier, which naturally will differ from the SNS message identifier as one SNS message can be propagated to several SQS queues. The `sqs_message_id` is read from the `"MessageId"` value in the top of the SQS message.
@@ -163,7 +163,7 @@
 
 ## 0.24.3 (2023-06-15)
 
-- Fixes an issue in the internal retry logic when using `aws_sns_sqs_publish` if calls to the AWS API `SNS.Publish` would intermittently respond with 408 response without any body, which previously would\'ve resulted in a `AWSSNSSQSException("Missing MessageId in response")` immediately without retries.
+- Fixes an issue in the internal retry logic when using `aws_sns_sqs_publish` if calls to the AWS API `SNS.Publish` would intermittently respond with 408 response without any body, which previously would've resulted in a `AWSSNSSQSException("Missing MessageId in response")` immediately without retries.
 
   This was previously attempted to be fixed in the 0.23.0 release, but instead fell through to become an exception with the `"Missing MessageId in response"` message instead.
 
@@ -176,7 +176,7 @@
 ## 0.24.2 (2023-06-13)
 
 - Fixes typing syntax for compatibility with Python 3.8 and Python 3.9 to solve the incompatibility for Python 3.8 and Python 3.9 introduced in the the 0.24.1 release.
-- Fixes an issue with an AWS SQS queue\'s message retention period attribute using an incompatible default value for FIFO queues.
+- Fixes an issue with an AWS SQS queue's message retention period attribute using an incompatible default value for FIFO queues.
 - Support for `aiobotocore` 2.5.x releases.
 - README.rst fixes to conform with RST format. (github: **navid-agz**)
 
@@ -222,13 +222,13 @@
   )
   ```
 
-- Fixes a bug where SQS messages wouldn\'t get deleted from the queue if a middleware function catches an exception without reraising it. This is because the `delete_message` is not called from within `routine_func` (due to the exception breaking normal control flow), but the message deletion from middleware bubble is also skipped, as no exception is propagated from it. (github: **technomunk**)
+- Fixes a bug where SQS messages wouldn't get deleted from the queue if a middleware function catches an exception without reraising it. This is because the `delete_message` is not called from within `routine_func` (due to the exception breaking normal control flow), but the message deletion from middleware bubble is also skipped, as no exception is propagated from it. (github: **technomunk**)
 
 - Adds basic support for FIFO queues & topics on AWS SQS queues managed by a `tomodachi` service decorated function, which can be used where one needs guaranteed ordering of the consumed messages. (github: **kjagiello**)
 
 - Updates to the internal `tomodachi.envelope.ProtobufBase` envelope to now also support newer versions of protobuf.
 
-- Added documentation to describe the \"magic\" functions that hooks into the service lifecycle; `_start_service`, `_started_service`, `_stopping_service`, `_stop_service`.
+- Added documentation to describe the "magic" functions that hooks into the service lifecycle; `_start_service`, `_started_service`, `_stopping_service`, `_stop_service`.
 
 ## 0.22.2 (2022-04-07)
 
@@ -237,7 +237,7 @@
 ## 0.22.1 (2022-03-14)
 
 - Added an additional way of gracefully triggering shutdown of a running service, by using the new `tomodachi.exit()` function, which will initiate the termination processing flow in the same way as signaling `SIGINT` or `SIGTERM`. The `tomodachi.exit()` call can additionally take an optional exit code as an argument to support new ways of catching service operation.
-- The process\' exit code can also be altered by changing the value of `tomodachi.SERVICE_EXIT_CODE`, however using the new `tomodachi.exit` call with an integer argument will override any previous value set to `tomodachi.SERVICE_EXIT_CODE`. The default value is set to `0`.
+- The process' exit code can also be altered by changing the value of `tomodachi.SERVICE_EXIT_CODE`, however using the new `tomodachi.exit` call with an integer argument will override any previous value set to `tomodachi.SERVICE_EXIT_CODE`. The default value is set to `0`.
 
 ## 0.22.0 (2022-02-25)
 
@@ -248,7 +248,7 @@
 ## 0.21.8 (2021-11-19)
 
 - Adds the possibility to add a function called `_stopping_service` to the `tomodachi` Service class, which is run as soon as a termination signal is received by the service. (github: **justcallmelarry**)
-- Fix for potential exceptions on botocore session client raising a `RuntimeError`, resulting in a tomodachi \"Client has never been created in the first place\" exception on reconnection to AWS APIs.
+- Fix for potential exceptions on botocore session client raising a `RuntimeError`, resulting in a tomodachi "Client has never been created in the first place" exception on reconnection to AWS APIs.
 - Added Python 3.10 to the CI test matrix run via GitHub Actions.
 - Additional updates for compatibility with typing libraries to improve support for installations on Python 3.10.
 - Supports `aiohttp` 3.8.x versions.
@@ -277,7 +277,7 @@
 
   If instead an option is completely unset or set to `None` value no changes will be done to the KMS related attributes on an existing topic or queue.
 
-  If it\'s expected that the services themselves, via their IAM credentials or assumed role, are responsible for creating queues and topics, these options could be used to provide encryption at rest without additional manual intervention
+  If it's expected that the services themselves, via their IAM credentials or assumed role, are responsible for creating queues and topics, these options could be used to provide encryption at rest without additional manual intervention
 
   *However, do not use these options if you instead are using IaC tooling to handle the topics, queues and subscriptions or that they for example are created / updated as a part of deployments. To not have the service update any attributes keep the options unset or set to a* `None` *value.*
 
@@ -292,7 +292,7 @@
 
 ## 0.21.3 (2021-06-30)
 
-- Fixes an issue causing a `UnboundLocalError` if an incoming message to a service that had specified the enveloping implementation `JsonBase` where JSON encoded but actually wasn\'t originating from a source using a `JsonBase` compatible envelope.
+- Fixes an issue causing a `UnboundLocalError` if an incoming message to a service that had specified the enveloping implementation `JsonBase` where JSON encoded but actually wasn't originating from a source using a `JsonBase` compatible envelope.
 - Fixes error message strings for some cases of AWS SNS + SQS related cases of `botocore.exceptions.ClientError`.
 - Fixes the issue where some definitions of filter policies would result in an error when running mypy -- uses `Sequence` instead of `List` in type hint definition for filter policy input types.
 - Internal updates for developer experience -- refactoring and improvements for future code analysis and better support for IntelliSense.
@@ -301,7 +301,7 @@
 ## 0.21.2 (2021-02-16)
 
 - Bugfix for an issue which caused the `sqs.DeleteMessage` API call to be called three times for each processed SQS message (the request to delete a message from the queue is idempotent) when using AWS SNS+SQS via `@tomodachi.aws_sns_sqs`.
-- Now properly cleaning up clients created with `tomodachi.helpers.aiobotocore_connector` for `aiobotocore`, which previously could result in the error output \"Unclosed client session\" if the service would fails to start, for example due to initialization errors.
+- Now properly cleaning up clients created with `tomodachi.helpers.aiobotocore_connector` for `aiobotocore`, which previously could result in the error output "Unclosed client session" if the service would fails to start, for example due to initialization errors.
 
 ## 0.21.1 (2021-02-14)
 
@@ -309,8 +309,8 @@
 
 ## 0.21.0 (2021-02-10)
 
-- Uses the socket option `SO_REUSEPORT` by default on Linux unless specifically disabled via the `http.reuse_port` option set to `False`. This will allow several processes to bind to the same port, which could be useful when running services via a process manager such as `supervisord` or when it\'s desired to run several processes of a service to utilize additional CPU cores. The `http.reuse_port` option doesn\'t have any effect when a service is running on a non-Linux platform. (github: **tranvietanh1991**)
-- Services which works as AMQP consumers now has a default prefetch count value of 100, where previously the service didn\'t specify any prefetch count option, which could exhaust the host\'s resources if messages would be published faster to the queue than the services could process them. (github: **tranvietanh1991**)
+- Uses the socket option `SO_REUSEPORT` by default on Linux unless specifically disabled via the `http.reuse_port` option set to `False`. This will allow several processes to bind to the same port, which could be useful when running services via a process manager such as `supervisord` or when it's desired to run several processes of a service to utilize additional CPU cores. The `http.reuse_port` option doesn't have any effect when a service is running on a non-Linux platform. (github: **tranvietanh1991**)
+- Services which works as AMQP consumers now has a default prefetch count value of 100, where previously the service didn't specify any prefetch count option, which could exhaust the host's resources if messages would be published faster to the queue than the services could process them. (github: **tranvietanh1991**)
 - AWS SNS+SQS calls now uses a slightly changed config which will increase the connection pool to 50 connections, decreases the connect timeout to 8 seconds and the read timeout to 35 seconds.
 - Possible to run services using without using the `tomodachi` CLI, by adding `tomodachi.run()` to the end of the Python file invoked by `python` which will start services within that file. Usually in a `if __name__ == "__main__":` if-block.
 - The environment variable `TOMODACHI_LOOP` can be used to specify the event loop implementation in a similar way as the CLI argument `--loop [auto|asyncio|uvloop]` would.
@@ -320,11 +320,11 @@
 
 ## 0.20.7 (2020-11-27)
 
-- Reworked type hinting annotations for AWS SNS+SQS filter policies as there were still cases found in the previous tomodachi version that didn\'t work as they should, and raised mypy errors where a correct filter policy had been applied.
+- Reworked type hinting annotations for AWS SNS+SQS filter policies as there were still cases found in the previous tomodachi version that didn't work as they should, and raised mypy errors where a correct filter policy had been applied.
 
 ## 0.20.6 (2020-11-24)
 
-- Fixes a type annotation for the `aws_sns_sqs` decorator\'s keyword argument `filter_policy`, which could result in a `mypy` error if an \"anything-but\" filter policy was used.
+- Fixes a type annotation for the `aws_sns_sqs` decorator's keyword argument `filter_policy`, which could result in a `mypy` error if an "anything-but" filter policy was used.
 
 ## 0.20.5 (2020-11-18)
 
@@ -346,18 +346,18 @@
 
 ## 0.20.1 (2020-11-04)
 
-- Fixes the bug which caused almost all dependencies to be optional installs (\"extras\") if `tomodachi` were installed with `pip`. All previous required dependencies are now again installed by default also when using `pip` installer.
+- Fixes the bug which caused almost all dependencies to be optional installs ("extras") if `tomodachi` were installed with `pip`. All previous required dependencies are now again installed by default also when using `pip` installer.
 
 ## 0.20.0 (2020-10-27)
 
-- Lazy loading of dependencies to lower memory footprint and to make services launch quicker as they usually don\'t use all built-in implementations. Reference services launch noticeable faster now.
+- Lazy loading of dependencies to lower memory footprint and to make services launch quicker as they usually don't use all built-in implementations. Reference services launch noticeable faster now.
 - Optimizations and refactoring of middleware for all service function calls of all built-in invokers, saving somewhere around 10-20% on CPU time in average.
 - Improvements to awaiting open keep-alive connections when terminating a service for a lower chance of interrupting last second incoming requests over the connection.
 - New option: `http.max_keepalive_requests`. An optional number (int) of requests which is allowed for a keep-alive connection. After the specified number of requests has been done, the connection will be closed. A value of `0` or `None` (default) will allow any number of requests over an open keep-alive connection.
-- New option: `http.max_keepalive_time`. An optional maximum time in seconds (int) for which keep-alive connections are kept open. If a keep-alive connection has been kept open for more than `http.max_keepalive_time` seconds, the following request will be closed upon returning a response. The feature is not used by default and won\'t be used if the value is `0` or `None`. A keep-alive connection may otherwise be open unless inactive for more than the keep-alive timeout.
+- New option: `http.max_keepalive_time`. An optional maximum time in seconds (int) for which keep-alive connections are kept open. If a keep-alive connection has been kept open for more than `http.max_keepalive_time` seconds, the following request will be closed upon returning a response. The feature is not used by default and won't be used if the value is `0` or `None`. A keep-alive connection may otherwise be open unless inactive for more than the keep-alive timeout.
 - Improved type hint annotations for invoker decorators.
 - Preparations to be able to loosen dependencies and in the future make the related packages into optional extras instead.
-- Printed hints (in development) on missing packages that haven\'t been installed or couldn\'t be imported and in turn causing fatal errors.
+- Printed hints (in development) on missing packages that haven't been installed or couldn't be imported and in turn causing fatal errors.
 
 ## 0.19.2 (2020-10-27)
 
@@ -370,10 +370,10 @@
 ## 0.19.0 (2020-10-23)
 
 - Note: This is a rather large release with a lot of updates. Also, this release includes a lot of improvements to be able to quicker implement features for the future and modernizes a lot of the build, testing and linting steps to be on par with cutting edge Python development.
-- `@tomodachi.aws_sns_sqs` and `@tomodachi.amqp` decorators has changed the default value of the `competing` keyword-argument to `True`. Note that this is a change in default behaviour and may be a breaking change if \"non-competing\" services were used. This change was triggered in an attempt to make the API more clear and use more common default values. It\'s rare that a non-shared queue would be used for service replicas of the same type in a distributed architecture.
-- The `@tomodachi.aws_sns_sqs` decorator can now specify a `filter_policy` which will be applied on the SNS subscription (for the specified topic and queue) as the `"FilterPolicy` attribute. This will apply a filter on SNS messages using the chosen \"message attributes\" and/or their values specified in the filter. Example: A filter policy value of `{"event": ["order_paid"], "currency": ["EUR", "USD"]}` would set up the SNS subscription to receive messages on the topic only where the message attribute `"event"` is `"order_paid"` and the `"currency"` value is either `"EUR"` or `"USD"`. If `filter_policy` is not specified as an argument, the queue will receive messages on the topic as per already specified if using an existing subscription, or receive all messages on the topic if a new subscription is set up (default). Changing the `filter_policy` on an existing subscription may take several minutes to propagate. Read more about the filter policy format on AWS, since it doesn\'t follow the same pattern as specifying message attributes. <https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html>
-- Related to the above mentioned filter policy, the `aws_sns_sqs_publish` function has also been updated with the possibility to specify said \"message attributes\" using the `message_attributes` keyword argument. Values should be specified as a simple `dict` with keys and values. Example: `{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}`.
-- The event loop that the process will execute on can now be specified on startup using `--loop [auto|asyncio|uvloop]`, currently the `auto` (or `default`) value will use Python\'s builtin `asyncio` event loop.
+- `@tomodachi.aws_sns_sqs` and `@tomodachi.amqp` decorators has changed the default value of the `competing` keyword-argument to `True`. Note that this is a change in default behaviour and may be a breaking change if "non-competing" services were used. This change was triggered in an attempt to make the API more clear and use more common default values. It's rare that a non-shared queue would be used for service replicas of the same type in a distributed architecture.
+- The `@tomodachi.aws_sns_sqs` decorator can now specify a `filter_policy` which will be applied on the SNS subscription (for the specified topic and queue) as the `"FilterPolicy` attribute. This will apply a filter on SNS messages using the chosen "message attributes" and/or their values specified in the filter. Example: A filter policy value of `{"event": ["order_paid"], "currency": ["EUR", "USD"]}` would set up the SNS subscription to receive messages on the topic only where the message attribute `"event"` is `"order_paid"` and the `"currency"` value is either `"EUR"` or `"USD"`. If `filter_policy` is not specified as an argument, the queue will receive messages on the topic as per already specified if using an existing subscription, or receive all messages on the topic if a new subscription is set up (default). Changing the `filter_policy` on an existing subscription may take several minutes to propagate. Read more about the filter policy format on AWS, since it doesn't follow the same pattern as specifying message attributes. <https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html>
+- Related to the above mentioned filter policy, the `aws_sns_sqs_publish` function has also been updated with the possibility to specify said "message attributes" using the `message_attributes` keyword argument. Values should be specified as a simple `dict` with keys and values. Example: `{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}`.
+- The event loop that the process will execute on can now be specified on startup using `--loop [auto|asyncio|uvloop]`, currently the `auto` (or `default`) value will use Python's builtin `asyncio` event loop.
 - Fixes a bug that could cause a termination signal to stop the service in the middle of processing a message received via AWS SQS. The service will now await currently executing tasks before finally shutting down.
 - Added SSL and virtualhost settings to AMQP transport, as well as additional configuration options which can be passed via `options.amqp.virtualhost`, `options.amqp.ssl` and `options.amqp.heartbeat`. (github: **xdmiodz**)
 - HTTP server functionality, which is based on `aiohttp`, can now be configured to allow keep-alive connections by specifying the `options.http.keepalive_timeout` config value.
@@ -391,10 +391,10 @@
 - Overall updated documentation and improved examples around running services within Docker.
 - `requirements.txt` is no more and has been replaced with `pyproject.toml` with a Poetry section together with the `poetry.lock`.
 - Replaced Travis CI with GitHub actions.
-- Replaced py-up with GitHub\'s dependabot, which as of recently also supports Poetry\'s lock files.
+- Replaced py-up with GitHub's dependabot, which as of recently also supports Poetry's lock files.
 - Added support for `aiohttp` 3.6.x.
 - Added support for `aiobotocore` 1.x.x.
-- Added `aiodns` as an optional installation, as it\'s recommended for running DNS resolution on the event loop when using `aiohttp`.
+- Added `aiodns` as an optional installation, as it's recommended for running DNS resolution on the event loop when using `aiohttp`.
 - Updated classifiers for support of Python 3.9.
 - Dropped support for Python 3.6.
 - The service class decorator `@tomodachi.service` is now considered deprecated and the service classes should inherit from the `tomodachi.Service` class instead. This also works better with type-hinting, which currently cannot handle decorators that modify a class.
@@ -402,7 +402,7 @@
 
 ## 0.18.0 (2020-09-15)
 
-- Changed the order of when to execute the service\'s own `_stop_service()` function, to always run after active HTTP requests has finished executing, as well as awaiting ongoing AMQP before finally running the user defined function.
+- Changed the order of when to execute the service's own `_stop_service()` function, to always run after active HTTP requests has finished executing, as well as awaiting ongoing AMQP before finally running the user defined function.
 
 ## 0.17.1 (2020-06-16)
 
@@ -430,7 +430,7 @@
 
 ## 0.16.3 (2019-08-23)
 
-- It\'s now possible to get the request object for websocket handlers by adding a third argument to the invoker function. `(self, websocket, request)` or by specifying `request` as a keyword argument in the function signature. Using the request object it\'s now possible to parse browser headers and other data sent when first opening the websocket connction.
+- It's now possible to get the request object for websocket handlers by adding a third argument to the invoker function. `(self, websocket, request)` or by specifying `request` as a keyword argument in the function signature. Using the request object it's now possible to parse browser headers and other data sent when first opening the websocket connction.
 - Updated packages for automated tests to verify that newer dependencies still works correctly.
 - Updated the dependency on `aioamqp` to allow `aioamqp==0.13.x`.
 
@@ -485,7 +485,7 @@
 
 ## 0.14.2 (2018-12-19)
 
-- Solves an issue which caused SNS / SQS invoked functions to never resume the ReceiveMessage API calls on connection failure, resulting in log output saying \"Session closed\" and requiring the service to be restarted.
+- Solves an issue which caused SNS / SQS invoked functions to never resume the ReceiveMessage API calls on connection failure, resulting in log output saying "Session closed" and requiring the service to be restarted.
 - Added support for `aiobotocore` 0.10.x.
 
 ## 0.14.1 (2018-12-04)
@@ -494,7 +494,7 @@
 
 ## 0.14.0 (2018-12-04)
 
-- Added the possibility of specifying `message_protocol` for AMQP / SNS+SQS enveloping per function, so that it\'s possible to use both (for example) raw data and enveloped data within the same function without having to build fallback enveloping functionality.
+- Added the possibility of specifying `message_protocol` for AMQP / SNS+SQS enveloping per function, so that it's possible to use both (for example) raw data and enveloped data within the same function without having to build fallback enveloping functionality.
 - Added documentation for `@tomodachi.decorator`, describing how to easily write decorators to use with service invoker functions.
 - Added `ignore_logging` keyword argument to HTTP invoker decorator, which may ignore access logging for either specific status codes or everything (except `500` statuses). (github: **justcallmelarry**)
 - New function `tomodachi.get_service()` or `tomodachi.get_service(service_name)` available to get the service instance object from wherever in the running service, much like `asyncio.get_event_loop()`.
@@ -529,7 +529,7 @@
 
 ## 0.13.1 (2018-08-01)
 
-- Fixes bug with type hinting reporting \'error: Module has no attribute \"decorator\"\' when applying a `@tomodachi.decorator` decorator.
+- Fixes bug with type hinting reporting 'error: Module has no attribute "decorator"' when applying a `@tomodachi.decorator` decorator.
 
 ## 0.13.0 (2018-07-25)
 
@@ -537,7 +537,7 @@
 
 ## 0.12.7 (2018-07-04)
 
-- Fixed an issue for using ProtoBuf in development as hot-reloading didn\'t work as expected. (github: **smaaland**)
+- Fixed an issue for using ProtoBuf in development as hot-reloading didn't work as expected. (github: **smaaland**)
 
 ## 0.12.6 (2018-07-02)
 
@@ -610,7 +610,7 @@
 
 ## 0.9.5 (2018-03-16)
 
-- More robust handling of invoking service files that aren\'t a part of a Python package.
+- More robust handling of invoking service files that aren't a part of a Python package.
 
 ## 0.9.4 (2018-03-06)
 
@@ -626,7 +626,7 @@
 ## 0.9.2 (2018-03-05)
 
 - Improved error handling for bad requests (error 400) on HTTP calls.
-- File watcher for hot-reload now excludes ignored directories in a more effective way to ease CPU load and for faster boot time for projects with thousands of files which should\'ve been ignored.
+- File watcher for hot-reload now excludes ignored directories in a more effective way to ease CPU load and for faster boot time for projects with thousands of files which should've been ignored.
 
 ## 0.9.1 (2018-03-05)
 
@@ -654,8 +654,8 @@
 
 ## 0.8.0 (2018-02-27)
 
-- It\'s now possible to specify queue_name on AWS SNS+SQS and AMQP decorators for competing queues. If not specified an automatically generated hash will be used as queue name as it worked previously.
-- Fixes an issue with relative imports from within service files, which resulted in \"SystemParent module \'\' not loaded, cannot perform relative import\" or \"ImportError: attempted relative import with no known parent package\". (github: **0x1EE7**)
+- It's now possible to specify queue_name on AWS SNS+SQS and AMQP decorators for competing queues. If not specified an automatically generated hash will be used as queue name as it worked previously.
+- Fixes an issue with relative imports from within service files, which resulted in "SystemParent module '' not loaded, cannot perform relative import" or "ImportError: attempted relative import with no known parent package". (github: **0x1EE7**)
 - Exceptions that are subclasses of `AmqpInternalServiceError` and `AWSSNSSQSInternalServiceError` will now also work in the same way, resulting in the messages to be retried when raised.
 - Service classes now have built in log functions for setting up logging to file as well as logging. They are `self.log_setup('logname', level, filename)` and `self.log('logname', level, message)`.
 - HTTP services will have their access log color coded when outputting to nothing else than stdout, which should be helpful in an overview during development.
@@ -700,7 +700,7 @@
 
 ## 0.5.2 (2017-10-08)
 
-- Add argument option for log level as \'-l\' or \'\--log\'. (github: **djKooks**)
+- Add argument option for log level as '-l' or '\--log'. (github: **djKooks**)
 - Better matching of imported modules on hot-reload which will cause reloading into code with syntax errors or indentation errors much harder.
 
 ## 0.5.1 (2017-10-03)
@@ -725,7 +725,7 @@
 
 ## 0.4.7 (2017-09-30)
 
-- Reworked watcher since it ended up using 90% CPU of the running core due to constant re-indexing (mstat) of every file every 0.5s. Full re-index will now only run every 10 seconds, since it\'s more rare that new files are added than existing files edited. Watcher for edited existing files will still run at the same intervals.
+- Reworked watcher since it ended up using 90% CPU of the running core due to constant re-indexing (mstat) of every file every 0.5s. Full re-index will now only run every 10 seconds, since it's more rare that new files are added than existing files edited. Watcher for edited existing files will still run at the same intervals.
 - Watched file types may now be specified via configuration via `options.watcher.watched_file_endings`.
 
 ## 0.4.6 (2017-09-29)
@@ -735,11 +735,11 @@
 
 ## 0.4.5 (2017-09-07)
 
-- Possibility to requeue messages that result in specific exceptions. Exceptions that will nack the message (for AMQP transport) is called `AmqpInternalServiceError`. Exceptions that won\'t delete the message from the queue and in turn will result in it to \"reappear\" unless configured non-default (for AWS SNS+SQS transport) is called `AWSSNSSQSInternalServiceError`.
+- Possibility to requeue messages that result in specific exceptions. Exceptions that will nack the message (for AMQP transport) is called `AmqpInternalServiceError`. Exceptions that won't delete the message from the queue and in turn will result in it to "reappear" unless configured non-default (for AWS SNS+SQS transport) is called `AWSSNSSQSInternalServiceError`.
 
 ## 0.4.4 (2017-08-25)
 
-- Corrected an issue regarding crontab notation for scheduling function calls where it didn\'t parse the upcoming date correctly if both isoweekday and day part were given.
+- Corrected an issue regarding crontab notation for scheduling function calls where it didn't parse the upcoming date correctly if both isoweekday and day part were given.
 
 ## 0.4.3 (2017-08-09)
 
@@ -747,7 +747,7 @@
 
 ## 0.4.2 (2017-08-07)
 
-- Fixes an issue where Content-Type header couldn\'t be specified without charset in HTTP transports.
+- Fixes an issue where Content-Type header couldn't be specified without charset in HTTP transports.
 - Cleared some old debug code.
 
 ## 0.4.1 (2017-08-05)
@@ -786,7 +786,7 @@
 
 ## 0.2.14 (2017-06-30)
 
-- New \"transport\" invoker for service functions: `schedule`. It works like cron type scheduling where specific functions will be run on the specified interval. For example a function can be specified to run once per day at a specific time or every second minute, or the last Tuesday of January and March at 05:30 AM.
+- New "transport" invoker for service functions: `schedule`. It works like cron type scheduling where specific functions will be run on the specified interval. For example a function can be specified to run once per day at a specific time or every second minute, or the last Tuesday of January and March at 05:30 AM.
 - Values for keyword arguments invoked by transport decorators were earlier always set to `None`, despite having other default values. This is now corrected.
 
 ## 0.2.13 (2017-06-20)
@@ -810,7 +810,7 @@
 
 ## 0.2.9 (2017-06-06)
 
-- Added a list of safe modules that may never be removed from the list of already loaded modules. Removing the module \'typing\' from the list would cause a RecursionError exception since Python 3.6.1.
+- Added a list of safe modules that may never be removed from the list of already loaded modules. Removing the module 'typing' from the list would cause a RecursionError exception since Python 3.6.1.
 
 ## 0.2.8 (2017-05-23)
 
@@ -823,10 +823,10 @@
 
 ## 0.2.6 (2017-05-22)
 
-- Support for a \"generic\" aws dictonary in options that can hold region, access key id and secret to be shared among other AWS resources/services.
+- Support for a "generic" aws dictonary in options that can hold region, access key id and secret to be shared among other AWS resources/services.
 - Updated aiobotocore / botocore dependencies.
 - Gracefully handle and discard invalid SNS/SQS messages not in JSON format.
-- Corrected issue where watched directories with \"similar\" names as settings would be ignored.
+- Corrected issue where watched directories with "similar" names as settings would be ignored.
 
 ## 0.2.5 (2017-05-16)
 

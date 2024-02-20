@@ -35,7 +35,7 @@ focus on building the business logic. 🪄
 - `⏰` ⋯ Scheduled function execution (cron notation / time interval) for building watchdog handlers.
 - `🍔` ⋯ Execution middleware interface for incoming HTTP requests and received messages.
 - `💌` ⋯ Simple envelope building and parsing for both receiving and publishing messages.
-- `📚` ⋯ Logging support via `structlog` with template loggers for both \"dev console\" and JSON output.
+- `📚` ⋯ Logging support via `structlog` with template loggers for both "dev console" and JSON output.
 - `⛑️` ⋯ Loggers and handler managers built to support exception tracing, from for example Sentry.
 - `📡` ⋯ SQS queues with filter policies for SNS topic subscriptions filtering messages on message attributes.
 - `📦` ⋯ Supports SQS dead-letter queues via redrive policy -- infra orchestration from service optional.
@@ -194,7 +194,7 @@ of log records. The console colors can be disabled by setting the env
 value `NO_COLOR=1`.
 
 ⇢ *recommendation* ✨👀 \
-⇢ *For released services / images it\'s recommended to use the* `json`
+⇢ *For released services / images it's recommended to use the* `json`
   *option so that you can set up structured log collection via for
   example Logstash, Fluentd, Fluent Bit, Vector, etc.*
 
@@ -202,9 +202,9 @@ If you prefer to disable log output from the library you can use
 `disabled` (and presumably add a log handler with another
 implementation).
 
-The `python` option isn\'t recommended, but available if required to use
-the loggers from Python\'s built-in `logging` module. Note that the
-built-in `logging` module will be used any way. as the library\'s
+The `python` option isn't recommended, but available if required to use
+the loggers from Python's built-in `logging` module. Note that the
+built-in `logging` module will be used any way. as the library's
 loggers are both added as handlers to `logging.root` and has propagation
 of records through to `logging` as well.
 
@@ -222,7 +222,7 @@ of records through to `logging` as well.
 </table>
 <br clear="left"/>
 
-If the template loggers from the option above doesnt\' cut it or if you
+If the template loggers from the option above doesnt' cut it or if you
 already have your own logger (preferably a `structlog` logger) and
 processor chain set up, you can specify a `--custom-logger` which will
 also make `tomodachi` use your logger set up. This is suitable also if
@@ -234,13 +234,13 @@ If your logger is initialized in for example the module
 named `logger`, then use `--custom-logger yourapp.logging.logger` (or
 set as an env value `TOMODACHI_CUSTOM_LOGGER=yourapp.logging.logger`).
 
-The path to the logger attribute in the module you\'re specifying must
+The path to the logger attribute in the module you're specifying must
 implement `debug`, `info`, `warning`, `error`, `exception`, `critical`
 and preferably also `new(context: Dict[str, Any]) -> Logger` (as that is
 what primarily will be called to create (or get) a logger).
 
 Although non-native `structlog` loggers can be used as custom loggers,
-it\'s highly recommended to specify a path that has been assigned a
+it's highly recommended to specify a path that has been assigned a
 value from `structlog.wrap_logger` or `structlog.get_logger`.
 
 <table align="left">
@@ -290,7 +290,7 @@ local ~$ tomodachi --version
 > tomodachi x.xx.xx
 ```
 
-`tomodachi` can be installed together with a set of \"extras\" that will
+`tomodachi` can be installed together with a set of "extras" that will
 install a set of dependencies that are useful for different purposes.
 The extras are:
 
@@ -308,11 +308,11 @@ environments like Docker containers or virtual environments.
 ### Building blocks for a service class and microservice entrypoint
 
 1. `import tomodachi` and create a class that inherits `tomodachi.Service`, it can be called anything... or just `Service` to keep it simple.
-2. Add a `name` attribute to the class and give it a string value. Having a `name` attribute isn\'t required, but good practice.
-3. Define an awaitable function in the service class -- in this example we\'ll use it as an entrypoint to trigger code in the service by decorating it with one of the available invoker decorators. Note that a service class must have at least one decorated function available to even be recognized as a service by `tomodachi run`.
+2. Add a `name` attribute to the class and give it a string value. Having a `name` attribute isn't required, but good practice.
+3. Define an awaitable function in the service class -- in this example we'll use it as an entrypoint to trigger code in the service by decorating it with one of the available invoker decorators. Note that a service class must have at least one decorated function available to even be recognized as a service by `tomodachi run`.
 4. Decide on how to trigger the function -- for example using HTTP, pub/sub or on a timed interval, then decorate your function with one of these trigger / subscription decorators, which also invokes what capabilities the service initially has.
 
-*Further down you\'ll find a desciption of how each of the built-in
+*Further down you'll find a desciption of how each of the built-in
 invoker decorators work and which keywords and parameters you can use to
 change their behaviour.*
 
@@ -320,10 +320,10 @@ change their behaviour.*
 user credentials or hosting configuration to be able to access queues
 and topics.*
 
-**For simplicity, let\'s do HTTP:**
+**For simplicity, let's do HTTP:**
 
-- On each POST request to `/sheep`, the service will wait for up to one whole second (pretend that it\'s performing I/O -- waiting for response on a slow sheep counting database modification, for example) and then issue a 200 OK with some data.
-- It\'s also possible to query the amount of times the POST tasks has run by doing a `GET` request to the same url, `/sheep`.
+- On each POST request to `/sheep`, the service will wait for up to one whole second (pretend that it's performing I/O -- waiting for response on a slow sheep counting database modification, for example) and then issue a 200 OK with some data.
+- It's also possible to query the amount of times the POST tasks has run by doing a `GET` request to the same url, `/sheep`.
 - By using `@tomodachi.http` an HTTP server backed by `aiohttp` will be started on service start. `tomodachi` will act as a middleware to route requests to the correct handlers, upgrade websocket connections and then also gracefully await connections with still executing tasks, when the service is asked to stop -- up until a configurable amount of time has passed.
 
 ```python
@@ -358,7 +358,7 @@ local ~/code/service$ tomodachi run service.py
 ------------------------------------------------------------------------
 
 Beside the currently existing built-in ways of interfacing with a
-service, it\'s possible to build additional function decorators to suit
+service, it's possible to build additional function decorators to suit
 the use-cases one may have.
 
 To give a few possible examples / ideas of functionality that could be
@@ -572,7 +572,7 @@ will default to use exit code 0.
 - `SIGTERM` signal
 - `tomodachi.exit()` or `tomodachi.exit(exit_code)`
 
-The process\' exit code can also be altered by changing the value of
+The process' exit code can also be altered by changing the value of
 `tomodachi.SERVICE_EXIT_CODE`, however using `tomodachi.exit` with an
 integer argument will override any previous value set to
 `tomodachi.SERVICE_EXIT_CODE`.
@@ -580,7 +580,7 @@ integer argument will override any previous value set to
 All above mentioned ways of initiating the termination flow of the
 service will perform a graceful shutdown of the service which will try
 to await open HTTP handlers and await currently running tasks using
-tomodachi\'s scheduling functionality as well as await tasks processing
+tomodachi's scheduling functionality as well as await tasks processing
 messages from queues such as AWS SQS or RabbitMQ.
 
 Some tasks may timeout during termination according to used
@@ -594,7 +594,7 @@ usually happens within milliseconds.
 ## Function hooks for service lifecycle changes
 
 To be able to initialize connections to external resources or to perform
-graceful shutdown of connections made by a service, there\'s a few
+graceful shutdown of connections made by a service, there's a few
 functions a service can specify to hook into lifecycle changes of a
 service.
 
@@ -682,7 +682,7 @@ them in containers or even more interestingly, in clusters of compute
 nodes. Here follows an example of getting a `tomodachi` based service up
 and running in Docker.
 
-We\'re building the service\' container image using just two small
+We're building the service' container image using just two small
 files, the `Dockerfile` and the actual code for the microservice,
 `service.py`. In reality a service would probably not be quite this
 small, but as a template to get started.
@@ -749,7 +749,7 @@ class Service(tomodachi.Service):
         return json.dumps({"error": "method-not-allowed"})
 ```
 
-### Building and running the container, forwarding host\'s port 31337 to port 80
+### Building and running the container, forwarding host's port 31337 to port 80
 
 ```bash
 local ~/code/service$ docker build . -t tomodachi-microservice
@@ -815,7 +815,7 @@ local ~$ curl http://127.0.0.1:31337/no-route -i
 # > {"error": "not-found"}
 ```
 
-**It\'s actually as easy as that to get something spinning. The hard
+**It's actually as easy as that to get something spinning. The hard
 part is usually to figure out (or decide) what to build next.**
 
 Other popular ways of running microservices are of course to use them as
@@ -829,9 +829,9 @@ hold off and use other tech for those kinds of deployments.
 
 ## Available built-ins used as endpoints 🚀
 
-As shown, there\'s different ways to trigger your microservice function
+As shown, there's different ways to trigger your microservice function
 in which the most common ones are either directly via HTTP or via event
-based messaging (for example AMQP or AWS SNS+SQS). Here\'s a list of the
+based messaging (for example AMQP or AWS SNS+SQS). Here's a list of the
 currently available built-ins you may use to decorate your service
 functions.
 
@@ -906,7 +906,7 @@ def handler(self, request, *args, **kwargs):
 
 A function which will be called if the **HTTP request would result
 in a 4XX** `status_code`. You may use this for example to set up a
-custom handler on \"404 Not Found\" or \"403 Forbidden\" responses.
+custom handler on "404 Not Found" or "403 Forbidden" responses.
 
 ------------------------------------------------------------------------
 
@@ -940,7 +940,7 @@ can be omitted in order to make the service consume messages from an existing
 queue, without setting up an SNS topic subscription.
 
 The `competing` value is used when the same queue name should be
-used for several services of the same type and thus \"compete\" for
+used for several services of the same type and thus "compete" for
 who should consume the message. Since `tomodachi` version 0.19.x
 this value has a changed default value and will now default to
 `True` as this is the most likely use-case for pub/sub in
@@ -961,7 +961,7 @@ tomodachi creates `standard` queues and topics. To create them as
 
 The `max_number_of_consumed_messages` setting determines how many
 messages should be pulled from the queue at once. This is useful if
-you have a resource-intensive task that you don\'t want other
+you have a resource-intensive task that you don't want other
 messages to compete for. The default value is 10 for `standard`
 queues and 1 for `FIFO` queues. The minimum value is 1, and the
 maximum value is 10.
@@ -971,7 +971,7 @@ maximum value is 10.
 The `filter_policy` value of specified as a keyword argument will be
 applied on the SNS subscription (for the specified topic and queue)
 as the `"FilterPolicy` attribute. This will apply a filter on SNS
-messages using the chosen \"message attributes\" and/or their values
+messages using the chosen "message attributes" and/or their values
 specified in the filter. Make note that the filter policy dict
 structure differs somewhat from the actual message attributes, as
 values to the keys in the filter policy must be a dict (object) or
@@ -997,8 +997,8 @@ Read more about the filter policy format on AWS:
 Related to the above mentioned filter policy, the
 `tomodachi.aws_sns_sqs_publish` (which is used for publishing
 messages to SNS) and `tomodachi.sqs_send_message` (which sends
-messages directly to SQS) functions, can specify \"message
-attributes\" using the `message_attributes` keyword argument. Values
+messages directly to SQS) functions, can specify "message
+attributes" using the `message_attributes` keyword argument. Values
 should be specified as a simple `dict` with keys and values.
 
 Example: `{"event": "order_paid", "paid_amount": 100, "currency": "EUR"}`.
@@ -1017,7 +1017,7 @@ Similarly the values for `dead_letter_queue_name` in tandem with the
 `max_receive_count` value will modify the queue attribute
 `RedrivePolicy` in regards to the potential use of a dead-letter
 queue to which messages will be delivered if they have been picked
-up by consumers `max_receive_count` number of times but haven\'t
+up by consumers `max_receive_count` number of times but haven't
 been deleted from the queue.
 
 The value for `dead_letter_queue_name`
@@ -1042,12 +1042,12 @@ and leave it as is.
 Depending on the service `message_envelope` (previously named
 `message_protocol`) attribute if used, parts of the enveloped data
 would be distributed to different keyword arguments of the decorated
-function. It\'s usually safe to just use `data` as an argument. You
+function. It's usually safe to just use `data` as an argument. You
 can also specify a specific `message_envelope` value as a keyword
 argument to the decorator for specifying a specific enveloping
 method to use instead of the global one set for the service.
 
-If you\'re utilizing `from tomodachi.envelope import ProtobufBase`
+If you're utilizing `from tomodachi.envelope import ProtobufBase`
 and using `ProtobufBase` as the specified service `message_envelope`
 you may also pass a keyword argument `proto_class` into the
 decorator, describing the protobuf (Protocol Buffers) generated
@@ -1073,10 +1073,10 @@ instead an option is completely unset or set to `None` value no
 changes will be done to the KMS related attributes on an existing
 topic or queue.
 
-It\'s generally not advised to change the KMS master
+It's generally not advised to change the KMS master
 key id/alias values for resources currently in use.
 
-If it\'s expected that the services themselves, via their IAM credentials or
+If it's expected that the services themselves, via their IAM credentials or
 assumed role, are responsible for creating queues and topics, these
 options could be desirable to use.
 
@@ -1117,7 +1117,7 @@ overridden by setting the `options.amqp.exchange_name` dict value on
 the service class.
 
 The `competing` value is used when the same queue name should be
-used for several services of the same type and thus \"compete\" for
+used for several services of the same type and thus "compete" for
 who should consume the message. Since `tomodachi` version 0.19.x
 this value has a changed default value and will now default to
 `True` as this is the most likely use-case for pub/sub in
@@ -1133,12 +1133,12 @@ can be assigned by setting the `options.amqp.routing_key_prefix` and
 Depending on the service `message_envelope` (previously named
 `message_protocol`) attribute if used, parts of the enveloped data
 would be distributed to different keyword arguments of the decorated
-function. It\'s usually safe to just use `data` as an argument. You
+function. It's usually safe to just use `data` as an argument. You
 can also specify a specific `message_envelope` value as a keyword
 argument to the decorator for specifying a specific enveloping
 method to use instead of the global one set for the service.
 
-If you\'re utilizing `from tomodachi.envelope import ProtobufBase`
+If you're utilizing `from tomodachi.envelope import ProtobufBase`
 and using `ProtobufBase` as the specified service `message_envelope`
 you may also pass a keyword argument `proto_class` into the
 decorator, describing the protobuf (Protocol Buffers) generated
@@ -1213,25 +1213,25 @@ the same code will very likely execute at the same timestamp / interval
 (which in same cases may correlated with exactly when they were last
 deployed). As such these functions are quite naive and should only be
 used with some care, so that it triggering the functions several times
-doesn\'t incur unnecessary costs or come as a bad surprise if the
-functions aren\'t completely idempotent.
+doesn't incur unnecessary costs or come as a bad surprise if the
+functions aren't completely idempotent.
 
 To perform a task on a specific
 timestamp or on an interval where only one of the available services of
 the same type in a cluster should trigger is a common thing to solve and
 there are several solutions to pick from., some kind of distributed
 consensus needs to be reached. Tooling exists, but what you need may
-differ depending on your use-case. There\'s algorithms for distributed
+differ depending on your use-case. There's algorithms for distributed
 consensus and leader election, Paxos or Raft, that luckily have already
 been implemented to solutions like the strongly consistent and
 distributed key-value stores *etcd* and *TiKV*.
 
 Even primitive solutions
 such as *Redis* `SETNX` commands would work, but could be costly or hard
-to manage access levels around. If you\'re on k8s there\'s even a simple
-\"leader election\" API available that just creates a 15 seconds lease.
+to manage access levels around. If you're on k8s there's even a simple
+"leader election" API available that just creates a 15 seconds lease.
 Solutions are many and if you are in need, go hunting and find one that
-suits your use-case, there\'s probably tooling and libraries available
+suits your use-case, there's probably tooling and libraries available
 to call it from your service functions.
 
 Implementing proper consensus mechanisms and in turn leader election can
@@ -1269,9 +1269,9 @@ Use the following keywords arguments in function signatures (for handlers, middl
 | `message_attributes`         | Values specified as message attributes that accompanies the message body and that are among other things used for SNS queue subscription filter policies and for distributed tracing.
 | `queue_url`                  | Can be used to modify visibility of messages, provide exponential backoffs, move to DLQs, etc.
 | `receipt_handle`             | Can be used to modify visibility of messages, provide exponential backoffs, move to DLQs, etc.
-| `approximate_receive_count`  | A value that specifies approximately how many times this message has been received from consumers on `SQS.ReceiveMessage` calls. Handlers that received a message, but that doesn\'t delete it from the queue (for example in order to make it visible for other consumers or in case of errors), will add to this count for each time they received it.
+| `approximate_receive_count`  | A value that specifies approximately how many times this message has been received from consumers on `SQS.ReceiveMessage` calls. Handlers that received a message, but that doesn't delete it from the queue (for example in order to make it visible for other consumers or in case of errors), will add to this count for each time they received it.
 | `topic`                      | Simply the name of the SNS topic. For messages sent directly to the queue (for example via `SQS.SendMessage` API calls), instead of via SNS topic subscriptions (`SNS.Publish`), the value of `topic` will be an empty string.
-| `sns_message_id`             | The message identifier for the SNS message (which is usually embedded in the body of a SQS message). Ths SNS message identifier is the same that is returned in the response when publishing a message with `SNS.Publish`. The `sns_message_id` is read from within the `"Body"` of SQS messages, if the message body contains a message that comes from an SNS topic subscription. If the SQS message doesn\'t originate from SNS (if the message isn\'t type `"Notification"`, and holds a `"TopicArn"` value), then `sns_message_id` will result in an empty string.
+| `sns_message_id`             | The message identifier for the SNS message (which is usually embedded in the body of a SQS message). Ths SNS message identifier is the same that is returned in the response when publishing a message with `SNS.Publish`. The `sns_message_id` is read from within the `"Body"` of SQS messages, if the message body contains a message that comes from an SNS topic subscription. If the SQS message doesn't originate from SNS (if the message isn't type `"Notification"`, and holds a `"TopicArn"` value), then `sns_message_id` will result in an empty string.
 | `sqs_message_id`             | The SQS message identifier, which naturally will differ from the SNS message identifier as one SNS message can be propagated to several SQS queues. The `sqs_message_id` is read from the `"MessageId"` value in the top of the SQS message.
 | `message_type`               | Returns the `"Type"` value from the message body. For messages consumed from a queue that was sent there from an SNS topic, the `message_type` will be `"Notification"`.
 | `raw_message_body`           | Returns the full contents (as a string) from `"Body"`, which can be used to implement custom listeners, tailored for more advanced workflows, where more flexibility is needed.
@@ -1371,7 +1371,7 @@ AWS SQS handlers:**
 
 This example portrays a middleware function which adds trace spans
 around the function, with the trace context populated from a
-\"traceparent header\" value collected from a SNS message\' message
+"traceparent header" value collected from a SNS message' message
 attribute. The topic name and SNS message identifier is also added as
 attributes to the trace span.
 
@@ -1423,7 +1423,7 @@ class Service(tomodachi.Service):
 A middleware can also be specified as the object of a class, in which
 case the `__call__` method of the object will be invoked as the
 middleware function. Note that bound functions such as self has to be
-included in the signature as it\'s called as a normal class function.
+included in the signature as it's called as a normal class function.
 
 This class provides a simplistic basic auth implementation validating
 credentials in the HTTP Authorization header for HTTP requests to the
@@ -1526,25 +1526,25 @@ entry on one single line):
 }
 ```
 
-### Interactions with Python\'s built-in `logging` module
+### Interactions with Python's built-in `logging` module
 
 Note that the log entries are propagated to the standard library logger
-(as long as it wasn\'t filtered), in order to allow third party handler
+(as long as it wasn't filtered), in order to allow third party handler
 hooks to pick up records or act on them. This will make sure that
-integrations such a Sentry\'s exception tracing will work out of the
+integrations such a Sentry's exception tracing will work out of the
 box.
 
 Similarly the `tomodachi` logger will also by default receive records
 from the standard library logger as adds a `logging.root` handler, so
 that the `tomodachi` logger can be used as a drop-in replacement for the
 standard library logger. Because of this third party modules using
-Python\'s default `logging` module will use the same formatter as
+Python's default `logging` module will use the same formatter as
 `tomodachi`. Note that if `logging.basicConfig()` is called before the
 `tomodachi` logger is initialized, `tomodachi` may not be able to add
 its `logging.root` handler.
 
 Note that when using the standard library logger directly the contextual
-logger won\'t be selected by default.
+logger won't be selected by default.
 
 ```python
 import logging
@@ -1593,7 +1593,7 @@ to use the `json` log formatter. The default log formatter `console` is
 mostly suited for local development environments as it provides a
 structured and colorized view of log records.
 
-It\'s also possible to use your own logger implementation by specifying
+It's also possible to use your own logger implementation by specifying
 `--custom-logger ...` (or setting `TOMODACHI_CUSTOM_LOGGER=...`
 environment value).
 
@@ -1686,7 +1686,7 @@ with instrumentors installed) with the appropriate exporters and
 configuration.
 
 However, instrumentation can also be enabled by importing the
-`TomodachiInstrumentor` instrumentation class and calling its\'
+`TomodachiInstrumentor` instrumentation class and calling its'
 `instrument` function.
 
 ```python
@@ -1719,20 +1719,20 @@ local ~$ OTEL_LOGS_EXPORTER=console \
 
 If the `OTEL_SERVICE_NAME` environment variable value (or
 `--service_name` argument to `opentelemetry-instrument`) is not set, the
-resource\' `service.name` will instead be set to the `name` attribute of
+resource' `service.name` will instead be set to the `name` attribute of
 the service class. In case the service class uses the default generic
-names (`service` or `app`), the resource\' `service.name` will instead
+names (`service` or `app`), the resource' `service.name` will instead
 be set to the default as specified in
 <https://github.com/open-telemetry/semantic-conventions/tree/main/docs/resource#service>.
 
-In the rare case where there\'s multiple `tomodachi` services started
+In the rare case where there's multiple `tomodachi` services started
 within the same Python process, it should be noted that OTEL traces,
 metrics and logging will primarily use the `OTEL_SERVICE_NAME`, and if
-it\'s missing then use the name from the *first* instrumented service
+it's missing then use the name from the *first* instrumented service
 class. The same goes for the `service.instance.id` resource attribute,
-which will be set to the first instrumented service class\' `uuid` value
+which will be set to the first instrumented service class' `uuid` value
 (which in most cases is automatically assigned on service start).
-Multi-service execution won\'t accurately distinguish the service name
+Multi-service execution won't accurately distinguish the service name
 of tracers, meters and loggers. The recommended solution if this is an
 issue, is to split the services into separate processes instead.
 
@@ -2036,9 +2036,9 @@ class Service(tomodachi.Service):
 
 ## Good practices for running services in production 🤞
 
-When running a `tomodachi` service in a production environment, it\'s
+When running a `tomodachi` service in a production environment, it's
 important to ensure that the service is set up correctly to handle the
-demands and constraints of a live system. Here\'s some recommendations
+demands and constraints of a live system. Here's some recommendations
 of options and operating practices to make running the services a
 breeze.
 
@@ -2059,12 +2059,12 @@ breeze.
                 command: ["/bin/sh", "-c", "sleep 20"]
     ```
 
-- If your service inbound network access to HTTP handlers from users or API clients, then it\'s usually preferred to put some kind of ingress (nginx, haproxy or other type of load balancer) to proxy connections to the service pods.
+- If your service inbound network access to HTTP handlers from users or API clients, then it's usually preferred to put some kind of ingress (nginx, haproxy or other type of load balancer) to proxy connections to the service pods.
   - Let the ingress handle public TLS, http2 / http3, client facing keep-alives and WebSocket protocol upgrades and let the service handler just take care of the business logic.
 
-  - Use HTTP options such as the ones in this service to have the service rotate keep-alive connections so that ingress connections doesn\'t stick to the old pods after a scaling event.
+  - Use HTTP options such as the ones in this service to have the service rotate keep-alive connections so that ingress connections doesn't stick to the old pods after a scaling event.
 
-    If keep-alive connections from ingresses to services stick for too long, the new replicas added when scaling out won\'t get their balanced share of the requests and the old pods will continue to receive most of the requests.
+    If keep-alive connections from ingresses to services stick for too long, the new replicas added when scaling out won't get their balanced share of the requests and the old pods will continue to receive most of the requests.
 
     ```python
     import tomodachi
@@ -2084,7 +2084,7 @@ breeze.
     ```
 
 - Use a JSON log formatter such as the one enabled via `--logger json` (or env variable `TOMODACHI_LOGGER=json`) so that the log entries can be picked up by a log collector.
-- Always start the service with the `--production` CLI argument (or set the env variable `TOMODACHI_PRODUCTION=1`) to disable the file watcher that restarts the service on file changes, and to hide the start banner so it doesn\'t end up in log buffers.
+- Always start the service with the `--production` CLI argument (or set the env variable `TOMODACHI_PRODUCTION=1`) to disable the file watcher that restarts the service on file changes, and to hide the start banner so it doesn't end up in log buffers.
 - Not related to `tomodachi` directly, but always remember to collect the log output and monitor your instances or clusters.
 
 ## Arguments to `tomodachi run` when running in production env
@@ -2093,23 +2093,23 @@ breeze.
 tomodachi run service/app.py --loop uvloop --production --log-level warning --logger json
 ```
 
-Here\'s a breakdown of the arguments and why they would be good for
+Here's a breakdown of the arguments and why they would be good for
 these kinds of environments.
 
 - `--loop uvloop`: This argument sets the event loop implementation to `uvloop`, which is known to be faster than the default `asyncio` loop. This can help improve the performance of your service. However, you should ensure that `uvloop` is installed in your environment before using this option.
 
-- `--production`: This argument disables the file watcher that restarts the service on file changes and hides the startup info banner. This is important in a production environment where you don\'t want your service to restart every time a file changes. It also helps to reduce unnecessary output in your logs.
+- `--production`: This argument disables the file watcher that restarts the service on file changes and hides the startup info banner. This is important in a production environment where you don't want your service to restart every time a file changes. It also helps to reduce unnecessary output in your logs.
 
-- `--log-level warning`: This argument sets the minimum log level to `warning`. In a production environment, you typically don\'t want to log every single detail of your service\'s operation. By setting the log level to `warning`, you ensure that only important messages are logged.
+- `--log-level warning`: This argument sets the minimum log level to `warning`. In a production environment, you typically don't want to log every single detail of your service's operation. By setting the log level to `warning`, you ensure that only important messages are logged.
 
   If your infrastructure supports rapid collection of log entries and you see a clear benefit of including logs of log level `info`, it would make sense to use `--log-level info` instead of filtering on at least `warning`.
 
 - `--logger json`: This argument sets the log formatter to output logs in JSON format. This is useful in a production environment where you might have a log management system that can parse and index JSON logs for easier searching and analysis.
 
 You can also set these options using environment variables. This can be
-useful if you\'re deploying your service in a containerized environment
+useful if you're deploying your service in a containerized environment
 like Docker or Kubernetes, where you can set environment variables in
-your service\'s configuration. Here\'s how you would set the same
+your service's configuration. Here's how you would set the same
 options using environment variables:
 
 ```bash
@@ -2124,8 +2124,8 @@ tomodachi run service/app.py
 By using environment variables, you can easily change the configuration
 of your service without having to modify your code or your command line
 arguments. This can be especially useful in a CI/CD pipeline where you
-might want to adjust your service\'s configuration based on the
-environment it\'s being deployed to.
+might want to adjust your service's configuration based on the
+environment it's being deployed to.
 
 ------------------------------------------------------------------------
 
@@ -2213,7 +2213,7 @@ folder, including using `tomodachi` in an [example Docker
 environment](https://github.com/kalaspuff/tomodachi/tree/master/examples/docker_examples/http_service)
 with or without docker-compose. There are examples to publish events
 / messages to an AWS SNS topic and subscribe to an AWS SQS queue.
-There\'s also a similar code available of how to work with pub/sub
+There's also a similar code available of how to work with pub/sub
 for RabbitMQ via the AMQP transport protocol.
 
 ### What's the recommended setup to run integration tests towards my service?
@@ -2234,7 +2234,7 @@ from AWS SQS or AMQP message brokers.
 `tomodachi` processes message flows through topics and queues, with enveloping and receiving execution handling.
 
 `tomodachi` may not have all the features you desire out of the box and it may never do, but I believe
-it\'s great for bootstrapping microservices in async Python.
+it's great for bootstrapping microservices in async Python.
 
 While `tomodachi` provides HTTP handlers, the library may not be the best choice today if you are solely building
 services that exposes REST or GraphQL API. In such case, you may be better off to use,
@@ -2262,17 +2262,17 @@ production). Would be great to hear about other use-cases in the
 wild!
 
 Another good idea is to drop in Sentry or other exception debugging
-solutions. These are great to catch errors if something wouldn\'t
+solutions. These are great to catch errors if something wouldn't
 work as expected in the internal routing or if your service code
 raises unhandled exceptions.
 
 ### Who built this and why?
 
 My name is **Carl Oscar Aaro**
-\[[\@kalaspuff](https://github.com/kalaspuff)\] and I\'m a coder
+\[[\@kalaspuff](https://github.com/kalaspuff)\] and I'm a coder
 from Sweden. When I started writing the first few lines of this
 library back in 2016, my intention was to experiment with
-Python\'s `asyncio`, the event loop, event sourcing and pub-sub message
+Python's `asyncio`, the event loop, event sourcing and pub-sub message
 queues.
 
 A lot has happened since -- now running services in both

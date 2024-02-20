@@ -6,8 +6,8 @@ Please help out to add features in the library that are missing or
 prepare pull requests with solutions to any bug you may encounter during
 execution.
 
-If you\'re already using `poetry` ([poetry @
-pypi](https://pypi.org/project/poetry/)), then please do so since it\'s
+If you're already using `poetry` ([poetry @
+pypi](https://pypi.org/project/poetry/)), then please do so since it's
 the preferred way of handling the dependencies of this library. `poetry`
 can also be configured to handle virtualenvs automatically.
 
@@ -36,7 +36,7 @@ and make a PR on GitHub for your clone against master branch.
 
 ### Automated linting, unit tests and integration tests
 
-There are GitHub actions enabled on \"push\" to automate test cases for
+There are GitHub actions enabled on "push" to automate test cases for
 the most common use-cases, as well as performing lint tests, type hint
 checking, etc. You can also run them on your own, see `Makefile` for a
 helping hand.
