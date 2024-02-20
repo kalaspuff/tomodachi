@@ -1,5 +1,9 @@
 # Changes
 
+## 0.27.1 (2024-xx-xx)
+
+- ...
+
 ## 0.27.0 (2024-02-20)
 
 **Send messages directly to SQS queues (SQS.SendMessage)**
