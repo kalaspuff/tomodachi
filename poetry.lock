@@ -1453,13 +1453,13 @@ files = [
 
 [[package]]
 name = "opentelemetry-util-http"
-version = "0.43b0"
+version = "0.44b0"
 description = "Web util for OpenTelemetry"
 optional = true
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "opentelemetry_util_http-0.43b0-py3-none-any.whl", hash = "sha256:f25a820784b030f6cb86b3d76e5676c769b75ed3f55a210bcdae0a5e175ebadb"},
-    {file = "opentelemetry_util_http-0.43b0.tar.gz", hash = "sha256:3ff6ab361dbe99fc81200d625603c0fb890c055c6e416a3e6d661ddf47a6c7f7"},
+    {file = "opentelemetry_util_http-0.44b0-py3-none-any.whl", hash = "sha256:ff018ab6a2fa349537ff21adcef99a294248b599be53843c44f367aef6bccea5"},
+    {file = "opentelemetry_util_http-0.44b0.tar.gz", hash = "sha256:75896dffcbbeb5df5429ad4526e22307fc041a27114e0c5bfd90bb219381e68f"},
 ]
 
 [[package]]
