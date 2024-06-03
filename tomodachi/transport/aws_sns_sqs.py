@@ -887,6 +887,7 @@ class AWSSNSSQSTransport(Invoker):
             message_timestamp: Optional[str] = None,
             message_deduplication_id: Optional[str] = None,
             message_group_id: Optional[str] = None,
+            queue: str = "",
         ) -> Any:
             logging.bind_logger(logging.getLogger("tomodachi.awssnssqs").new(logger="tomodachi.awssnssqs"))
 
@@ -1003,6 +1004,8 @@ class AWSSNSSQSTransport(Invoker):
                             not isinstance(message, dict) or "message_group_id" not in message
                         ):
                             kwargs["message_group_id"] = message_group_id
+                        if "queue" in args_set and (not isinstance(message, dict) or "queue" not in message):
+                            kwargs["queue"] = topic
 
                 except (Exception, asyncio.CancelledError, BaseException) as e:
                     limit_exception_traceback(e, ("tomodachi.transport.aws_sns_sqs",))
@@ -1044,6 +1047,8 @@ class AWSSNSSQSTransport(Invoker):
                         kwargs["message_deduplication_id"] = message_deduplication_id
                     if "message_group_id" in args_set:
                         kwargs["message_group_id"] = message_group_id
+                    if "queue" in args_set:
+                        kwargs["queue"] = queue
 
                 if len(values.args[1:]) and values.args[1] in kwargs:
                     del kwargs[values.args[1]]
@@ -1107,6 +1112,7 @@ class AWSSNSSQSTransport(Invoker):
                         message_timestamp=message_timestamp,
                         message_deduplication_id=message_deduplication_id,
                         message_group_id=message_group_id,
+                        queue=queue,
                     )
                 )
             except (Exception, asyncio.CancelledError, BaseException) as e:
@@ -2570,6 +2576,7 @@ class AWSSNSSQSTransport(Invoker):
                     message_timestamp: Optional[str],
                     message_deduplication_id: Optional[str],
                     message_group_id: Optional[str],
+                    queue: Optional[str],
                 ) -> Callable[..., Coroutine]:
                     async def _callback() -> None:
                         await handler(
@@ -2586,6 +2593,7 @@ class AWSSNSSQSTransport(Invoker):
                             message_timestamp,
                             message_deduplication_id,
                             message_group_id,
+                            queue,
                         )
 
                     return _callback
@@ -2755,6 +2763,7 @@ class AWSSNSSQSTransport(Invoker):
                                     message_timestamp,
                                     message_deduplication_id,
                                     message_group_id,
+                                    queue_name,
                                 )
                             )
                     except asyncio.CancelledError:
