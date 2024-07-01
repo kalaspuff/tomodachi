@@ -62,7 +62,9 @@ from tomodachi.options import Options
 
 if TYPE_CHECKING:  # pragma: no cover
     from types_aiobotocore_sns import SNSClient
+    from types_aiobotocore_sns.type_defs import PublishResponseTypeDef as PublishResponseTypeDef_
     from types_aiobotocore_sqs import SQSClient
+    from types_aiobotocore_sqs.type_defs import SendMessageResultTypeDef as SendMessageResultTypeDef_
 
     from tomodachi import Service
 else:
@@ -1525,7 +1527,7 @@ class AWSSNSSQSTransport(Invoker):
                 deduplication_id if deduplication_id else str(uuid.uuid4())
             )
 
-        response: Union[PublishResponseTypeDef, Dict[str, Any]] = {}
+        response: Union[PublishResponseTypeDef, PublishResponseTypeDef_, Dict[str, Any]] = {}
         for retry in range(1, 4):
             try:
                 async with connector("tomodachi.sns", service_name="sns") as client:
@@ -1629,7 +1631,7 @@ class AWSSNSSQSTransport(Invoker):
         if delay_seconds is not None:
             optional_request_parameters["DelaySeconds"] = delay_seconds
 
-        response: Union[SendMessageResultTypeDef, Dict[str, Any]] = {}
+        response: Union[SendMessageResultTypeDef, SendMessageResultTypeDef_, Dict[str, Any]] = {}
         for retry in range(1, 4):
             try:
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
