@@ -1,8 +1,10 @@
 # Changes
 
-## 0.27.1 (2024-xx-xx)
+## 0.27.1 (2024-07-01)
 
-- ...
+- Support for `aiobotocore` 2.12.x releases and 2.13.x releases.
+- Support for recent versions of OTEL prometheus exporter (`opentelemetry-exporter-prometheus`).
+- Updated tests run via GHA to use latest version of `localstack`.
 
 ## 0.27.0 (2024-02-20)
 
