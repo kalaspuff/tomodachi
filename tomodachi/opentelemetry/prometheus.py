@@ -102,6 +102,7 @@ class _CustomCollector(_PrometheusCustomCollector):
         self._prefix = prefix
         self._registry = registry
         self._exemplars: Deque[List[Optional[Exemplar]]] = deque()
+        self._non_letters_digits_underscore_re = compile(r"[^\w]", UNICODE | IGNORECASE)
         self._include_scope_info = bool(
             str(
                 os.environ.get(OTEL_PYTHON_TOMODACHI_PROMETHEUS_INCLUDE_SCOPE_INFO)
@@ -129,6 +130,12 @@ class _CustomCollector(_PrometheusCustomCollector):
         if metric.type in ("histogram", "gaugehistogram") and sample.name.endswith("_bucket"):
             return True
         return False
+
+    def _sanitize(self, key: str) -> str:
+        """sanitize the given metric name or label according to Prometheus rule.
+        Replace all characters other than [A-Za-z0-9_] with '_'.
+        """
+        return self._non_letters_digits_underscore_re.sub("_", key)
 
     def collect(self) -> Generator[PrometheusMetric, Any, Any]:  # type: ignore
         if self._callback is not None:
@@ -220,10 +227,9 @@ class TomodachiPrometheusMetricReader(MetricReader):
         self._collector = _CustomCollector(prefix, registry)
         self._registry = registry
         self._registry.register(cast(Collector, self._collector))
-        setattr(self._collector, "_callback", self.collect)
+        setattr(self._collector, "_callback", self.collect)  # noqa: B010
 
     def shutdown(self, timeout_millis: float = 30_000, **kwargs: Any) -> None:
-        super().shutdown(timeout_millis=timeout_millis, **kwargs)
         self._registry.unregister(cast(Collector, self._collector))
 
     def _transform_metric(self, metric: Metric) -> Metric:
