@@ -1,5 +1,9 @@
 # Changes
 
+## 0.27.2 (2024-xx-xx)
+
+- ...
+
 ## 0.27.1 (2024-07-01)
 
 - Support for `aiobotocore` 2.12.x releases and 2.13.x releases.
