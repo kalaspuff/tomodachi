@@ -387,15 +387,15 @@ class TomodachiInstrumentor(BaseInstrumentor):
 
             return sns_message_id
 
-        setattr(
+        setattr(  # noqa: B010
             tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
             "_publish_message",
-            _traced_publish_awssnssqs_message.__get__(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport),
+            _traced_publish_awssnssqs_message.__get__(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport),  # type: ignore[attr-defined]
         )
 
         # aws_sns_sqs: _send_raw_message
         if getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._send_raw_message, "__wrapped__", None):
-            setattr(
+            setattr(  # noqa: B010
                 tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
                 "_send_raw_message",
                 getattr(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport._send_raw_message, "__wrapped__", None),
@@ -450,15 +450,15 @@ class TomodachiInstrumentor(BaseInstrumentor):
 
             return sqs_message_id
 
-        setattr(
+        setattr(  # noqa: B010
             tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport,
             "_send_raw_message",
-            _traced_send_raw_awssqs_message.__get__(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport),
+            _traced_send_raw_awssqs_message.__get__(tomodachi.transport.aws_sns_sqs.AWSSNSSQSTransport),  # type: ignore[attr-defined]
         )
 
         # amqp: _publish_message
         if getattr(tomodachi.transport.amqp.AmqpTransport._publish_message, "__wrapped__", None):
-            setattr(
+            setattr(  # noqa: B010
                 tomodachi.transport.amqp.AmqpTransport,
                 "_publish_message",
                 getattr(tomodachi.transport.amqp.AmqpTransport._publish_message, "__wrapped__", None),
@@ -529,10 +529,10 @@ class TomodachiInstrumentor(BaseInstrumentor):
                 )
                 span.set_status(StatusCode.OK)
 
-        setattr(
+        setattr(  # noqa: B010
             tomodachi.transport.amqp.AmqpTransport,
             "_publish_message",
-            _traced_publish_amqp_message.__get__(tomodachi.transport.amqp.AmqpTransport),
+            _traced_publish_amqp_message.__get__(tomodachi.transport.amqp.AmqpTransport),  # type: ignore[attr-defined]
         )
 
     def _instrument_logging(self, logger_provider: LoggerProvider) -> None:
