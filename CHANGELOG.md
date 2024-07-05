@@ -1,5 +1,9 @@
 # Changes
 
+## 0.27.3 (2024-xx-xx)
+
+- ...
+
 ## 0.27.2 (2024-07-05)
 
 - Correction of message attributes type definition. Now also aligns better with updated `types-aiobotocore` definitions.
