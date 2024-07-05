@@ -201,6 +201,7 @@ class _MessageAttributeValueBaseTypeDef(TypedDict):
     DataType: str
 
 
+# Any value of binary Union kept for compatibility with older Python versions in combination with older aiobotocore setups.
 class _MessageAttributeValueTypeDef(_MessageAttributeValueBaseTypeDef, total=False):
     StringValue: str
     BinaryValue: Union[
