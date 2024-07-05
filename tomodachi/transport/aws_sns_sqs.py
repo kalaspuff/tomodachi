@@ -17,6 +17,7 @@ import time
 import uuid
 import warnings
 from typing import (
+    IO,
     TYPE_CHECKING,
     Any,
     Callable,
@@ -44,6 +45,7 @@ import aiohttp
 import aiohttp.client_exceptions
 import botocore
 import botocore.exceptions
+from aiobotocore.response import StreamingBody
 from botocore.parsers import ResponseParserError
 
 from tomodachi import get_contextvar, logging
@@ -201,9 +203,11 @@ class _MessageAttributeValueBaseTypeDef(TypedDict):
 
 class _MessageAttributeValueTypeDef(_MessageAttributeValueBaseTypeDef, total=False):
     StringValue: str
-    BinaryValue: Any  # SNS wants "Union[str, bytes, IO[Any], aiobotocore.response.StreamingBody]". SQS wants "bytes".
-    StringListValues: List[str]
-    BinaryListValues: List[bytes]
+    BinaryValue: Union[
+        str, bytes, IO[Any], StreamingBody, Any
+    ]  # SNS wants "Union[str, bytes, IO[Any], aiobotocore.response.StreamingBody]". SQS wants "bytes".
+    StringListValues: Sequence[str]
+    BinaryListValues: Sequence[Union[str, bytes, IO[Any], StreamingBody, Any]]
 
 
 MessageAttributesTypeDef = Dict[str, _MessageAttributeValueTypeDef]
