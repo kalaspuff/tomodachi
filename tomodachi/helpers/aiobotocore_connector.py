@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import time
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import TYPE_CHECKING, AsyncIterator, Dict, Literal, Optional, cast, overload
+from typing import TYPE_CHECKING, AsyncIterator, Awaitable, Dict, Literal, Optional, Union, cast, overload
 
 import aiobotocore
 import aiobotocore.client
@@ -157,16 +157,18 @@ class ClientConnector:
                 connect_timeout=CONNECT_TIMEOUT, read_timeout=READ_TIMEOUT, max_pool_connections=MAX_POOL_CONNECTIONS
             )
             context_stack = AsyncExitStack()
-            client_value = context_stack.enter_async_context(
-                session.create_client(service_name, config=config, **credentials.dict())  # type: ignore[call-overload]
+            client_value = cast(
+                Union[aiobotocore.client.AioBaseClient, Awaitable[aiobotocore.client.AioBaseClient]],
+                context_stack.enter_async_context(
+                    session.create_client(service_name, config=config, **credentials.dict())  # type: ignore[call-overload]
+                ),
             )
-            if inspect.isawaitable(client_value):
-                client = cast(aiobotocore.client.AioBaseClient, await client_value)
-            else:
-                client = cast(aiobotocore.client.AioBaseClient, client_value)
+            client_: aiobotocore.client.AioBaseClient = (
+                (await client_value) if inspect.isawaitable(client_value) else client_value
+            )
 
             old_client = self.get_client(alias_name)
-            self.clients[alias_name] = client
+            self.clients[alias_name] = client_
             self._clients_context[alias_name] = context_stack
 
             if old_client:
@@ -182,7 +184,8 @@ class ClientConnector:
 
             if alias_name in self.clients and self.clients[alias_name]:
                 return cast(aiobotocore.client.AioBaseClient, self.clients[alias_name])
-            return client
+
+            return client_
 
     async def close_client(
         self,
