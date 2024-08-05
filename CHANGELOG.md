@@ -2,7 +2,7 @@
 
 ## 0.27.3 (2024-xx-xx)
 
-- ...
+- Supports `aiohttp` 3.10.x versions.
 
 ## 0.27.2 (2024-07-05)
 
