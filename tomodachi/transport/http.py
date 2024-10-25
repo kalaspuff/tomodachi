@@ -92,11 +92,6 @@ class RequestHandler(web_protocol.RequestHandler):
         result: Tuple[web.StreamResponse, bool] = await super()._handle_request(request, start_time, *args)
         return result
 
-    async def finish_response(
-        self, request: web.BaseRequest, resp: web.StreamResponse, start_time: float
-    ) -> Tuple[web.StreamResponse, bool]:
-        return await super().finish_response(request, resp, start_time)
-
     def handle_error(
         self, request: Any, status: int = 500, exc: Any = None, message: Optional[str] = None
     ) -> web.Response:
