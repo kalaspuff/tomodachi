@@ -1,6 +1,6 @@
 # Changes
 
-## 0.27.3 (2024-xx-xx)
+## 0.28.0 (2024-10-25)
 
 - Supports `aiohttp` 3.10.x versions. Dropped support for `aiohttp` versions prior to 3.9.5.
 - Enforces more recent versions of dependencies for OTEL (`>=1.27.0`, `>=0.48b0`) when installed with `opentelemetry` extras.
