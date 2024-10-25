@@ -2131,7 +2131,7 @@ environment it's being deployed to.
 
 ## Requirements 👍
 
-- [Python](https://www.python.org) (`3.8+`, `3.9+`, `3.10+`, `3.11+`, `3.12+`)
+- [Python](https://www.python.org) (`3.9+`, `3.10+`, `3.11+`, `3.12+`, `3.13+`)
 - [aiohttp](https://github.com/aio-libs/aiohttp) (`aiohttp` is the currently supported HTTP server implementation for `tomodachi`)
 - [aiobotocore](https://github.com/aio-libs/aiobotocore) and [botocore](https://github.com/boto/botocore) (used for AWS SNS+SQS pub/sub messaging)
 - [aioamqp](https://github.com/Polyconseil/aioamqp) (used for RabbitMQ / AMQP pub/sub messaging)

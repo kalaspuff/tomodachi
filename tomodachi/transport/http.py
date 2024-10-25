@@ -13,7 +13,6 @@ import uuid
 import warnings
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, SupportsInt, Tuple, Union, cast
 
-import yarl
 from aiohttp import WSMsgType
 from aiohttp import __version__ as aiohttp_version
 from aiohttp import hdrs, web, web_protocol, web_server, web_urldispatcher
@@ -22,6 +21,7 @@ from aiohttp.http import HttpVersion
 from aiohttp.streams import EofStream
 from aiohttp.web_fileresponse import FileResponse
 from multidict import CIMultiDict, CIMultiDictProxy
+from yarl._path import normalize_path
 
 from tomodachi import get_contextvar, logging
 from tomodachi._exception import limit_exception_traceback
@@ -90,10 +90,6 @@ class RequestHandler(web_protocol.RequestHandler):
     ) -> Tuple[web.StreamResponse, bool]:
         self._cache_remote_ip(request)
         result: Tuple[web.StreamResponse, bool] = await super()._handle_request(request, start_time, *args)
-        return result
-
-    async def finish_response(self, request: web.BaseRequest, resp: web.StreamResponse, start_time: float) -> bool:
-        result: bool = await super().finish_response(request, resp, start_time)
         return result
 
     def handle_error(
@@ -485,7 +481,7 @@ class HttpTransport(Invoker):
             raise Exception("Invalid path '{}' for static route resolves to '/'".format(path))
 
         async def handler(request: web.Request) -> Union[web.Response, web.FileResponse]:
-            normalized_request_path = yarl.URL._normalize_path(request.path)
+            normalized_request_path = normalize_path(request.path)
             if not normalized_request_path.startswith("/"):
                 raise web.HTTPNotFound()
 

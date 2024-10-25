@@ -12,7 +12,7 @@ from opentelemetry.sdk.metrics.export import Metric, MetricReader, MetricsData, 
 from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID as RESOURCE_SERVICE_INSTANCE_ID
 from opentelemetry.sdk.resources import SERVICE_NAME as RESOURCE_SERVICE_NAME
 from opentelemetry.sdk.resources import SERVICE_NAMESPACE as RESOURCE_SERVICE_NAMESPACE
-from opentelemetry.util.types import AttributeValue
+from opentelemetry.util.types import Attributes, AttributeValue
 from prometheus_client import Info
 from prometheus_client.core import Metric as PrometheusMetric
 from prometheus_client.registry import Collector, CollectorRegistry
@@ -461,6 +461,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
         name: str,
         version: Optional[str] = None,
         schema_url: Optional[str] = None,
+        attributes: Optional[Attributes] = None,
     ) -> Meter:
         self._start_prometheus_http_server()
         return super().get_meter(name, version=version, schema_url=schema_url)

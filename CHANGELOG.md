@@ -2,7 +2,12 @@
 
 ## 0.27.3 (2024-xx-xx)
 
-- Supports `aiohttp` 3.10.x versions.
+- Supports `aiohttp` 3.10.x versions. Dropped support for `aiohttp` versions prior to 3.9.5.
+- Enforces more recent versions of dependencies for OTEL (`>=1.27.0`, `>=0.48b0`) when installed with `opentelemetry` extras.
+- Enforces more recent versions of protobuf (`>=4.25.0`) when installed with `protobuf` extras.
+- Requires `yarl` to use version 1.16.0+.
+- Support for Python 3.13. Python 3.13 has been added to test matrix and trove classifiers.
+- Dropped support for Python 3.8.
 
 ## 0.27.2 (2024-07-05)
 
