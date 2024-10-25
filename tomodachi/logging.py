@@ -535,7 +535,7 @@ def set_default_formatter(
                         else (
                             DisabledFormatter
                             if logger_type == "disabled"
-                            else PythonLoggingFormatter if logger_type == "python" else None
+                            else (PythonLoggingFormatter if logger_type == "python" else None)
                         )
                     )
                 )
@@ -1229,7 +1229,7 @@ def _get_logger(
                         else (
                             disabled_logger
                             if logger_type == "disabled"
-                            else forward_logger if logger_type == "forward" else None
+                            else (forward_logger if logger_type == "forward" else None)
                         )
                     )
                 )

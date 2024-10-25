@@ -29,6 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Distributed Computing",
@@ -43,7 +44,7 @@ packages = [
 Changelog = "https://github.com/kalaspuff/tomodachi/blob/master/CHANGELOG.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 
 aioamqp = ">=0.13.0,<0.16.0"
 aiobotocore = "^2.0.0"
@@ -51,6 +52,7 @@ tzlocal = ">=1.4,<6.0"
 pytz = "*"
 cchardet = { version = ">=2.1.7", python = "<3.10" }
 aiohttp = ">=3.7.0,<3.11.0"
+yarl = ">=1.16.0,<2.0.0"
 colorama = ">=0.3.9,<0.5.0"
 asahi = ">=0.1,<0.3"
 structlog = ">=21.5.0,<25.0.0"
@@ -59,18 +61,18 @@ structlog = ">=21.5.0,<25.0.0"
 botocore = ">=1.22.8"
 
 # extras
-protobuf = { version = ">=3.20.0", optional = true }
+protobuf = { version = ">=4.25.0", optional = true }
 uvloop = { version = ">=0.14.0,<1.0.0", optional = true }
 aiodns = { version = ">=1.2.0", optional = true }
 Brotli = { version = "^1.0.9", optional = true }
 
 # opentelemetry
-opentelemetry-instrumentation = { version = ">=0.40b0,<1.0.0", allow-prereleases = true, optional = true }
-opentelemetry-api = { version = ">=1.19.0,<2.0.0", optional = true }
-opentelemetry-sdk = { version = ">=1.19.0,<2.0.0", optional = true }
-opentelemetry-exporter-otlp = { version = ">=1.19.0,<2.0.0", optional = true }
-opentelemetry-util-http = { version = ">=0.40b0,<1.0.0", allow-prereleases = true, optional = true }
-opentelemetry-exporter-prometheus = { version = ">=0.40b0,<1.0.0", allow-prereleases = true, optional = true }
+opentelemetry-instrumentation = { version = ">=0.48b0,<1.0.0", allow-prereleases = true, optional = true }
+opentelemetry-api = { version = ">=1.27.0,<2.0.0", optional = true }
+opentelemetry-sdk = { version = ">=1.27.0,<2.0.0", optional = true }
+opentelemetry-exporter-otlp = { version = ">=1.27.0,<2.0.0", optional = true }
+opentelemetry-util-http = { version = ">=0.48b0,<1.0.0", allow-prereleases = true, optional = true }
+opentelemetry-exporter-prometheus = { version = ">=0.48b0,<1.0.0", allow-prereleases = true, optional = true }
 
 # extras management
 asahi-extras = { version = "*", optional = true }
@@ -139,7 +141,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 120
-target_version = ["py38", "py39", "py310", "py311"]
+target_version = ["py38", "py39", "py310", "py311", "py312"]
 include = '\.pyi?$'
 exclude = '\.eggs/|tomodachi\.egg-info/|\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/|build/|dist/|proto_build/|syntax_error_service\.py|setup\.py'
 
@@ -252,6 +254,9 @@ filterwarnings = [
     "ignore:'cgi' is deprecated and slated for removal in Python 3\\.13:DeprecationWarning:aiohttp",
     "ignore:pkg_resources is deprecated as an API. See .*:DeprecationWarning:opentelemetry.instrumentation",
     "ignore:Deprecated call to `pkg_resources.declare_namespace.*:DeprecationWarning:pkg_resources",
+    "ignore:Type google._upb._message.MessageMapContainer uses PyType_Spec with a metaclass that has custom tp_new..*:DeprecationWarning:importlib._bootstrap",
+    "ignore:Type google._upb._message.ScalarMapContainer uses PyType_Spec with a metaclass that has custom tp_new..*:DeprecationWarning:importlib._bootstrap",
+    "ignore:datetime.datetime.utcnow\\(\\) is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC:DeprecationWarning:botocore.auth",
 ]
 
 [tool.coverage.run]
