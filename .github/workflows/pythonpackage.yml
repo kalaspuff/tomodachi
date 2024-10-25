@@ -4,14 +4,13 @@ on: [push, pull_request]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     env:
       POETRY_VIRTUALENVS_CREATE: false
     strategy:
       max-parallel: 5
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     services:
       rabbitmq:
