@@ -3,7 +3,7 @@
 ## 0.27.3 (2024-xx-xx)
 
 - Supports `aiohttp` 3.10.x versions.
-- Enforces more recent versions of dependencies for OTEL (`>=1.27.0`, `>=0.48b0`) when installed with `optelemetry` extras.
+- Enforces more recent versions of dependencies for OTEL (`>=1.27.0`, `>=0.48b0`) when installed with `opentelemetry` extras.
 - Enforces more recent versions of protobuf (`>=4.25.0`) when installed with `protobuf` extras.
 - Support for Python 3.12. Python 3.12 has been added to test matrix and trove classifiers.
 - Dropped support for Python 3.8.
