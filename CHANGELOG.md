@@ -1,5 +1,9 @@
 # Changes
 
+## 0.28.1 (2024-xx-xx)
+
+- ...
+
 ## 0.28.0 (2024-10-25)
 
 - Supports `aiohttp` 3.10.x versions. Dropped support for `aiohttp` versions prior to 3.9.5.
