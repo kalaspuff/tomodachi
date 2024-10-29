@@ -1,7 +1,8 @@
 import asyncio
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Dict, Tuple, Union, cast
 
 from aiohttp import web
+from aiohttp.web_request import FileField
 from opentelemetry.sdk.trace import TracerProvider
 
 import tomodachi
@@ -158,6 +159,16 @@ class HttpService(tomodachi.Service):
             self.websocket_received_data = data
 
         return _receive
+
+    @tomodachi.http("POST", r"/file-upload")
+    async def file_upload(self, request: web.Request) -> bytes:
+        data = await request.post()
+        file_from_request = cast(FileField, data.get("file"))
+        filename = file_from_request.filename
+        content = file_from_request.file.read()
+        file_from_request.file.close()
+
+        return filename.encode("utf-8") + b": " + content
 
     async def _start_service(self) -> None:
         self.closer = asyncio.Future()
