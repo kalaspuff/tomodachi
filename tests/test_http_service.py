@@ -326,6 +326,18 @@ def test_request_http_service(capsys: Any, loop: Any) -> None:
                 await ws.close()
                 assert instance.websocket_received_data == data
 
+        async with aiohttp.ClientSession(loop=loop) as client:
+            with open(pathlib.Path("{}/tests/static_files/image.png".format(os.path.realpath(os.getcwd()))), "rb") as f:
+                content = f.read()
+                f.seek(0)
+                response = await client.post(
+                    "http://127.0.0.1:{}/file-upload".format(port),
+                    data={"file": f},
+                )
+                assert response is not None
+                assert response.status == 200
+                assert await response.read() == b"image.png: " + content
+
     loop.run_until_complete(_async(loop))
     instance.stop_service()
     loop.run_until_complete(future)

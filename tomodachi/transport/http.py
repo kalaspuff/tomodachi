@@ -876,7 +876,11 @@ class HttpTransport(Invoker):
                         ):
                             request._read_bytes = request.content._read_nowait(-1)
                         else:
-                            await request.read()
+                            request_body = await request.read()
+                            # reads data into _post cache, however deprecated use, might be removed in aiohttp 4
+                            # https://github.com/aio-libs/aiohttp/issues/3260
+                            request.content.unread_data(request_body)
+                            await request.post()
                     except web.HTTPException as exc:
                         # internal aiohttp exception raised (for example if entity too large)
                         response = exc

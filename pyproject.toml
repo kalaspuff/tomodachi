@@ -256,6 +256,7 @@ filterwarnings = [
     "ignore:Type google._upb._message.MessageMapContainer uses PyType_Spec with a metaclass that has custom tp_new..*:DeprecationWarning:importlib._bootstrap",
     "ignore:Type google._upb._message.ScalarMapContainer uses PyType_Spec with a metaclass that has custom tp_new..*:DeprecationWarning:importlib._bootstrap",
     "ignore:datetime.datetime.utcnow\\(\\) is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC:DeprecationWarning:botocore.auth",
+    "ignore:unread_data\\(\\) is deprecated and will be removed in future releases \\(#3260\\):DeprecationWarning:tomodachi.transport.http",
 ]
 
 [tool.coverage.run]
