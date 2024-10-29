@@ -1,5 +1,9 @@
 # Changes
 
+## 0.28.2 (2024-xx-xx)
+
+- ...
+
 ## 0.28.1 (2024-10-29)
 
 - Fixes an issue when attempting to call reading functions on a multipart web request in a handler would previously result in an "Could not find starting boundary in ..." error. This fix will now again make it possible to upload files as multipart web requests, and read those files from await request.post() in service http handlers.
