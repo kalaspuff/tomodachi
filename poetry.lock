@@ -2049,13 +2049,13 @@ files = [
 
 [[package]]
 name = "types-aiobotocore"
-version = "2.15.2"
-description = "Type annotations for aiobotocore 2.15.2 generated with mypy-boto3-builder 8.1.2"
+version = "2.15.2.post2"
+description = "Type annotations for aiobotocore 2.15.2 generated with mypy-boto3-builder 8.3.1"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "types_aiobotocore-2.15.2-py3-none-any.whl", hash = "sha256:616c3c2d323941a481a06f0c48883b6550ace7b581ee2afce0684de9a4972a79"},
-    {file = "types_aiobotocore-2.15.2.tar.gz", hash = "sha256:63e6a456ccc33e2ca350aae588cfdbbb94bdecf3533e6a8578f736c5b2b85607"},
+    {file = "types_aiobotocore-2.15.2.post2-py3-none-any.whl", hash = "sha256:f6c8b33ee1bb87cbeba6cd6f19f56aee8238cfbf80436e4374848a8ee05bf1ed"},
+    {file = "types_aiobotocore-2.15.2.post2.tar.gz", hash = "sha256:be48d7a9882eb9e615a63e2945616b697c6b68ea7a4b4df9ea8df0c4ea50edee"},
 ]
 
 [package.dependencies]
