@@ -940,7 +940,14 @@ class AWSSNSSQSTransport(Invoker):
                         if not context.get("_aws_sns_sqs_received_messages"):
                             context["_aws_sns_sqs_received_messages"] = {}
                         message_key = "{}:{}".format(message_uuid, func.__name__)
-                        if context["_aws_sns_sqs_received_messages"].get(message_key):
+                        if (
+                            context["_aws_sns_sqs_received_messages"].get(message_key)
+                            and time.time() - cast(float, context["_aws_sns_sqs_received_messages"][message_key]) < 60
+                        ):
+                            # ignore if message was handled within last 60s without AWSSNSSQSInternalServiceError error
+                            logging.getLogger("tomodachi.awssnssqs").warning(
+                                "ignored duplicate message already processed in the last minute", handler=func.__name__
+                            )
                             return
                         context["_aws_sns_sqs_received_messages"][message_key] = time.time()
                         _received_messages = context["_aws_sns_sqs_received_messages"]
@@ -949,10 +956,11 @@ class AWSSNSSQSTransport(Invoker):
                             and isinstance(_received_messages, dict)
                             and len(_received_messages) > 100000
                         ):
+                            # preserve memory by removing old messages from dict
                             context["_aws_sns_sqs_received_messages"] = {
                                 k: v
                                 for k, v in context["_aws_sns_sqs_received_messages"].items()
-                                if v > time.time() - 60
+                                if time.time() - v > 60
                             }
 
                     if args_set:
@@ -1014,12 +1022,20 @@ class AWSSNSSQSTransport(Invoker):
                 except (Exception, asyncio.CancelledError, BaseException) as e:
                     limit_exception_traceback(e, ("tomodachi.transport.aws_sns_sqs",))
                     logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
-                    if message is not False and not message_uuid:
-                        await cls.delete_message(receipt_handle, queue_url, context)
-                    elif message is False and message_uuid:
-                        pass  # incompatible envelope, should probably delete if old message
-                    elif message is False:
-                        await cls.delete_message(receipt_handle, queue_url, context)
+
+                    try:
+                        if message is not False and not message_uuid:
+                            await cls.delete_message(receipt_handle, queue_url, context)
+                        elif message is False and message_uuid:
+                            pass  # incompatible envelope, should probably delete if old message
+                        elif message is False:
+                            await cls.delete_message(receipt_handle, queue_url, context)
+                    except (Exception, asyncio.CancelledError, BaseException) as delete_message_error:
+                        limit_exception_traceback(delete_message_error, ("tomodachi.transport.aws_sns_sqs",))
+                        logging.getLogger("exception").exception(
+                            "unexpected error during delete message: {}".format(str(delete_message_error))
+                        )
+
                     return
             else:
                 if args_set:
@@ -1134,7 +1150,14 @@ class AWSSNSSQSTransport(Invoker):
                         del context["_aws_sns_sqs_received_messages"][message_key]
 
             if not keep_message_in_queue:
-                await cls.delete_message(receipt_handle, queue_url, context)
+                try:
+                    await cls.delete_message(receipt_handle, queue_url, context)
+                except (Exception, asyncio.CancelledError, BaseException) as e:
+                    limit_exception_traceback(e, ("tomodachi.transport.aws_sns_sqs",))
+                    logging.getLogger("exception").exception(
+                        "unexpected error during delete message: {}".format(str(e))
+                    )
+
             decrease_execution_context_value("aws_sns_sqs_current_tasks")
 
             return return_value
