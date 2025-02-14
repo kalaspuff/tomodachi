@@ -1,8 +1,10 @@
 # Changes
 
-## 0.28.2 (2024-xx-xx)
+## 0.28.2 (2025-02-14)
 
-- ...
+- Fixes a bug for AWS SQS queues with dead-letter queue configured which would trigger if SQS.DeleteMessage calls would unexpectedly fail or fail all retries for a message and the same message would be received again to the same consumer over and over again, where it would be ignored as a duplicated SQS message, until it would be sent to the DLQ. Even if the message was redrived to the queue and the same consumer would keep receiving it, it would still ignore the message as a duplicate. This would cause the message to be stuck in a loop.
+
+  Note that this change will run the handler function of the consumer after 60 seconds has passed and it receives the message again, which in a setup where a service has a single receiving consumer leaves responsibility of the handler to handle idempotency more strictly, in the same way as in setups with multiple consumers.
 
 ## 0.28.1 (2024-10-29)
 
