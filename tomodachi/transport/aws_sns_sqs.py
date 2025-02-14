@@ -960,7 +960,7 @@ class AWSSNSSQSTransport(Invoker):
                             context["_aws_sns_sqs_received_messages"] = {
                                 k: v
                                 for k, v in context["_aws_sns_sqs_received_messages"].items()
-                                if time.time() - v > 60
+                                if time.time() - v < 60
                             }
 
                     if args_set:
