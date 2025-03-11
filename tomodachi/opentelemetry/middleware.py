@@ -54,15 +54,27 @@ class OpenTelemetryTomodachiMiddleware:
 
     def _get_instrument(self, type_: Type[IT], name: str, unit: str, description: str) -> Optional[IT]:
         meter = cast(Meter, self.meter)
-        (is_registered, instrument_id) = meter._is_instrument_registered(name, type_, unit, description)
+        if hasattr(meter, "_is_instrument_registered"):
+            # opentelemetry-sdk < 1.30.0
+            (is_registered, instrument_id) = getattr(meter, "_is_instrument_registered")(  # noqa: B009
+                name,
+                type_,
+                unit,
+                description,
+            )
+
+            if not is_registered:
+                with meter._instrument_ids_lock:
+                    try:
+                        meter._instrument_ids.remove(instrument_id)
+                    except KeyError:
+                        pass
+        else:
+            # opentelemetry-sdk >= 1.30.0
+            instrument_id = ",".join([name.strip().lower(), type_.__name__, unit, description])
+            is_registered = instrument_id in meter._instrument_ids
 
         if not is_registered:
-            with meter._instrument_ids_lock:
-                try:
-                    meter._instrument_ids.remove(instrument_id)
-                except KeyError:
-                    pass
-
             if type_ is _Histogram:
                 return cast(IT, meter.create_histogram(name, unit, description))
             elif type_ is _UpDownCounter:
