@@ -294,11 +294,14 @@ class TomodachiPrometheusMetricReader(MetricReader):
 
                     exemplars: List[Optional[Exemplar]] = []
                     for data_point in metric.data.data_points:
-                        reservoir = ExemplarReservoir(
-                            instrument_name=metric.name,
-                            instrumentation_scope=scope_metric.scope,
-                            attributes=data_point.attributes,
-                        )
+                        try:
+                            reservoir = ExemplarReservoir(
+                                instrument_name=metric.name,
+                                instrumentation_scope=scope_metric.scope,
+                                attributes=data_point.attributes,
+                            )
+                        except Exception:  # noqa: S112
+                            continue
 
                         if isinstance(data_point, HistogramDataPoint):
                             current_exemplar = None
@@ -381,9 +384,19 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
 
         resource_attributes = {_sanitize_key(k): _sanitize_value(v) for k, v in resource.attributes.items()}
         target_info: Dict[str, str] = self._prometheus_registry.get_target_info() or {}
+
+        if "service_name" in target_info and target_info["service_name"] != service_name:
+            target_info = {**target_info, "service_name": service_name}
+
         return {**resource_attributes, **target_info, "job": job, "instance": instance}
 
     def _start_prometheus_http_server(self) -> None:
+        if self._prometheus_server_started and self._prometheus_registry.get_target_info() != self._get_target_info():
+            try:
+                self._prometheus_registry.set_target_info(self._get_target_info())
+            except Exception:
+                pass
+
         if self._prometheus_server_started:
             return
 
@@ -463,5 +476,9 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
         schema_url: Optional[str] = None,
         attributes: Optional[Attributes] = None,
     ) -> Meter:
-        self._start_prometheus_http_server()
+        from .instrumentation import TomodachiInstrumentor
+
+        if TomodachiInstrumentor._instrumented_services:
+            self._start_prometheus_http_server()
+
         return super().get_meter(name, version=version, schema_url=schema_url)
