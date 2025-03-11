@@ -111,6 +111,7 @@ def test_opentelemetry_load_tomodachi_prometheus_meter_provider() -> None:
             catched_values.append(kw)
 
         setattr(prometheus_client, "start_http_server", _start_http_server)
+        setattr(meter_provider, "_start_prometheus_server_without_instrumented_service", True)
 
         meter_provider.get_meter("tomodachi")
         assert getattr(meter_provider, "_prometheus_server_started", None) is True
@@ -123,3 +124,4 @@ def test_opentelemetry_load_tomodachi_prometheus_meter_provider() -> None:
         for k, v in environ.items():
             os.environ[k] = v
         setattr(prometheus_client, "start_http_server", start_http_server)
+        setattr(meter_provider, "_start_prometheus_server_without_instrumented_service", False)

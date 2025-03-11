@@ -346,6 +346,7 @@ class TomodachiPrometheusMetricReader(MetricReader):
 class TomodachiPrometheusMeterProvider(MeterProvider):
     def __init__(self, prefix: Optional[str] = None, registry: CollectorRegistry = REGISTRY_) -> None:
         self._prometheus_server_started = False
+        self._start_prometheus_server_without_instrumented_service = False
         self._prometheus_registry = registry
         self._non_letters_digits_underscore_re = compile(r"[^\w]", UNICODE | IGNORECASE)
 
@@ -443,7 +444,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
         try:
             prometheus_client.start_http_server(port=port, addr=addr, registry=self._prometheus_registry)
         except OSError as e:
-            error_message = re.sub(".*: ", "", e.strerror)
+            error_message = re.sub(".*: ", "", e.strerror) if e.strerror else str(e)
             logging.get_logger("tomodachi.opentelemetry").warning(
                 "unable to bind prometheus http server [http] to http://{}:{}/ in otel metric provider".format(
                     "localhost" if addr in ("0.0.0.0", "127.0.0.1") else addr, port
@@ -478,7 +479,7 @@ class TomodachiPrometheusMeterProvider(MeterProvider):
     ) -> Meter:
         from .instrumentation import TomodachiInstrumentor
 
-        if TomodachiInstrumentor._instrumented_services:
+        if TomodachiInstrumentor._instrumented_services or self._start_prometheus_server_without_instrumented_service:
             self._start_prometheus_http_server()
 
         return super().get_meter(name, version=version, schema_url=schema_url)

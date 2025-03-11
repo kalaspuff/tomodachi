@@ -607,8 +607,9 @@ class AWSSNSSQSTransport(Invoker):
                     await cls.create_client("sqs", service.context)
 
                 async with connector("tomodachi.sqs", service_name="sqs") as client:
-                    botocore_error_type = cast(
-                        Type[botocore.exceptions.ClientError], client.exceptions.QueueDoesNotExist
+                    botocore_error_type = cast(  # type: ignore[redundant-cast]
+                        Type[botocore.exceptions.ClientError],
+                        client.exceptions.QueueDoesNotExist,
                     )
             except Exception as e:
                 logging.getLogger("exception").exception(
@@ -2175,8 +2176,7 @@ class AWSSNSSQSTransport(Invoker):
         if fifo is not queue_fifo:
             queue_types = {False: "Standard", True: "FIFO"}
             error_message = (
-                f"AWS SQS queue configured as {queue_types[queue_fifo]}, "
-                f"but the handler expected {queue_types[fifo]}."
+                f"AWS SQS queue configured as {queue_types[queue_fifo]}, but the handler expected {queue_types[fifo]}."
             )
             logger.warning("Queue [sqs] type mismatch ({})".format(error_message))
             raise AWSSNSSQSException(error_message, log_level=context.get("log_level"))

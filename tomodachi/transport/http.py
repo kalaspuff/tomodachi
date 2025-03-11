@@ -1440,7 +1440,7 @@ class HttpTransport(Invoker):
                 server = await server_task
             except OSError as e:
                 context["_http_accept_new_requests"] = False
-                error_message = re.sub(".*: ", "", e.strerror)
+                error_message = re.sub(".*: ", "", e.strerror) if e.strerror else str(e)
                 logger.warning(
                     "unable to bind service [http] to http://{}:{}/".format(
                         "localhost" if host in ("0.0.0.0", "127.0.0.1") else host, port
