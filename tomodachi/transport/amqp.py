@@ -497,7 +497,7 @@ class AmqpTransport(Invoker):
             logger.warning("Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get("log_level")) from e
         except OSError as e:
-            error_message = e.strerror
+            error_message = e.strerror if e.strerror else str(e)
             logger.warning("Unable to connect [amqp] to {}:{} ({})".format(host, port, error_message))
             raise AmqpConnectionException(str(e), log_level=context.get("log_level")) from e
 

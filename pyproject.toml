@@ -67,9 +67,9 @@ Brotli = { version = "^1.0.9", optional = true }
 
 # opentelemetry
 opentelemetry-instrumentation = { version = ">=0.48b0,<1.0.0", allow-prereleases = true, optional = true }
-opentelemetry-api = { version = ">=1.27.0,<2.0.0", optional = true }
-opentelemetry-sdk = { version = ">=1.27.0,<2.0.0", optional = true }
-opentelemetry-exporter-otlp = { version = ">=1.27.0,<2.0.0", optional = true }
+opentelemetry-api = { version = ">=1.27.0,<1.28.0", optional = true }
+opentelemetry-sdk = { version = ">=1.27.0,<1.28.0", optional = true }
+opentelemetry-exporter-otlp = { version = ">=1.27.0,<1.28.0", optional = true }
 opentelemetry-util-http = { version = ">=0.48b0,<1.0.0", allow-prereleases = true, optional = true }
 opentelemetry-exporter-prometheus = { version = ">=0.48b0,<1.0.0", allow-prereleases = true, optional = true }
 
