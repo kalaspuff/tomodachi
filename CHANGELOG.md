@@ -1,5 +1,9 @@
 # Changes
 
+## 0.28.4 (2025-xx-xx)
+
+- ...
+
 ## 0.28.3 (2025-03-11)
 
 - Fixes an issue where the OTEL prometheus meter provider would start the prometheus exporter server although the service was not instrumented if an OTEL meter was created outside of the service' auto instrumentation scope. On hot reloads of code changes this would also cause the prometheus exporter server to be started multiple times, causing the service to fail to restart due to a port conflict.
