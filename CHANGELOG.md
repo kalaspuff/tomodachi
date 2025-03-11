@@ -1,8 +1,11 @@
 # Changes
 
-## 0.28.3 (2025-xx-xx)
+## 0.28.3 (2025-03-11)
 
-- ...
+- Fixes an issue where the OTEL prometheus meter provider would start the prometheus exporter server although the service was not instrumented if an OTEL meter was created outside of the service' auto instrumentation scope. On hot reloads of code changes this would also cause the prometheus exporter server to be started multiple times, causing the service to fail to restart due to a port conflict.
+- Fixes an issue in OTEL prometheus exporter target info where the service_name and job could be incorrectly set to "unknown_service" if an OTEL meter was created before the service was fully initialized and instrumented.
+- Added jwcrypto to the list of safe modules that won't be cleared during the hot auto reload on code changes.
+- Restricted version constraint of OTEL API / OTEL SDK to 1.27.0 until support for exemplar builder is fully implemented into tomodachi's aggregators.
 
 ## 0.28.2 (2025-02-14)
 
