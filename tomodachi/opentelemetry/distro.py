@@ -343,7 +343,7 @@ class DynamicAggregation(Aggregation):
             instrument, attributes, reservoir_factory, start_time_unix_nano
         )
         if IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED():
-            reservoir_factory(instrument=instrument, aggregation=aggregation)
+            ExemplarReservoir(instrument=instrument, aggregation=aggregation)
         return aggregation
 
 
