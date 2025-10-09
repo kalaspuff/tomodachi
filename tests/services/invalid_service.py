@@ -6,5 +6,4 @@ import tomodachi
 class InvalidService(tomodachi.Service):
     name = "test_invalid"
 
-    def syntax_error(self) -> error:  # type: ignore
-        pass
+    error = error  # type: ignore
