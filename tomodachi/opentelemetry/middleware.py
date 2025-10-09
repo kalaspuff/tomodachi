@@ -65,10 +65,7 @@ class OpenTelemetryTomodachiMiddleware:
 
             if not is_registered:
                 with meter._instrument_ids_lock:
-                    try:
-                        meter._instrument_ids.remove(instrument_id)
-                    except KeyError:
-                        pass
+                    meter._instrument_ids.pop(instrument_id, None)
         else:
             # opentelemetry-sdk >= 1.30.0
             instrument_id = ",".join([name.strip().lower(), type_.__name__, unit, description])

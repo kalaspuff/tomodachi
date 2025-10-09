@@ -96,7 +96,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
                     additional_resource_attributes[RESOURCE_SERVICE_INSTANCE_ID] = service.uuid
             if additional_resource_attributes:
                 resource = tracer_provider.resource.merge(
-                    Resource.create({**tracer_provider.resource._attributes, **additional_resource_attributes})
+                    Resource.create({**tracer_provider.resource._attributes, **additional_resource_attributes})  # type: ignore[dict-item]
                 )
                 tracer_provider.resource._attributes = resource._attributes
 
@@ -112,7 +112,7 @@ class TomodachiInstrumentor(BaseInstrumentor):
             if additional_resource_attributes:
                 resource = meter_provider._sdk_config.resource.merge(
                     Resource.create(
-                        {**meter_provider._sdk_config.resource._attributes, **additional_resource_attributes}
+                        {**meter_provider._sdk_config.resource._attributes, **additional_resource_attributes}  # type: ignore[dict-item]
                     )
                 )
                 meter_provider._sdk_config.resource._attributes = resource._attributes

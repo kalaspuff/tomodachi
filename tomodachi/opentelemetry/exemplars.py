@@ -279,7 +279,7 @@ class AlignedHistogramBucketExemplarReservoir(ExemplarReservoir):
 
 
 class _ExemplarAggregation(_DropAggregation):
-    def aggregate(self, measurement: Measurement) -> None:
+    def aggregate(self, measurement: Measurement, should_sample_exemplar: bool = True) -> None:
         reservoir = ExemplarReservoir(measurement=measurement)
         reservoir.offer(measurement, time_ns())
 
@@ -292,4 +292,4 @@ class ExemplarAggregation(Aggregation):
         reservoir_factory: Callable[[Type[_Aggregation]], ExemplarReservoirBuilder],
         start_time_unix_nano: int,
     ) -> _Aggregation:
-        return _ExemplarAggregation(attributes)
+        return _ExemplarAggregation(attributes, reservoir_factory(_ExemplarAggregation))

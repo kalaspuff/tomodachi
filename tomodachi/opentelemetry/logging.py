@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 from opentelemetry import trace
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-from opentelemetry.util.types import Attributes
+from opentelemetry.util.types import _ExtendedAttributes
 
 from tomodachi.__version__ import __version__ as tomodachi_version
 
@@ -42,7 +42,7 @@ class OpenTelemetryLoggingHandler(LoggingHandler):
         self._logger = self._logger_provider.get_logger("tomodachi.opentelemetry", tomodachi_version)
 
     @staticmethod
-    def _get_attributes(record: logging.LogRecord) -> Attributes:
+    def _get_attributes(record: logging.LogRecord) -> _ExtendedAttributes:
         attributes = cast(Dict[str, Any], LoggingHandler._get_attributes(record))
         if record.exc_info:
             _, exc, tb = record.exc_info
