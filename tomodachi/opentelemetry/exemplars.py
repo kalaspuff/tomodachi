@@ -28,6 +28,7 @@ from opentelemetry.sdk.metrics._internal.aggregation import (
     _DropAggregation,
     _ExplicitBucketHistogramAggregation,
 )
+from opentelemetry.sdk.metrics._internal.exemplar import ExemplarReservoirBuilder
 from opentelemetry.sdk.metrics._internal.instrument import Histogram
 from opentelemetry.sdk.metrics._internal.measurement import Measurement
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
@@ -288,6 +289,7 @@ class ExemplarAggregation(Aggregation):
         self,
         instrument: Instrument,
         attributes: Attributes,
+        reservoir_factory: Callable[[Type[_Aggregation]], ExemplarReservoirBuilder],
         start_time_unix_nano: int,
     ) -> _Aggregation:
         return _ExemplarAggregation(attributes)

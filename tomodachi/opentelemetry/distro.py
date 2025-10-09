@@ -40,6 +40,7 @@ from opentelemetry.sdk.metrics._internal.aggregation import (
     ExplicitBucketHistogramAggregation,
     _Aggregation,
 )
+from opentelemetry.sdk.metrics._internal.exemplar import ExemplarReservoirBuilder
 from opentelemetry.sdk.metrics._internal.instrument import Histogram
 from opentelemetry.sdk.metrics.export import MetricExporter, MetricReader, PeriodicExportingMetricReader
 from opentelemetry.sdk.metrics.view import View
@@ -334,12 +335,15 @@ class DynamicAggregation(Aggregation):
         self,
         instrument: Instrument,
         attributes: Attributes,
+        reservoir_factory: Callable[[Type[_Aggregation]], ExemplarReservoirBuilder],
         start_time_unix_nano: int,
     ) -> _Aggregation:
         aggregation_factory = self._resolve_aggregation(instrument)
-        aggregation = aggregation_factory._create_aggregation(instrument, attributes, start_time_unix_nano)
+        aggregation = aggregation_factory._create_aggregation(
+            instrument, attributes, reservoir_factory, start_time_unix_nano
+        )
         if IS_TOMODACHI_PROMETHEUS_EXEMPLARS_ENABLED():
-            ExemplarReservoir(instrument=instrument, aggregation=aggregation)
+            reservoir_factory(instrument=instrument, aggregation=aggregation)
         return aggregation
 
 
