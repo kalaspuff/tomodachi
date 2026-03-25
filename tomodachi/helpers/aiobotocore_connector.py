@@ -18,9 +18,11 @@ from tomodachi.helpers.aws_credentials import Credentials, CredentialsMapping
 if TYPE_CHECKING:
     from types_aiobotocore_sns import SNSClient
     from types_aiobotocore_sqs import SQSClient
+    from types_aiobotocore_sts import STSClient
 else:
     SNSClient = aiobotocore.client.AioBaseClient
     SQSClient = aiobotocore.client.AioBaseClient
+    STSClient = aiobotocore.client.AioBaseClient
 
 
 MAX_POOL_CONNECTIONS = 50
@@ -93,6 +95,14 @@ class ClientConnector:
         credentials: Optional[CredentialsMapping],
         service_name: Literal["sqs"],
     ) -> SQSClient: ...
+
+    @overload
+    async def create_client(
+        self,
+        alias_name: Optional[str],
+        credentials: Optional[CredentialsMapping],
+        service_name: Literal["sts"],
+    ) -> STSClient: ...
 
     @overload
     async def create_client(
