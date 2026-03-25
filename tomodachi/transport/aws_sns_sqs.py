@@ -418,16 +418,27 @@ class AWSSNSSQSTransport(Invoker):
         topic_arn: str = cls.topics[topic] if cls.topics and topic in cls.topics and cls.topics[topic] else ""
 
         if not topic_arn or not isinstance(topic_arn, str):
-            topic_arn = await asyncio.create_task(
-                cls.create_topic(
+            resolved_topic_arn = await asyncio.create_task(
+                cls.get_topic_arn(
                     topic,
                     service.context,
                     topic_prefix,
                     fifo=group_id is not None,
-                    attributes=topic_attributes,
-                    overwrite_attributes=overwrite_topic_attributes,
                 )
             )
+            if resolved_topic_arn:
+                topic_arn = resolved_topic_arn
+            else:
+                topic_arn = await asyncio.create_task(
+                    cls.create_topic(
+                        topic,
+                        service.context,
+                        topic_prefix,
+                        fifo=group_id is not None,
+                        attributes=topic_attributes,
+                        overwrite_attributes=overwrite_topic_attributes,
+                    )
+                )
 
         async def _publish_message() -> str:
             logging.getLogger("tomodachi.awssnssqs").bind(topic=topic)
