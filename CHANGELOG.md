@@ -3,6 +3,7 @@
 ## 0.28.4 (2026-xx-xx)
 
 - When publishing to SNS, the AWS SNS+SQS transport resolves the topic ARN using `sts:GetCallerIdentity` (to obtain the AWS account ID) and `sns:GetTopicAttributes` on the constructed topic ARN before falling back to `sns:CreateTopic`. This supports deployments where the service is not allowed to call `sns:CreateTopic` but can publish to an existing topic with the usual AWS STS and AWS SNS read permissions.
+- Options now include `aws_endpoint_urls.sts` for configuring the AWS STS endpoint (for example with Localstack). If a custom endpoint is set for `aws_endpoint_urls.sns` but not for `aws_endpoint_urls.sts`, the STS client falls back to the SNS endpoint URL for backward compatibility with existing configurations.
 - Extended the `types-aiobotocore` dev dependency with the `sts` extra so STS clients are typed alongside SNS and SQS during development.
 - Dropped support for Python 3.9.
 
