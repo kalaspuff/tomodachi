@@ -1253,7 +1253,7 @@ class AWSSNSSQSTransport(Invoker):
         if code in ("NotFound", "NotFoundException"):
             return True
         if code == "InvalidParameter" and (
-            "does not exist" in message or "could not be found" in message.lower() or "Topic does not exist" in message
+            "does not exist" in message.lower() or "could not be found" in message.lower()
         ):
             return True
         return False
