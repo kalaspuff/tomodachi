@@ -67,11 +67,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from types_aiobotocore_sns.type_defs import PublishResponseTypeDef as PublishResponseTypeDef_
     from types_aiobotocore_sqs import SQSClient
     from types_aiobotocore_sqs.type_defs import SendMessageResultTypeDef as SendMessageResultTypeDef_
+    from types_aiobotocore_sts import STSClient
 
     from tomodachi import Service
 else:
     SNSClient = aiobotocore.client.AioBaseClient
     SQSClient = aiobotocore.client.AioBaseClient
+    STSClient = aiobotocore.client.AioBaseClient
 
 
 DRAIN_MESSAGE_PAYLOAD = "__TOMODACHI_DRAIN__cdab4416-1727-4603-87c9-0ff8dddf1f22__"
@@ -1200,6 +1202,10 @@ class AWSSNSSQSTransport(Invoker):
     @staticmethod
     async def create_client(name: Literal["sqs"], context: Dict) -> SQSClient: ...
 
+    @overload
+    @staticmethod
+    async def create_client(name: Literal["sts"], context: Dict) -> STSClient: ...
+
     @staticmethod
     async def create_client(name: str, context: Dict) -> aiobotocore.client.AioBaseClient:
         alias = f"tomodachi.{name}"
@@ -1227,6 +1233,141 @@ class AWSSNSSQSTransport(Invoker):
                 "Invalid credentials [{}] to AWS ({})".format(name, error_message)
             )
             raise AWSSNSSQSConnectionException(error_message, log_level=context.get("log_level")) from e
+
+    @staticmethod
+    def _sns_client_error_indicates_missing_topic(e: botocore.exceptions.ClientError) -> bool:
+        err = e.response.get("Error", {})
+        code = err.get("Code", "")
+        message = str(err.get("Message", ""))
+        if code in ("NotFound", "NotFoundException"):
+            return True
+        if code == "InvalidParameter" and (
+            "does not exist" in message or "could not be found" in message.lower() or "Topic does not exist" in message
+        ):
+            return True
+        return False
+
+    @classmethod
+    async def _lookup_topic_arn_via_sts_and_sns(
+        cls,
+        topic: str,
+        context: Dict,
+        topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
+        fifo: bool = False,
+    ) -> str | None:
+        try:
+            if not connector.get_client("tomodachi.sns"):
+                await cls.create_client("sns", context)
+            if not connector.get_client("tomodachi.sts"):
+                await cls.create_client("sts", context)
+        except (
+            AWSSNSSQSConnectionException,
+            botocore.exceptions.PartialCredentialsError,
+            botocore.exceptions.NoRegionError,
+        ):
+            return None
+
+        encoded_topic_name = cls.encode_topic(cls.get_topic_name(topic, context, fifo, topic_prefix))
+
+        for retry in range(1, 4):
+            try:
+                async with connector("tomodachi.sts", service_name="sts") as sts_client:
+                    identity = await asyncio.wait_for(
+                        sts_client.get_caller_identity(),
+                        timeout=40,
+                    )
+                account_id = identity.get("Account")
+                if not account_id or not isinstance(account_id, str):
+                    return None
+
+                async with connector("tomodachi.sns", service_name="sns") as sns_client:
+                    region = sns_client.meta.region_name
+                    if not region:
+                        return None
+                    topic_arn_candidate = f"arn:aws:sns:{region}:{account_id}:{encoded_topic_name}"
+                    response = await asyncio.wait_for(
+                        sns_client.get_topic_attributes(TopicArn=topic_arn_candidate),
+                        timeout=40,
+                    )
+                attrs = response.get("Attributes") or {}
+                topic_arn = attrs.get("TopicArn")
+                if topic_arn and isinstance(topic_arn, str):
+                    return topic_arn
+                return None
+            except botocore.exceptions.ClientError as e:
+                if cls._sns_client_error_indicates_missing_topic(e):
+                    return None
+                if retry >= 3:
+                    return None
+                continue
+            except (botocore.exceptions.NoCredentialsError, aiohttp.client_exceptions.ClientOSError):
+                return None
+            except (aiohttp.client_exceptions.ServerDisconnectedError, RuntimeError, asyncio.CancelledError):
+                if retry >= 3:
+                    return None
+                continue
+            except (
+                aiohttp.client_exceptions.ClientConnectorError,
+                asyncio.TimeoutError,
+            ):
+                if retry >= 3:
+                    return None
+                continue
+            except ResponseParserError as e:
+                if retry >= 3 or "Further retries may succeed" not in str(e):
+                    return None
+                continue
+
+        return None
+
+    @classmethod
+    async def get_topic_arn(
+        cls,
+        topic: str,
+        context: Dict,
+        topic_prefix: Optional[str] = MESSAGE_TOPIC_PREFIX,
+        fifo: bool = False,
+    ) -> str | None:
+        if cls.topics is None:
+            cls.topics = {}
+
+        if cls.topics and cls.topics.get(topic):
+            topic_arn = cls.topics.get(topic)
+            if topic_arn and isinstance(topic_arn, str):
+                return topic_arn
+
+        cls.validate_topic_name(topic)
+
+        condition = await connector.get_condition("tomodachi.sns.create_topic")
+        lock = connector.get_lock("tomodachi.sns.create_topic_lock")
+
+        async with condition:
+            if lock.locked() and not (cls.topics and cls.topics.get(topic)):
+                await condition.wait()
+
+            if cls.topics and cls.topics.get(topic):
+                topic_arn = cls.topics.get(topic)
+                if topic_arn and isinstance(topic_arn, str):
+                    return topic_arn
+
+            await lock.acquire()
+
+        logging.getLogger("tomodachi.awssnssqs").new(logger="tomodachi.awssnssqs", topic=topic)
+
+        result: str | None = None
+        try:
+            result = await cls._lookup_topic_arn_via_sts_and_sns(topic, context, topic_prefix, fifo=fifo)
+            if result:
+                cls.topics[topic] = result
+        finally:
+            lock.release()
+            async with condition:
+                condition.notify()
+
+        async with condition:
+            condition.notify_all()
+
+        return result
 
     @classmethod
     async def create_topic(
