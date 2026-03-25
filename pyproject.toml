@@ -43,7 +43,7 @@ packages = [
 Changelog = "https://github.com/kalaspuff/tomodachi/blob/master/CHANGELOG.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 
 aioamqp = ">=0.13.0,<0.16.0"
 aiobotocore = "^2.0.0"
