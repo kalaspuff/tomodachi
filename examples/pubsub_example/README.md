@@ -30,6 +30,7 @@ options = Options(
     aws_endpoint_urls=Options.AWSEndpointURLs(
         sns="http://localhost:4566",
         sqs="http://localhost:4566",
+        sts="http://localhost:4566",
     ),
 )
 ```
@@ -71,6 +72,7 @@ class ServiceA(tomodachi.Service):
         aws_endpoint_urls=Options.AWSEndpointURLs(
             sns=None,  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
             sqs=None,  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
+            sts=None,  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
         ),
     )
 

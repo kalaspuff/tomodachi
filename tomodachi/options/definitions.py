@@ -91,14 +91,17 @@ class _AWSSNSSQS(OptionsInterface):
         "aws_region_name": "region_name",
         "secret_access_key": "aws_secret_access_key",
         "access_key_id": "aws_access_key_id",
-        "endpoint_url": (".aws_endpoint_urls.sns", ".aws_endpoint_urls.sqs"),
-        "aws_endpoint_url": (".aws_endpoint_urls.sns", ".aws_endpoint_urls.sqs"),
+        "endpoint_url": (".aws_endpoint_urls.sns", ".aws_endpoint_urls.sqs", ".aws_endpoint_urls.sts"),
+        "aws_endpoint_url": (".aws_endpoint_urls.sns", ".aws_endpoint_urls.sqs", ".aws_endpoint_urls.sts"),
         "endpoint_urls.sns": ".aws_endpoint_urls.sns",
         "endpoint_urls.sqs": ".aws_endpoint_urls.sqs",
+        "endpoint_urls.sts": ".aws_endpoint_urls.sts",
         "aws_sns_endpoint_url": ".aws_endpoint_urls.sns",
         "aws_sqs_endpoint_url": ".aws_endpoint_urls.sqs",
+        "aws_sts_endpoint_url": ".aws_endpoint_urls.sts",
         "sns_endpoint_url": ".aws_endpoint_urls.sns",
         "sqs_endpoint_url": ".aws_endpoint_urls.sqs",
+        "sts_endpoint_url": ".aws_endpoint_urls.sts",
         "aws_kms_master_key_id": ("sns_kms_master_key_id", "sqs_kms_master_key_id"),
         "kms_master_key_id": ("sns_kms_master_key_id", "sqs_kms_master_key_id"),
         "aws_sns_kms_master_key_id": "sns_kms_master_key_id",
@@ -140,6 +143,7 @@ class _AWSSNSSQS(OptionsInterface):
 class _AWSEndpointURLs(OptionsInterface):
     sns: Optional[str]
     sqs: Optional[str]
+    sts: Optional[str]
 
     _hierarchy: Tuple[str, ...] = ("aws_endpoint_urls",)
 
@@ -148,10 +152,12 @@ class _AWSEndpointURLs(OptionsInterface):
         *,
         sns: Optional[str] = None,
         sqs: Optional[str] = None,
+        sts: Optional[str] = None,
         **kwargs: Any,
     ):
         self.sns = sns
         self.sqs = sqs
+        self.sts = sts
 
         self._load_keyword_options(**kwargs)
 
@@ -279,14 +285,17 @@ class Options(OptionsInterface):
         "aws.aws_secret_access_key": "aws_sns_sqs.aws_secret_access_key",
         "aws.access_key_id": "aws_sns_sqs.aws_access_key_id",
         "aws.aws_access_key_id": "aws_sns_sqs.aws_access_key_id",
-        "aws.endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
-        "aws.aws_endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs"),
+        "aws.endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs", "aws_endpoint_urls.sts"),
+        "aws.aws_endpoint_url": ("aws_endpoint_urls.sns", "aws_endpoint_urls.sqs", "aws_endpoint_urls.sts"),
         "aws.endpoint_urls.sns": "aws_endpoint_urls.sns",
         "aws.endpoint_urls.sqs": "aws_endpoint_urls.sqs",
+        "aws.endpoint_urls.sts": "aws_endpoint_urls.sts",
         "aws.aws_sns_endpoint_url": "aws_endpoint_urls.sns",
         "aws.aws_sqs_endpoint_url": "aws_endpoint_urls.sqs",
+        "aws.aws_sts_endpoint_url": "aws_endpoint_urls.sts",
         "aws.sns_endpoint_url": "aws_endpoint_urls.sns",
         "aws.sqs_endpoint_url": "aws_endpoint_urls.sqs",
+        "aws.sts_endpoint_url": "aws_endpoint_urls.sts",
         "aws.topic_prefix": "aws_sns_sqs.topic_prefix",
         "aws.queue_name_prefix": "aws_sns_sqs.queue_name_prefix",
         "aws.aws_kms_master_key_id": ("aws_sns_sqs.sns_kms_master_key_id", "aws_sns_sqs.sqs_kms_master_key_id"),

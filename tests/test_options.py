@@ -88,6 +88,7 @@ def test_default_values() -> None:
         "aws_sns_sqs.wildcard_queue_policy": None,
         "aws_endpoint_urls.sns": None,
         "aws_endpoint_urls.sqs": None,
+        "aws_endpoint_urls.sts": None,
         "amqp.host": "127.0.0.1",
         "amqp.port": 5672,
         "amqp.login": "guest",
@@ -263,7 +264,11 @@ def test_legacy_fallback_init() -> None:
         "queue_policy": None,
         "wildcard_queue_policy": None,
     }
-    assert options.aws_endpoint_urls.asdict() == {"sns": "http://localhost:4566", "sqs": "http://localhost:4566"}
+    assert options.aws_endpoint_urls.asdict() == {
+        "sns": "http://localhost:4566",
+        "sqs": "http://localhost:4566",
+        "sts": "http://localhost:4566",
+    }
 
     assert Options(
         **{
@@ -271,7 +276,7 @@ def test_legacy_fallback_init() -> None:
                 "aws_sqs_endpoint_url": "http://localhost:4566",
             },
         }
-    ).aws_endpoint_urls.asdict() == {"sns": None, "sqs": "http://localhost:4566"}
+    ).aws_endpoint_urls.asdict() == {"sns": None, "sqs": "http://localhost:4566", "sts": None}
 
 
 def test_service_new_class() -> None:
