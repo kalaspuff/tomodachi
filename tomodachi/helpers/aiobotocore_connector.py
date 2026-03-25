@@ -338,6 +338,23 @@ class ClientConnector:
     @overload
     def __overloaded_call__(
         self,
+        alias_name: Optional[str],
+        credentials: Optional[CredentialsMapping],
+        service_name: Literal["sts"],
+    ) -> AsyncIterator[STSClient]: ...
+
+    @overload
+    def __overloaded_call__(
+        self,
+        alias_name: Optional[str] = None,
+        credentials: Optional[CredentialsMapping] = None,
+        *,
+        service_name: Literal["sts"],
+    ) -> AsyncIterator[STSClient]: ...
+
+    @overload
+    def __overloaded_call__(
+        self,
         alias_name: Optional[str] = None,
         credentials: Optional[CredentialsMapping] = None,
         service_name: Optional[str] = None,
