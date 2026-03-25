@@ -1225,11 +1225,16 @@ class AWSSNSSQSTransport(Invoker):
 
         options: Options = AWSSNSSQSTransport.options(context)
 
+        # Workaround to support localstack STS endpoint URL fallback to SNS endpoint URL if configured
+        endpoint_url = options.aws_endpoint_urls.get(name, None)
+        if name == "sts" and not endpoint_url and options.aws_endpoint_urls.get("sns", None):
+            endpoint_url = options.aws_endpoint_urls.get("sns", None)
+
         credentials = Credentials(
             region_name=options.aws_sns_sqs.region_name,
             aws_secret_access_key=options.aws_sns_sqs.aws_secret_access_key,
             aws_access_key_id=options.aws_sns_sqs.aws_access_key_id,
-            endpoint_url=options.aws_endpoint_urls.get(name, None),
+            endpoint_url=endpoint_url,
         )
 
         connector.setup_credentials(alias, credentials)

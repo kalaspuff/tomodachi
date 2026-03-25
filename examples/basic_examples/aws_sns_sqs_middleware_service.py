@@ -162,6 +162,7 @@ class ExampleAWSSNSSQSService(tomodachi.Service):
         aws_endpoint_urls=Options.AWSEndpointURLs(
             sns="http://localhost:4567",  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
             sqs="http://localhost:4567",  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
+            sts="http://localhost:4567",  # For example 'http://localhost:4566' (or 4567, port may vary) if localstack is used for testing
         ),
     )
 
