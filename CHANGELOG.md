@@ -1,5 +1,9 @@
 # Changes
 
+## 0.28.5 (2026-xx-xx)
+
+- ...
+
 ## 0.28.4 (2026-03-25)
 
 - When publishing to SNS, the AWS SNS+SQS transport resolves the topic ARN using `sts:GetCallerIdentity` (to obtain the AWS account ID) and `sns:GetTopicAttributes` on the constructed topic ARN before falling back to `sns:CreateTopic`. This supports deployments where the service is not allowed to call `sns:CreateTopic` but can publish to an existing topic with the usual AWS STS and AWS SNS read permissions.
