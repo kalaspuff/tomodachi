@@ -50,33 +50,32 @@ with services, what built-in functionality exists in this library, lists
 of available configuration parameters and a few examples of service
 code.*
 
-Visit [https://tomodachi.dev/](https://tomodachi.dev/docs) for
-additional documentation. 📔
+Use the links below to jump to each topic in this README. 📔
 
-- [Getting started / installation](https://tomodachi.dev/docs)
+- [Getting started / installation](#getting-started-)
 
 Handler types / endpoint built-ins. 🛍️
 
-- [HTTP and WebSocket endpoints](https://tomodachi.dev/docs/http)
-- [AWS SNS+SQS event messaging](https://tomodachi.dev/docs/aws-sns-sqs)
-- [RabbitMQ / AMQP messaging](https://tomodachi.dev/docs/amqp-rabbitmq)
-- [Scheduled functions and cron](https://tomodachi.dev/docs/scheduled-functions-cron)
+- [HTTP and WebSocket endpoints](#available-built-ins-used-as-endpoints-)
+- [AWS SNS+SQS event messaging](#aws-snssqs-messaging)
+- [RabbitMQ / AMQP messaging](#amqp-messaging-rabbitmq)
+- [Scheduled functions and cron](#scheduled-functions--cron--triggered-on-time-interval)
 
 Service options to tweak handler managers. 🛠️
 
-- [Options and configuration parameters](https://tomodachi.dev/docs/options)
+- [Options and configuration parameters](#additional-configuration-options-)
 
 Use the features you need. 🌮
 
-- [Middleware functionality](https://tomodachi.dev/docs/middlewares)
-- [Function signature keywords](https://tomodachi.dev/docs/function-keywords)
-- [Logging and log formatters](https://tomodachi.dev/docs/using-the-tomodachi-logger)
-- [OpenTelemetry instrumentation](https://tomodachi.dev/docs/opentelemetry)
+- [Middleware functionality](#middlewares-for-http-and-messaging-aws-snssqs-amqp-etc-)
+- [Function signature keywords](#function-signatures---keywords-with-transport-centric-values-)
+- [Logging and log formatters](#logging-and-log-formatting-using-the-tomodachilogging-module-)
+- [OpenTelemetry instrumentation](#using-opentelemetry-instrumentation)
 
 Recommendations and examples. 🧘
 
-- [Good practices for running services in production](https://tomodachi.dev/docs/running-a-service-in-production)
-- [Example code and template services](https://tomodachi.dev/docs/examples)
+- [Good practices for running services in production](#good-practices-for-running-services-in-production-)
+- [Example code and template services](#additional-examples-will-follow-with-different-ways-to-trigger-functions-in-the-service)
 
 ------------------------------------------------------------------------
 
@@ -2203,7 +2202,7 @@ output and monitor your instances or clusters.
 
 See the section on [good practices for running services in
 production
-environments](https://tomodachi.dev/docs/running-a-service-in-production)
+environments](#good-practices-for-running-services-in-production-)
 for more insights.
 
 ### Are there any more example services?
