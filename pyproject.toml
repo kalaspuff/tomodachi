@@ -70,7 +70,7 @@ opentelemetry-instrumentation = { version = ">=0.48b0,<1.0.0", allow-prereleases
 opentelemetry-api = { version = ">=1.27.0,<1.28.0", optional = true }
 opentelemetry-sdk = { version = ">=1.27.0,<1.28.0", optional = true }
 opentelemetry-exporter-otlp = { version = ">=1.27.0,<1.28.0", optional = true }
-opentelemetry-util-http = { version = ">=0.48b0,<1.0.0", allow-prereleases = true, optional = true }
+opentelemetry-util-http = { version = ">=0.48b0,<0.49b0", allow-prereleases = true, optional = true }  # newer versions import from semconv versions not compatible with OTel SDK 1.27
 opentelemetry-exporter-prometheus = { version = ">=0.48b0,<1.0.0", allow-prereleases = true, optional = true }
 
 # extras management
