@@ -6,6 +6,7 @@
 - Supports `aiohttp` 3.11.x, 3.12.x, 3.13.x and 3.14.x versions. The version constraint is now `aiohttp>=3.9.5,<4.0.0`. Services that don't need a newer `aiohttp` can keep running on the version they have installed today.
 - Fixes HTTP service startup on `aiohttp` 3.11.3 and later, where the internal route storage of aiohttp resources changed from a list to a dict keyed by method. Regex-based `@http` routes, and GET routes that also serve HEAD requests, are registered and resolved in the same way as before.
 - With `aiohttp` 3.14+, a request body of exactly `client_max_size` bytes is accepted. Previously such a request was rejected with 413. Bodies larger than `client_max_size` are still rejected with 413.
+- Pins setuptools to <82.0.0, due to a legacy issue with the otel loader (will be fixed in a separate minor release).
 
 ## 0.28.4 (2026-03-25)
 

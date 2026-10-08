@@ -54,6 +54,7 @@ yarl = ">=1.16.0,<2.0.0"
 colorama = ">=0.3.9,<0.5.0"
 asahi = ">=0.1,<0.3"
 structlog = ">=21.5.0,<25.0.0"
+setuptools = "<82.0.0"  # pkg_resources was removed in setuptools 82.0.0 but still used within the OTel loader
 
 # derived from aiobotocore for dependency resolution speed in same cases.
 botocore = ">=1.22.8"
