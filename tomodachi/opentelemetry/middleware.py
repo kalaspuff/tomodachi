@@ -56,7 +56,7 @@ class OpenTelemetryTomodachiMiddleware:
         meter = cast(Meter, self.meter)
         if hasattr(meter, "_is_instrument_registered"):
             # opentelemetry-sdk < 1.30.0
-            (is_registered, instrument_id) = getattr(meter, "_is_instrument_registered")(  # noqa: B009
+            is_registered, instrument_id = getattr(meter, "_is_instrument_registered")(  # noqa: B009
                 name,
                 type_,
                 unit,
