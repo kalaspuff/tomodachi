@@ -34,7 +34,7 @@ async def middleware_function(
 class HttpService(tomodachi.Service):
     name = "test_http"
     discovery = [DummyRegistry]
-    options = {"http": {"port": None, "access_log": True, "real_ip_from": "127.0.0.1"}}
+    options = {"http": {"port": None, "access_log": True, "real_ip_from": "127.0.0.1", "client_max_size": "1M"}}
     uuid = None
     closer: asyncio.Future
     http_middleware = [middleware_function]
@@ -169,6 +169,20 @@ class HttpService(tomodachi.Service):
         file_from_request.file.close()
 
         return filename.encode("utf-8") + b": " + content
+
+    @tomodachi.http("POST", r"/form-data")
+    async def form_data(self, request: web.Request) -> str:
+        data = await request.post()
+        return "{}={}".format("key", data.get("key"))
+
+    @tomodachi.http("POST", r"/json-data")
+    async def json_data(self, request: web.Request) -> str:
+        data = await request.json()
+        return "{}={}".format("key", data.get("key"))
+
+    @tomodachi.http("GET", r"/header-count")
+    async def header_count(self, request: web.Request) -> str:
+        return str(len([key for key in request.headers.keys() if key.startswith("X-Header-")]))
 
     async def _start_service(self) -> None:
         self.closer = asyncio.Future()
