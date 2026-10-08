@@ -112,7 +112,7 @@ class ServiceContainer(object):
                     continue
 
                 try:
-                    instance = cls()
+                    instance: Any = cls()
                 except Exception as e:
                     logging.getLogger("exception").exception("uncaught exception: {}".format(str(e)))
                     logging.getLogger("tomodachi.init").error(

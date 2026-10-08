@@ -167,7 +167,7 @@ class Credentials:
     def __iter__(
         self,
     ) -> Iterator[CredentialsTypeKeys]:
-        return cast(Iterator[CredentialsTypeKeys], iter(cast(CredentialsDict, self.dict())))
+        return cast(Iterator[CredentialsTypeKeys], iter(self.dict()))
 
     def __getitem__(
         self,

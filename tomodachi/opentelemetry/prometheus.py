@@ -137,7 +137,7 @@ class _CustomCollector(_PrometheusCustomCollector):
         """
         return self._non_letters_digits_underscore_re.sub("_", key)
 
-    def collect(self) -> Generator[PrometheusMetric, Any, Any]:  # type: ignore
+    def collect(self) -> Generator[PrometheusMetric, Any, Any]:
         if self._callback is not None:
             self._callback()
 

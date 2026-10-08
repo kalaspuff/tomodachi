@@ -1489,9 +1489,7 @@ class AWSSNSSQSTransport(Invoker):
                     if topic_attributes and topic_attributes.get("KmsMasterKeyId") == "":
                         try:
                             async with connector("tomodachi.sns", service_name="sns") as client:
-                                topic_attributes_response = await client.get_topic_attributes(
-                                    TopicArn=cast(str, topic_arn)
-                                )
+                                topic_attributes_response = await client.get_topic_attributes(TopicArn=topic_arn)
                                 if not topic_attributes_response.get("Attributes", {}).get("KmsMasterKeyId"):
                                     update_attributes = False
                                     overwrite_attributes = False
@@ -2556,7 +2554,7 @@ class AWSSNSSQSTransport(Invoker):
         current_kms_master_key_id = None
         current_kms_data_key_reuse_period_seconds = None
 
-        message_retention_period = None
+        message_retention_period: Optional[int] = None
 
         try:
             async with connector("tomodachi.sqs", service_name="sqs") as sqs_client:
@@ -2612,11 +2610,11 @@ class AWSSNSSQSTransport(Invoker):
             queue_attributes["RedrivePolicy"] = json.dumps(redrive_policy)
 
         if (
-            message_retention_period  # type: ignore
+            message_retention_period
             and current_message_retention_period
             and message_retention_period != current_message_retention_period
         ):
-            queue_attributes["MessageRetentionPeriod"] = str(  # type: ignore
+            queue_attributes["MessageRetentionPeriod"] = str(
                 message_retention_period
             )  # SQS.SetQueueAttributes "Attributes" are mapped string -> string
 

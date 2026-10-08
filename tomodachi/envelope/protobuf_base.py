@@ -18,7 +18,7 @@ class ProtobufBase(object):
         if kwargs.get("proto_class", None).__class__.__name__ not in ("GeneratedProtocolMessageType", "MessageMeta"):
             from google.protobuf.message import Message  # isort: skip
 
-            if not issubclass(kwargs.get("proto_class", None), Message):
+            if not issubclass(kwargs["proto_class"], Message):
                 raise Exception("keyword argument 'proto_class' is not a protobuf message class")
 
     @classmethod

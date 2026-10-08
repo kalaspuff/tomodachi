@@ -85,7 +85,7 @@ class RequestHandler(web_protocol.RequestHandler):
     async def _handle_request(
         self,
         request: web.BaseRequest,
-        start_time: float,
+        start_time: Any,
         *args: Any,
     ) -> Tuple[web.StreamResponse, bool]:
         self._cache_remote_ip(request)
@@ -234,8 +234,10 @@ class Server(web_server.Server):
 
 class DynamicResource(web_urldispatcher.DynamicResource):
     def __init__(self, pattern: Any, *, name: Optional[str] = None) -> None:
-        self._routes: List = []
-        self._name = name
+        # Bypasses web_urldispatcher.DynamicResource.__init__, which expects an aiohttp path template and not a
+        # compiled regex. Resource.__init__ sets up the route storage for the installed aiohttp version (a list
+        # on aiohttp < 3.11.3, a dict keyed by method together with _any_route and _allowed_methods on 3.11.3+).
+        web_urldispatcher.Resource.__init__(self, name=name)
         self._pattern = pattern
         self._formatter = ""
 
@@ -1255,9 +1257,7 @@ class HttpTransport(Invoker):
                     and isinstance(client_max_size_option, str)
                     and (client_max_size_option_str.endswith("G") or client_max_size_option_str.endswith("GB"))
                 ):
-                    client_max_size = int(
-                        re.sub(cast(str, r"^([0-9]+)GB?$"), cast(str, r"\1"), client_max_size_option_str)
-                    ) * (1024**3)
+                    client_max_size = int(re.sub(r"^([0-9]+)GB?$", r"\1", client_max_size_option_str)) * (1024**3)
                 elif (
                     client_max_size_option
                     and isinstance(client_max_size_option, str)
@@ -1419,6 +1419,7 @@ class HttpTransport(Invoker):
                     real_ip_from=real_ip_from,
                     keepalive_timeout=keepalive_timeout,
                     tcp_keepalive=tcp_keepalive,
+                    max_headers=32768,
                 )
 
                 if reuse_port:

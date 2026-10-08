@@ -340,7 +340,7 @@ class _PythonLoggingLoggerFormatter(logging.Formatter):
             self.fmt = self.style._fmt
         return self.style
 
-    @property  # type: ignore
+    @property
     def _fmt(self) -> str:
         if self.style._fmt != self.fmt:
             self.fmt = self._style._fmt
@@ -444,7 +444,7 @@ class StderrHandler(logging.StreamHandler):
         logging.Handler.__init__(self, level)
 
     @property
-    def stream(self) -> TextIO:  # type: ignore
+    def stream(self) -> TextIO:
         return sys.stderr
 
 

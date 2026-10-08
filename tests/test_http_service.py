@@ -338,6 +338,36 @@ def test_request_http_service(capsys: Any, loop: Any) -> None:
                 assert response.status == 200
                 assert await response.read() == b"image.png: " + content
 
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.post("http://127.0.0.1:{}/form-data".format(port), data={"key": "value"})
+            assert response.status == 200
+            assert await response.read() == b"key=value"
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.post("http://127.0.0.1:{}/json-data".format(port), json={"key": "value"})
+            assert response.status == 200
+            assert await response.read() == b"key=value"
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            response = await client.post(
+                "http://127.0.0.1:{}/form-data".format(port), data={"key": "x" * (1024**2 + 1024)}
+            )
+            assert response.status == 413
+
+        async with aiohttp.ClientSession(loop=loop) as client:
+            headers = {"X-Header-{}".format(i): str(i) for i in range(200)}
+            response = await client.get("http://127.0.0.1:{}/header-count".format(port), headers=headers)
+            assert response.status == 200
+            assert await response.read() == b"200"
+
+        for path in ("/static/../http_service.py", "/static/..%2Fhttp_service.py", "/static/%2e%2e/http_service.py"):
+            reader, writer = await asyncio.open_connection("127.0.0.1", port)
+            writer.write("GET {} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n".format(path).encode())
+            await writer.drain()
+            status_line = await reader.readline()
+            writer.close()
+            assert status_line.split(b" ")[1] in (b"400", b"403", b"404")
+
     loop.run_until_complete(_async(loop))
     instance.stop_service()
     loop.run_until_complete(future)
