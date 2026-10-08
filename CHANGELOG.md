@@ -1,6 +1,6 @@
 # Changes
 
-## 0.29.0 (2026-xx-xx)
+## 0.29.0 (2026-10-08)
 
 - When subscribing to a topic, the AWS SNS+SQS transport now resolves the topic ARN using `sts:GetCallerIdentity` and `sns:GetTopicAttributes` before calling `sns:CreateTopic`, in the same way as when publishing. Services can now subscribe to an existing topic without permission to call `sns:CreateTopic`, as long as no topic attributes need to be applied. If topic attributes are configured (for example FIFO topics or `sns_kms_master_key_id`) and `sns:CreateTopic` is denied for an existing topic, the topic ARN is used as-is and attribute updates are skipped with a warning. Missing topics are still created as before.
 - Supports `aiohttp` 3.11.x, 3.12.x, 3.13.x and 3.14.x versions. The version constraint is now `aiohttp>=3.9.5,<4.0.0`. Services that don't need a newer `aiohttp` can keep running on the version they have installed today.
